@@ -163,18 +163,20 @@ App.tsx
 
 | Item | Value |
 |------|-------|
-| Contract | PrivateVoting.sol |
+| Contract | PrivateVoting.sol (Commit-Reveal) |
 | Network | Ethereum Sepolia |
-| Address | `0x583e8926F8701a196F182c449dF7BAc4782EF784` |
+| Address | `0x738afdD6a99f0f10e8F3AaA1297e1eccc34F5AA2` |
 
 ### Contract Functions
 
 | Function | Description |
 |----------|-------------|
-| `createProposal()` | 새 제안 생성 |
-| `submitVoteCommitment()` | 투표 커밋먼트 제출 |
-| `getProposal()` | 제안 정보 조회 |
+| `createProposal()` | 새 제안 생성 (투표기간, 공개기간 설정) |
+| `commitVote()` | 투표 커밋먼트 제출 (Commit Phase) |
+| `revealVote()` | 투표 공개 및 집계 (Reveal Phase) |
+| `getProposal()` | 제안 정보 조회 (phase 포함) |
 | `hasVoted()` | 투표 여부 확인 |
+| `hasRevealed()` | 공개 여부 확인 |
 
 ## On-chain Features
 

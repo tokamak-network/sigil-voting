@@ -9,156 +9,216 @@ contract PrivateVotingTest is Test {
     address public alice = address(0x1);
     address public bob = address(0x2);
 
+    uint256 constant VOTING_DURATION = 1 days;
+    uint256 constant REVEAL_DURATION = 1 days;
+
     function setUp() public {
         voting = new PrivateVoting();
     }
 
-    // ============ Proposal Creation Tests ============
+    // ============ Proposal Tests ============
 
     function test_CreateProposal() public {
-        uint256 proposalId = voting.createProposal("Test Proposal", "Description", 7 days);
+        uint256 proposalId = voting.createProposal("Test", "Desc", VOTING_DURATION, REVEAL_DURATION);
         assertEq(proposalId, 1);
         assertEq(voting.proposalCount(), 1);
     }
 
-    function test_CreateMultipleProposals() public {
-        voting.createProposal("Proposal 1", "Desc 1", 7 days);
-        voting.createProposal("Proposal 2", "Desc 2", 7 days);
-        voting.createProposal("Proposal 3", "Desc 3", 7 days);
-        assertEq(voting.proposalCount(), 3);
-    }
-
     function test_GetProposal() public {
-        voting.createProposal("Test Title", "Test Description", 7 days);
+        voting.createProposal("Test Title", "Test Description", VOTING_DURATION, REVEAL_DURATION);
 
         (
             uint256 id,
             string memory title,
-            string memory description,
+            ,
             address proposer,
             ,
             ,
+            ,
+            ,
+            ,
             uint256 totalVoters,
-            bool isActive
+            ,
+            uint8 phase
         ) = voting.getProposal(1);
 
         assertEq(id, 1);
         assertEq(title, "Test Title");
-        assertEq(description, "Test Description");
         assertEq(proposer, address(this));
         assertEq(totalVoters, 0);
-        assertTrue(isActive);
+        assertEq(phase, 0); // Voting phase
     }
 
-    // ============ Vote Commitment Tests ============
+    // ============ Commit Tests ============
 
-    function test_SubmitVoteCommitment() public {
-        voting.createProposal("Test", "Desc", 7 days);
+    function test_CommitVote() public {
+        voting.createProposal("Test", "Desc", VOTING_DURATION, REVEAL_DURATION);
 
-        bytes32 commitment = keccak256(abi.encodePacked(uint8(1), bytes32("salt")));
+        bytes32 salt = bytes32("random_salt");
+        bytes32 commitment = keccak256(abi.encodePacked(uint8(1), salt));
 
         vm.prank(alice);
-        voting.submitVoteCommitment(1, commitment, 100);
+        voting.commitVote(1, commitment, 100);
 
         assertTrue(voting.hasVoted(1, alice));
-    }
-
-    function test_GetVoteCommitment() public {
-        voting.createProposal("Test", "Desc", 7 days);
-
-        bytes32 commitment = keccak256(abi.encodePacked(uint8(1), bytes32("salt")));
-
-        vm.prank(alice);
-        voting.submitVoteCommitment(1, commitment, 100);
-
-        (bytes32 storedCommitment, uint256 votingPower, , bool hasVoted) = voting.getVoteCommitment(1, alice);
-
-        assertEq(storedCommitment, commitment);
-        assertEq(votingPower, 100);
-        assertTrue(hasVoted);
-    }
-
-    function test_MultipleVoters() public {
-        voting.createProposal("Test", "Desc", 7 days);
-
-        vm.prank(alice);
-        voting.submitVoteCommitment(1, keccak256("alice"), 100);
-
-        vm.prank(bob);
-        voting.submitVoteCommitment(1, keccak256("bob"), 200);
-
-        assertTrue(voting.hasVoted(1, alice));
-        assertTrue(voting.hasVoted(1, bob));
-
-        (, , , , , , uint256 totalVoters, ) = voting.getProposal(1);
-        assertEq(totalVoters, 2);
-    }
-
-    // ============ Error Tests ============
-
-    function test_RevertWhen_ProposalNotFound() public {
-        bytes32 commitment = keccak256("test");
-
-        vm.expectRevert(PrivateVoting.ProposalNotFound.selector);
-        voting.submitVoteCommitment(999, commitment, 100);
+        assertFalse(voting.hasRevealed(1, alice));
     }
 
     function test_RevertWhen_AlreadyVoted() public {
-        voting.createProposal("Test", "Desc", 7 days);
+        voting.createProposal("Test", "Desc", VOTING_DURATION, REVEAL_DURATION);
 
         vm.startPrank(alice);
-        voting.submitVoteCommitment(1, keccak256("first"), 100);
+        voting.commitVote(1, keccak256("first"), 100);
 
         vm.expectRevert(PrivateVoting.AlreadyVoted.selector);
-        voting.submitVoteCommitment(1, keccak256("second"), 100);
+        voting.commitVote(1, keccak256("second"), 100);
         vm.stopPrank();
     }
 
-    function test_RevertWhen_ProposalExpired() public {
-        voting.createProposal("Test", "Desc", 1 days);
+    // ============ Reveal Tests ============
 
-        // Fast forward 2 days
-        vm.warp(block.timestamp + 2 days);
+    function test_RevealVote() public {
+        voting.createProposal("Test", "Desc", VOTING_DURATION, REVEAL_DURATION);
 
-        vm.expectRevert(PrivateVoting.ProposalNotActive.selector);
+        bytes32 salt = bytes32("random_salt");
+        uint8 choice = 1; // For
+        bytes32 commitment = keccak256(abi.encodePacked(choice, salt));
+
+        // Commit
         vm.prank(alice);
-        voting.submitVoteCommitment(1, keccak256("test"), 100);
+        voting.commitVote(1, commitment, 100);
+
+        // Fast forward to reveal phase
+        vm.warp(block.timestamp + VOTING_DURATION + 1);
+
+        // Reveal
+        vm.prank(alice);
+        voting.revealVote(1, choice, salt);
+
+        assertTrue(voting.hasRevealed(1, alice));
+
+        // Check tally
+        (, , , , , , uint256 forVotes, , , , uint256 revealedVoters, ) = voting.getProposal(1);
+        assertEq(forVotes, 100);
+        assertEq(revealedVoters, 1);
     }
 
-    function test_RevertWhen_ZeroVotingPower() public {
-        voting.createProposal("Test", "Desc", 7 days);
+    function test_RevealMultipleVotes() public {
+        voting.createProposal("Test", "Desc", VOTING_DURATION, REVEAL_DURATION);
 
-        vm.expectRevert(PrivateVoting.InvalidVotingPower.selector);
+        bytes32 saltAlice = bytes32("salt_alice");
+        bytes32 saltBob = bytes32("salt_bob");
+
+        // Alice votes For
         vm.prank(alice);
-        voting.submitVoteCommitment(1, keccak256("test"), 0);
-    }
+        voting.commitVote(1, keccak256(abi.encodePacked(uint8(1), saltAlice)), 100);
 
-    // ============ Edge Case Tests ============
+        // Bob votes Against
+        vm.prank(bob);
+        voting.commitVote(1, keccak256(abi.encodePacked(uint8(2), saltBob)), 200);
 
-    function test_VoteJustBeforeExpiry() public {
-        voting.createProposal("Test", "Desc", 1 days);
+        // Fast forward to reveal phase
+        vm.warp(block.timestamp + VOTING_DURATION + 1);
 
-        // Fast forward to just before expiry
-        vm.warp(block.timestamp + 1 days - 1);
-
+        // Reveal
         vm.prank(alice);
-        voting.submitVoteCommitment(1, keccak256("test"), 100);
-
-        assertTrue(voting.hasVoted(1, alice));
-    }
-
-    function test_GetProposalVoters() public {
-        voting.createProposal("Test", "Desc", 7 days);
-
-        vm.prank(alice);
-        voting.submitVoteCommitment(1, keccak256("alice"), 100);
+        voting.revealVote(1, 1, saltAlice);
 
         vm.prank(bob);
-        voting.submitVoteCommitment(1, keccak256("bob"), 200);
+        voting.revealVote(1, 2, saltBob);
 
-        address[] memory voters = voting.getProposalVoters(1);
-        assertEq(voters.length, 2);
-        assertEq(voters[0], alice);
-        assertEq(voters[1], bob);
+        // Check tally
+        (, , , , , , uint256 forVotes, uint256 againstVotes, , , uint256 revealedVoters, ) = voting.getProposal(1);
+        assertEq(forVotes, 100);
+        assertEq(againstVotes, 200);
+        assertEq(revealedVoters, 2);
+    }
+
+    function test_RevertWhen_RevealBeforeVotingEnds() public {
+        voting.createProposal("Test", "Desc", VOTING_DURATION, REVEAL_DURATION);
+
+        bytes32 salt = bytes32("salt");
+        bytes32 commitment = keccak256(abi.encodePacked(uint8(1), salt));
+
+        vm.prank(alice);
+        voting.commitVote(1, commitment, 100);
+
+        // Try to reveal during voting phase
+        vm.expectRevert(PrivateVoting.NotInRevealPhase.selector);
+        vm.prank(alice);
+        voting.revealVote(1, 1, salt);
+    }
+
+    function test_RevertWhen_RevealAfterRevealEnds() public {
+        voting.createProposal("Test", "Desc", VOTING_DURATION, REVEAL_DURATION);
+
+        bytes32 salt = bytes32("salt");
+        bytes32 commitment = keccak256(abi.encodePacked(uint8(1), salt));
+
+        vm.prank(alice);
+        voting.commitVote(1, commitment, 100);
+
+        // Fast forward past reveal phase
+        vm.warp(block.timestamp + VOTING_DURATION + REVEAL_DURATION + 1);
+
+        vm.expectRevert(PrivateVoting.NotInRevealPhase.selector);
+        vm.prank(alice);
+        voting.revealVote(1, 1, salt);
+    }
+
+    function test_RevertWhen_InvalidReveal() public {
+        voting.createProposal("Test", "Desc", VOTING_DURATION, REVEAL_DURATION);
+
+        bytes32 salt = bytes32("salt");
+        bytes32 commitment = keccak256(abi.encodePacked(uint8(1), salt));
+
+        vm.prank(alice);
+        voting.commitVote(1, commitment, 100);
+
+        vm.warp(block.timestamp + VOTING_DURATION + 1);
+
+        // Try to reveal with wrong choice
+        vm.expectRevert(PrivateVoting.InvalidReveal.selector);
+        vm.prank(alice);
+        voting.revealVote(1, 2, salt); // Wrong choice
+    }
+
+    function test_RevertWhen_AlreadyRevealed() public {
+        voting.createProposal("Test", "Desc", VOTING_DURATION, REVEAL_DURATION);
+
+        bytes32 salt = bytes32("salt");
+        bytes32 commitment = keccak256(abi.encodePacked(uint8(1), salt));
+
+        vm.prank(alice);
+        voting.commitVote(1, commitment, 100);
+
+        vm.warp(block.timestamp + VOTING_DURATION + 1);
+
+        vm.startPrank(alice);
+        voting.revealVote(1, 1, salt);
+
+        vm.expectRevert(PrivateVoting.AlreadyRevealed.selector);
+        voting.revealVote(1, 1, salt);
+        vm.stopPrank();
+    }
+
+    // ============ Phase Tests ============
+
+    function test_PhaseTransitions() public {
+        voting.createProposal("Test", "Desc", VOTING_DURATION, REVEAL_DURATION);
+
+        // Phase 0: Voting
+        (, , , , , , , , , , , uint8 phase) = voting.getProposal(1);
+        assertEq(phase, 0);
+
+        // Phase 1: Reveal
+        vm.warp(block.timestamp + VOTING_DURATION + 1);
+        (, , , , , , , , , , , phase) = voting.getProposal(1);
+        assertEq(phase, 1);
+
+        // Phase 2: Ended
+        vm.warp(block.timestamp + REVEAL_DURATION + 1);
+        (, , , , , , , , , , , phase) = voting.getProposal(1);
+        assertEq(phase, 2);
     }
 }

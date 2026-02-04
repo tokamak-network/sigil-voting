@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAccount, useConnect, useDisconnect, useSwitchChain, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useAccount, useConnect, useDisconnect, useSwitchChain, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi'
 import { injected } from 'wagmi/connectors'
 import { keccak256, encodePacked } from 'viem'
 import { sepolia } from './wagmi'
@@ -19,7 +19,6 @@ type Page = 'landing' | 'proposals' | 'proposal-detail' | 'my-votes' | 'create-p
 type ProposalStatus = 'active' | 'passed' | 'defeated'
 type VoteChoice = 'for' | 'against' | 'abstain' | null
 type VotingPhase = 'select' | 'sealing' | 'submitted'
-type Language = 'ko' | 'en'
 
 const translations = {
   ko: {
@@ -468,85 +467,6 @@ interface Proposal {
   category: string
 }
 
-interface MyVote {
-  proposalId: string
-  proposalTitle: string
-  choice: VoteChoice
-  commitment: string
-  votingPower: number
-  timestamp: string
-  txHash?: string
-}
-
-// Sample data - ID '1' matches the on-chain proposal
-const initialProposals: Proposal[] = [
-  {
-    id: '1',
-    title: '생태계 그랜트 프로그램 예산 배정',
-    description: '개발자 온보딩 및 Tokamak Network dApp 개발 지원을 위해 트레저리에서 500,000 TON을 생태계 그랜트 프로그램에 배정합니다.\n\n## 배경\n현재 Tokamak Network 생태계는 성장기에 있으며, 더 많은 개발자 유입이 필요합니다.\n\n## 목표\n- Q2까지 20개 이상의 신규 dApp 유치\n- 개발자 교육 프로그램 운영\n- 해커톤 개최 (분기당 1회)',
-    status: 'active',
-    forVotes: 1850000,
-    againstVotes: 920000,
-    abstainVotes: 230000,
-    totalVoters: 156,
-    endTime: new Date('2026-02-11T18:00:00'),
-    author: '0x9f24...D841',
-    category: '트레저리',
-  },
-  {
-    id: 'TIP-41',
-    title: '스테이킹 보상률 조정',
-    description: '프로토콜의 장기적 지속가능성을 위해 연간 스테이킹 보상률을 19%에서 15%로 인하합니다.',
-    status: 'active',
-    forVotes: 2100000,
-    againstVotes: 1800000,
-    abstainVotes: 100000,
-    totalVoters: 203,
-    endTime: new Date('2026-02-08T12:00:00'),
-    author: '0x5e6f...7g8h',
-    category: '프로토콜',
-  },
-  {
-    id: 'TIP-40',
-    title: '검증자 요구사항 강화',
-    description: '검증자 최소 스테이킹 요구량을 100,000 TON에서 250,000 TON으로 상향 조정합니다.',
-    status: 'passed',
-    forVotes: 3200000,
-    againstVotes: 800000,
-    abstainVotes: 200000,
-    totalVoters: 312,
-    endTime: new Date('2026-01-25T18:00:00'),
-    author: '0x9i0j...1k2l',
-    category: '검증자',
-  },
-  {
-    id: 'TIP-39',
-    title: '긴급 보안 기금 조성',
-    description: '잠재적 보안 사고 대응을 위해 1,000,000 TON 규모의 긴급 기금을 조성합니다.',
-    status: 'passed',
-    forVotes: 4500000,
-    againstVotes: 300000,
-    abstainVotes: 150000,
-    totalVoters: 428,
-    endTime: new Date('2026-01-20T18:00:00'),
-    author: '0x3m4n...5o6p',
-    category: '보안',
-  },
-  {
-    id: 'TIP-38',
-    title: '마케팅 예산 증액',
-    description: '분기별 마케팅 예산을 50,000 TON에서 150,000 TON으로 증액합니다.',
-    status: 'defeated',
-    forVotes: 1200000,
-    againstVotes: 2800000,
-    abstainVotes: 400000,
-    totalVoters: 289,
-    endTime: new Date('2026-01-15T18:00:00'),
-    author: '0x7q8r...9s0t',
-    category: '마케팅',
-  },
-]
-
 function App() {
   const { address, isConnected, chainId } = useAccount()
   const { connect, isPending: isConnecting } = useConnect()
@@ -593,43 +513,112 @@ function App() {
   const [selectedChoice, setSelectedChoice] = useState<VoteChoice>(null)
   const [sealProgress, setSealProgress] = useState(0)
   const [myCommitment, setMyCommitment] = useState('')
-  const [myVotes, setMyVotes] = useState<MyVote[]>([
-    {
-      proposalId: 'TIP-40',
-      proposalTitle: '검증자 요구사항 강화',
-      choice: 'for',
-      commitment: '0x7a3b...f291',
-      votingPower: 350,
-      timestamp: '2026-01-24 14:30'
-    },
-    {
-      proposalId: 'TIP-39',
-      proposalTitle: '긴급 보안 기금 조성',
-      choice: 'for',
-      commitment: '0x8c4d...e382',
-      votingPower: 350,
-      timestamp: '2026-01-19 11:15'
-    },
-  ])
-  const [proposals, setProposals] = useState<Proposal[]>(initialProposals)
+  const [proposals, setProposals] = useState<Proposal[]>([])
   const [votingPower] = useState(350)
   const [filter, setFilter] = useState<'all' | 'active' | 'closed'>('all')
   const [, setNow] = useState(new Date())
-  const [lang, setLang] = useState<Language>('ko')
-  const t = translations[lang]
+  const t = translations['en']
+
+  // Read proposal count from contract
+  const { data: proposalCount, refetch: refetchCount } = useReadContract({
+    address: PRIVATE_VOTING_ADDRESS,
+    abi: PRIVATE_VOTING_ABI,
+    functionName: 'proposalCount',
+  })
+
+  // Load proposals when count changes
+  useEffect(() => {
+    const loadProposals = async () => {
+      if (!proposalCount) return
+      const count = Number(proposalCount)
+      if (count === 0) return
+
+      // Use window.ethereum to read proposals
+      if (!window.ethereum) return
+
+      const newProposals: Proposal[] = []
+
+      for (let i = 1; i <= count; i++) {
+        try {
+          const result = await window.ethereum.request({
+            method: 'eth_call',
+            params: [{
+              to: PRIVATE_VOTING_ADDRESS,
+              data: `0xc7f758a8${i.toString(16).padStart(64, '0')}`
+            }, 'latest']
+          }) as string
+
+          if (result && result !== '0x') {
+            // Parse ABI-encoded response
+            // getProposal returns: id, title, description, proposer, endTime, revealEndTime, forVotes, againstVotes, abstainVotes, totalVoters, revealedVoters, phase
+            const { decodeAbiParameters } = await import('viem')
+            const decoded = decodeAbiParameters(
+              [
+                { name: 'id', type: 'uint256' },
+                { name: 'title', type: 'string' },
+                { name: 'description', type: 'string' },
+                { name: 'proposer', type: 'address' },
+                { name: 'endTime', type: 'uint256' },
+                { name: 'revealEndTime', type: 'uint256' },
+                { name: 'forVotes', type: 'uint256' },
+                { name: 'againstVotes', type: 'uint256' },
+                { name: 'abstainVotes', type: 'uint256' },
+                { name: 'totalVoters', type: 'uint256' },
+                { name: 'revealedVoters', type: 'uint256' },
+                { name: 'phase', type: 'uint8' },
+              ],
+              result as `0x${string}`
+            )
+
+            const [id, title, description, proposer, endTime, , forVotes, againstVotes, abstainVotes, totalVoters, , phase] = decoded
+
+            const status: ProposalStatus = phase === 0 ? 'active' : (Number(forVotes) > Number(againstVotes) ? 'passed' : 'defeated')
+
+            newProposals.push({
+              id: String(id),
+              title: title as string,
+              description: description as string,
+              author: `${(proposer as string).slice(0, 6)}...${(proposer as string).slice(-4)}`,
+              endTime: new Date(Number(endTime) * 1000),
+              forVotes: Number(forVotes),
+              againstVotes: Number(againstVotes),
+              abstainVotes: Number(abstainVotes),
+              totalVoters: Number(totalVoters),
+              status,
+              category: '일반',
+            })
+          }
+        } catch (e) {
+          console.error('Failed to fetch proposal', i, e)
+        }
+      }
+
+      setProposals(newProposals)
+    }
+
+    loadProposals()
+  }, [proposalCount])
 
   // Create Proposal Form States
   const [newProposal, setNewProposal] = useState({
     title: '',
     description: '',
     category: '일반',
-    duration: 7
+    duration: 7,
+    revealDuration: 1,
+    quorumType: 'percentage' as 'percentage' | 'absolute',
+    quorumValue: 10,
+    passThreshold: 50,
   })
 
+  // Refresh data periodically
   useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 1000)
+    const interval = setInterval(() => {
+      setNow(new Date())
+      refetchCount()
+    }, 5000) // Refresh every 5 seconds
     return () => clearInterval(interval)
-  }, [])
+  }, [refetchCount])
 
   const isCorrectChain = chainId === sepolia.id
 
@@ -650,15 +639,9 @@ function App() {
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
 
-    if (lang === 'ko') {
-      if (days > 0) return `${days}일 ${hours}시간 남음`
-      if (hours > 0) return `${hours}시간 ${minutes}분 남음`
-      return `${minutes}분 남음`
-    } else {
-      if (days > 0) return `${days}d ${hours}h left`
-      if (hours > 0) return `${hours}h ${minutes}m left`
-      return `${minutes}m left`
-    }
+    if (days > 0) return `${days}d ${hours}h left`
+    if (hours > 0) return `${hours}h ${minutes}m left`
+    return `${minutes}m left`
   }
 
   const getStatusColor = (status: ProposalStatus) => {
@@ -677,37 +660,54 @@ function App() {
     }
   }
 
-  const createProposal = () => {
+  const [isCreatingProposal, setIsCreatingProposal] = useState(false)
+
+  const createProposalOnChain = async () => {
     if (!newProposal.title || !newProposal.description || !isConnected) return
 
-    const now = new Date()
-    const endTime = new Date(now.getTime() + newProposal.duration * 24 * 60 * 60 * 1000)
+    setIsCreatingProposal(true)
+    try {
+      // Convert days to seconds
+      const votingDuration = BigInt(newProposal.duration * 24 * 60 * 60)
+      const revealDuration = BigInt(newProposal.revealDuration * 24 * 60 * 60)
 
-    const proposal: Proposal = {
-      id: `TIP-${43 + proposals.length}`,
-      title: newProposal.title,
-      description: newProposal.description,
-      status: 'active',
-      forVotes: 0,
-      againstVotes: 0,
-      abstainVotes: 0,
-      totalVoters: 0,
-      endTime: endTime,
-      author: shortenAddress(address!),
-      category: newProposal.category,
+      await writeContractAsync({
+        address: PRIVATE_VOTING_ADDRESS,
+        abi: PRIVATE_VOTING_ABI,
+        functionName: 'createProposal',
+        args: [newProposal.title, newProposal.description, votingDuration, revealDuration],
+      })
+
+      setNewProposal({
+        title: '',
+        description: '',
+        category: '일반',
+        duration: 7,
+        revealDuration: 1,
+        quorumType: 'percentage',
+        quorumValue: 10,
+        passThreshold: 50,
+      })
+
+      // Refetch proposals after creation
+      await refetchCount()
+
+      setCurrentPage('proposals')
+    } catch (error) {
+      console.error('Failed to create proposal:', error)
+      alert('제안 생성 실패. 다시 시도해주세요.')
+    } finally {
+      setIsCreatingProposal(false)
     }
-
-    setProposals(prev => [proposal, ...prev])
-    setNewProposal({ title: '', description: '', category: '일반', duration: 7 })
-    setCurrentPage('proposals')
   }
 
   // Generate commitment hash: keccak256(choice + salt)
-  const generateCommitmentHash = (choice: VoteChoice): `0x${string}` => {
-    const salt = crypto.getRandomValues(new Uint8Array(32))
-    const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('')
+  const generateCommitmentHash = (choice: VoteChoice): { hash: `0x${string}`, salt: `0x${string}` } => {
+    const saltBytes = crypto.getRandomValues(new Uint8Array(32))
+    const saltHex = `0x${Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('')}` as `0x${string}`
     const choiceNum = choice === 'for' ? 1 : choice === 'against' ? 2 : 3
-    return keccak256(encodePacked(['uint8', 'bytes32'], [choiceNum, `0x${saltHex}`]))
+    const hash = keccak256(encodePacked(['uint8', 'bytes32'], [choiceNum, saltHex]))
+    return { hash, salt: saltHex }
   }
 
   const openProposal = (proposal: Proposal) => {
@@ -728,7 +728,7 @@ function App() {
     try {
       // Step 1: Generate commitment hash
       setSealProgress(20)
-      const commitmentHash = generateCommitmentHash(selectedChoice)
+      const { hash: commitmentHash } = generateCommitmentHash(selectedChoice)
 
       // Step 2: Send transaction to smart contract
       setSealProgress(40)
@@ -737,7 +737,7 @@ function App() {
       const hash = await writeContractAsync({
         address: PRIVATE_VOTING_ADDRESS,
         abi: PRIVATE_VOTING_ABI,
-        functionName: 'submitVoteCommitment',
+        functionName: 'commitVote',
         args: [BigInt(proposalIdNum), commitmentHash, BigInt(votingPower)],
       })
 
@@ -752,14 +752,11 @@ function App() {
       const shortCommitment = `${commitmentHash.slice(0, 10)}...${commitmentHash.slice(-8)}`
       setMyCommitment(shortCommitment)
 
-      // Update local state
+      // Update local state (note: votes are only tallied after reveal phase)
       setProposals(prev => prev.map(p => {
         if (p.id === selectedProposal.id) {
           return {
             ...p,
-            forVotes: selectedChoice === 'for' ? p.forVotes + votingPower : p.forVotes,
-            againstVotes: selectedChoice === 'against' ? p.againstVotes + votingPower : p.againstVotes,
-            abstainVotes: selectedChoice === 'abstain' ? p.abstainVotes + votingPower : p.abstainVotes,
             totalVoters: p.totalVoters + 1
           }
         }
@@ -770,25 +767,15 @@ function App() {
         if (!prev) return prev
         return {
           ...prev,
-          forVotes: selectedChoice === 'for' ? prev.forVotes + votingPower : prev.forVotes,
-          againstVotes: selectedChoice === 'against' ? prev.againstVotes + votingPower : prev.againstVotes,
-          abstainVotes: selectedChoice === 'abstain' ? prev.abstainVotes + votingPower : prev.abstainVotes,
           totalVoters: prev.totalVoters + 1
         }
       })
 
-      setMyVotes(prev => [{
-        proposalId: selectedProposal.id,
-        proposalTitle: selectedProposal.title,
-        choice: selectedChoice,
-        commitment: shortCommitment,
-        votingPower,
-        timestamp: new Date().toLocaleString(),
-        txHash: hash
-      }, ...prev])
-
       await new Promise(r => setTimeout(r, 500))
       setVotingPhase('submitted')
+
+      // Refetch on-chain data
+      refetchCount()
     } catch (error) {
       console.error('Vote submission failed:', error)
       setVotingPhase('select')
@@ -827,22 +814,10 @@ function App() {
             >
               {t.proposals}
             </button>
-            <button
-              className={`nav-item ${currentPage === 'my-votes' ? 'active' : ''}`}
-              onClick={() => setCurrentPage('my-votes')}
-            >
-              {t.myVotes}
-            </button>
           </nav>
         </div>
 
         <div className="header-right">
-          <button
-            className="lang-toggle"
-            onClick={() => setLang(lang === 'ko' ? 'en' : 'ko')}
-          >
-            {lang === 'ko' ? 'EN' : 'KO'}
-          </button>
           {isConnected ? (
             <div className="wallet-connected">
               <span className={`chain-badge ${isCorrectChain ? 'correct' : 'wrong'}`}>
@@ -875,309 +850,90 @@ function App() {
         {/* Landing Page */}
         {currentPage === 'landing' && (
           <div className="landing-page">
-            {/* Hero Section */}
-            <section className="hero-section">
-              <div className="hero-content">
-                <div className="hero-badge">zkDEX D1 Module</div>
-                <h1>{t.heroTitle}</h1>
-                <p className="hero-subtitle">
-                  {t.heroSubtitle.split('\n')[0]}<br />
-                  {t.heroSubtitle.split('\n')[1]}
-                </p>
-                <div className="hero-buttons">
-                  <button className="hero-btn primary" onClick={() => setCurrentPage('proposals')}>
-                    {t.tryDemo}
-                  </button>
-                  <a href="#how-it-works" className="hero-btn secondary">
-                    {t.howItWorks}
-                  </a>
+            {/* Hero Section - Trust Message */}
+            <section className="hero-section-trust">
+              <div className="hero-badge">zkDEX D1 Module</div>
+              <h1 className="hero-title-main">Trust us?</h1>
+              <h2 className="hero-title-sub">No. Verify.</h2>
+              <p className="hero-desc">
+                We don't promise secrecy. We prove it's mathematically impossible.
+              </p>
+            </section>
+
+            {/* Visual Proof Section */}
+            <section className="proof-section">
+              <div className="proof-flow">
+                <div className="proof-step">
+                  <span className="proof-label">Your choice</span>
+                  <span className="proof-value choice">👍 For</span>
                 </div>
-                <div className="hero-network">
-                  <span className="network-badge">Ethereum Sepolia Testnet</span>
+                <div className="proof-arrow">↓</div>
+                <div className="proof-step">
+                  <span className="proof-label">+ Random salt</span>
+                  <span className="proof-value salt">🎲 a7x9f2...</span>
+                </div>
+                <div className="proof-arrow">↓</div>
+                <div className="proof-step">
+                  <span className="proof-label">= Hash (irreversible)</span>
+                  <span className="proof-value hash">🔒 0x7f3a8b...</span>
+                </div>
+                <div className="proof-arrow">↓</div>
+                <div className="proof-step final">
+                  <span className="proof-label">Stored on blockchain</span>
+                  <span className="proof-value onchain">0x7f3a8b...</span>
+                  <span className="proof-note">No choice info. Just hash.</span>
                 </div>
               </div>
-              <div className="hero-visual">
-                <div className="visual-comparison">
-                  <div className="visual-card bad">
-                    <div className="visual-header">{t.normalVoting}</div>
-                    <div className="visual-content">
-                      <div className="visual-row">
-                        <span>👤 Alice</span>
-                        <span>→</span>
-                        <span className="vote-visible">👍 {t.voteFor}</span>
-                      </div>
-                      <div className="visual-row">
-                        <span>👤 Bob</span>
-                        <span>→</span>
-                        <span className="vote-visible">👎 {t.voteAgainst}</span>
-                      </div>
-                    </div>
-                    <div className="visual-tag bad">{t.allChoicesPublic}</div>
+
+              <div className="proof-result">
+                <div className="who-knows">
+                  <div className="who-row">
+                    <span className="who-icon">❌</span>
+                    <span className="who-text">Can hackers know?</span>
+                    <span className="who-answer no">Impossible</span>
                   </div>
-                  <div className="visual-arrow">→</div>
-                  <div className="visual-card good">
-                    <div className="visual-header">{t.zkVoting}</div>
-                    <div className="visual-content">
-                      <div className="visual-row">
-                        <span>👤 Alice</span>
-                        <span>→</span>
-                        <span className="vote-hidden">🔒 0x7f3a...</span>
-                      </div>
-                      <div className="visual-row">
-                        <span>👤 Bob</span>
-                        <span>→</span>
-                        <span className="vote-hidden">🔒 0x9b2c...</span>
-                      </div>
-                    </div>
-                    <div className="visual-tag good">{t.choicesProtected}</div>
+                  <div className="who-row">
+                    <span className="who-icon">❌</span>
+                    <span className="who-text">Can operators know?</span>
+                    <span className="who-answer no">Impossible</span>
+                  </div>
+                  <div className="who-row">
+                    <span className="who-icon">❌</span>
+                    <span className="who-text">Can others know?</span>
+                    <span className="who-answer no">Impossible</span>
                   </div>
                 </div>
               </div>
             </section>
 
-            {/* Comparison Section */}
-            <section className="upgrade-section">
-              <h2>{t.comparisonTitle}</h2>
-              <div className="upgrade-comparison">
-                <div className="upgrade-card current">
-                  <div className="upgrade-header">
-                    <span className="upgrade-icon">📋</span>
-                    <h3>{t.normalOnchainVoting}</h3>
-                  </div>
-                  <ul className="upgrade-features">
-                    <li>✅ {t.proposalSystem}</li>
-                    <li>✅ {t.tokenBasedVoting}</li>
-                    <li>✅ {t.onchainRecord}</li>
-                    <li className="negative">❌ {t.publicVoting}</li>
-                  </ul>
-                  <div className="upgrade-tag current">{t.existingMethod}</div>
+            {/* Why Impossible */}
+            <section className="why-section">
+              <h3>Why is it impossible?</h3>
+              <div className="why-cards">
+                <div className="why-card">
+                  <span className="why-icon">🔐</span>
+                  <span className="why-title">One-way hash</span>
+                  <span className="why-desc">Reversing hash to original is mathematically impossible</span>
                 </div>
-                <div className="upgrade-arrow">→</div>
-                <div className="upgrade-card new">
-                  <div className="upgrade-header">
-                    <span className="upgrade-icon">🔐</span>
-                    <h3>{t.zkPrivateVoting}</h3>
-                  </div>
-                  <ul className="upgrade-features">
-                    <li>🔒 {t.zkProofVoting}</li>
-                    <li>🔒 {t.commitmentOnly}</li>
-                    <li>🔒 {t.onlyFinalResult}</li>
-                    <li>🔒 {t.permanentSecret}</li>
-                  </ul>
-                  <div className="upgrade-tag new">{t.thisDemo}</div>
+                <div className="why-card">
+                  <span className="why-icon">🎲</span>
+                  <span className="why-title">Random Salt</span>
+                  <span className="why-desc">Mixed with random value only you know</span>
+                </div>
+                <div className="why-card">
+                  <span className="why-icon">📖</span>
+                  <span className="why-title">Open Source</span>
+                  <span className="why-desc">Code is public. Verify yourself.</span>
                 </div>
               </div>
             </section>
 
-            {/* Problem Section */}
-            <section className="problem-section">
-              <h2>{t.whyPrivateVoting}</h2>
-              <div className="problem-grid">
-                <div className="problem-card">
-                  <div className="problem-icon">💰</div>
-                  <h3>{t.voteBuying}</h3>
-                  <p>{t.voteBuyingDesc}</p>
-                </div>
-                <div className="problem-card">
-                  <div className="problem-icon">😰</div>
-                  <h3>{t.socialPressure}</h3>
-                  <p>{t.socialPressureDesc}</p>
-                </div>
-                <div className="problem-card">
-                  <div className="problem-icon">🎯</div>
-                  <h3>{t.retaliationRisk}</h3>
-                  <p>{t.retaliationRiskDesc}</p>
-                </div>
-              </div>
-            </section>
-
-            {/* How it Works Section */}
-            <section className="how-section" id="how-it-works">
-              <h2>{t.howItWorksTitle}</h2>
-              <div className="how-steps">
-                <div className="how-step">
-                  <div className="step-number">1</div>
-                  <div className="step-content">
-                    <h3>{t.step1Title}</h3>
-                    <p>{t.step1Desc}</p>
-                  </div>
-                </div>
-                <div className="how-arrow">→</div>
-                <div className="how-step">
-                  <div className="step-number">2</div>
-                  <div className="step-content">
-                    <h3>{t.step2Title}</h3>
-                    <p>{t.step2Desc}</p>
-                  </div>
-                </div>
-                <div className="how-arrow">→</div>
-                <div className="how-step">
-                  <div className="step-number">3</div>
-                  <div className="step-content">
-                    <h3>{t.step3Title}</h3>
-                    <p>{t.step3Desc}</p>
-                  </div>
-                </div>
-                <div className="how-arrow">→</div>
-                <div className="how-step">
-                  <div className="step-number">4</div>
-                  <div className="step-content">
-                    <h3>{t.step4Title}</h3>
-                    <p>{t.step4Desc}</p>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Benefits Section */}
-            <section className="benefits-section">
-              <h2>{t.benefitsTitle}</h2>
-              <div className="benefits-grid">
-                <div className="benefit-card">
-                  <div className="benefit-icon">🛡️</div>
-                  <h3>{t.privacyProtection}</h3>
-                  <p>{t.privacyProtectionDesc}</p>
-                </div>
-                <div className="benefit-card">
-                  <div className="benefit-icon">✅</div>
-                  <h3>{t.verifiable}</h3>
-                  <p>{t.verifiableDesc}</p>
-                </div>
-                <div className="benefit-card">
-                  <div className="benefit-icon">🔗</div>
-                  <h3>{t.onchainRecordBenefit}</h3>
-                  <p>{t.onchainRecordBenefitDesc}</p>
-                </div>
-                <div className="benefit-card">
-                  <div className="benefit-icon">🎭</div>
-                  <h3>{t.honestExpression}</h3>
-                  <p>{t.honestExpressionDesc}</p>
-                </div>
-                <div className="benefit-card">
-                  <div className="benefit-icon">🚫</div>
-                  <h3>{t.antiCoercion}</h3>
-                  <p>{t.antiCoercionDesc}</p>
-                </div>
-                <div className="benefit-card">
-                  <div className="benefit-icon">🔒</div>
-                  <h3>{t.doubleVotePrevention}</h3>
-                  <p>{t.doubleVotePreventionDesc}</p>
-                </div>
-              </div>
-            </section>
-
-            {/* Commit-Reveal Section */}
-            <section className="commit-reveal-section">
-              <h2>{t.commitRevealTitle}</h2>
-              <p className="section-desc">{t.commitRevealDesc}</p>
-              <div className="commit-reveal-phases">
-                <div className="phase-card commit">
-                  <div className="phase-number">1</div>
-                  <h3>{t.commitPhase}</h3>
-                  <p>{t.commitPhaseDesc}</p>
-                  <div className="phase-visual">
-                    <code>vote + salt → hash(commitment)</code>
-                  </div>
-                </div>
-                <div className="phase-arrow">→</div>
-                <div className="phase-card reveal">
-                  <div className="phase-number">2</div>
-                  <h3>{t.revealPhase}</h3>
-                  <p>{t.revealPhaseDesc}</p>
-                  <div className="phase-visual">
-                    <code>commitments → decrypt → tally</code>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Use Cases Section */}
-            <section className="use-cases-section">
-              <h2>{t.useCasesTitle}</h2>
-              <div className="use-cases-grid">
-                <div className="use-case-card">
-                  <div className="use-case-icon">⚙️</div>
-                  <h3>{t.useCase1Title}</h3>
-                  <p>{t.useCase1Desc}</p>
-                </div>
-                <div className="use-case-card">
-                  <div className="use-case-icon">💰</div>
-                  <h3>{t.useCase2Title}</h3>
-                  <p>{t.useCase2Desc}</p>
-                </div>
-                <div className="use-case-card">
-                  <div className="use-case-icon">⚖️</div>
-                  <h3>{t.useCase3Title}</h3>
-                  <p>{t.useCase3Desc}</p>
-                </div>
-                <div className="use-case-card">
-                  <div className="use-case-icon">🗳️</div>
-                  <h3>{t.useCase4Title}</h3>
-                  <p>{t.useCase4Desc}</p>
-                </div>
-              </div>
-            </section>
-
-            {/* Security Section */}
-            <section className="security-section">
-              <h2>{t.securityTitle}</h2>
-              <div className="security-grid">
-                <div className="security-card">
-                  <div className="security-icon">💸</div>
-                  <h3>{t.security1Title}</h3>
-                  <p>{t.security1Desc}</p>
-                </div>
-                <div className="security-card">
-                  <div className="security-icon">🔐</div>
-                  <h3>{t.security2Title}</h3>
-                  <p>{t.security2Desc}</p>
-                </div>
-                <div className="security-card">
-                  <div className="security-icon">📸</div>
-                  <h3>{t.security3Title}</h3>
-                  <p>{t.security3Desc}</p>
-                </div>
-              </div>
-            </section>
-
-            {/* FAQ Section */}
-            <section className="faq-section">
-              <h2>{t.faqTitle}</h2>
-              <div className="faq-list">
-                <div className="faq-item">
-                  <h3>{t.faq1Q}</h3>
-                  <p>{t.faq1A}</p>
-                </div>
-                <div className="faq-item">
-                  <h3>{t.faq2Q}</h3>
-                  <p>{t.faq2A}</p>
-                </div>
-                <div className="faq-item">
-                  <h3>{t.faq3Q}</h3>
-                  <p>{t.faq3A}</p>
-                </div>
-                <div className="faq-item">
-                  <h3>{t.faq4Q}</h3>
-                  <p>{t.faq4A}</p>
-                </div>
-              </div>
-            </section>
-
-            {/* CTA Section */}
-            <section className="cta-section">
-              <h2>{t.ctaTitle}</h2>
-              <p>{t.ctaDesc}</p>
-              <div className="cta-buttons">
-                <button className="cta-btn" onClick={() => setCurrentPage('proposals')}>
-                  {t.startDemo}
-                </button>
-                {!isConnected && (
-                  <button className="cta-btn secondary" onClick={handleConnect}>
-                    {t.connectWallet}
-                  </button>
-                )}
-              </div>
-              <p className="cta-note">{t.ctaNote}</p>
+            {/* CTA */}
+            <section className="cta-section-simple">
+              <button className="hero-cta" onClick={() => setCurrentPage('proposals')}>
+                Try it yourself
+              </button>
+              <span className="hero-network">Sepolia Testnet</span>
             </section>
           </div>
         )}
@@ -1246,43 +1002,33 @@ function App() {
                     onClick={() => openProposal(proposal)}
                   >
                     <div className="proposal-card-header">
-                      <div className="proposal-meta">
-                        <span className="proposal-id">{proposal.id}</span>
-                        <span className="proposal-category">{proposal.category}</span>
-                      </div>
-                      <div className="proposal-status-group">
-                        {proposal.status === 'active' && (
-                          <span className="proposal-countdown">⏱️ {getTimeRemaining(proposal.endTime)}</span>
-                        )}
-                        <span className={`proposal-status ${getStatusColor(proposal.status)}`}>
-                          {getStatusLabel(proposal.status)}
-                        </span>
-                      </div>
+                      <span className={`proposal-status ${getStatusColor(proposal.status)}`}>
+                        {getStatusLabel(proposal.status)}
+                      </span>
+                      {proposal.status === 'active' && (
+                        <span className="proposal-countdown">{getTimeRemaining(proposal.endTime)}</span>
+                      )}
                     </div>
 
                     <h3 className="proposal-title">{proposal.title}</h3>
-                    <p className="proposal-description">{proposal.description}</p>
 
-                    <div className="proposal-votes-bar">
-                      <div className="votes-bar">
-                        <div className="votes-for" style={{ width: `${forPercent}%` }}></div>
-                        <div className="votes-against" style={{ width: `${againstPercent}%` }}></div>
-                      </div>
-                      <div className="votes-labels">
-                        <span className="votes-for-label">
-                          👍 {forPercent.toFixed(1)}% ({formatNumber(proposal.forVotes)})
-                        </span>
-                        <span className="votes-against-label">
-                          👎 {againstPercent.toFixed(1)}% ({formatNumber(proposal.againstVotes)})
+                    {proposal.status !== 'active' && (
+                      <div className="proposal-result-bar">
+                        <div className="result-bar-mini">
+                          <div className="bar-for" style={{ width: `${forPercent}%` }}></div>
+                          <div className="bar-against" style={{ width: `${againstPercent}%` }}></div>
+                        </div>
+                        <span className="result-summary">
+                          {forPercent.toFixed(0)}% {'For'}
                         </span>
                       </div>
-                    </div>
+                    )}
 
                     <div className="proposal-footer">
-                      <span className="proposal-voters">👥 {proposal.totalVoters}{t.participants}</span>
-                      <span className="proposal-end">
-                        {proposal.status === 'active' ? `${t.deadline}: ${proposal.endTime.toLocaleDateString()}` : `${t.ended}: ${proposal.endTime.toLocaleDateString()}`}
-                      </span>
+                      <span className="proposal-voters">👥 {proposal.totalVoters}</span>
+                      {proposal.status === 'active' && (
+                        <span className="proposal-private">🔒 {'Private'}</span>
+                      )}
                     </div>
                   </div>
                 )
@@ -1452,40 +1198,50 @@ function App() {
 
               <div className="proposal-detail-sidebar">
                 <div className="sidebar-card">
-                  <h3>{t.currentResult}</h3>
-                  <div className="results-breakdown">
-                    {(() => {
-                      const total = selectedProposal.forVotes + selectedProposal.againstVotes + selectedProposal.abstainVotes
-                      const forPct = (selectedProposal.forVotes / total * 100).toFixed(1)
-                      const againstPct = (selectedProposal.againstVotes / total * 100).toFixed(1)
-                      const abstainPct = (selectedProposal.abstainVotes / total * 100).toFixed(1)
-                      return (
-                        <>
-                          <div className="result-row">
-                            <span className="result-label">👍 {t.voteFor}</span>
-                            <div className="result-bar-container">
-                              <div className="result-bar for" style={{ width: `${forPct}%` }}></div>
+                  <h3>{'Results'}</h3>
+                  {selectedProposal.status === 'active' ? (
+                    <div className="results-hidden">
+                      <div className="hidden-icon">🔒</div>
+                      <p>{'Results will be revealed after voting ends'}</p>
+                      <span className="hidden-note">
+                        {'Results are hidden during voting to protect ballot secrecy'}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="results-breakdown">
+                      {(() => {
+                        const total = selectedProposal.forVotes + selectedProposal.againstVotes + selectedProposal.abstainVotes
+                        const forPct = total > 0 ? (selectedProposal.forVotes / total * 100).toFixed(1) : '0.0'
+                        const againstPct = total > 0 ? (selectedProposal.againstVotes / total * 100).toFixed(1) : '0.0'
+                        const abstainPct = total > 0 ? (selectedProposal.abstainVotes / total * 100).toFixed(1) : '0.0'
+                        return (
+                          <>
+                            <div className="result-row">
+                              <span className="result-label">👍 {t.voteFor}</span>
+                              <div className="result-bar-container">
+                                <div className="result-bar for" style={{ width: `${forPct}%` }}></div>
+                              </div>
+                              <span className="result-value">{forPct}%</span>
                             </div>
-                            <span className="result-value">{forPct}%</span>
-                          </div>
-                          <div className="result-row">
-                            <span className="result-label">👎 {t.voteAgainst}</span>
-                            <div className="result-bar-container">
-                              <div className="result-bar against" style={{ width: `${againstPct}%` }}></div>
+                            <div className="result-row">
+                              <span className="result-label">👎 {t.voteAgainst}</span>
+                              <div className="result-bar-container">
+                                <div className="result-bar against" style={{ width: `${againstPct}%` }}></div>
+                              </div>
+                              <span className="result-value">{againstPct}%</span>
                             </div>
-                            <span className="result-value">{againstPct}%</span>
-                          </div>
-                          <div className="result-row">
-                            <span className="result-label">⏸️ {t.voteAbstain}</span>
-                            <div className="result-bar-container">
-                              <div className="result-bar abstain" style={{ width: `${abstainPct}%` }}></div>
+                            <div className="result-row">
+                              <span className="result-label">⏸️ {t.voteAbstain}</span>
+                              <div className="result-bar-container">
+                                <div className="result-bar abstain" style={{ width: `${abstainPct}%` }}></div>
+                              </div>
+                              <span className="result-value">{abstainPct}%</span>
                             </div>
-                            <span className="result-value">{abstainPct}%</span>
-                          </div>
-                        </>
-                      )
-                    })()}
-                  </div>
+                          </>
+                        )
+                      })()}
+                    </div>
+                  )}
                 </div>
 
                 <div className="sidebar-card">
@@ -1573,50 +1329,102 @@ function App() {
                 </div>
 
                 <div className="form-section">
-                  <label>{t.votingPeriod} *</label>
-                  <select
-                    value={newProposal.duration}
-                    onChange={(e) => setNewProposal(prev => ({ ...prev, duration: Number(e.target.value) }))}
-                  >
-                    <option value={3}>3{t.days}</option>
-                    <option value={5}>5{t.days}</option>
-                    <option value={7}>7{t.days} ({t.recommended})</option>
-                    <option value={14}>14{t.days}</option>
-                  </select>
-                </div>
-
-                <div className="form-section">
                   <label>{t.description} *</label>
                   <textarea
                     placeholder={t.descriptionPlaceholder}
                     value={newProposal.description}
                     onChange={(e) => setNewProposal(prev => ({ ...prev, description: e.target.value }))}
-                    rows={12}
+                    rows={8}
                   />
                   <span className="char-count">{newProposal.description.length}{t.characters}</span>
                 </div>
 
-                <div className="form-info">
-                  <div className="info-item">
-                    <span className="info-icon">ℹ️</span>
-                    <div>
-                      <strong>{t.proposalRequirements}</strong>
-                      <p>{t.minimumHolding} ({t.currentHolding}: {votingPower} TON)</p>
+                <div className="form-section-group">
+                  <h3 className="form-group-title">{'⏱️ Voting Period Settings'}</h3>
+
+                  <div className="form-row">
+                    <div className="form-section half">
+                      <label>{'Voting Period'}</label>
+                      <select
+                        value={newProposal.duration}
+                        onChange={(e) => setNewProposal(prev => ({ ...prev, duration: Number(e.target.value) }))}
+                      >
+                        <option value={1}>1{t.days}</option>
+                        <option value={3}>3{t.days}</option>
+                        <option value={5}>5{t.days}</option>
+                        <option value={7}>7{t.days} ({t.recommended})</option>
+                        <option value={14}>14{t.days}</option>
+                        <option value={30}>30{t.days}</option>
+                      </select>
+                    </div>
+                    <div className="form-section half">
+                      <label>{'Reveal Period'}</label>
+                      <select
+                        value={newProposal.revealDuration}
+                        onChange={(e) => setNewProposal(prev => ({ ...prev, revealDuration: Number(e.target.value) }))}
+                      >
+                        <option value={1}>1{t.days} ({t.recommended})</option>
+                        <option value={2}>2{t.days}</option>
+                        <option value={3}>3{t.days}</option>
+                        <option value={7}>7{t.days}</option>
+                      </select>
                     </div>
                   </div>
-                  <div className="info-item">
-                    <span className="info-icon">📊</span>
-                    <div>
-                      <strong>{t.quorum}</strong>
-                      <p>{t.quorumDesc}</p>
+                </div>
+
+                <div className="form-section-group">
+                  <h3 className="form-group-title">{'📊 Passing Conditions'}</h3>
+
+                  <div className="form-row">
+                    <div className="form-section half">
+                      <label>{'Quorum'}</label>
+                      <div className="input-with-select">
+                        <input
+                          type="number"
+                          min="1"
+                          max={newProposal.quorumType === 'percentage' ? 100 : 100000000}
+                          value={newProposal.quorumValue}
+                          onChange={(e) => setNewProposal(prev => ({ ...prev, quorumValue: Number(e.target.value) }))}
+                        />
+                        <select
+                          value={newProposal.quorumType}
+                          onChange={(e) => setNewProposal(prev => ({
+                            ...prev,
+                            quorumType: e.target.value as 'percentage' | 'absolute',
+                            quorumValue: e.target.value === 'percentage' ? 10 : 1000000
+                          }))}
+                        >
+                          <option value="percentage">%</option>
+                          <option value="absolute">TON</option>
+                        </select>
+                      </div>
+                      <span className="form-hint">
+                        {'Minimum participation to validate vote'}
+                      </span>
+                    </div>
+                    <div className="form-section half">
+                      <label>{'Pass Threshold'}</label>
+                      <div className="input-with-unit">
+                        <input
+                          type="number"
+                          min="50"
+                          max="100"
+                          value={newProposal.passThreshold}
+                          onChange={(e) => setNewProposal(prev => ({ ...prev, passThreshold: Number(e.target.value) }))}
+                        />
+                        <span className="unit">%</span>
+                      </div>
+                      <span className="form-hint">
+                        {'Approval percentage required to pass'}
+                      </span>
                     </div>
                   </div>
+                </div>
+
+                <div className="form-info compact">
                   <div className="info-item">
                     <span className="info-icon">🔐</span>
-                    <div>
-                      <strong>{t.zkNotice}</strong>
-                      <p>{t.zkEncrypted}</p>
-                    </div>
+                    <span>{'All votes are encrypted with ZK proofs'}</span>
                   </div>
                 </div>
 
@@ -1629,10 +1437,10 @@ function App() {
                   </button>
                   <button
                     className="submit-proposal-btn"
-                    onClick={createProposal}
-                    disabled={!newProposal.title || !newProposal.description}
+                    onClick={createProposalOnChain}
+                    disabled={!newProposal.title || !newProposal.description || isCreatingProposal}
                   >
-                    {t.submitProposal}
+                    {isCreatingProposal ? '제출 중...' : t.submitProposal}
                   </button>
                 </div>
               </div>
@@ -1640,75 +1448,6 @@ function App() {
           </div>
         )}
 
-        {/* My Votes Page */}
-        {currentPage === 'my-votes' && (
-          <div className="my-votes-page">
-            <div className="page-header">
-              <div className="page-title-section">
-                <h1>{t.myVotesTitle}</h1>
-                <p className="page-subtitle">{t.myVotesDesc}</p>
-              </div>
-              {isConnected && (
-                <div className="my-power">
-                  <span className="my-power-label">{t.myVotingPower}</span>
-                  <span className="my-power-value">{formatNumber(votingPower)} TON</span>
-                </div>
-              )}
-            </div>
-
-            {!isConnected ? (
-              <div className="connect-prompt-page">
-                <div className="connect-prompt-icon">🔐</div>
-                <h2>{t.connectWalletRequired}</h2>
-                <p>{t.connectToSeeVotes}</p>
-                <button className="connect-btn large" onClick={handleConnect}>
-                  {t.connectWallet}
-                </button>
-              </div>
-            ) : myVotes.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-icon">🗳️</div>
-                <h2>{t.noVoteHistory}</h2>
-                <p>{t.noVotesYet}</p>
-                <button className="browse-btn" onClick={() => setCurrentPage('proposals')}>
-                  {t.browseProposals}
-                </button>
-              </div>
-            ) : (
-              <div className="votes-list">
-                {myVotes.map((vote, index) => (
-                  <div key={index} className="vote-card">
-                    <div className="vote-card-header">
-                      <span className="vote-proposal-id">{vote.proposalId}</span>
-                      <span className="vote-time">{vote.timestamp}</span>
-                    </div>
-                    <h3 className="vote-proposal-title">{vote.proposalTitle}</h3>
-                    <div className="vote-details">
-                      <div className="vote-choice-display">
-                        <span className="vote-choice-icon">
-                          {vote.choice === 'for' && '👍'}
-                          {vote.choice === 'against' && '👎'}
-                          {vote.choice === 'abstain' && '⏸️'}
-                        </span>
-                        <span className="vote-choice-text">
-                          {vote.choice === 'for' && t.voteFor}
-                          {vote.choice === 'against' && t.voteAgainst}
-                          {vote.choice === 'abstain' && t.voteAbstain}
-                        </span>
-                      </div>
-                      <div className="vote-power">{vote.votingPower} TON</div>
-                    </div>
-                    <div className="vote-commitment">
-                      <span className="commitment-icon">🔒</span>
-                      <code>{vote.commitment}</code>
-                      <span className="commitment-note">{t.zkEncryptedNote}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </main>
 
       <footer className="footer">
