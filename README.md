@@ -1,73 +1,82 @@
-# React + TypeScript + Vite
+# zkDEX D1 Private Voting Demo
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+ZK Private Voting Demo - Commit-reveal voting with hidden choices, preventing vote buying and coercion while maintaining verifiable voting power.
 
-Currently, two official plugins are available:
+## Overview
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+This is a demo implementation of the zkDEX D1 Private Voting module. It demonstrates how zero-knowledge proofs can be used to create a secret ballot system for DAO governance.
 
-## React Compiler
+### Key Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **ZK Private Voting**: Vote choices are encrypted and only final tallies are revealed
+- **Commit-Reveal Scheme**: Prevents vote buying and coercion
+- **Verifiable Voting Power**: Maintains transparent voting power while hiding choices
+- **Multi-language Support**: Korean and English UI
 
-## Expanding the ESLint configuration
+## Tech Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- React 18 + TypeScript
+- Vite
+- wagmi (Wallet Connection)
+- Thanos Sepolia Testnet
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Getting Started
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Prerequisites
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- Node.js 18+
+- npm or yarn
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/tokamak-network/zk-dex-d1-private-voting.git
+
+# Navigate to project directory
+cd zk-dex-d1-private-voting
+
+# Install dependencies
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Running the Demo
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# Start development server
+npm run dev
 ```
+
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+### Build for Production
+
+```bash
+npm run build
+```
+
+## How It Works
+
+1. **Select**: Choose For, Against, or Abstain
+2. **Generate ZK Proof**: Your choice is encrypted with a zero-knowledge proof
+3. **Submit Commitment**: Only the encrypted commitment is recorded on-chain
+4. **Tally Results**: After voting ends, only the final result is revealed
+
+## Project Structure
+
+```
+src/
+├── App.tsx          # Main application component
+├── App.css          # Styles
+├── wagmi.ts         # Wallet configuration
+└── main.tsx         # Entry point
+```
+
+## Related Links
+
+- [zkDEX D1 Specification](https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d1-private-voting.md)
+- [Tokamak Network](https://tokamak.network)
+
+## License
+
+MIT
