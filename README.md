@@ -1,31 +1,54 @@
 # zkDEX D1 Private Voting Demo
 
-ZK Private Voting Demo - Commit-reveal voting with hidden choices, preventing vote buying and coercion while maintaining verifiable voting power.
+> Commit-reveal voting with hidden choices, preventing vote buying and coercion while maintaining verifiable voting power.
+
+[![Demo](https://img.shields.io/badge/Demo-Live-green)](https://github.com/tokamak-network/zk-dex-d1-private-voting)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## Overview
 
-This is a demo implementation of the zkDEX D1 Private Voting module. It demonstrates how zero-knowledge proofs can be used to create a secret ballot system for DAO governance.
+This is a demo implementation of the **zkDEX D1 Private Voting** module. It demonstrates how zero-knowledge proofs can be used to create a secret ballot system for DAO governance.
+
+### Why Private Voting?
+
+| Problem | Solution |
+|---------|----------|
+| Vote Buying | Commitment scheme prevents proving your choice |
+| Social Pressure | Hidden ballots protect voter autonomy |
+| Retaliation Risk | Individual choices remain secret forever |
+| Last-minute Manipulation | Commit phase hides all choices until reveal |
 
 ### Key Features
 
-- **ZK Private Voting**: Vote choices are encrypted and only final tallies are revealed
-- **Commit-Reveal Scheme**: Prevents vote buying and coercion
-- **Verifiable Voting Power**: Maintains transparent voting power while hiding choices
-- **Multi-language Support**: Korean and English UI
+- **ZK Private Voting**: Vote choices are encrypted using zero-knowledge proofs
+- **Commit-Reveal Scheme**: Two-phase voting prevents vote buying and coercion
+- **Nullifier System**: Prevents double voting with the same tokens
+- **Verifiable Tallying**: Anyone can verify final results are correct
+- **Multi-language Support**: Korean (KO) and English (EN) UI
 
-## Tech Stack
+## Screenshots
 
-- React 18 + TypeScript
-- Vite
-- wagmi (Wallet Connection)
-- Thanos Sepolia Testnet
+### Landing Page
+- Hero section with value proposition
+- Problem explanation (Why private voting?)
+- How it works (4 steps)
+- Benefits, Use Cases, Security features
+- FAQ section
 
-## Getting Started
+### Voting Flow
+1. Select proposal
+2. Choose: For / Against / Abstain
+3. Generate ZK proof (simulated)
+4. Submit commitment
+5. View result in My Votes
+
+## Quick Start
 
 ### Prerequisites
 
 - Node.js 18+
 - npm or yarn
+- MetaMask or any Web3 wallet
 
 ### Installation
 
@@ -38,39 +61,74 @@ cd zk-dex-d1-private-voting
 
 # Install dependencies
 npm install
-```
 
-### Running the Demo
-
-```bash
 # Start development server
 npm run dev
 ```
 
+### Access the Demo
+
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-### Build for Production
+## Documentation
 
-```bash
-npm run build
-```
+| Document | Description |
+|----------|-------------|
+| [Architecture](./docs/ARCHITECTURE.md) | System design and component structure |
+| [Tech Stack](./docs/TECH_STACK.md) | Technologies and libraries used |
+| [Testing Guide](./docs/TESTING.md) | How to test the demo |
 
 ## How It Works
 
-1. **Select**: Choose For, Against, or Abstain
-2. **Generate ZK Proof**: Your choice is encrypted with a zero-knowledge proof
-3. **Submit Commitment**: Only the encrypted commitment is recorded on-chain
-4. **Tally Results**: After voting ends, only the final result is revealed
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   SELECT    │ ──▶ │   COMMIT    │ ──▶ │   REVEAL    │ ──▶ │   TALLY     │
+│   Choice    │     │   Phase     │     │   Phase     │     │   Results   │
+└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
+     │                    │                   │                    │
+     ▼                    ▼                   ▼                    ▼
+  For/Against/      hash(vote+salt)      Decrypt all         Final count
+   Abstain          on-chain only        commitments          revealed
+```
+
+### Commit-Reveal Mechanism
+
+1. **Commit Phase**: Voter submits `hash(choice + salt)` - no one can see the actual vote
+2. **Reveal Phase**: After voting ends, commitments are decrypted for tallying
+3. **Result**: Only aggregate results are public, individual choices stay secret
 
 ## Project Structure
 
 ```
-src/
-├── App.tsx          # Main application component
-├── App.css          # Styles
-├── wagmi.ts         # Wallet configuration
-└── main.tsx         # Entry point
+zk-dex-d1-private-voting/
+├── docs/
+│   ├── ARCHITECTURE.md    # System design
+│   ├── TECH_STACK.md      # Technologies used
+│   └── TESTING.md         # Testing guide
+├── src/
+│   ├── App.tsx            # Main application
+│   ├── App.css            # Styles
+│   ├── wagmi.ts           # Wallet configuration
+│   └── main.tsx           # Entry point
+├── public/
+├── package.json
+└── README.md
 ```
+
+## Use Cases
+
+1. **Protocol Parameter Changes** - DAO votes on fee adjustments without whale influence
+2. **Treasury Grant Allocation** - Fair project funding without bandwagon effects
+3. **Contentious Decisions** - Express minority opinions without social pressure
+4. **Board Elections** - Prevent vote trading between candidates
+
+## Security Features
+
+| Feature | Description |
+|---------|-------------|
+| Anti-Bribery | Cannot prove your vote to potential buyers |
+| Nullifier | Unique per voter per proposal, prevents double voting |
+| Snapshot | Historical merkle root prevents manipulation |
 
 ## Related Links
 
@@ -79,4 +137,8 @@ src/
 
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) for details.
+
+---
+
+Built with Claude Code for Tokamak Network
