@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from 'wagmi'
+import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi'
 import { injected } from 'wagmi/connectors'
 import { sepolia } from './wagmi'
 import './App.css'
@@ -536,11 +536,41 @@ const initialProposals: Proposal[] = [
 ]
 
 function App() {
-  const { address, isConnected } = useAccount()
+  const { address, isConnected, chainId } = useAccount()
   const { connect, isPending: isConnecting } = useConnect()
   const { disconnect } = useDisconnect()
-  const chainId = useChainId()
-  const { switchChain } = useSwitchChain()
+  const { switchChain, isPending: isSwitching } = useSwitchChain()
+
+  const handleSwitchNetwork = async () => {
+    try {
+      await switchChain({ chainId: sepolia.id })
+    } catch (error) {
+      console.error('Network switch failed:', error)
+      // If switch fails, try adding the network manually
+      if (window.ethereum) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0xaa36a7' }], // Sepolia chainId in hex
+          })
+        } catch (switchError: unknown) {
+          // If network doesn't exist, add it
+          if (switchError && typeof switchError === 'object' && 'code' in switchError && switchError.code === 4902) {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: '0xaa36a7',
+                chainName: 'Sepolia',
+                nativeCurrency: { name: 'Sepolia ETH', symbol: 'ETH', decimals: 18 },
+                rpcUrls: ['https://rpc.sepolia.org'],
+                blockExplorerUrls: ['https://sepolia.etherscan.io'],
+              }],
+            })
+          }
+        }
+      }
+    }
+  }
 
   const [currentPage, setCurrentPage] = useState<Page>('landing')
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null)
@@ -781,9 +811,10 @@ function App() {
               {!isCorrectChain && (
                 <button
                   className="switch-btn"
-                  onClick={() => switchChain({ chainId: sepolia.id })}
+                  onClick={handleSwitchNetwork}
+                  disabled={isSwitching}
                 >
-                  Switch
+                  {isSwitching ? 'Switching...' : 'Switch'}
                 </button>
               )}
               <div className="wallet-info">
