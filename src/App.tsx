@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from 'wagmi'
 import { injected } from 'wagmi/connectors'
-import { thanosSepolia } from './wagmi'
+import { sepolia } from './wagmi'
 import './App.css'
 
 type Page = 'landing' | 'proposals' | 'proposal-detail' | 'my-votes' | 'create-proposal'
@@ -74,6 +74,38 @@ const translations = {
     onchainRecordBenefitDesc: '모든 투표는 블록체인에 영구적으로 기록됩니다.',
     honestExpression: '솔직한 의사표현',
     honestExpressionDesc: '외부 압력 없이 진정한 의견을 표현할 수 있습니다.',
+    antiCoercion: '강압 방지',
+    antiCoercionDesc: '투표자가 매수자에게 자신의 선택을 증명할 수 없어 강압이 불가능합니다.',
+    doubleVotePrevention: '이중투표 방지',
+    doubleVotePreventionDesc: 'Nullifier 시스템으로 동일한 토큰으로 두 번 투표하는 것을 방지합니다.',
+
+    // Use Cases
+    useCasesTitle: '활용 사례',
+    useCase1Title: '프로토콜 파라미터 변경',
+    useCase1Desc: 'DAO가 수수료를 0.3%에서 0.25%로 조정하는 제안. 대형 홀더가 소규모 홀더에게 영향을 미칠 수 없습니다.',
+    useCase2Title: '트레저리 그랜트 배분',
+    useCase2Desc: '여러 프로젝트가 펀딩을 위해 경쟁. 비밀 투표로 조정 공격과 편승 효과를 방지합니다.',
+    useCase3Title: '논쟁적 거버넌스 결정',
+    useCase3Desc: '논란이 있는 프로토콜 변경에 대한 투표. 소수 의견도 사회적 압력 없이 표현 가능합니다.',
+    useCase4Title: '이사회 선거',
+    useCase4Desc: 'DAO 카운슬 멤버 선출. 비밀 투표로 후보 간 투표 거래를 방지합니다.',
+
+    // Security
+    securityTitle: '보안 특성',
+    security1Title: '매수 방지',
+    security1Desc: '커밋먼트 스킴으로 투표자가 매수자에게 선택을 증명할 수 없습니다.',
+    security2Title: 'Nullifier 시스템',
+    security2Desc: '노트 + 제안ID에서 파생된 고유 Nullifier로 이중투표를 방지합니다.',
+    security3Title: '스냅샷 검증',
+    security3Desc: '과거 블록 해시 사용 및 온체인 머클루트 커밋으로 조작을 방지합니다.',
+
+    // Commit-Reveal
+    commitRevealTitle: 'Commit-Reveal 메커니즘',
+    commitRevealDesc: '2단계 투표 프로세스로 투표 매수와 강압을 원천 차단합니다.',
+    commitPhase: 'Commit 단계',
+    commitPhaseDesc: '투표 선택을 암호화한 커밋먼트만 블록체인에 기록. 아무도 선택을 알 수 없음.',
+    revealPhase: 'Reveal 단계',
+    revealPhaseDesc: '투표 종료 후 모든 커밋먼트를 복호화하여 집계. 최종 결과만 공개.',
 
     // FAQ
     faqTitle: '자주 묻는 질문',
@@ -90,7 +122,7 @@ const translations = {
     ctaTitle: 'zkDEX D1 비밀 투표 체험하기',
     ctaDesc: 'ZK 비밀 투표가 어떻게 작동하는지 직접 체험해보세요.',
     startDemo: '데모 시작하기',
-    ctaNote: '* 이 데모는 Thanos Sepolia 테스트넷에서 작동합니다.',
+    ctaNote: '* 이 데모는 Ethereum Sepolia 테스트넷에서 작동합니다.',
 
     // Proposals Page
     governanceProposals: '거버넌스 제안',
@@ -257,6 +289,38 @@ const translations = {
     onchainRecordBenefitDesc: 'All votes are permanently recorded on the blockchain.',
     honestExpression: 'Honest Expression',
     honestExpressionDesc: 'Express your true opinion without external pressure.',
+    antiCoercion: 'Anti-Coercion',
+    antiCoercionDesc: 'Voters cannot prove their choice to potential bribers, making coercion impossible.',
+    doubleVotePrevention: 'Double-Vote Prevention',
+    doubleVotePreventionDesc: 'Nullifier system prevents the same tokens from voting twice.',
+
+    // Use Cases
+    useCasesTitle: 'Use Cases',
+    useCase1Title: 'Protocol Parameter Changes',
+    useCase1Desc: 'DAO proposes fee adjustment from 0.3% to 0.25%. Whales cannot signal to influence smaller holders.',
+    useCase2Title: 'Treasury Grant Allocation',
+    useCase2Desc: 'Multiple projects compete for funding. Private voting prevents coordination attacks and bandwagon effects.',
+    useCase3Title: 'Contentious Governance Decisions',
+    useCase3Desc: 'Voting on controversial protocol changes. Minority opinions can be expressed without social pressure.',
+    useCase4Title: 'Board Elections',
+    useCase4Desc: 'DAO elects council members. Private voting prevents vote trading between candidates.',
+
+    // Security
+    securityTitle: 'Security Features',
+    security1Title: 'Anti-Bribery',
+    security1Desc: 'Commitment scheme ensures voters cannot prove their choice to buyers.',
+    security2Title: 'Nullifier System',
+    security2Desc: 'Unique nullifier derived from note + proposalId prevents double voting.',
+    security3Title: 'Snapshot Verification',
+    security3Desc: 'Uses past block hash and on-chain merkle root commitment to prevent manipulation.',
+
+    // Commit-Reveal
+    commitRevealTitle: 'Commit-Reveal Mechanism',
+    commitRevealDesc: 'Two-phase voting process that fundamentally prevents vote buying and coercion.',
+    commitPhase: 'Commit Phase',
+    commitPhaseDesc: 'Only encrypted commitment is recorded on-chain. No one can see your choice.',
+    revealPhase: 'Reveal Phase',
+    revealPhaseDesc: 'After voting ends, all commitments are decrypted for tallying. Only final result is public.',
 
     // FAQ
     faqTitle: 'Frequently Asked Questions',
@@ -273,7 +337,7 @@ const translations = {
     ctaTitle: 'Try zkDEX D1 Private Voting',
     ctaDesc: 'Experience how ZK private voting works firsthand.',
     startDemo: 'Start Demo',
-    ctaNote: '* This demo runs on Thanos Sepolia testnet.',
+    ctaNote: '* This demo runs on Ethereum Sepolia testnet.',
 
     // Proposals Page
     governanceProposals: 'Governance Proposals',
@@ -522,7 +586,7 @@ function App() {
     return () => clearInterval(interval)
   }, [])
 
-  const isCorrectChain = chainId === thanosSepolia.id
+  const isCorrectChain = chainId === sepolia.id
 
   const shortenAddress = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-4)
 
@@ -712,12 +776,12 @@ function App() {
           {isConnected ? (
             <div className="wallet-connected">
               <span className={`chain-badge ${isCorrectChain ? 'correct' : 'wrong'}`}>
-                {isCorrectChain ? 'Thanos' : 'Wrong Network'}
+                {isCorrectChain ? 'Sepolia' : 'Wrong Network'}
               </span>
               {!isCorrectChain && (
                 <button
                   className="switch-btn"
-                  onClick={() => switchChain({ chainId: thanosSepolia.id })}
+                  onClick={() => switchChain({ chainId: sepolia.id })}
                 >
                   Switch
                 </button>
@@ -758,7 +822,7 @@ function App() {
                   </a>
                 </div>
                 <div className="hero-network">
-                  <span className="network-badge">Thanos Sepolia Testnet</span>
+                  <span className="network-badge">Ethereum Sepolia Testnet</span>
                 </div>
               </div>
               <div className="hero-visual">
@@ -917,6 +981,90 @@ function App() {
                   <div className="benefit-icon">🎭</div>
                   <h3>{t.honestExpression}</h3>
                   <p>{t.honestExpressionDesc}</p>
+                </div>
+                <div className="benefit-card">
+                  <div className="benefit-icon">🚫</div>
+                  <h3>{t.antiCoercion}</h3>
+                  <p>{t.antiCoercionDesc}</p>
+                </div>
+                <div className="benefit-card">
+                  <div className="benefit-icon">🔒</div>
+                  <h3>{t.doubleVotePrevention}</h3>
+                  <p>{t.doubleVotePreventionDesc}</p>
+                </div>
+              </div>
+            </section>
+
+            {/* Commit-Reveal Section */}
+            <section className="commit-reveal-section">
+              <h2>{t.commitRevealTitle}</h2>
+              <p className="section-desc">{t.commitRevealDesc}</p>
+              <div className="commit-reveal-phases">
+                <div className="phase-card commit">
+                  <div className="phase-number">1</div>
+                  <h3>{t.commitPhase}</h3>
+                  <p>{t.commitPhaseDesc}</p>
+                  <div className="phase-visual">
+                    <code>vote + salt → hash(commitment)</code>
+                  </div>
+                </div>
+                <div className="phase-arrow">→</div>
+                <div className="phase-card reveal">
+                  <div className="phase-number">2</div>
+                  <h3>{t.revealPhase}</h3>
+                  <p>{t.revealPhaseDesc}</p>
+                  <div className="phase-visual">
+                    <code>commitments → decrypt → tally</code>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Use Cases Section */}
+            <section className="use-cases-section">
+              <h2>{t.useCasesTitle}</h2>
+              <div className="use-cases-grid">
+                <div className="use-case-card">
+                  <div className="use-case-icon">⚙️</div>
+                  <h3>{t.useCase1Title}</h3>
+                  <p>{t.useCase1Desc}</p>
+                </div>
+                <div className="use-case-card">
+                  <div className="use-case-icon">💰</div>
+                  <h3>{t.useCase2Title}</h3>
+                  <p>{t.useCase2Desc}</p>
+                </div>
+                <div className="use-case-card">
+                  <div className="use-case-icon">⚖️</div>
+                  <h3>{t.useCase3Title}</h3>
+                  <p>{t.useCase3Desc}</p>
+                </div>
+                <div className="use-case-card">
+                  <div className="use-case-icon">🗳️</div>
+                  <h3>{t.useCase4Title}</h3>
+                  <p>{t.useCase4Desc}</p>
+                </div>
+              </div>
+            </section>
+
+            {/* Security Section */}
+            <section className="security-section">
+              <h2>{t.securityTitle}</h2>
+              <div className="security-grid">
+                <div className="security-card">
+                  <div className="security-icon">💸</div>
+                  <h3>{t.security1Title}</h3>
+                  <p>{t.security1Desc}</p>
+                </div>
+                <div className="security-card">
+                  <div className="security-icon">🔐</div>
+                  <h3>{t.security2Title}</h3>
+                  <p>{t.security2Desc}</p>
+                </div>
+                <div className="security-card">
+                  <div className="security-icon">📸</div>
+                  <h3>{t.security3Title}</h3>
+                  <p>{t.security3Desc}</p>
                 </div>
               </div>
             </section>
