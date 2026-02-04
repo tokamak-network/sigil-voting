@@ -526,6 +526,17 @@ function App() {
     functionName: 'proposalCount',
   })
 
+  // Check if user has already voted on selected proposal
+  const { data: hasAlreadyVoted } = useReadContract({
+    address: PRIVATE_VOTING_ADDRESS,
+    abi: PRIVATE_VOTING_ABI,
+    functionName: 'hasVoted',
+    args: selectedProposal && address ? [BigInt(selectedProposal.id), address] : undefined,
+    query: {
+      enabled: !!selectedProposal && !!address,
+    },
+  })
+
   // Load proposals when count changes
   useEffect(() => {
     const loadProposals = async () => {
@@ -533,20 +544,27 @@ function App() {
       const count = Number(proposalCount)
       if (count === 0) return
 
-      // Use window.ethereum to read proposals
-      if (!window.ethereum) return
-
       const newProposals: Proposal[] = []
+      const RPC_URL = 'https://1rpc.io/sepolia'
 
       for (let i = 1; i <= count; i++) {
         try {
-          const result = await window.ethereum.request({
-            method: 'eth_call',
-            params: [{
-              to: PRIVATE_VOTING_ADDRESS,
-              data: `0xc7f758a8${i.toString(16).padStart(64, '0')}`
-            }, 'latest']
-          }) as string
+          // Use public RPC to read proposals (no wallet needed)
+          const response = await fetch(RPC_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_call',
+              params: [{
+                to: PRIVATE_VOTING_ADDRESS,
+                data: `0xc7f758a8${i.toString(16).padStart(64, '0')}`
+              }, 'latest'],
+              id: i
+            })
+          })
+          const data = await response.json()
+          const result = data.result as string
 
           if (result && result !== '0x') {
             // Parse ABI-encoded response
@@ -661,22 +679,46 @@ function App() {
   }
 
   const [isCreatingProposal, setIsCreatingProposal] = useState(false)
+  const [creatingPhase, setCreatingPhase] = useState<'idle' | 'submitting' | 'confirming' | 'success'>('idle')
+  const [createProgress, setCreateProgress] = useState(0)
+  const [createTxHash, setCreateTxHash] = useState<string | undefined>()
 
   const createProposalOnChain = async () => {
     if (!newProposal.title || !newProposal.description || !isConnected) return
 
     setIsCreatingProposal(true)
+    setCreatingPhase('submitting')
+    setCreateProgress(20)
+
     try {
       // Convert days to seconds
       const votingDuration = BigInt(newProposal.duration * 24 * 60 * 60)
       const revealDuration = BigInt(newProposal.revealDuration * 24 * 60 * 60)
 
-      await writeContractAsync({
+      setCreateProgress(40)
+      const hash = await writeContractAsync({
         address: PRIVATE_VOTING_ADDRESS,
         abi: PRIVATE_VOTING_ABI,
         functionName: 'createProposal',
         args: [newProposal.title, newProposal.description, votingDuration, revealDuration],
       })
+
+      setCreateTxHash(hash)
+      setCreatingPhase('confirming')
+      setCreateProgress(70)
+
+      // Wait for transaction confirmation
+      await new Promise(r => setTimeout(r, 2000))
+      setCreateProgress(90)
+
+      // Refetch proposals after creation
+      await refetchCount()
+      setCreateProgress(100)
+
+      setCreatingPhase('success')
+
+      // Wait to show success, then navigate
+      await new Promise(r => setTimeout(r, 1500))
 
       setNewProposal({
         title: '',
@@ -689,15 +731,15 @@ function App() {
         passThreshold: 50,
       })
 
-      // Refetch proposals after creation
-      await refetchCount()
-
       setCurrentPage('proposals')
     } catch (error) {
       console.error('Failed to create proposal:', error)
-      alert('제안 생성 실패. 다시 시도해주세요.')
+      alert('Failed to create proposal. Please try again.')
     } finally {
       setIsCreatingProposal(false)
+      setCreatingPhase('idle')
+      setCreateProgress(0)
+      setCreateTxHash(undefined)
     }
   }
 
@@ -858,10 +900,18 @@ function App() {
               <p className="hero-desc">
                 We don't promise secrecy. We prove it's mathematically impossible.
               </p>
+              <div className="hero-cta">
+                <button className="cta-primary" onClick={() => setCurrentPage('proposals')}>
+                  Try Demo
+                </button>
+                <a href="#how-it-works" className="cta-secondary">
+                  How it works ↓
+                </a>
+              </div>
             </section>
 
             {/* Visual Proof Section */}
-            <section className="proof-section">
+            <section id="how-it-works" className="proof-section">
               <div className="proof-flow">
                 <div className="proof-step">
                   <span className="proof-label">Your choice</span>
@@ -1082,6 +1132,12 @@ function App() {
                         <button className="connect-btn large" onClick={handleConnect}>
                           {t.connectWallet}
                         </button>
+                      </div>
+                    ) : hasAlreadyVoted ? (
+                      <div className="already-voted">
+                        <div className="already-voted-icon">✅</div>
+                        <h3>You've already voted</h3>
+                        <p>Your vote has been recorded on the blockchain. Each address can only vote once per proposal.</p>
                       </div>
                     ) : votingPhase === 'select' ? (
                       <>
@@ -1432,6 +1488,7 @@ function App() {
                   <button
                     className="cancel-btn"
                     onClick={() => setCurrentPage('proposals')}
+                    disabled={isCreatingProposal}
                   >
                     {t.cancel}
                   </button>
@@ -1440,9 +1497,61 @@ function App() {
                     onClick={createProposalOnChain}
                     disabled={!newProposal.title || !newProposal.description || isCreatingProposal}
                   >
-                    {isCreatingProposal ? '제출 중...' : t.submitProposal}
+                    {t.submitProposal}
                   </button>
                 </div>
+
+                {/* Creating Proposal Overlay */}
+                {isCreatingProposal && (
+                  <div className="creating-overlay">
+                    <div className="creating-modal">
+                      {creatingPhase === 'success' ? (
+                        <>
+                          <div className="creating-icon success">✅</div>
+                          <h3>Proposal Created!</h3>
+                          <p>Your proposal has been submitted to the blockchain.</p>
+                          {createTxHash && (
+                            <a
+                              href={`https://sepolia.etherscan.io/tx/${createTxHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="tx-link-btn"
+                            >
+                              View on Etherscan →
+                            </a>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="creating-icon">
+                            <div className="spinner"></div>
+                          </div>
+                          <h3>
+                            {creatingPhase === 'submitting' && 'Submitting Transaction...'}
+                            {creatingPhase === 'confirming' && 'Waiting for Confirmation...'}
+                          </h3>
+                          <p>
+                            {creatingPhase === 'submitting' && 'Please confirm the transaction in your wallet.'}
+                            {creatingPhase === 'confirming' && 'Transaction submitted. Waiting for blockchain confirmation.'}
+                          </p>
+                          <div className="progress-bar">
+                            <div className="progress-fill" style={{ width: `${createProgress}%` }}></div>
+                          </div>
+                          {createTxHash && (
+                            <a
+                              href={`https://sepolia.etherscan.io/tx/${createTxHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="tx-link-small"
+                            >
+                              View transaction →
+                            </a>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
