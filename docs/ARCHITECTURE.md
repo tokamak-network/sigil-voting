@@ -159,22 +159,33 @@ App.tsx
 - **Toggle**: Header button switches between languages
 - **Storage**: React state (resets on refresh)
 
-## Simulated Features
+## Smart Contract
 
-This demo simulates the following (not actual blockchain interaction):
+| Item | Value |
+|------|-------|
+| Contract | PrivateVoting.sol |
+| Network | Ethereum Sepolia |
+| Address | `0x583e8926F8701a196F182c449dF7BAc4782EF784` |
 
-| Feature | Simulation |
-|---------|------------|
-| ZK Proof Generation | Progress animation (2 seconds) |
-| Commitment Hash | Random hex string generation |
-| Vote Recording | Local state update |
-| Proposal Data | Hardcoded sample data |
+### Contract Functions
+
+| Function | Description |
+|----------|-------------|
+| `createProposal()` | 새 제안 생성 |
+| `submitVoteCommitment()` | 투표 커밋먼트 제출 |
+| `getProposal()` | 제안 정보 조회 |
+| `hasVoted()` | 투표 여부 확인 |
+
+## On-chain Features
+
+| Feature | Implementation |
+|---------|----------------|
+| Commitment Hash | keccak256(choice + salt) |
+| Vote Recording | 스마트 컨트랙트에 기록 |
+| Transaction | Etherscan에서 확인 가능 |
 
 ## Future Implementation
 
-For production, the following would need real implementation:
-
-1. **Smart Contracts**: Voting contract with commit-reveal logic
-2. **ZK Circuits**: Circom circuits for private voting proofs
-3. **Backend**: Merkle tree management, nullifier tracking
-4. **IPFS**: Proposal content storage
+1. **ZK Circuits**: Circom circuits for private voting proofs
+2. **Backend**: Merkle tree management, nullifier tracking
+3. **IPFS**: Proposal content storage

@@ -125,6 +125,21 @@ export const config = createConfig({
 
 **요구사항**: Web3 지갑 확장 프로그램 (MetaMask 등)
 
+## Smart Contract
+
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Solidity | 0.8.24 | 스마트 컨트랙트 언어 |
+| Foundry | 1.x | 컨트랙트 개발/배포 도구 |
+
+### Contract: PrivateVoting.sol
+
+```solidity
+// 주요 함수
+function createProposal(string _title, string _description, uint256 _duration)
+function submitVoteCommitment(uint256 _proposalId, bytes32 _commitment, uint256 _votingPower)
+```
+
 ## Future Tech (Production)
 
 프로덕션 구현 시 추가될 기술:
@@ -133,6 +148,4 @@ export const config = createConfig({
 |------------|---------|
 | Circom | ZK Circuit 작성 |
 | snarkjs | ZK Proof 생성/검증 |
-| Solidity | 스마트 컨트랙트 |
 | IPFS | 분산 저장소 |
-| Hardhat | 컨트랙트 개발 환경 |
