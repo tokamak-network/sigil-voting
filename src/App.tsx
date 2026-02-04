@@ -1,8 +1,19 @@
 import { useState, useEffect } from 'react'
-import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi'
+import { useAccount, useConnect, useDisconnect, useSwitchChain, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { injected } from 'wagmi/connectors'
+import { keccak256, encodePacked } from 'viem'
 import { sepolia } from './wagmi'
+import { PRIVATE_VOTING_ADDRESS, PRIVATE_VOTING_ABI } from './contract'
 import './App.css'
+
+// Type declaration for window.ethereum
+declare global {
+  interface Window {
+    ethereum?: {
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
+    }
+  }
+}
 
 type Page = 'landing' | 'proposals' | 'proposal-detail' | 'my-votes' | 'create-proposal'
 type ProposalStatus = 'active' | 'passed' | 'defeated'
@@ -464,12 +475,13 @@ interface MyVote {
   commitment: string
   votingPower: number
   timestamp: string
+  txHash?: string
 }
 
-// Sample data
+// Sample data - ID '1' matches the on-chain proposal
 const initialProposals: Proposal[] = [
   {
-    id: 'TIP-42',
+    id: '1',
     title: '생태계 그랜트 프로그램 예산 배정',
     description: '개발자 온보딩 및 Tokamak Network dApp 개발 지원을 위해 트레저리에서 500,000 TON을 생태계 그랜트 프로그램에 배정합니다.\n\n## 배경\n현재 Tokamak Network 생태계는 성장기에 있으며, 더 많은 개발자 유입이 필요합니다.\n\n## 목표\n- Q2까지 20개 이상의 신규 dApp 유치\n- 개발자 교육 프로그램 운영\n- 해커톤 개최 (분기당 1회)',
     status: 'active',
@@ -477,8 +489,8 @@ const initialProposals: Proposal[] = [
     againstVotes: 920000,
     abstainVotes: 230000,
     totalVoters: 156,
-    endTime: new Date('2026-02-10T18:00:00'),
-    author: '0x1a2b...3c4d',
+    endTime: new Date('2026-02-11T18:00:00'),
+    author: '0x9f24...D841',
     category: '트레저리',
   },
   {
@@ -540,6 +552,9 @@ function App() {
   const { connect, isPending: isConnecting } = useConnect()
   const { disconnect } = useDisconnect()
   const { switchChain, isPending: isSwitching } = useSwitchChain()
+  const { writeContractAsync } = useWriteContract()
+  const [txHash, setTxHash] = useState<`0x${string}` | undefined>()
+  useWaitForTransactionReceipt({ hash: txHash }) // Track transaction confirmation
 
   const handleSwitchNetwork = async () => {
     try {
@@ -687,12 +702,12 @@ function App() {
     setCurrentPage('proposals')
   }
 
-  const generateCommitment = () => {
-    return '0x' + Array.from({ length: 8 }, () =>
-      Math.floor(Math.random() * 16).toString(16)
-    ).join('') + '...' + Array.from({ length: 4 }, () =>
-      Math.floor(Math.random() * 16).toString(16)
-    ).join('')
+  // Generate commitment hash: keccak256(choice + salt)
+  const generateCommitmentHash = (choice: VoteChoice): `0x${string}` => {
+    const salt = crypto.getRandomValues(new Uint8Array(32))
+    const saltHex = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('')
+    const choiceNum = choice === 'for' ? 1 : choice === 'against' ? 2 : 3
+    return keccak256(encodePacked(['uint8', 'bytes32'], [choiceNum, `0x${saltHex}`]))
   }
 
   const openProposal = (proposal: Proposal) => {
@@ -702,58 +717,83 @@ function App() {
     setSelectedChoice(null)
     setSealProgress(0)
     setMyCommitment('')
+    setTxHash(undefined)
   }
 
   const startSealing = async () => {
-    if (!selectedChoice || !selectedProposal) return
+    if (!selectedChoice || !selectedProposal || !address) return
     setVotingPhase('sealing')
     setSealProgress(0)
 
-    for (let i = 0; i <= 100; i += 2) {
-      await new Promise(r => setTimeout(r, 40))
-      setSealProgress(i)
-    }
+    try {
+      // Step 1: Generate commitment hash
+      setSealProgress(20)
+      const commitmentHash = generateCommitmentHash(selectedChoice)
 
-    const commitment = generateCommitment()
-    setMyCommitment(commitment)
+      // Step 2: Send transaction to smart contract
+      setSealProgress(40)
+      const proposalIdNum = parseInt(selectedProposal.id)
 
-    // Update proposal vote counts
-    setProposals(prev => prev.map(p => {
-      if (p.id === selectedProposal.id) {
-        return {
-          ...p,
-          forVotes: selectedChoice === 'for' ? p.forVotes + votingPower : p.forVotes,
-          againstVotes: selectedChoice === 'against' ? p.againstVotes + votingPower : p.againstVotes,
-          abstainVotes: selectedChoice === 'abstain' ? p.abstainVotes + votingPower : p.abstainVotes,
-          totalVoters: p.totalVoters + 1
+      const hash = await writeContractAsync({
+        address: PRIVATE_VOTING_ADDRESS,
+        abi: PRIVATE_VOTING_ABI,
+        functionName: 'submitVoteCommitment',
+        args: [BigInt(proposalIdNum), commitmentHash, BigInt(votingPower)],
+      })
+
+      setTxHash(hash)
+      setSealProgress(70)
+
+      // Step 3: Wait a bit for user to see progress
+      await new Promise(r => setTimeout(r, 1000))
+      setSealProgress(100)
+
+      // Format commitment for display
+      const shortCommitment = `${commitmentHash.slice(0, 10)}...${commitmentHash.slice(-8)}`
+      setMyCommitment(shortCommitment)
+
+      // Update local state
+      setProposals(prev => prev.map(p => {
+        if (p.id === selectedProposal.id) {
+          return {
+            ...p,
+            forVotes: selectedChoice === 'for' ? p.forVotes + votingPower : p.forVotes,
+            againstVotes: selectedChoice === 'against' ? p.againstVotes + votingPower : p.againstVotes,
+            abstainVotes: selectedChoice === 'abstain' ? p.abstainVotes + votingPower : p.abstainVotes,
+            totalVoters: p.totalVoters + 1
+          }
         }
-      }
-      return p
-    }))
+        return p
+      }))
 
-    // Update selected proposal for immediate UI update
-    setSelectedProposal(prev => {
-      if (!prev) return prev
-      return {
-        ...prev,
-        forVotes: selectedChoice === 'for' ? prev.forVotes + votingPower : prev.forVotes,
-        againstVotes: selectedChoice === 'against' ? prev.againstVotes + votingPower : prev.againstVotes,
-        abstainVotes: selectedChoice === 'abstain' ? prev.abstainVotes + votingPower : prev.abstainVotes,
-        totalVoters: prev.totalVoters + 1
-      }
-    })
+      setSelectedProposal(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          forVotes: selectedChoice === 'for' ? prev.forVotes + votingPower : prev.forVotes,
+          againstVotes: selectedChoice === 'against' ? prev.againstVotes + votingPower : prev.againstVotes,
+          abstainVotes: selectedChoice === 'abstain' ? prev.abstainVotes + votingPower : prev.abstainVotes,
+          totalVoters: prev.totalVoters + 1
+        }
+      })
 
-    setMyVotes(prev => [{
-      proposalId: selectedProposal.id,
-      proposalTitle: selectedProposal.title,
-      choice: selectedChoice,
-      commitment,
-      votingPower,
-      timestamp: new Date().toLocaleString()
-    }, ...prev])
+      setMyVotes(prev => [{
+        proposalId: selectedProposal.id,
+        proposalTitle: selectedProposal.title,
+        choice: selectedChoice,
+        commitment: shortCommitment,
+        votingPower,
+        timestamp: new Date().toLocaleString(),
+        txHash: hash
+      }, ...prev])
 
-    await new Promise(r => setTimeout(r, 500))
-    setVotingPhase('submitted')
+      await new Promise(r => setTimeout(r, 500))
+      setVotingPhase('submitted')
+    } catch (error) {
+      console.error('Vote submission failed:', error)
+      setVotingPhase('select')
+      alert('투표 제출 실패. 다시 시도해주세요.')
+    }
   }
 
   const filteredProposals = proposals.filter(p => {
@@ -1364,6 +1404,18 @@ function App() {
                           <span className="commitment-label">{t.commitmentRecorded}</span>
                           <code className="commitment-hash">{myCommitment}</code>
                         </div>
+
+                        {txHash && (
+                          <div className="tx-link">
+                            <a
+                              href={`https://sepolia.etherscan.io/tx/${txHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              Etherscan에서 트랜잭션 확인 →
+                            </a>
+                          </div>
+                        )}
 
                         <div className="privacy-summary">
                           <div className="privacy-item">
