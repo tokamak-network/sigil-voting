@@ -90,9 +90,9 @@ http://localhost:5173
 | 2 | 제안 내용 확인 | 제목, 설명, 상태 표시 |
 | 3 | "For" 버튼 클릭 | 선택 표시됨 |
 | 4 | ZK Notice 확인 | "Your vote will be sealed" 메시지 |
-| 5 | 투표 제출 | Sealing 애니메이션 시작 |
-| 6 | 2초 대기 | 프로그레스 바 완료 |
-| 7 | 완료 확인 | Commitment Hash 표시 |
+| 5 | 투표 제출 | MetaMask 팝업 표시 |
+| 6 | MetaMask에서 승인 | 트랜잭션 전송 |
+| 7 | 완료 확인 | Commitment Hash + Etherscan 링크 표시 |
 
 ### Test 5: My Votes
 
@@ -139,16 +139,22 @@ http://localhost:5173
 | Tablet | 768px | 카드 2열 |
 | Desktop | 1024px+ | 전체 레이아웃 |
 
-## Known Limitations (Demo)
+## On-chain Features
 
-이 데모에서 시뮬레이션되는 기능:
+실제 블록체인에 기록되는 기능:
 
 | Feature | Behavior |
 |---------|----------|
-| ZK Proof 생성 | 2초 애니메이션 (실제 증명 아님) |
-| Commitment Hash | 랜덤 문자열 생성 |
-| 투표 기록 | 로컬 상태 저장 (새로고침 시 초기화) |
-| 제안 데이터 | 하드코딩된 샘플 데이터 |
+| Commitment Hash | keccak256(choice + salt) 온체인 기록 |
+| 투표 기록 | 스마트 컨트랙트에 영구 저장 |
+| 트랜잭션 | Etherscan에서 확인 가능 |
+
+## Known Limitations
+
+| Feature | Limitation |
+|---------|------------|
+| ZK Proof | 실제 ZK 증명 아님 (해시만 사용) |
+| 제안 목록 | 일부 샘플 데이터 포함 |
 
 ## Troubleshooting
 
