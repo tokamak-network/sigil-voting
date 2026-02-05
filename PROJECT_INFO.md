@@ -1,204 +1,235 @@
-# ZK Private Voting 프로토타입
+# ZK Private Voting - D1 Specification Implementation
 
 ## 프로젝트 개요
 
 **회사**: Tokamak Network (https://www.tokamak.network/)
-**프로젝트**: zkDEX D1 Private Voting 데모
+**프로젝트**: zkDEX D1 Private Voting
 **목적**: Operation Spear Track B 과제 - 2주 내 완결된 성과물
 
 ---
 
-## 배경
+## D1 스펙 준수
 
-### Operation Spear (OS)
-- 기간: 2026년 2월 1일 ~ 28일 (4주)
-- 목표: AI 활용을 통한 산출량 & 속도 극대화
-- Track B: 2주마다 1개 이상의 완결된 성과물 추가
+이 프로젝트는 [zkDEX D1 Private Voting 스펙](https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d1-private-voting.md)을 **정확히** 구현합니다.
 
-### 왜 이 프로젝트를 선택했나
+### 핵심 보안 속성
 
-1. CEO Kevin이 공유한 zkDEX 100개 아이디어 문서에서 선택
-2. D1 Private Voting이 가장 구현 난이도 낮음 (~150K constraints)
-3. DAO 거버넌스에 실제 적용 가능 → 회사 기여도 높음
+| 속성 | 설명 |
+|------|------|
+| Privacy | 투표 선택이 reveal phase까지 숨겨짐 |
+| Anti-Coercion | 투표자가 자신의 선택을 제3자에게 증명할 수 없음 |
+| Double-Spend Prevention | `nullifier = hash(sk, proposalId)`로 재사용 방지 |
+
+---
+
+## 기술 구현
+
+### ZK 회로 (circuits/PrivateVoting.circom)
+
+**제약 수**: ~150K constraints
+**Merkle Tree 깊이**: 20 levels (~1M leaves 지원)
+
+#### 공개 입력값 (4개, D1 스펙 준수)
+
+```circom
+signal input voteCommitment;    // 투표 커밋먼트
+signal input proposalId;        // 제안 ID
+signal input votingPower;       // 투표권
+signal input merkleRoot;        // 스냅샷 머클 루트
+```
+
+#### 비공개 입력값
+
+```circom
+signal input sk;                // 비밀키
+signal input pkX, pkY;          // 공개키 (Baby Jubjub)
+signal input noteHash;          // 토큰 노트 해시
+signal input noteValue;         // 토큰 잔액
+signal input noteSalt;          // 노트 랜덤값
+signal input tokenType;         // 토큰 타입 ID
+signal input choice;            // 투표 선택 (0/1/2)
+signal input voteSalt;          // 투표 랜덤값
+signal input merklePath[20];    // 머클 증명
+signal input merkleIndex;       // 트리 내 위치 (단일 uint)
+```
+
+#### 6단계 검증 로직
+
+| 단계 | 검증 내용 | 수식 |
+|------|----------|------|
+| 1 | Token Note 검증 | `noteHash = Poseidon(pkX, pkY, noteValue, tokenType, noteSalt)` |
+| 2 | Snapshot 포함 증명 | 20-level Merkle proof 검증 |
+| 3 | 소유권 증명 | Baby Jubjub: `sk → (pkX, pkY)` |
+| 4 | 투표권 일치 | `votingPower === noteValue` |
+| 5 | 선택 유효성 | `choice ∈ {0, 1, 2}` |
+| 6 | 커밋먼트 바인딩 | `commitment = Poseidon(choice, votingPower, proposalId, voteSalt)` |
+
+### 스마트 컨트랙트 (contracts/PrivateVoting.sol)
+
+#### Verifier 인터페이스
+
+```solidity
+interface IVerifier {
+    function verifyProof(
+        uint256[2] calldata _pA,
+        uint256[2][2] calldata _pB,
+        uint256[2] calldata _pC,
+        uint256[4] calldata _pubSignals  // 4개의 공개 입력
+    ) external view returns (bool);
+}
+```
+
+#### 투표 플로우
+
+```
+1. Commit Phase
+   - commitVote(proposalId, commitment, votingPower, nullifier, proof)
+   - ZK proof 검증
+   - nullifier 사용 표시
+   - commitment 저장
+
+2. Reveal Phase
+   - revealVote(proposalId, nullifier, choice, voteSalt)
+   - commitment 재계산 및 검증
+   - 투표 집계
+```
+
+### 프론트엔드 모듈 (src/zkproof.ts)
+
+#### 주요 함수
+
+| 함수 | 설명 |
+|------|------|
+| `getOrCreateKeyPair()` | 키페어 생성/복원 |
+| `createTokenNote()` | 토큰 노트 생성 (D1 스펙 해시) |
+| `buildMerkleTree()` | 20-level 머클 트리 구축 |
+| `generateMerkleProof()` | 머클 증명 생성 (index는 단일 uint) |
+| `computeCommitment()` | `hash(choice, votingPower, proposalId, voteSalt)` |
+| `computeNullifier()` | `hash(sk, proposalId)` |
+| `generateVoteProof()` | ZK 증명 생성 |
+
+---
+
+## 파일 구조
+
+```
+zk-dex-d1-private-voting/
+├── circuits/
+│   ├── PrivateVoting.circom   # D1 스펙 ZK 회로
+│   └── compile.sh             # 컴파일 스크립트
+├── contracts/
+│   └── PrivateVoting.sol      # 커밋-리빌 컨트랙트
+├── src/
+│   ├── App.tsx                # 메인 UI (커밋-리빌 플로우)
+│   ├── App.css                # 스타일
+│   ├── contract.ts            # ABI & 주소
+│   ├── zkproof.ts             # ZK 증명 모듈
+│   └── wagmi.ts               # 지갑 설정
+├── test/
+│   └── PrivateVoting.test.ts  # 컨트랙트 테스트
+├── docs/
+│   ├── ARCHITECTURE.md
+│   ├── TECH_STACK.md
+│   └── TESTING.md
+├── README.md
+└── PROJECT_INFO.md            # 이 파일
+```
+
+---
+
+## 실행 방법
+
+### 프론트엔드
+
+```bash
+npm install
+npm run dev
+# http://localhost:5173
+```
+
+### ZK 회로 컴파일 (선택)
+
+```bash
+cd circuits
+./compile.sh
+```
+
+**필요 도구**:
+- [circom 2.1.6+](https://docs.circom.io/getting-started/installation/)
+- [snarkjs](https://github.com/iden3/snarkjs)
+
+### 컨트랙트 테스트
+
+```bash
+npx hardhat test
+```
+
+---
+
+## 스펙 대조표
+
+| D1 스펙 항목 | 구현 상태 | 파일 |
+|-------------|----------|------|
+| 4 public inputs | ✅ | circuit, contract |
+| Token note hash (5 params) | ✅ | circuit:95-100 |
+| 20-level Merkle proof | ✅ | circuit:25-54 |
+| Baby Jubjub key derivation | ✅ | circuit:56-67 |
+| Power matching | ✅ | circuit:128 |
+| Choice validation (0,1,2) | ✅ | circuit:130-147 |
+| Commitment binding (4 params) | ✅ | circuit:149-158 |
+| Nullifier = hash(sk, proposalId) | ✅ | circuit:160-168 |
+| merkleIndex as single uint | ✅ | circuit:28, 91 |
+
+---
+
+## 경쟁사 비교
+
+| 기능 | 이 구현 | Snapshot | Tally | Vocdoni |
+|------|---------|----------|-------|---------|
+| Privacy (투표 숨김) | ✅ ZK | ❌ | ✅ | ✅ |
+| Anti-Coercion | ✅ Commit-Reveal | ❌ | ❌ | ❌ |
+| Token Ownership Proof | ✅ Merkle | ✅ | ✅ | ✅ |
+| Double-Spend Prevention | ✅ Nullifier | ❌ | ✅ | ✅ |
+| On-chain Verification | ✅ Groth16 | ❌ | ❌ | ❌ |
+
+---
+
+## 유즈케이스
+
+- **프로토콜 매개변수 변경** - 이자율, 수수료 등
+- **재무 보조금 결정** - 민감한 자금 배분
+- **논쟁적 결정** - 소셜 압력 없이 투표
+- **이사회 선거** - 익명 투표
+
+---
+
+## 참고 문서
+
+- [D1 Private Voting 스펙 (영문)](https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d1-private-voting.md)
+- [D1 Private Voting 스펙 (한글)](https://github.com/tokamak-network/zk-dex/blob/circom/docs/future_ko/circuit-addons/d-governance/d1-private-voting.md)
+- [zkDEX 전체 문서](https://github.com/tokamak-network/zk-dex/tree/circom/docs/future)
+- [Tokamak Network](https://tokamak.network)
+- [circomlib](https://github.com/iden3/circomlib)
+- [snarkjs](https://github.com/iden3/snarkjs)
 
 ---
 
 ## Tokamak Network 정보
 
 ### 회사 개요
+
 - **개발사**: Onther Inc. (한국)
 - **운영법인**: Tokamak Network Pte. Ltd. (싱가포르)
 - **CEO**: Kevin Jeong (정순형)
 - **핵심 제품**: Rollup Hub (L2 배포 플랫폼)
 
-### 주요 인물
-| 이름 | 직책 |
-|------|------|
-| Kevin Jeong (정순형) | CEO & Founder |
-| June Sim | Onther CEO |
-| Dr. 최공필 | Chief Economist |
-
 ### 기술 스택
+
 - Thanos Stack (OP Stack v1.7.7 포크)
-- Go 50.2% / Solidity 41.7% / TypeScript 5.6%
 - zk-EVM 개발 중
-
-### 토큰 (TON)
-- 컨트랙트: 0x2be5e8c109e2197D077D13A82dAead6a9b3433C5
-- 총 공급량: ~100M TON (무제한)
-- 현재 가격: ~$0.70-0.75
-- 스테이킹: ~24M TON
-
-### 현재 방향
-- Rollup Hub SDK (B2B, 개발자 대상)
-- 유저 대상 서비스(Bridge 등)는 종료됨
 - zkDEX 100개 아이디어 개발 중
 
----
+### 토큰 (TON)
 
-## zkDEX D1 Private Voting
-
-### 핵심 컨셉
-```
-투표 선택 → ZK proof로 암호화 → 제출
-→ 누가 뭘 골랐는지 모름
-→ 결과만 공개
-```
-
-### 기술 사양
-
-**공개 입력값:**
-- voteCommitment (투표 선택의 해시)
-- proposalId (제안 ID)
-- votingPower (투표권)
-- merkleRoot (투표 자격자 스냅샷)
-
-**비공개 입력값:**
-- pkX, pkY, sk (투표자 키 쌍)
-- voteChoice (선택: 0/1/2)
-- voteSalt (랜덤 솔트)
-- merkleProof (자격 증명)
-
-### 회로 로직 (6단계)
-1. 거버넌스 토큰 검증
-2. 스냅샷 포함 확인 (Merkle proof)
-3. 소유권 검증
-4. 투표권 일치 확인
-5. 선택 유효성 (0, 1, 2만)
-6. 커밋먼트 생성
-
-### 유즈케이스
-- 프로토콜 매개변수 변경 투표
-- 재무 보조금 결정
-- 논쟁적 결정
-- 이사회 선거
-
-### 참고 문서
-- 영문: https://github.com/tokamak-network/zk-dex/tree/circom/docs/future
-- 한글: https://github.com/tokamak-network/zk-dex/tree/circom/docs/future_ko
-- D1 문서: https://github.com/tokamak-network/zk-dex/blob/circom/docs/future_ko/circuit-addons/d-governance/d1-private-voting.md
-
----
-
-## 프로토타입 구현
-
-### 기술 스택
-- React + TypeScript
-- Vite
-- CSS (커스텀)
-
-### 파일 구조
-```
-/Users/meeso/MEEE_SO/WORK/05_온더/zk-voting-demo/
-├── src/
-│   ├── App.tsx      # 메인 컴포넌트
-│   ├── App.css      # 스타일
-│   └── index.css    # 기본 스타일
-├── package.json
-└── PROJECT_INFO.md  # 이 파일
-```
-
-### 실행 방법
-```bash
-cd /Users/meeso/MEEE_SO/WORK/05_온더/zk-voting-demo
-npm install
-npm run dev
-```
-→ http://localhost:5173/ 에서 확인
-
-### 프로토타입 기능
-1. 제안서 카드 표시
-2. 투표 선택 (For / Against / Abstain)
-3. ZK Proof 생성 애니메이션 (시뮬레이션)
-4. 투표 제출 → Commitment 해시 표시
-5. 결과 보기 (투표 선택은 비공개)
-6. 투표 로그 (Commitment만 표시)
-
----
-
-## 디자인 수정
-
-### CSS 파일 위치
-```
-/Users/meeso/MEEE_SO/WORK/05_온더/zk-voting-demo/src/App.css
-```
-
-### 주요 클래스
-| 클래스 | 설명 |
-|--------|------|
-| `.app` | 전체 컨테이너 |
-| `.header` | 헤더 |
-| `.proposal-card` | 제안서 카드 |
-| `.vote-options` | 투표 버튼 컨테이너 |
-| `.vote-option` | 개별 투표 버튼 |
-| `.vote-option.for.selected` | 찬성 선택됨 |
-| `.vote-option.against.selected` | 반대 선택됨 |
-| `.vote-option.abstain.selected` | 기권 선택됨 |
-| `.submit-button` | 제출 버튼 |
-| `.generating-section` | ZK 생성 중 화면 |
-| `.spinner` | 로딩 스피너 |
-| `.progress-bar` | 진행률 바 |
-| `.submitted-section` | 제출 완료 화면 |
-| `.commitment-box` | Commitment 해시 표시 |
-| `.results-section` | 결과 화면 |
-| `.result-bar` | 결과 막대 그래프 |
-| `.result-fill.for` | 찬성 막대 |
-| `.result-fill.against` | 반대 막대 |
-| `.result-fill.abstain` | 기권 막대 |
-| `.vote-log` | 투표 로그 |
-| `.footer` | 푸터 |
-
-### 컬러 팔레트
-- 배경: #0a0a0f → #1a1a2e (그라디언트)
-- 메인 블루: #2563eb, #60a5fa
-- 퍼플: #7c3aed
-- 찬성 그린: #22c55e, #4ade80
-- 반대 레드: #ef4444, #f87171
-- 기권 옐로우: #eab308, #fbbf24
-
----
-
-## 다음 단계 (선택)
-
-### 프로토타입 확장
-1. 실제 Circom 회로 연동
-2. 스마트 컨트랙트 배포
-3. 지갑 연결 (MetaMask)
-4. Thanos Testnet 배포
-
-### 산출물 완성
-1. GitHub 레포 정리
-2. README 작성
-3. Medium 블로그 포스트
-4. 데모 영상 녹화
-
----
-
-## 참고 링크
-
-- Tokamak Network: https://www.tokamak.network/
-- Rollup Hub: https://rolluphub.tokamak.network/about
-- Docs: https://docs.tokamak.network/home/
-- GitHub: https://github.com/tokamak-network
-- zkDEX: https://github.com/tokamak-network/zk-dex/tree/circom
-- Medium: https://medium.com/tokamak-network
+- 컨트랙트: `0x2be5e8c109e2197D077D13A82dAead6a9b3433C5`
+- 총 공급량: ~100M TON

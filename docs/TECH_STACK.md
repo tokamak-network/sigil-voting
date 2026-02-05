@@ -2,61 +2,163 @@
 
 ## Overview
 
-zkDEX D1 Private Voting Demo에서 사용된 기술 스택입니다.
+zkDEX D1 Private Voting에서 사용된 기술 스택입니다.
+
+## ZK (Zero-Knowledge) Layer
+
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Circom | 2.1.6 | ZK 회로 작성 언어 |
+| snarkjs | - | Groth16 증명 생성/검증 |
+| circomlib | - | Poseidon, Baby Jubjub 등 라이브러리 |
+
+### Circom Circuit
+
+```circom
+// circuits/PrivateVoting.circom
+pragma circom 2.1.6;
+
+include "circomlib/circuits/poseidon.circom";
+include "circomlib/circuits/babyjub.circom";
+
+template PrivateVoting(merkleTreeDepth) {
+    // 4 public inputs (D1 spec)
+    signal input voteCommitment;
+    signal input proposalId;
+    signal input votingPower;
+    signal input merkleRoot;
+    // ... private inputs
+}
+
+component main {public [voteCommitment, proposalId, votingPower, merkleRoot]}
+    = PrivateVoting(20);
+```
+
+### Cryptographic Primitives
+
+| Primitive | Implementation | Purpose |
+|-----------|----------------|---------|
+| Poseidon Hash | circomlib | ZK-friendly hash function |
+| Baby Jubjub | circomlib | Elliptic curve for key derivation |
+| Merkle Tree | Custom | 20-level proof of inclusion |
+| Groth16 | snarkjs | SNARK proof system |
 
 ## Frontend Framework
 
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | React | 18.x | UI 컴포넌트 라이브러리 |
-| TypeScript | 5.x | 타입 안정성을 위한 JavaScript 슈퍼셋 |
-| Vite | 5.x | 빌드 도구 및 개발 서버 |
+| TypeScript | 5.x | 타입 안정성 |
+| Vite | 5.x | 빌드 도구 |
 
-### React
-- 컴포넌트 기반 UI 구조
-- 상태 관리를 위한 useState Hook
-- 조건부 렌더링으로 페이지 전환
+### React Hooks
 
-### TypeScript
-- 타입 정의로 런타임 에러 방지
-- IDE 자동완성 지원
-- 코드 유지보수성 향상
+```typescript
+// ZK 상태 관리
+const [keyPair, setKeyPair] = useState<KeyPair | null>(null)
+const [tokenNote, setTokenNote] = useState<TokenNote | null>(null)
+const [voteData, setVoteData] = useState<VoteData | null>(null)
+```
 
-### Vite
-- 빠른 HMR (Hot Module Replacement)
-- ES 모듈 기반 개발 서버
-- 최적화된 프로덕션 빌드
+### TypeScript Interfaces
+
+```typescript
+// src/zkproof.ts
+interface KeyPair {
+  sk: bigint        // Secret key
+  pkX: bigint       // Public key X
+  pkY: bigint       // Public key Y
+}
+
+interface TokenNote {
+  noteHash: bigint
+  noteValue: bigint
+  noteSalt: bigint
+  tokenType: bigint
+  pkX: bigint
+  pkY: bigint
+}
+
+interface VoteData {
+  choice: VoteChoice
+  votingPower: bigint
+  voteSalt: bigint
+  proposalId: bigint
+  commitment: bigint
+  nullifier: bigint
+}
+```
 
 ## Web3 Integration
 
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | wagmi | 2.x | React Hooks for Ethereum |
-| viem | 2.x | Ethereum 인터랙션 라이브러리 |
-| @tanstack/react-query | 5.x | 비동기 상태 관리 |
+| viem | 2.x | Ethereum interaction |
+| @tanstack/react-query | 5.x | Async state management |
 
-### wagmi
+### wagmi Configuration
+
 ```typescript
 // wagmi.ts
 import { http, createConfig } from 'wagmi'
-import { mainnet, sepolia } from 'wagmi/chains'
+import { sepolia } from 'wagmi/chains'
 import { injected } from 'wagmi/connectors'
 
 export const config = createConfig({
-  chains: [sepolia, mainnet],
+  chains: [sepolia],
   connectors: [injected()],
   transports: {
-    [sepolia.id]: http(),
-    [mainnet.id]: http(),
+    [sepolia.id]: http('https://sepolia.drpc.org'),
   },
 })
 ```
 
 ### Supported Wallets
+
 - MetaMask
 - Coinbase Wallet
 - WalletConnect 호환 지갑
-- 기타 Injected Wallet
+
+## Smart Contract
+
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Solidity | 0.8.24 | 스마트 컨트랙트 언어 |
+| Hardhat | - | 개발/배포 도구 |
+
+### Contract Interface
+
+```solidity
+// contracts/PrivateVoting.sol
+interface IVerifier {
+    function verifyProof(
+        uint256[2] calldata _pA,
+        uint256[2][2] calldata _pB,
+        uint256[2] calldata _pC,
+        uint256[4] calldata _pubSignals  // 4 public inputs
+    ) external view returns (bool);
+}
+
+contract PrivateVoting {
+    function commitVote(
+        uint256 _proposalId,
+        uint256 _commitment,
+        uint256 _votingPower,
+        uint256 _nullifier,
+        uint256[2] calldata _pA,
+        uint256[2][2] calldata _pB,
+        uint256[2] calldata _pC
+    ) external;
+
+    function revealVote(
+        uint256 _proposalId,
+        uint256 _nullifier,
+        uint256 _choice,
+        uint256 _voteSalt
+    ) external;
+}
+```
 
 ## Styling
 
@@ -64,16 +166,18 @@ export const config = createConfig({
 |------------|---------|
 | CSS3 | 스타일링 |
 | CSS Grid | 레이아웃 |
-| CSS Flexbox | 컴포넌트 정렬 |
-| CSS Variables | 테마 색상 관리 |
+| CSS Variables | 테마 관리 |
 
-### CSS 구조
+### CSS Variables
+
 ```css
-/* 색상 변수 예시 */
 :root {
   --primary-color: #6366f1;
   --background-color: #0f0f23;
   --card-background: #1a1a2e;
+  --success-color: #22c55e;
+  --danger-color: #ef4444;
+  --warning-color: #eab308;
 }
 ```
 
@@ -82,19 +186,20 @@ export const config = createConfig({
 | Tool | Purpose |
 |------|---------|
 | npm | 패키지 관리 |
-| ESLint | 코드 품질 검사 |
+| ESLint | 코드 품질 |
 | Git | 버전 관리 |
+| circom CLI | 회로 컴파일 |
+| snarkjs CLI | 증명 생성 |
 
 ## Network Configuration
 
-| Network | Chain ID | Purpose |
-|---------|----------|---------|
-| Ethereum Sepolia | 11155111 | 테스트넷 |
-| Ethereum Mainnet | 1 | 메인넷 (참조용) |
+| Network | Chain ID | RPC |
+|---------|----------|-----|
+| Sepolia | 11155111 | https://sepolia.drpc.org |
 
 ## Dependencies
 
-### package.json 주요 의존성
+### package.json
 
 ```json
 {
@@ -109,43 +214,55 @@ export const config = createConfig({
     "@types/react": "^18.2.0",
     "@vitejs/plugin-react": "^4.x",
     "typescript": "^5.x",
-    "vite": "^5.x"
+    "vite": "^5.x",
+    "hardhat": "^2.x"
   }
 }
+```
+
+## Circuit Compilation (Optional)
+
+```bash
+# Install circom
+curl -Ls https://scrypt.io/scripts/circom.sh | sh
+
+# Compile circuit
+cd circuits
+circom PrivateVoting.circom --r1cs --wasm --sym -o build/
+
+# Generate proving key (Powers of Tau required)
+snarkjs groth16 setup build/PrivateVoting.r1cs pot_final.ptau build/PrivateVoting.zkey
+
+# Export verifier
+snarkjs zkey export verifier build/PrivateVoting.zkey build/Verifier.sol
 ```
 
 ## Browser Support
 
 | Browser | Support |
 |---------|---------|
-| Chrome | ✅ 권장 |
-| Firefox | ✅ 지원 |
-| Safari | ✅ 지원 |
-| Edge | ✅ 지원 |
+| Chrome | Recommended |
+| Firefox | Supported |
+| Safari | Supported |
+| Edge | Supported |
 
-**요구사항**: Web3 지갑 확장 프로그램 (MetaMask 등)
+**Requirement**: Web3 wallet extension (MetaMask recommended)
 
-## Smart Contract
+## File Structure
 
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Solidity | 0.8.24 | 스마트 컨트랙트 언어 |
-| Foundry | 1.x | 컨트랙트 개발/배포 도구 |
-
-### Contract: PrivateVoting.sol
-
-```solidity
-// 주요 함수
-function createProposal(string _title, string _description, uint256 _duration)
-function submitVoteCommitment(uint256 _proposalId, bytes32 _commitment, uint256 _votingPower)
 ```
-
-## Future Tech (Production)
-
-프로덕션 구현 시 추가될 기술:
-
-| Technology | Purpose |
-|------------|---------|
-| Circom | ZK Circuit 작성 |
-| snarkjs | ZK Proof 생성/검증 |
-| IPFS | 분산 저장소 |
+zk-dex-d1-private-voting/
+├── circuits/                 # ZK Circuits
+│   ├── PrivateVoting.circom  # D1 spec circuit
+│   └── compile.sh            # Compilation script
+├── contracts/                # Smart Contracts
+│   └── PrivateVoting.sol     # Commit-reveal contract
+├── src/                      # Frontend
+│   ├── App.tsx               # Main component
+│   ├── zkproof.ts            # ZK proof module
+│   ├── contract.ts           # ABI + address
+│   └── wagmi.ts              # Wallet config
+├── test/                     # Tests
+│   └── PrivateVoting.test.ts
+└── docs/                     # Documentation
+```
