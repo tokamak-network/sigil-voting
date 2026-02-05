@@ -36,17 +36,22 @@ template MerkleProof(levels) {
     signal hashes[levels + 1];
     hashes[0] <== leaf;
 
+    // Intermediate signals for MUX selection
+    signal left[levels];
+    signal right[levels];
+
     for (var i = 0; i < levels; i++) {
         hashers[i] = Poseidon(2);
 
-        // indexBits.out[i] == 0 means leaf is on left
-        // indexBits.out[i] == 1 means leaf is on right
-        var isRight = indexBits.out[i];
-        var left = (1 - isRight) * hashes[i] + isRight * pathElements[i];
-        var right = isRight * hashes[i] + (1 - isRight) * pathElements[i];
+        // indexBits.out[i] == 0 means leaf is on left, sibling on right
+        // indexBits.out[i] == 1 means leaf is on right, sibling on left
+        // Using: left = hash + bit * (sibling - hash)
+        //        right = sibling + bit * (hash - sibling)
+        left[i] <== hashes[i] + indexBits.out[i] * (pathElements[i] - hashes[i]);
+        right[i] <== pathElements[i] + indexBits.out[i] * (hashes[i] - pathElements[i]);
 
-        hashers[i].inputs[0] <== left;
-        hashers[i].inputs[1] <== right;
+        hashers[i].inputs[0] <== left[i];
+        hashers[i].inputs[1] <== right[i];
         hashes[i + 1] <== hashers[i].out;
     }
 

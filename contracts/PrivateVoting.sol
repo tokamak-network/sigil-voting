@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
+import "./PoseidonT5.sol";
+
 /**
  * @title PrivateVoting (D1 Spec)
  * @dev Zero-knowledge commit-reveal voting with hidden ballot choices
@@ -201,7 +203,9 @@ contract PrivateVoting {
      * @param _commitment Vote commitment hash(choice, voteSalt, proposalId)
      * @param _votingPower Voting power (verified in ZK proof)
      * @param _nullifier Nullifier to prevent double voting
-     * @param _proof ZK proof [pA, pB, pC]
+     * @param _pA Groth16 proof point A
+     * @param _pB Groth16 proof point B
+     * @param _pC Groth16 proof point C
      */
     function commitVote(
         uint256 _proposalId,
@@ -283,9 +287,8 @@ contract PrivateVoting {
         if (_choice > CHOICE_ABSTAIN) revert InvalidChoice();
 
         // Verify reveal per D1 spec: commitment = hash(choice, votingPower, proposalId, voteSalt)
-        // For on-chain verification, we use keccak256 as approximation
-        // In production, use a Poseidon hasher contract
-        uint256 computedCommitment = uint256(keccak256(abi.encodePacked(_choice, vc.votingPower, _proposalId, _voteSalt)));
+        // Using Poseidon hash (same as ZK circuit) for compatibility
+        uint256 computedCommitment = PoseidonT5.hash([_choice, vc.votingPower, _proposalId, _voteSalt]);
 
         if (computedCommitment != vc.commitment) revert InvalidReveal();
 
