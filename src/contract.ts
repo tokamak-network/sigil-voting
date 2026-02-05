@@ -4,9 +4,9 @@
  * Based on: https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d1-private-voting.md
  */
 
-// Contract addresses (to be updated after deployment)
-export const PRIVATE_VOTING_ADDRESS = '0x0000000000000000000000000000000000000000' as const // TODO: Deploy
-export const VERIFIER_ADDRESS = '0x0000000000000000000000000000000000000000' as const // TODO: Deploy
+// Contract addresses (Sepolia Testnet) - Updated with Poseidon hash support
+export const PRIVATE_VOTING_ADDRESS = '0xC4e1D6f22633224Df80245c71cf86118E7399f93' as const
+export const VERIFIER_ADDRESS = '0x6BA110D76df5aAB3501dca0cc52f64f46BC1eB4f' as const
 
 // Vote choices matching spec
 export const CHOICE_AGAINST = 0n

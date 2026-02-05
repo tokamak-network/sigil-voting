@@ -8,6 +8,18 @@
 
 ---
 
+## 테스트 상태
+
+```
+28 tests passed, 0 failed
+├── Contract Logic Tests: 24 passed
+└── Real ZK Proof Tests:   4 passed
+```
+
+**실제 Groth16 proof 생성 및 온체인 검증 완료**
+
+---
+
 ## D1 스펙 준수
 
 이 프로젝트는 [zkDEX D1 Private Voting 스펙](https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d1-private-voting.md)을 **정확히** 구현합니다.
@@ -26,7 +38,7 @@
 
 ### ZK 회로 (circuits/PrivateVoting.circom)
 
-**제약 수**: ~150K constraints
+**제약 수**: 16,620 constraints (non-linear: 9,732 / linear: 6,888)
 **Merkle Tree 깊이**: 20 levels (~1M leaves 지원)
 
 #### 공개 입력값 (4개, D1 스펙 준수)
@@ -115,24 +127,35 @@ interface IVerifier {
 ```
 zk-dex-d1-private-voting/
 ├── circuits/
-│   ├── PrivateVoting.circom   # D1 스펙 ZK 회로
-│   └── compile.sh             # 컴파일 스크립트
+│   ├── PrivateVoting.circom      # D1 스펙 ZK 회로
+│   ├── build/
+│   │   ├── PrivateVoting.r1cs    # 컴파일된 제약조건
+│   │   ├── PrivateVoting_js/     # WASM witness 계산기
+│   │   ├── PrivateVoting_final.zkey  # Proving key
+│   │   ├── verification_key.json # Verification key
+│   │   ├── Verifier.sol          # 생성된 Solidity verifier
+│   │   ├── proof.json            # 생성된 proof
+│   │   ├── public.json           # Public signals
+│   │   └── generate_input.js     # 테스트 입력 생성기
+│   └── compile.sh
 ├── contracts/
-│   └── PrivateVoting.sol      # 커밋-리빌 컨트랙트
-├── src/
-│   ├── App.tsx                # 메인 UI (커밋-리빌 플로우)
-│   ├── App.css                # 스타일
-│   ├── contract.ts            # ABI & 주소
-│   ├── zkproof.ts             # ZK 증명 모듈
-│   └── wagmi.ts               # 지갑 설정
+│   ├── PrivateVoting.sol         # 커밋-리빌 컨트랙트
+│   └── Groth16Verifier.sol       # 온체인 verifier
 ├── test/
-│   └── PrivateVoting.test.ts  # 컨트랙트 테스트
+│   ├── PrivateVoting.t.sol       # 컨트랙트 테스트 (24개)
+│   └── RealProof.t.sol           # 실제 ZK proof 테스트 (4개)
+├── src/
+│   ├── App.tsx                   # 메인 UI
+│   ├── App.css                   # 스타일
+│   ├── contract.ts               # ABI & 주소
+│   ├── zkproof.ts                # ZK 증명 모듈
+│   └── wagmi.ts                  # 지갑 설정
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── TECH_STACK.md
 │   └── TESTING.md
 ├── README.md
-└── PROJECT_INFO.md            # 이 파일
+└── PROJECT_INFO.md               # 이 파일
 ```
 
 ---
@@ -158,27 +181,78 @@ cd circuits
 - [circom 2.1.6+](https://docs.circom.io/getting-started/installation/)
 - [snarkjs](https://github.com/iden3/snarkjs)
 
-### 컨트랙트 테스트
+### 컨트랙트 테스트 (Foundry)
 
 ```bash
-npx hardhat test
+# Install Foundry
+curl -L https://foundry.paradigm.xyz | bash
+foundryup
+
+# Run all 28 tests
+forge test -vv
+```
+
+### ZK Proof 생성 및 검증
+
+```bash
+cd circuits/build
+
+# Generate valid inputs
+node generate_input.js > input.json
+
+# Generate witness
+node PrivateVoting_js/generate_witness.js PrivateVoting_js/PrivateVoting.wasm input.json witness.wtns
+
+# Generate proof
+snarkjs groth16 prove PrivateVoting_final.zkey witness.wtns proof.json public.json
+
+# Verify (off-chain)
+snarkjs groth16 verify verification_key.json public.json proof.json
+# Output: [INFO] snarkJS: OK!
 ```
 
 ---
 
 ## 스펙 대조표
 
-| D1 스펙 항목 | 구현 상태 | 파일 |
-|-------------|----------|------|
-| 4 public inputs | ✅ | circuit, contract |
-| Token note hash (5 params) | ✅ | circuit:95-100 |
-| 20-level Merkle proof | ✅ | circuit:25-54 |
-| Baby Jubjub key derivation | ✅ | circuit:56-67 |
-| Power matching | ✅ | circuit:128 |
-| Choice validation (0,1,2) | ✅ | circuit:130-147 |
-| Commitment binding (4 params) | ✅ | circuit:149-158 |
-| Nullifier = hash(sk, proposalId) | ✅ | circuit:160-168 |
-| merkleIndex as single uint | ✅ | circuit:28, 91 |
+| D1 스펙 항목 | 구현 상태 | 검증 방법 |
+|-------------|----------|----------|
+| 4 public inputs | ✅ | Circuit 컴파일, public.json 확인 |
+| Token note hash (5 params) | ✅ | Witness 생성 성공 |
+| 20-level Merkle proof | ✅ | Witness 생성 성공 |
+| Baby Jubjub key derivation | ✅ | circomlibjs로 검증 |
+| Power matching | ✅ | Witness 생성 성공 |
+| Choice validation (0,1,2) | ✅ | 테스트 케이스 |
+| Commitment binding (4 params) | ✅ | Witness 생성 성공 |
+| Nullifier = hash(sk, proposalId) | ✅ | 테스트 케이스 |
+| merkleIndex as single uint | ✅ | Circuit 컴파일 |
+| **Groth16 proof 생성** | ✅ | snarkjs prove |
+| **오프체인 검증** | ✅ | snarkjs verify → OK |
+| **온체인 검증** | ✅ | Solidity verifier 테스트 |
+
+---
+
+## 테스트 상세
+
+### Contract Logic Tests (24개)
+
+| 카테고리 | 테스트 수 | 내용 |
+|---------|---------|------|
+| Merkle Root | 2 | 등록, 다중 등록 |
+| Proposal | 3 | 생성, 상세, 잘못된 root 거부 |
+| Commit Phase | 6 | 커밋, nullifier 중복 방지, proof 검증 |
+| Reveal Phase | 9 | For/Against/Abstain 공개, 검증 |
+| Phase | 3 | Commit/Reveal/Ended 전환 |
+| Integration | 1 | 전체 플로우 (3명 투표, 집계) |
+
+### Real ZK Proof Tests (4개)
+
+| 테스트 | 내용 |
+|-------|------|
+| `test_RealProofVerification` | 실제 proof 온체인 검증 성공 |
+| `test_RejectInvalidProof` | 변조된 proof 거부 |
+| `test_RejectWrongPublicSignals` | 잘못된 public signals 거부 |
+| `test_PublicSignalsMatchD1Spec` | D1 스펙 준수 확인 |
 
 ---
 

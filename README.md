@@ -12,6 +12,24 @@ D1 Private Voting implements the [zkDEX D1 specification](https://github.com/tok
 - **Anti-Coercion**: Voters cannot prove their selection to bribers
 - **Double-Spend Prevention**: Nullifier derived from `hash(sk, proposalId)` prevents reuse
 
+## Test Status
+
+```
+28 tests passed, 0 failed
+├── Contract Logic Tests: 24 passed
+└── Real ZK Proof Tests:   4 passed
+```
+
+| Test Category | Tests | Status |
+|---------------|-------|--------|
+| Merkle Root Registration | 2 | ✅ |
+| Proposal Creation | 3 | ✅ |
+| Commit Phase | 6 | ✅ |
+| Reveal Phase | 9 | ✅ |
+| Phase Transitions | 3 | ✅ |
+| Full Integration | 1 | ✅ |
+| Real Groth16 Proof | 4 | ✅ |
+
 ## Architecture
 
 ```
@@ -37,12 +55,20 @@ D1 Private Voting implements the [zkDEX D1 specification](https://github.com/tok
 
 | Stage | Verification | Description |
 |-------|--------------|-------------|
-| 1 | Token Note | `noteHash = hash(pkX, pkY, noteValue, tokenType, noteSalt)` |
+| 1 | Token Note | `noteHash = Poseidon(pkX, pkY, noteValue, tokenType, noteSalt)` |
 | 2 | Snapshot Inclusion | 20-level Merkle proof of token ownership |
 | 3 | Ownership Proof | Secret key derives public key (Baby Jubjub) |
 | 4 | Power Matching | `votingPower === noteValue` |
 | 5 | Choice Validation | Vote is 0 (against), 1 (for), or 2 (abstain) |
-| 6 | Commitment Binding | `commitment = hash(choice, votingPower, proposalId, voteSalt)` |
+| 6 | Commitment Binding | `commitment = Poseidon(choice, votingPower, proposalId, voteSalt)` |
+
+### Circuit Stats
+
+```
+Constraints: 16,620 (non-linear: 9,732 / linear: 6,888)
+Public Inputs: 4
+Private Inputs: 30
+```
 
 ### Public Inputs (4 as per D1 spec)
 
@@ -53,11 +79,12 @@ votingPower     - Disclosed voting strength
 merkleRoot      - Snapshot eligibility tree root
 ```
 
-## Live Contract
+## Live Contracts
 
-| Network | Address |
-|---------|---------|
-| Sepolia | `0x583e8926F8701a196F182c449dF7BAc4782EF784` |
+| Network | Contract | Address |
+|---------|----------|---------|
+| Sepolia | PrivateVoting | `0xE39b93A5e560F5DBF2E551fA5341E6Ba97Bc5198` |
+| Sepolia | Groth16Verifier | `0xBab35D124355F2F66D36D7D9FC56adD7dc2cE874` |
 
 ## Quick Start
 
@@ -75,33 +102,68 @@ npm run dev
 
 Open http://localhost:5173
 
-### Compile ZK Circuit (Optional)
+### Run Tests
+
+```bash
+# Install Foundry
+curl -L https://foundry.paradigm.xyz | bash
+foundryup
+
+# Run all tests (28 tests)
+forge test -vv
+```
+
+### Compile ZK Circuit
 
 ```bash
 cd circuits
-./compile.sh
+npm install
+circom PrivateVoting.circom --r1cs --wasm --sym -o build/ -l node_modules
 ```
 
-Requires: [circom](https://docs.circom.io/getting-started/installation/), [snarkjs](https://github.com/iden3/snarkjs)
+### Generate & Verify Proof
+
+```bash
+cd circuits/build
+
+# Generate valid inputs
+node generate_input.js > input.json
+
+# Generate witness
+node PrivateVoting_js/generate_witness.js PrivateVoting_js/PrivateVoting.wasm input.json witness.wtns
+
+# Generate proof
+snarkjs groth16 prove PrivateVoting_final.zkey witness.wtns proof.json public.json
+
+# Verify proof
+snarkjs groth16 verify verification_key.json public.json proof.json
+# Output: [INFO] snarkJS: OK!
+```
 
 ## Project Structure
 
 ```
 ├── circuits/
-│   ├── PrivateVoting.circom   # ZK circuit (~150K constraints)
-│   └── compile.sh             # Circuit compilation script
+│   ├── PrivateVoting.circom      # ZK circuit (D1 spec)
+│   ├── build/
+│   │   ├── PrivateVoting.r1cs    # Compiled constraints
+│   │   ├── PrivateVoting_js/     # WASM witness calculator
+│   │   ├── PrivateVoting_final.zkey  # Proving key
+│   │   ├── verification_key.json # Verification key
+│   │   ├── Verifier.sol          # Generated Solidity verifier
+│   │   └── generate_input.js     # Test input generator
+│   └── compile.sh
 ├── contracts/
-│   └── PrivateVoting.sol      # Commit-reveal voting contract
+│   ├── PrivateVoting.sol         # Commit-reveal voting contract
+│   └── Groth16Verifier.sol       # On-chain verifier
+├── test/
+│   ├── PrivateVoting.t.sol       # Contract tests (24)
+│   └── RealProof.t.sol           # Real ZK proof tests (4)
 ├── src/
-│   ├── App.tsx                # Main application (commit-reveal UI)
-│   ├── App.css                # Styles
-│   ├── contract.ts            # Contract ABI & address
-│   ├── zkproof.ts             # ZK proof generation module
-│   └── wagmi.ts               # Wallet configuration
+│   ├── App.tsx                   # Frontend
+│   ├── zkproof.ts                # ZK proof module
+│   └── contract.ts               # Contract ABI
 └── docs/
-    ├── ARCHITECTURE.md
-    ├── TECH_STACK.md
-    └── TESTING.md
 ```
 
 ## How It Works
@@ -119,7 +181,7 @@ Requires: [circom](https://docs.circom.io/getting-started/installation/), [snark
 ### Reveal Phase
 
 1. After commit phase ends, reveal choice and salt
-2. Contract verifies: `hash(choice, votingPower, proposalId, voteSalt) == commitment`
+2. Contract verifies: `Poseidon(choice, votingPower, proposalId, voteSalt) == commitment`
 3. Vote is tallied
 
 ### Privacy Guarantees
@@ -131,10 +193,21 @@ Requires: [circom](https://docs.circom.io/getting-started/installation/), [snark
 | Nullifier | Secret key |
 | Merkle root | Merkle path |
 
+## Gas Costs
+
+| Function | Gas | Description |
+|----------|-----|-------------|
+| commitVote | ~207,000 | Submit ZK proof + commitment |
+| revealVote | ~100,000 | Reveal choice + verify |
+| **Total per vote** | **~307,000** | Complete voting cycle |
+
+*Measured on Ethereum Sepolia (gas price varies)*
+
 ## Tech Stack
 
 - **ZK Circuit**: Circom 2.1.6, Groth16
 - **Cryptography**: Poseidon hash, Baby Jubjub curve
+- **Testing**: Foundry (forge)
 - **Frontend**: React, TypeScript, Vite
 - **Web3**: wagmi, viem
 - **Contract**: Solidity 0.8.24
@@ -143,6 +216,9 @@ Requires: [circom](https://docs.circom.io/getting-started/installation/), [snark
 ## Requirements
 
 - Node.js 18+
+- Foundry (for testing)
+- circom 2.1.6+ (for circuit compilation)
+- snarkjs (for proof generation)
 - MetaMask wallet
 - Sepolia ETH (for gas fees)
 

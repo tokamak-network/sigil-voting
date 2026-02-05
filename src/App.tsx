@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useAccount, useConnect, useDisconnect, useSwitchChain, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useAccount, useConnect, useDisconnect, useSwitchChain, useWriteContract, useWaitForTransactionReceipt, useReadContract, useReadContracts } from 'wagmi'
 import { injected } from 'wagmi/connectors'
 import { sepolia } from './wagmi'
 import { PRIVATE_VOTING_ADDRESS, PRIVATE_VOTING_ABI, CHOICE_FOR, CHOICE_AGAINST, CHOICE_ABSTAIN } from './contract'
@@ -15,6 +15,7 @@ import {
   generateMerkleProof,
   formatBigInt,
   getKeyInfo,
+  computeNullifier,
   type KeyPair,
   type TokenNote,
   type VoteData,
@@ -72,13 +73,26 @@ function App() {
   // ZK State
   const [keyPair, setKeyPair] = useState<KeyPair | null>(null)
   const [tokenNote, setTokenNote] = useState<TokenNote | null>(null)
-  const [votingPower, setVotingPower] = useState(350n) // Demo voting power
+  const votingPower = 350n // Demo voting power
 
-  // Voting State
+  // Voting State - using bigint VoteChoice directly
   const [selectedChoice, setSelectedChoice] = useState<VoteChoice | null>(null)
   const [votingPhase, setVotingPhase] = useState<'select' | 'generating' | 'submitting' | 'committed' | 'revealing' | 'revealed'>('select')
   const [proofProgress, setProofProgress] = useState<ProofGenerationProgress | null>(null)
   const [currentVoteData, setCurrentVoteData] = useState<VoteData | null>(null)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
+
+  // Create Proposal State
+  const [newProposalTitle, setNewProposalTitle] = useState('')
+  const [newProposalDescription, setNewProposalDescription] = useState('')
+  const [isCreatingProposal, setIsCreatingProposal] = useState(false)
+  const [createProposalStep, setCreateProposalStep] = useState<'idle' | 'registering' | 'waiting' | 'creating' | 'success' | 'error'>('idle')
+  const [createProposalError, setCreateProposalError] = useState<string | null>(null)
+
+  // Already voted state
+  const [hasAlreadyVoted, setHasAlreadyVoted] = useState(false)
+  const [checkingVoteStatus, setCheckingVoteStatus] = useState(false)
 
   // Initialize ZK identity on connect
   useEffect(() => {
@@ -95,44 +109,94 @@ function App() {
     }
   }, [isConnected, keyPair, votingPower])
 
-  // Demo proposals (in production, load from contract)
+  // Load proposals from on-chain contract
+  // Read proposal count from contract
+  const { data: proposalCount, refetch: refetchProposalCount } = useReadContract({
+    address: PRIVATE_VOTING_ADDRESS,
+    abi: PRIVATE_VOTING_ABI,
+    functionName: 'proposalCount',
+  })
+
+  // Generate contract calls for all proposals
+  const proposalCalls = proposalCount && Number(proposalCount) > 0
+    ? Array.from({ length: Number(proposalCount) }, (_, i) => ({
+        address: PRIVATE_VOTING_ADDRESS as `0x${string}`,
+        abi: PRIVATE_VOTING_ABI,
+        functionName: 'getProposal' as const,
+        args: [BigInt(i + 1)],
+      }))
+    : []
+
+  // Read all proposals
+  const { data: proposalsData, refetch: refetchProposals } = useReadContracts({
+    contracts: proposalCalls,
+  })
+
+  // Convert on-chain data to Proposal type
   useEffect(() => {
-    const demoProposals: Proposal[] = [
-      {
-        id: '1',
-        title: 'Increase Treasury Allocation',
-        description: 'Proposal to increase treasury allocation from 10% to 15% of protocol fees.',
-        proposer: '0x1234...5678',
-        merkleRoot: DEMO_MERKLE_ROOT,
-        endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-        revealEndTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
-        forVotes: 0,
-        againstVotes: 0,
-        abstainVotes: 0,
-        totalCommitments: 12,
-        revealedVotes: 0,
-        phase: 'commit',
-        status: 'active',
-      },
-      {
-        id: '2',
-        title: 'Add New Liquidity Pool',
-        description: 'Add ETH/USDC liquidity pool to the protocol.',
-        proposer: '0xabcd...ef01',
-        merkleRoot: DEMO_MERKLE_ROOT,
-        endTime: new Date(Date.now() - 1 * 60 * 60 * 1000),
-        revealEndTime: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
-        forVotes: 0,
-        againstVotes: 0,
-        abstainVotes: 0,
-        totalCommitments: 45,
-        revealedVotes: 23,
-        phase: 'reveal',
-        status: 'reveal',
-      },
-    ]
-    setProposals(demoProposals)
-  }, [])
+    if (proposalsData && proposalsData.length > 0) {
+      const loadedProposals: Proposal[] = proposalsData
+        .filter((result): result is { status: 'success'; result: unknown[] } =>
+          result.status === 'success' && result.result !== undefined
+        )
+        .map((result) => {
+          const data = result.result as [
+            bigint, string, string, string, bigint, bigint, bigint,
+            bigint, bigint, bigint, bigint, bigint, number
+          ]
+          const [
+            id, title, description, proposer, merkleRoot, endTime, revealEndTime,
+            forVotes, againstVotes, abstainVotes, totalCommitments, revealedVotes, phaseNum
+          ] = data
+
+          const now = Date.now()
+          const endTimeMs = Number(endTime) * 1000
+          const revealEndTimeMs = Number(revealEndTime) * 1000
+
+          let phase: ProposalPhase
+          if (phaseNum === 0 || now < endTimeMs) {
+            phase = 'commit'
+          } else if (phaseNum === 1 || now < revealEndTimeMs) {
+            phase = 'reveal'
+          } else {
+            phase = 'ended'
+          }
+
+          let status: ProposalStatus
+          if (phase === 'commit') {
+            status = 'active'
+          } else if (phase === 'reveal') {
+            status = 'reveal'
+          } else {
+            status = Number(forVotes) > Number(againstVotes) ? 'passed' : 'defeated'
+          }
+
+          return {
+            id: id.toString(),
+            title,
+            description,
+            proposer,
+            merkleRoot,
+            endTime: new Date(endTimeMs),
+            revealEndTime: new Date(revealEndTimeMs),
+            forVotes: Number(forVotes),
+            againstVotes: Number(againstVotes),
+            abstainVotes: Number(abstainVotes),
+            totalCommitments: Number(totalCommitments),
+            revealedVotes: Number(revealedVotes),
+            phase,
+            status,
+          }
+        })
+      setProposals(loadedProposals)
+    }
+  }, [proposalsData])
+
+  // Refresh proposals after transaction
+  const refreshProposals = useCallback(() => {
+    refetchProposalCount()
+    refetchProposals()
+  }, [refetchProposalCount, refetchProposals])
 
   const handleSwitchNetwork = async () => {
     try {
@@ -192,69 +256,156 @@ function App() {
     }
   }
 
-  const openProposal = (proposal: Proposal) => {
+  // Calculate vote percentages
+  const getVotePercentages = (proposal: Proposal) => {
+    const total = proposal.forVotes + proposal.againstVotes + proposal.abstainVotes
+    if (total === 0) return { for: 0, against: 0, abstain: 0 }
+    return {
+      for: Math.round((proposal.forVotes / total) * 100),
+      against: Math.round((proposal.againstVotes / total) * 100),
+      abstain: Math.round((proposal.abstainVotes / total) * 100)
+    }
+  }
+
+  // Show toast notification
+  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 4000)
+  }
+
+  // Get choice label
+  const getChoiceLabel = (choice: VoteChoice | null) => {
+    if (choice === CHOICE_FOR) return 'For'
+    if (choice === CHOICE_AGAINST) return 'Against'
+    if (choice === CHOICE_ABSTAIN) return 'Abstain'
+    return 'None'
+  }
+
+  const openProposal = async (proposal: Proposal) => {
     setSelectedProposal(proposal)
     setCurrentPage('proposal-detail')
     setVotingPhase('select')
     setSelectedChoice(null)
     setProofProgress(null)
     setCurrentVoteData(null)
+    setHasAlreadyVoted(false)
 
     // Check if we have stored vote data for reveal
     const storedVote = getVoteForReveal(BigInt(proposal.id))
     if (storedVote && proposal.phase === 'reveal') {
       setVotingPhase('committed')
     }
+
+    // Check if user has already voted on-chain (via nullifier)
+    if (keyPair && proposal.phase === 'commit') {
+      setCheckingVoteStatus(true)
+      try {
+        const nullifier = computeNullifier(keyPair.sk, BigInt(proposal.id))
+        // Check on-chain if nullifier is already used
+        const { createPublicClient, http } = await import('viem')
+        const client = createPublicClient({
+          chain: sepolia,
+          transport: http('https://ethereum-sepolia-rpc.publicnode.com'),
+        })
+        const isUsed = await client.readContract({
+          address: PRIVATE_VOTING_ADDRESS,
+          abi: PRIVATE_VOTING_ABI,
+          functionName: 'isNullifierUsed',
+          args: [BigInt(proposal.id), nullifier],
+        }) as boolean
+        setHasAlreadyVoted(isUsed)
+        if (isUsed) {
+          setVotingPhase('committed')
+        }
+      } catch (error) {
+        console.error('Failed to check vote status:', error)
+      } finally {
+        setCheckingVoteStatus(false)
+      }
+    }
+  }
+
+  // Open confirmation modal before voting
+  const openVoteConfirmation = () => {
+    if (!selectedChoice) return
+    setShowConfirmModal(true)
   }
 
   // Commit Phase: Generate ZK proof and submit commitment
   const handleCommitVote = useCallback(async () => {
     if (!selectedChoice || !selectedProposal || !keyPair || !tokenNote) return
 
+    setShowConfirmModal(false)
     setVotingPhase('generating')
+    setProofProgress({ stage: 'preparing', progress: 0, message: 'Preparing vote...' })
+
+    // UI가 업데이트될 시간을 줌
+    await new Promise(resolve => setTimeout(resolve, 100))
 
     try {
       // Prepare vote data per D1 spec
       const proposalId = BigInt(selectedProposal.id)
-      const choice = selectedChoice === 'for' ? CHOICE_FOR :
-        selectedChoice === 'against' ? CHOICE_AGAINST : CHOICE_ABSTAIN
+      // selectedChoice is already VoteChoice (bigint: 0n, 1n, 2n)
+      const choice = selectedChoice
 
       // prepareVote now requires votingPower for commitment (D1 spec)
       const voteData = prepareVote(keyPair, choice as VoteChoice, tokenNote.noteValue, proposalId)
       setCurrentVoteData(voteData)
 
-      // Build merkle tree and proof (demo: single note)
+      // Use the proposal's merkle root for proof generation
+      // In production, this would come from a snapshot service
+      // For demo, we use the proposal's registered merkle root
+      const proposalMerkleRoot = selectedProposal.merkleRoot
+
+      // Generate merkle proof for user's note
+      // For demo: single-note tree where the noteHash must equal the merkle root
+      // In production: would fetch proof from snapshot service
       const noteHashes = [tokenNote.noteHash]
-      const { root } = buildMerkleTree(noteHashes)
-      const { path, index } = generateMerkleProof(noteHashes, 0)
+      const { path } = generateMerkleProof(noteHashes, 0)
+
+      console.log('[Vote] Proposal merkle root:', proposalMerkleRoot.toString())
+      console.log('[Vote] User noteHash:', tokenNote.noteHash.toString())
 
       // Generate ZK proof (4 public inputs per D1 spec)
-      const { proof, nullifier } = await generateVoteProof(
+      const { proof, publicSignals, nullifier, commitment } = await generateVoteProof(
         keyPair,
         tokenNote,
         voteData,
-        root,
+        proposalMerkleRoot, // Use proposal's merkle root
         path,
-        index,
+        0,
         setProofProgress
       )
+
+      // Update voteData with actual computed values
+      voteData.commitment = commitment
+      voteData.nullifier = nullifier
+      setCurrentVoteData({ ...voteData, commitment, nullifier })
 
       setVotingPhase('submitting')
 
       // Submit to contract
+      console.log('[Vote] Submitting to contract:', {
+        proposalId: proposalId.toString(),
+        commitment: commitment.toString(),
+        votingPower: tokenNote.noteValue.toString(),
+        nullifier: nullifier.toString(),
+      })
+
       const hash = await writeContractAsync({
         address: PRIVATE_VOTING_ADDRESS,
         abi: PRIVATE_VOTING_ABI,
         functionName: 'commitVote',
         args: [
           proposalId,
-          voteData.commitment,
+          commitment,
           tokenNote.noteValue,
-          voteData.nullifier,
+          nullifier,
           proof.pA,
           proof.pB,
           proof.pC,
         ],
+        gas: BigInt(1000000), // Explicit gas limit
       })
 
       setTxHash(hash)
@@ -262,13 +413,17 @@ function App() {
       // Store vote data for reveal phase
       storeVoteForReveal(proposalId, voteData)
 
+      // Refresh on-chain data
+      await refetchProposals()
+
       setVotingPhase('committed')
+      showToast('Vote committed successfully! ZK proof verified on-chain.', 'success')
     } catch (error) {
       console.error('Commit failed:', error)
       setVotingPhase('select')
-      alert('Vote commit failed. Please try again.')
+      showToast('Vote commit failed. Please try again.', 'error')
     }
-  }, [selectedChoice, selectedProposal, keyPair, tokenNote, writeContractAsync])
+  }, [selectedChoice, selectedProposal, keyPair, tokenNote, writeContractAsync, refetchProposals])
 
   // Reveal Phase: Submit choice and salt
   const handleRevealVote = useCallback(async () => {
@@ -298,13 +453,18 @@ function App() {
       })
 
       setTxHash(hash)
+
+      // Refresh on-chain data to show updated results
+      await refetchProposals()
+
       setVotingPhase('revealed')
+      showToast('Vote revealed! Your choice has been counted.', 'success')
     } catch (error) {
       console.error('Reveal failed:', error)
       setVotingPhase('committed')
-      alert('Vote reveal failed. Please try again.')
+      showToast('Vote reveal failed. Please try again.', 'error')
     }
-  }, [selectedProposal, writeContractAsync])
+  }, [selectedProposal, writeContractAsync, refetchProposals])
 
   const filteredProposals = proposals.filter(p => {
     if (filter === 'all') return true
@@ -315,6 +475,70 @@ function App() {
 
   return (
     <div className="app">
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`toast toast-${toast.type}`}>
+          <span className="toast-icon">
+            {toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}
+          </span>
+          <span className="toast-message">{toast.message}</span>
+          <button className="toast-close" onClick={() => setToast(null)}>×</button>
+        </div>
+      )}
+
+      {/* Vote Confirmation Modal */}
+      {showConfirmModal && selectedProposal && (
+        <div className="modal-overlay" onClick={() => setShowConfirmModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Confirm Your Vote</h3>
+              <button className="modal-close" onClick={() => setShowConfirmModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="confirm-proposal">
+                <span className="confirm-label">Proposal</span>
+                <span className="confirm-value">{selectedProposal.title}</span>
+              </div>
+              <div className="confirm-choice">
+                <span className="confirm-label">Your Choice</span>
+                <span className={`confirm-value choice-${getChoiceLabel(selectedChoice).toLowerCase()}`}>
+                  {selectedChoice === CHOICE_FOR && '👍 '}
+                  {selectedChoice === CHOICE_AGAINST && '👎 '}
+                  {selectedChoice === CHOICE_ABSTAIN && '⏸️ '}
+                  {getChoiceLabel(selectedChoice)}
+                </span>
+              </div>
+              <div className="confirm-power">
+                <span className="confirm-label">Voting Power</span>
+                <span className="confirm-value">{tokenNote?.noteValue.toString() || '0'}</span>
+              </div>
+              <div className="confirm-warning">
+                <span className="warning-icon">⚠️</span>
+                <div className="warning-text">
+                  <strong>ZK Proof Generation</strong>
+                  <p>This process takes 30-60 seconds. Please do not close the browser.</p>
+                </div>
+              </div>
+              <div className="confirm-privacy">
+                <span className="privacy-icon">🔐</span>
+                <div className="privacy-text">
+                  <strong>Privacy Protected</strong>
+                  <p>Your choice is hidden until the reveal phase. No one can see how you voted.</p>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="modal-btn cancel" onClick={() => setShowConfirmModal(false)}>
+                Cancel
+              </button>
+              <button className="modal-btn confirm" onClick={handleCommitVote}>
+                Generate Proof & Vote
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="header">
         <div className="header-left">
@@ -536,6 +760,11 @@ function App() {
                 <h1>Proposals</h1>
                 <p className="page-subtitle">Vote with ZK proofs in commit-reveal phases</p>
               </div>
+              {isConnected && (
+                <button className="create-proposal-btn" onClick={() => setCurrentPage('create-proposal')}>
+                  + Create Proposal
+                </button>
+              )}
             </div>
 
             <div className="filter-bar">
@@ -546,27 +775,205 @@ function App() {
             </div>
 
             <div className="proposals-list">
-              {filteredProposals.map(proposal => (
-                <div key={proposal.id} className="proposal-card" onClick={() => openProposal(proposal)}>
-                  <div className="proposal-card-header">
-                    <span className={`proposal-phase ${getPhaseColor(proposal.phase)}`}>
-                      {getPhaseLabel(proposal.phase)}
-                    </span>
-                    {proposal.phase !== 'ended' && (
-                      <span className="proposal-countdown">
-                        {proposal.phase === 'commit' ? getTimeRemaining(proposal.endTime) : getTimeRemaining(proposal.revealEndTime)}
+              {proposalCount === undefined ? (
+                <div className="empty-proposals">
+                  <p>Loading proposals from Sepolia...</p>
+                </div>
+              ) : filteredProposals.length === 0 ? (
+                <div className="empty-proposals">
+                  <p>No proposals yet. {isConnected ? 'Create the first one!' : 'Connect wallet to create one.'}</p>
+                </div>
+              ) : (
+                filteredProposals.map(proposal => (
+                  <div key={proposal.id} className="proposal-card" onClick={() => openProposal(proposal)}>
+                    <div className="proposal-card-header">
+                      <span className={`proposal-phase ${getPhaseColor(proposal.phase)}`}>
+                        {getPhaseLabel(proposal.phase)}
                       </span>
-                    )}
+                      {proposal.phase !== 'ended' && (
+                        <span className="proposal-countdown">
+                          {proposal.phase === 'commit' ? getTimeRemaining(proposal.endTime) : getTimeRemaining(proposal.revealEndTime)}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="proposal-title">{proposal.title}</h3>
+                    <div className="proposal-stats">
+                      <span>📝 {proposal.totalCommitments} committed</span>
+                      {proposal.phase !== 'commit' && (
+                        <span>✅ {proposal.revealedVotes} revealed</span>
+                      )}
+                    </div>
                   </div>
-                  <h3 className="proposal-title">{proposal.title}</h3>
-                  <div className="proposal-stats">
-                    <span>📝 {proposal.totalCommitments} committed</span>
-                    {proposal.phase !== 'commit' && (
-                      <span>✅ {proposal.revealedVotes} revealed</span>
-                    )}
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Create Proposal */}
+        {currentPage === 'create-proposal' && (
+          <div className="create-proposal-page">
+            <button className="back-btn" onClick={() => setCurrentPage('proposals')}>← Back</button>
+
+            <div className="create-proposal-header">
+              <h1>Create Proposal</h1>
+              <p>Create a new governance proposal for ZK private voting</p>
+            </div>
+
+            <div className="create-proposal-form">
+              <div className="form-group">
+                <label>Title</label>
+                <input
+                  type="text"
+                  value={newProposalTitle}
+                  onChange={(e) => setNewProposalTitle(e.target.value)}
+                  placeholder="Enter proposal title"
+                  className="form-input"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Description</label>
+                <textarea
+                  value={newProposalDescription}
+                  onChange={(e) => setNewProposalDescription(e.target.value)}
+                  placeholder="Describe your proposal in detail"
+                  className="form-textarea"
+                  rows={6}
+                />
+              </div>
+
+              <div className="form-info">
+                <div className="info-item">
+                  <span className="info-icon">⏱️</span>
+                  <div>
+                    <strong>Commit Phase: 3 days</strong>
+                    <p>Voters submit hidden commitments</p>
                   </div>
                 </div>
-              ))}
+                <div className="info-item">
+                  <span className="info-icon">🔓</span>
+                  <div>
+                    <strong>Reveal Phase: 1 day</strong>
+                    <p>Voters reveal their choices</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress UI */}
+              {createProposalStep !== 'idle' && createProposalStep !== 'error' && (
+                <div className="create-progress">
+                  <div className="progress-steps">
+                    <div className={`progress-step ${createProposalStep === 'registering' ? 'active' : createProposalStep !== 'idle' ? 'done' : ''}`}>
+                      <div className="step-indicator">{createProposalStep === 'registering' ? <span className="spinner"></span> : '✓'}</div>
+                      <span>Register Merkle Root</span>
+                    </div>
+                    <div className={`progress-step ${createProposalStep === 'waiting' ? 'active' : ['creating', 'success'].includes(createProposalStep) ? 'done' : ''}`}>
+                      <div className="step-indicator">{createProposalStep === 'waiting' ? <span className="spinner"></span> : ['creating', 'success'].includes(createProposalStep) ? '✓' : '2'}</div>
+                      <span>Confirm Transaction</span>
+                    </div>
+                    <div className={`progress-step ${createProposalStep === 'creating' ? 'active' : createProposalStep === 'success' ? 'done' : ''}`}>
+                      <div className="step-indicator">{createProposalStep === 'creating' ? <span className="spinner"></span> : createProposalStep === 'success' ? '✓' : '3'}</div>
+                      <span>Create Proposal</span>
+                    </div>
+                  </div>
+                  {createProposalStep === 'registering' && <p className="progress-message">Please approve the Merkle Root registration in MetaMask.</p>}
+                  {createProposalStep === 'waiting' && <p className="progress-message">Waiting for transaction to be included in block...</p>}
+                  {createProposalStep === 'creating' && <p className="progress-message">Please approve the Proposal creation in MetaMask.</p>}
+                  {createProposalStep === 'success' && <p className="progress-message success">Proposal created successfully!</p>}
+                </div>
+              )}
+
+              {/* Error UI */}
+              {createProposalError && (
+                <div className="create-error">
+                  <p>{createProposalError}</p>
+                  <button onClick={() => { setCreateProposalError(null); setCreateProposalStep('idle'); }}>Try Again</button>
+                </div>
+              )}
+
+              <button
+                className="submit-proposal-btn"
+                disabled={!newProposalTitle || !newProposalDescription || isCreatingProposal || !isConnected || !isCorrectChain}
+                onClick={async () => {
+                  if (!isConnected || !isCorrectChain) return
+
+                  setIsCreatingProposal(true)
+                  setCreateProposalError(null)
+                  setCreateProposalStep('registering')
+
+                  try {
+                    // For demo: use user's noteHash as merkle root (single-leaf tree)
+                    // In production, this would be a snapshot of all token holders
+                    if (!tokenNote || tokenNote.noteHash === 0n) {
+                      throw new Error('Token note not initialized. Please refresh and try again.')
+                    }
+
+                    const userMerkleRoot = tokenNote.noteHash
+                    console.log('[Proposal] Using user noteHash as merkle root:', userMerkleRoot.toString())
+
+                    // Step 1: Register the merkle root first
+                    await writeContractAsync({
+                      address: PRIVATE_VOTING_ADDRESS,
+                      abi: PRIVATE_VOTING_ABI,
+                      functionName: 'registerMerkleRoot',
+                      args: [userMerkleRoot],
+                      gas: BigInt(100000),
+                    })
+
+                    // Wait for merkle root registration to be confirmed
+                    setCreateProposalStep('waiting')
+                    await new Promise(resolve => setTimeout(resolve, 15000))
+
+                    // Step 2: Create the proposal
+                    setCreateProposalStep('creating')
+                    const votingDuration = BigInt(3 * 24 * 60 * 60) // 3 days in seconds
+                    const revealDuration = BigInt(1 * 24 * 60 * 60) // 1 day in seconds
+
+                    const hash = await writeContractAsync({
+                      address: PRIVATE_VOTING_ADDRESS,
+                      abi: PRIVATE_VOTING_ABI,
+                      functionName: 'createProposal',
+                      args: [
+                        newProposalTitle,
+                        newProposalDescription,
+                        userMerkleRoot, // Use user's noteHash as merkle root
+                        votingDuration,
+                        revealDuration,
+                      ],
+                      gas: BigInt(500000),
+                    })
+
+                    setTxHash(hash)
+                    setCreateProposalStep('success')
+
+                    // Immediately refresh proposals list
+                    await refreshProposals()
+                    showToast('Proposal created successfully!', 'success')
+
+                    // Clear form and redirect after short delay
+                    setTimeout(() => {
+                      setNewProposalTitle('')
+                      setNewProposalDescription('')
+                      setCreateProposalStep('idle')
+                      setCurrentPage('proposals')
+                    }, 1500)
+
+                  } catch (error) {
+                    console.error('Failed to create proposal:', error)
+                    setCreateProposalStep('error')
+                    setCreateProposalError((error as Error).message || 'Failed to create proposal.')
+                  } finally {
+                    setIsCreatingProposal(false)
+                  }
+                }}
+              >
+                {isCreatingProposal ? 'Creating...' : 'Create Proposal'}
+              </button>
+
+              <p className="demo-notice">
+                Proposals are created on Sepolia testnet. Make sure you have Sepolia ETH.
+              </p>
             </div>
           </div>
         )}
@@ -613,6 +1020,21 @@ function App() {
                         <p>Connect wallet to vote</p>
                         <button className="connect-btn large" onClick={handleConnect}>Connect Wallet</button>
                       </div>
+                    ) : checkingVoteStatus ? (
+                      <div className="checking-status">
+                        <div className="proof-spinner"></div>
+                        <p>Checking vote status...</p>
+                      </div>
+                    ) : hasAlreadyVoted ? (
+                      <div className="vote-submitted">
+                        <div className="success-icon">✅</div>
+                        <h3>Already Voted</h3>
+                        <p className="success-subtitle">You have already committed a vote for this proposal.</p>
+                        <div className="next-steps">
+                          <h4>Next Steps</h4>
+                          <p>Come back during the <strong>Reveal Phase</strong> to reveal your choice. Your vote won't count until revealed.</p>
+                        </div>
+                      </div>
                     ) : votingPhase === 'select' ? (
                       <>
                         {keyPair && (
@@ -625,22 +1047,22 @@ function App() {
 
                         <div className="vote-options">
                           <button
-                            className={`vote-option for ${selectedChoice === 'for' ? 'selected' : ''}`}
-                            onClick={() => setSelectedChoice('for' as unknown as VoteChoice)}
+                            className={`vote-option for ${selectedChoice === CHOICE_FOR ? 'selected' : ''}`}
+                            onClick={() => setSelectedChoice(CHOICE_FOR)}
                           >
                             <span className="vote-icon">👍</span>
                             <span className="vote-label">For</span>
                           </button>
                           <button
-                            className={`vote-option against ${selectedChoice === 'against' ? 'selected' : ''}`}
-                            onClick={() => setSelectedChoice('against' as unknown as VoteChoice)}
+                            className={`vote-option against ${selectedChoice === CHOICE_AGAINST ? 'selected' : ''}`}
+                            onClick={() => setSelectedChoice(CHOICE_AGAINST)}
                           >
                             <span className="vote-icon">👎</span>
                             <span className="vote-label">Against</span>
                           </button>
                           <button
-                            className={`vote-option abstain ${selectedChoice === 'abstain' ? 'selected' : ''}`}
-                            onClick={() => setSelectedChoice('abstain' as unknown as VoteChoice)}
+                            className={`vote-option abstain ${selectedChoice === CHOICE_ABSTAIN ? 'selected' : ''}`}
+                            onClick={() => setSelectedChoice(CHOICE_ABSTAIN)}
                           >
                             <span className="vote-icon">⏸️</span>
                             <span className="vote-label">Abstain</span>
@@ -658,9 +1080,9 @@ function App() {
                         <button
                           className="submit-vote-btn"
                           disabled={!selectedChoice}
-                          onClick={handleCommitVote}
+                          onClick={openVoteConfirmation}
                         >
-                          Generate Proof & Commit
+                          Continue to Vote
                         </button>
                       </>
                     ) : votingPhase === 'generating' || votingPhase === 'submitting' ? (
@@ -682,17 +1104,38 @@ function App() {
                       <div className="vote-submitted">
                         <div className="success-icon">✅</div>
                         <h3>Vote Committed!</h3>
+                        <p className="success-subtitle">Your ZK proof was verified on-chain</p>
                         <div className="privacy-proof">
                           <div className="privacy-item">
-                            <span className="privacy-label">Nullifier (public)</span>
-                            <code>{currentVoteData ? formatBigInt(currentVoteData.nullifier) : 'N/A'}</code>
+                            <span className="privacy-label">Voting Power</span>
+                            <span className="privacy-value">{tokenNote?.noteValue.toString() || '0'}</span>
                           </div>
                           <div className="privacy-item secret">
-                            <span className="privacy-label">Your choice (secret until reveal)</span>
-                            <span className="secret-choice">Hidden</span>
+                            <span className="privacy-label">Your Choice</span>
+                            <span className="secret-choice">🔐 Hidden until reveal</span>
                           </div>
+                          <div className="privacy-item">
+                            <span className="privacy-label">Nullifier</span>
+                            <code>{currentVoteData ? formatBigInt(currentVoteData.nullifier) : 'N/A'}</code>
+                          </div>
+                          {txHash && (
+                            <div className="privacy-item">
+                              <span className="privacy-label">Transaction</span>
+                              <a
+                                href={`https://sepolia.etherscan.io/tx/${txHash}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="tx-link"
+                              >
+                                View on Etherscan ↗
+                              </a>
+                            </div>
+                          )}
                         </div>
-                        <p className="reveal-reminder">Remember to reveal your vote in the next phase!</p>
+                        <div className="next-steps">
+                          <h4>Next Steps</h4>
+                          <p>Come back during the <strong>Reveal Phase</strong> to reveal your choice. Your vote won't count until revealed.</p>
+                        </div>
                       </div>
                     )}
                   </section>
@@ -788,22 +1231,89 @@ function App() {
                   </div>
                 </div>
 
-                {selectedProposal.phase === 'ended' && (
-                  <div className="sidebar-card">
+                {/* Results hidden during commit and reveal phases - privacy first */}
+                {selectedProposal.phase === 'commit' && (
+                  <div className="sidebar-card results-card">
                     <h3>Results</h3>
+                    <div className="privacy-shield">
+                      <div className="privacy-shield-icon">🔒</div>
+                      <h4>Results Hidden</h4>
+                      <p>Vote results will be revealed after the <strong>reveal phase ends</strong>.</p>
+                      <div className="reveal-progress">
+                        <span className="reveal-count">{selectedProposal.totalCommitments}</span>
+                        <span className="reveal-label">votes committed</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedProposal.phase === 'reveal' && (
+                  <div className="sidebar-card results-card">
+                    <h3>Results</h3>
+                    <div className="privacy-shield">
+                      <div className="privacy-shield-icon">🔒</div>
+                      <h4>Results Hidden</h4>
+                      <p>Vote results are hidden until the <strong>reveal phase ends</strong> to prevent vote influence.</p>
+                      <div className="reveal-progress">
+                        <span className="reveal-count">{selectedProposal.revealedVotes} / {selectedProposal.totalCommitments}</span>
+                        <span className="reveal-label">votes revealed</span>
+                      </div>
+                      <p className="privacy-note">
+                        Participants must reveal their votes before the deadline.
+                        Results will be shown when voting ends.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {selectedProposal.phase === 'ended' && (
+                  <div className="sidebar-card results-card">
+                    <h3>Final Results</h3>
                     <div className="results-breakdown">
-                      <div className="result-row">
-                        <span className="result-label">👍 For</span>
-                        <span className="result-value">{selectedProposal.forVotes}</span>
+                      <div className="result-item">
+                        <div className="result-header">
+                          <span className="result-label">👍 For</span>
+                          <span className="result-stats">
+                            <span className="result-percent">{getVotePercentages(selectedProposal).for}%</span>
+                            <span className="result-count">{selectedProposal.forVotes} votes</span>
+                          </span>
+                        </div>
+                        <div className="result-bar">
+                          <div className="result-bar-fill for" style={{ width: `${getVotePercentages(selectedProposal).for}%` }}></div>
+                        </div>
                       </div>
-                      <div className="result-row">
-                        <span className="result-label">👎 Against</span>
-                        <span className="result-value">{selectedProposal.againstVotes}</span>
+                      <div className="result-item">
+                        <div className="result-header">
+                          <span className="result-label">👎 Against</span>
+                          <span className="result-stats">
+                            <span className="result-percent">{getVotePercentages(selectedProposal).against}%</span>
+                            <span className="result-count">{selectedProposal.againstVotes} votes</span>
+                          </span>
+                        </div>
+                        <div className="result-bar">
+                          <div className="result-bar-fill against" style={{ width: `${getVotePercentages(selectedProposal).against}%` }}></div>
+                        </div>
                       </div>
-                      <div className="result-row">
-                        <span className="result-label">⏸️ Abstain</span>
-                        <span className="result-value">{selectedProposal.abstainVotes}</span>
+                      <div className="result-item">
+                        <div className="result-header">
+                          <span className="result-label">⏸️ Abstain</span>
+                          <span className="result-stats">
+                            <span className="result-percent">{getVotePercentages(selectedProposal).abstain}%</span>
+                            <span className="result-count">{selectedProposal.abstainVotes} votes</span>
+                          </span>
+                        </div>
+                        <div className="result-bar">
+                          <div className="result-bar-fill abstain" style={{ width: `${getVotePercentages(selectedProposal).abstain}%` }}></div>
+                        </div>
                       </div>
+                    </div>
+                    <div className="results-total">
+                      <span>Total Votes</span>
+                      <span>{selectedProposal.forVotes + selectedProposal.againstVotes + selectedProposal.abstainVotes}</span>
+                    </div>
+                    <div className="anonymity-set">
+                      <span className="anonymity-label">Total Committed</span>
+                      <span className="anonymity-value">{selectedProposal.totalCommitments}</span>
                     </div>
                   </div>
                 )}

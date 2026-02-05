@@ -2,246 +2,304 @@
 
 ## Overview
 
-zkDEX D1 Private Voting 테스트 가이드입니다.
+D1 Private Voting 테스트 가이드입니다. 총 28개의 테스트가 모두 통과합니다.
+
+## Test Summary
+
+```
+28 tests passed, 0 failed
+├── PrivateVoting.t.sol: 24 passed (Contract Logic)
+└── RealProof.t.sol:      4 passed (Real ZK Proof)
+```
 
 ## Prerequisites
 
-1. **Node.js 18+** 설치
-2. **Web3 지갑** (MetaMask 권장)
-3. **Sepolia ETH** (가스비용)
+### Required
 
-### Optional (ZK Circuit 컴파일)
+- Node.js 18+
+- Foundry (forge)
 
-4. **circom 2.1.6+** 설치
-5. **snarkjs** 설치
+### Optional (ZK Circuit)
+
+- circom 2.1.6+
+- snarkjs
 
 ## Quick Start
 
-### 1. 개발 서버 실행
-
 ```bash
+# Install Foundry
+curl -L https://foundry.paradigm.xyz | bash
+foundryup
+
+# Run all tests
 cd zk-dex-d1-private-voting
-npm install
-npm run dev
+forge test -vv
 ```
 
-### 2. 브라우저 접속
+## Test Categories
 
-```
-http://localhost:5173
-```
+### 1. Contract Logic Tests (24 tests)
 
-## Test Scenarios
+**File**: `test/PrivateVoting.t.sol`
 
-### Test 1: Wallet Connection
-
-| Step | Action | Expected |
-|------|--------|----------|
-| 1 | "Connect Wallet" 클릭 | 지갑 선택 모달 |
-| 2 | MetaMask 선택 | MetaMask 팝업 |
-| 3 | 연결 승인 | 주소 표시됨 |
-| 4 | 네트워크 확인 | Sepolia |
-
-### Test 2: ZK Key Generation
-
-| Step | Action | Expected |
-|------|--------|----------|
-| 1 | 페이지 로드 | 자동 키 생성 |
-| 2 | 콘솔 확인 | KeyPair 로그 |
-| 3 | LocalStorage 확인 | `zk-vote-secret-key` 저장됨 |
-
-**확인 코드:**
-```javascript
-// Browser console
-localStorage.getItem('zk-vote-secret-key')
-```
-
-### Test 3: Commit Phase
-
-| Step | Action | Expected |
-|------|--------|----------|
-| 1 | 제안 선택 | 상세 페이지 이동 |
-| 2 | 투표 선택 (For/Against/Abstain) | 버튼 하이라이트 |
-| 3 | "Generate ZK Proof" 클릭 | 진행률 표시 |
-| 4 | 증명 완료 | commitment, nullifier 표시 |
-| 5 | "Submit Vote" 클릭 | MetaMask 팝업 |
-| 6 | 트랜잭션 승인 | Etherscan 링크 표시 |
-
-**검증할 데이터:**
-
-```typescript
-// D1 스펙 준수 확인
-commitment = hash(choice, votingPower, proposalId, voteSalt)
-nullifier = hash(sk, proposalId)
-```
-
-### Test 4: Reveal Phase
-
-| Step | Action | Expected |
-|------|--------|----------|
-| 1 | Commit phase 종료 대기 | "Reveal Phase" 표시 |
-| 2 | "Reveal Vote" 클릭 | MetaMask 팝업 |
-| 3 | 트랜잭션 승인 | 투표 집계됨 |
-| 4 | 결과 확인 | For/Against/Abstain 수치 |
-
-### Test 5: Double-Vote Prevention
-
-| Step | Action | Expected |
-|------|--------|----------|
-| 1 | 이미 투표한 제안 선택 | 투표 버튼 비활성화 |
-| 2 | nullifier 재사용 시도 | 트랜잭션 실패 |
-| 3 | 에러 메시지 | "NullifierAlreadyUsed" |
-
-### Test 6: Smart Contract Tests
-
-```bash
-# Hardhat 테스트 실행
-npx hardhat test
-
-# 특정 테스트만 실행
-npx hardhat test test/PrivateVoting.test.ts
-```
-
-**테스트 케이스:**
+#### Merkle Root Tests (2)
 
 | Test | Description |
 |------|-------------|
-| Proposal Creation | 제안 생성 및 merkle root 검증 |
-| Vote Commitment | ZK proof 검증 및 commitment 저장 |
-| Vote Reveal | commitment 검증 및 투표 집계 |
-| Nullifier Check | 중복 투표 방지 |
-| Phase Validation | Commit/Reveal 단계 검증 |
+| `test_RegisterMerkleRoot` | 머클 루트 등록 |
+| `test_RegisterMultipleMerkleRoots` | 다중 머클 루트 등록 |
 
-### Test 7: Circuit Compilation (Optional)
+#### Proposal Tests (3)
+
+| Test | Description |
+|------|-------------|
+| `test_CreateProposal` | 제안 생성 |
+| `test_CreateProposal_WithDetails` | 제안 상세 정보 확인 |
+| `test_RevertWhen_InvalidMerkleRoot` | 잘못된 머클 루트 거부 |
+
+#### Commit Phase Tests (6)
+
+| Test | Description |
+|------|-------------|
+| `test_CommitVote` | 투표 커밋 |
+| `test_CommitVote_UpdatesTotalCommitments` | 커밋 수 업데이트 |
+| `test_RevertWhen_NullifierAlreadyUsed` | Nullifier 중복 사용 방지 |
+| `test_RevertWhen_ZeroVotingPower` | 0 투표권 거부 |
+| `test_RevertWhen_InvalidProof` | 잘못된 증명 거부 |
+| `test_RevertWhen_NotInCommitPhase` | 커밋 단계 아닐 때 거부 |
+
+#### Reveal Phase Tests (9)
+
+| Test | Description |
+|------|-------------|
+| `test_RevealVote_For` | FOR 투표 공개 |
+| `test_RevealVote_Against` | AGAINST 투표 공개 |
+| `test_RevealVote_Abstain` | ABSTAIN 투표 공개 |
+| `test_RevealVote_UpdatesRevealedCount` | 공개 수 업데이트 |
+| `test_RevertWhen_InvalidReveal` | 잘못된 공개 거부 |
+| `test_RevertWhen_AlreadyRevealed` | 중복 공개 방지 |
+| `test_RevertWhen_NotInRevealPhase_TooEarly` | 공개 단계 전 거부 |
+| `test_RevertWhen_NotInRevealPhase_TooLate` | 공개 단계 후 거부 |
+| `test_RevertWhen_InvalidChoice` | 잘못된 선택 거부 |
+
+#### Phase Tests (3)
+
+| Test | Description |
+|------|-------------|
+| `test_GetPhase_Commit` | 커밋 단계 확인 |
+| `test_GetPhase_Reveal` | 공개 단계 확인 |
+| `test_GetPhase_Ended` | 종료 단계 확인 |
+
+#### Integration Test (1)
+
+| Test | Description |
+|------|-------------|
+| `test_FullVotingFlow` | 전체 투표 플로우 (3명 투표, 집계) |
+
+### 2. Real ZK Proof Tests (4 tests)
+
+**File**: `test/RealProof.t.sol`
+
+이 테스트들은 **실제 snarkjs로 생성된 Groth16 proof**를 사용합니다.
+
+| Test | Description |
+|------|-------------|
+| `test_RealProofVerification` | 실제 ZK proof 검증 성공 |
+| `test_RejectInvalidProof` | 변조된 proof 거부 |
+| `test_RejectWrongPublicSignals` | 잘못된 public signals 거부 |
+| `test_PublicSignalsMatchD1Spec` | D1 스펙 준수 확인 |
+
+## ZK Proof Testing
+
+### Circuit Compilation
 
 ```bash
 cd circuits
+npm install circomlib circomlibjs
 
-# 회로 컴파일
-circom PrivateVoting.circom --r1cs --wasm --sym -o build/
+# Compile circuit
+circom PrivateVoting.circom --r1cs --wasm --sym -o build/ -l node_modules
 
-# 제약 조건 수 확인
-snarkjs r1cs info build/PrivateVoting.r1cs
+# Output:
+# non-linear constraints: 9732
+# linear constraints: 6888
+# public inputs: 4
+# private inputs: 30
+```
 
-# Expected: ~150,000 constraints
+### Generate Proving Key
+
+```bash
+cd circuits/build
+
+# Download Powers of Tau
+curl -L -o pot15_final.ptau https://storage.googleapis.com/zkevm/ptau/powersOfTau28_hez_final_15.ptau
+
+# Setup
+snarkjs groth16 setup PrivateVoting.r1cs pot15_final.ptau PrivateVoting_0000.zkey
+
+# Finalize with beacon
+snarkjs zkey beacon PrivateVoting_0000.zkey PrivateVoting_final.zkey 0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f 10 -n="Final Beacon"
+
+# Export verification key
+snarkjs zkey export verificationkey PrivateVoting_final.zkey verification_key.json
+
+# Export Solidity verifier
+snarkjs zkey export solidityverifier PrivateVoting_final.zkey Verifier.sol
+```
+
+### Generate Valid Test Inputs
+
+```bash
+# generate_input.js uses circomlibjs to compute:
+# - Baby Jubjub key derivation: sk → (pkX, pkY)
+# - Note hash: Poseidon(pkX, pkY, noteValue, tokenType, noteSalt)
+# - Merkle root: 20-level tree with single leaf
+# - Vote commitment: Poseidon(choice, votingPower, proposalId, voteSalt)
+
+node generate_input.js > input.json
+```
+
+### Generate & Verify Proof
+
+```bash
+# Generate witness
+node PrivateVoting_js/generate_witness.js PrivateVoting_js/PrivateVoting.wasm input.json witness.wtns
+
+# Generate proof
+snarkjs groth16 prove PrivateVoting_final.zkey witness.wtns proof.json public.json
+
+# Verify off-chain
+snarkjs groth16 verify verification_key.json public.json proof.json
+# Output: [INFO] snarkJS: OK!
+
+# Export calldata for on-chain verification
+snarkjs zkey export soliditycalldata public.json proof.json
+```
+
+### On-chain Verification
+
+`RealProof.t.sol`에서 실제 생성된 proof를 Solidity verifier로 검증합니다:
+
+```solidity
+// Real proof from snarkjs
+uint256[2] pA = [0x03014ac..., 0x26bf8cf...];
+uint256[2][2] pB = [[...], [...]];
+uint256[2] pC = [0x2228b7f..., 0x122560c...];
+
+// Public signals (4 as per D1 spec)
+uint256[4] publicSignals = [
+    voteCommitment,
+    proposalId,      // = 1
+    votingPower,     // = 100
+    merkleRoot
+];
+
+// Verify
+bool result = verifier.verifyProof(pA, pB, pC, publicSignals);
+assertTrue(result); // PASS
 ```
 
 ## D1 Spec Compliance Tests
 
 ### Public Inputs (4개)
 
-```typescript
-const publicInputs = [
-  voteCommitment,  // hash(choice, votingPower, proposalId, voteSalt)
-  proposalId,
-  votingPower,
-  merkleRoot
-]
+```
+[0] voteCommitment = Poseidon(choice, votingPower, proposalId, voteSalt)
+[1] proposalId = 1
+[2] votingPower = 100
+[3] merkleRoot = 12685498...
 ```
 
-### Note Hash (5 params)
+### Verified Computations
 
-```typescript
-// D1 스펙: hash(pkX, pkY, noteValue, tokenType, noteSalt)
-const noteHash = poseidon([pkX, pkY, noteValue, tokenType, noteSalt])
+| Computation | Formula | Verified |
+|-------------|---------|----------|
+| Note Hash | `Poseidon(pkX, pkY, noteValue, tokenType, noteSalt)` | ✅ |
+| Key Derivation | `BabyJub.mulPointEscalar(Base8, sk)` | ✅ |
+| Merkle Root | `20-level Poseidon tree` | ✅ |
+| Vote Commitment | `Poseidon(choice, votingPower, proposalId, voteSalt)` | ✅ |
+| Nullifier | `Poseidon(sk, proposalId)` | ✅ |
+
+## Running Specific Tests
+
+```bash
+# All tests
+forge test -vv
+
+# Contract logic only
+forge test --match-path test/PrivateVoting.t.sol -vv
+
+# Real ZK proof only
+forge test --match-path test/RealProof.t.sol -vv
+
+# Specific test
+forge test --match-test test_FullVotingFlow -vv
+
+# With gas report
+forge test --gas-report
 ```
 
-### Commitment (4 params)
+## Test Output Example
 
-```typescript
-// D1 스펙: hash(choice, votingPower, proposalId, voteSalt)
-const commitment = poseidon([choice, votingPower, proposalId, voteSalt])
 ```
+Ran 28 tests for 2 test suites
 
-### Nullifier
+test/PrivateVoting.t.sol:PrivateVotingTest
+[PASS] test_CommitVote() (gas: 540990)
+[PASS] test_FullVotingFlow() (gas: 1135846)
+... (24 tests)
 
-```typescript
-// D1 스펙: hash(sk, proposalId)
-const nullifier = poseidon([sk, proposalId])
+test/RealProof.t.sol:RealProofTest
+[PASS] test_RealProofVerification() (gas: 245725)
+[PASS] test_RejectInvalidProof() (gas: 1040431731)
+[PASS] test_RejectWrongPublicSignals() (gas: 247289)
+[PASS] test_PublicSignalsMatchD1Spec() (gas: 6645)
+
+Suite result: ok. 28 passed; 0 failed; 0 skipped
 ```
-
-## Manual Testing Checklist
-
-### UI Tests
-
-- [ ] 랜딩 페이지 로드
-- [ ] 지갑 연결
-- [ ] 언어 전환 (KO/EN)
-- [ ] 제안 목록 표시
-- [ ] 제안 상세 페이지
-
-### ZK Tests
-
-- [ ] 키페어 자동 생성
-- [ ] 토큰 노트 생성
-- [ ] 머클 트리 구축
-- [ ] 증명 생성 진행률
-- [ ] commitment/nullifier 계산
-
-### Blockchain Tests
-
-- [ ] commitVote 트랜잭션
-- [ ] revealVote 트랜잭션
-- [ ] Etherscan에서 확인
-- [ ] 투표 결과 집계
 
 ## Troubleshooting
 
-### 페이지 로드 실패
+### Witness Generation Fails
+
+```
+Error: Assert Failed. Error in template PrivateVoting_234 line: 108
+```
+
+**원인**: 입력값이 회로 제약조건을 만족하지 않음
+**해결**: `generate_input.js`로 유효한 입력 생성
+
+### Circuit Too Big for PTAU
+
+```
+Error: circuit too big for this power of tau ceremony. 16620*2 > 2**14
+```
+
+**해결**: 더 큰 ptau 파일 사용 (pot15 이상)
+
+### Forge Not Found
 
 ```bash
-rm -rf node_modules
-npm install
-npm run dev
+# Install Foundry
+curl -L https://foundry.paradigm.xyz | bash
+source ~/.bashrc  # or ~/.zshrc
+foundryup
 ```
 
-### 지갑 연결 실패
+## Related Files
 
-1. MetaMask 설치 확인
-2. Sepolia 네트워크 추가:
-   - Network: Sepolia
-   - RPC: https://sepolia.drpc.org
-   - Chain ID: 11155111
-
-### 트랜잭션 실패
-
-| Error | Solution |
-|-------|----------|
-| NullifierAlreadyUsed | 이미 투표함 |
-| NotInCommitPhase | Commit 단계 아님 |
-| NotInRevealPhase | Reveal 단계 아님 |
-| InvalidProof | ZK 증명 무효 |
-| InvalidMerkleRoot | Merkle root 미등록 |
-
-### ZK 증명 실패
-
-1. LocalStorage 데이터 확인
-2. 콘솔 에러 로그 확인
-3. `clearAllData()` 호출 후 재시도
-
-```javascript
-// Browser console
-import { clearAllData } from './zkproof'
-clearAllData()
 ```
+test/
+├── PrivateVoting.t.sol    # Contract logic tests
+└── RealProof.t.sol        # Real ZK proof tests
 
-## Performance Benchmarks
+contracts/
+├── PrivateVoting.sol      # Main contract
+└── Groth16Verifier.sol    # Generated verifier
 
-| Operation | Expected Time |
-|-----------|---------------|
-| Key Generation | < 100ms |
-| Merkle Tree (1M leaves) | < 5s |
-| Proof Generation (simulated) | ~3s |
-| Proof Generation (real) | 20-30s |
-
-## Contract Addresses
-
-| Network | Address |
-|---------|---------|
-| Sepolia | `0x583e8926F8701a196F182c449dF7BAc4782EF784` |
-
-## Related Documentation
-
-- [Architecture](./ARCHITECTURE.md)
-- [Tech Stack](./TECH_STACK.md)
-- [D1 Specification](https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d1-private-voting.md)
+circuits/build/
+├── proof.json             # Generated proof
+├── public.json            # Public signals
+└── verification_key.json  # Verification key
+```
