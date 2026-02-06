@@ -12,6 +12,7 @@ import {
   storeVoteForReveal,
   getVoteForReveal,
   generateMerkleProofAsync,
+  findVoterIndex,
   formatBigInt,
   getKeyInfo,
   preloadCrypto,
@@ -93,6 +94,10 @@ function App() {
   // Eligibility state (merkle root match)
   const [isEligible, setIsEligible] = useState(true)
 
+  // Voter registration state
+  const [isVoterRegistered, setIsVoterRegistered] = useState(false)
+  const [isRegisteringVoter, setIsRegisteringVoter] = useState(false)
+
   // Pre-load crypto on mount
   useEffect(() => {
     preloadCrypto()
@@ -143,6 +148,22 @@ function App() {
     address: PRIVATE_VOTING_ADDRESS,
     abi: PRIVATE_VOTING_ABI,
     functionName: 'proposalCount',
+  })
+
+  // Read registered voters from contract
+  const { refetch: refetchRegisteredVoters } = useReadContract({
+    address: PRIVATE_VOTING_ADDRESS,
+    abi: PRIVATE_VOTING_ABI,
+    functionName: 'getRegisteredVoters',
+  })
+
+  // Check if current user's noteHash is registered
+  const { data: isUserRegistered, refetch: refetchIsUserRegistered } = useReadContract({
+    address: PRIVATE_VOTING_ADDRESS,
+    abi: PRIVATE_VOTING_ABI,
+    functionName: 'isVoterRegistered',
+    args: tokenNote ? [tokenNote.noteHash] : undefined,
+    query: { enabled: !!tokenNote && tokenNote.noteHash !== 0n },
   })
 
   // Generate contract calls for all proposals
@@ -224,6 +245,55 @@ function App() {
     refetchProposals()
   }, [refetchProposalCount, refetchProposals])
 
+  const isCorrectChain = chainId === sepolia.id
+
+  // Update voter registration status
+  useEffect(() => {
+    if (isUserRegistered !== undefined) {
+      setIsVoterRegistered(isUserRegistered as boolean)
+    }
+  }, [isUserRegistered])
+
+  // Auto-register voter when they have a token note and are not registered
+  useEffect(() => {
+    const registerVoter = async () => {
+      if (!isConnected || !isCorrectChain || !tokenNote || tokenNote.noteHash === 0n) return
+      if (isVoterRegistered || isRegisteringVoter) return
+
+      // Check if already registered (refetch to be sure)
+      const { data: alreadyRegistered } = await refetchIsUserRegistered()
+      if (alreadyRegistered) {
+        setIsVoterRegistered(true)
+        return
+      }
+
+      setIsRegisteringVoter(true)
+      try {
+        console.log('[App] Registering voter with noteHash:', tokenNote.noteHash.toString().slice(0, 20) + '...')
+        await writeContractAsync({
+          address: PRIVATE_VOTING_ADDRESS,
+          abi: PRIVATE_VOTING_ABI,
+          functionName: 'registerVoter',
+          args: [tokenNote.noteHash],
+          gas: BigInt(100000),
+        })
+        setIsVoterRegistered(true)
+        await refetchRegisteredVoters()
+        showToast('Voter registered successfully!', 'success')
+      } catch (error) {
+        console.error('Failed to register voter:', error)
+        // Don't show error toast for user rejection
+        if ((error as Error).message?.includes('User rejected')) {
+          showToast('Voter registration cancelled', 'info')
+        }
+      } finally {
+        setIsRegisteringVoter(false)
+      }
+    }
+
+    registerVoter()
+  }, [isConnected, isCorrectChain, tokenNote, isVoterRegistered, isRegisteringVoter, writeContractAsync, refetchIsUserRegistered, refetchRegisteredVoters])
+
   const handleSwitchNetwork = async () => {
     try {
       await switchChain({ chainId: sepolia.id })
@@ -253,7 +323,6 @@ function App() {
     }
   }
 
-  const isCorrectChain = chainId === sepolia.id
   const shortenAddress = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-4)
 
   const getTimeRemaining = (endTime: Date) => {
@@ -371,27 +440,36 @@ function App() {
       setCurrentVoteData(voteData)
 
       // Use the proposal's merkle root for proof generation
-      // In production, this would come from a snapshot service
-      // For demo, we use the proposal's registered merkle root
       const proposalMerkleRoot = selectedProposal.merkleRoot
 
-      // Generate merkle proof for user's note
-      // For demo: single-note tree where the noteHash must equal the merkle root
-      // In production: would fetch proof from snapshot service
-      const noteHashes = [tokenNote.noteHash]
-      const { path } = await generateMerkleProofAsync(noteHashes, 0)
+      // Fetch registered voters (snapshot of eligible voters)
+      const { data: voters } = await refetchRegisteredVoters()
+      const registeredVoters = voters as bigint[] | undefined
+
+      if (!registeredVoters || registeredVoters.length === 0) {
+        throw new Error('No registered voters found')
+      }
+
+      // Check if user is in the registered voters list
+      const voterIndex = findVoterIndex(registeredVoters, tokenNote.noteHash)
+      if (voterIndex === -1) {
+        setIsEligible(false)
+        throw new Error('You are not registered as a voter for this proposal')
+      }
 
       console.log('[Vote] Proposal merkle root:', proposalMerkleRoot.toString())
       console.log('[Vote] User noteHash:', tokenNote.noteHash.toString())
+      console.log('[Vote] Voter index:', voterIndex)
+      console.log('[Vote] Total registered voters:', registeredVoters.length)
 
-      // Generate ZK proof (4 public inputs per D1 spec)
+      // Generate ZK proof with registered voters list
       const { proof, nullifier, commitment } = await generateVoteProof(
         keyPair,
         tokenNote,
         voteData,
-        proposalMerkleRoot, // Use proposal's merkle root
-        path,
-        0,
+        proposalMerkleRoot,
+        registeredVoters, // Pass all registered voters
+        voterIndex,
         setProofProgress
       )
 
@@ -441,7 +519,7 @@ function App() {
       setVotingPhase('select')
       showToast('Vote commit failed. Please try again.', 'error')
     }
-  }, [selectedChoice, selectedProposal, keyPair, tokenNote, writeContractAsync, refetchProposals])
+  }, [selectedChoice, selectedProposal, keyPair, tokenNote, writeContractAsync, refetchProposals, refetchRegisteredVoters, address])
 
   // Reveal Phase: Submit choice and salt
   const handleRevealVote = useCallback(async () => {
@@ -580,6 +658,8 @@ function App() {
             <div className="identity-badge" title={`Public Key: ${formatBigInt(keyPair.pkX)}`}>
               <span className="identity-icon">🔑</span>
               <span className="identity-text">{getKeyInfo(keyPair).shortPk}</span>
+              {isRegisteringVoter && <span className="registering-badge">⏳</span>}
+              {isVoterRegistered && <span className="registered-badge">✓</span>}
             </div>
           )}
           {isConnected ? (
@@ -921,16 +1001,19 @@ function App() {
                   setCreateProposalStep('registering')
 
                   try {
-                    // For demo: compute actual merkle root for single-leaf tree
-                    // The circuit computes root through 20 levels, so we must match that
-                    if (!tokenNote || tokenNote.noteHash === 0n) {
-                      throw new Error('Token note not initialized. Please refresh and try again.')
+                    // Fetch all registered voters
+                    const { data: voters } = await refetchRegisteredVoters()
+                    const registeredVoters = voters as bigint[] | undefined
+
+                    if (!registeredVoters || registeredVoters.length === 0) {
+                      throw new Error('No registered voters. Please wait for voter registration to complete.')
                     }
 
-                    // Always compute fresh merkle root from current tokenNote
-                    const { root: computedMerkleRoot } = await generateMerkleProofAsync([tokenNote.noteHash], 0)
-                    console.log('[Proposal] User noteHash:', tokenNote.noteHash.toString())
-                    console.log('[Proposal] Merkle root:', computedMerkleRoot.toString())
+                    console.log('[Proposal] Registered voters:', registeredVoters.length)
+
+                    // Compute merkle root from ALL registered voters
+                    const { root: computedMerkleRoot } = await generateMerkleProofAsync(registeredVoters, 0)
+                    console.log('[Proposal] Merkle root (from all voters):', computedMerkleRoot.toString())
 
                     // Step 1: Register the merkle root first
                     await writeContractAsync({
@@ -957,7 +1040,7 @@ function App() {
                       args: [
                         newProposalTitle,
                         newProposalDescription,
-                        computedMerkleRoot, // Use computed merkle root (20-level tree)
+                        computedMerkleRoot, // Merkle root of ALL registered voters
                         votingDuration,
                         revealDuration,
                       ],

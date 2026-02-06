@@ -4,9 +4,9 @@
  * Based on: https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d1-private-voting.md
  */
 
-// Contract addresses (Sepolia Testnet) - Updated with nullifier verification fix
-export const PRIVATE_VOTING_ADDRESS = '0xA26ABcfFC9Af5c60CbE5a40E9FA397341aDC7Eb7' as const
-export const VERIFIER_ADDRESS = '0x2a1727135e3067c417dA2AD10f439675d04cdB69' as const
+// Contract addresses (Sepolia Testnet) - Updated with shared voter registry
+export const PRIVATE_VOTING_ADDRESS = '0x7675FeDbc7420c7d3D14cdc62BEAa94f4E49082F' as const
+export const VERIFIER_ADDRESS = '0x8BC97fEcee88d8669e7A85188dc7D9EAA968Aa3f' as const
 
 // Vote choices matching spec
 export const CHOICE_AGAINST = 0n
@@ -154,6 +154,34 @@ export const PRIVATE_VOTING_ABI = [
     name: 'getMerkleRoots',
     inputs: [],
     outputs: [{ name: '', type: 'uint256[]' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'registerVoter',
+    inputs: [{ name: '_noteHash', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getRegisteredVoters',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256[]' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getVoterCount',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'isVoterRegistered',
+    inputs: [{ name: '_noteHash', type: 'uint256' }],
+    outputs: [{ name: '', type: 'bool' }],
     stateMutability: 'view',
   },
 
