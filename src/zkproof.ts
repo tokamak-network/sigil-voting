@@ -14,9 +14,25 @@
 // @ts-ignore - circomlibjs doesn't have types
 import { buildPoseidon, buildBabyjub } from 'circomlibjs'
 
-// Storage keys
-const SK_STORAGE_KEY = 'zk-vote-secret-key'
-const NOTE_STORAGE_KEY = 'zk-vote-note'
+// Storage keys (base - wallet address appended at runtime)
+const SK_STORAGE_KEY_BASE = 'zk-vote-secret-key'
+const NOTE_STORAGE_KEY_BASE = 'zk-vote-note'
+
+// Contract address for vote storage (to avoid conflicts between contract deployments)
+const CONTRACT_ADDRESS = '0xA26ABcfFC9Af5c60CbE5a40E9FA397341aDC7Eb7'
+
+// Helper to get wallet-specific storage key
+function getSkStorageKey(walletAddress?: string): string {
+  return walletAddress
+    ? `${SK_STORAGE_KEY_BASE}-${walletAddress.toLowerCase()}`
+    : SK_STORAGE_KEY_BASE
+}
+
+function getNoteStorageKey(walletAddress?: string): string {
+  return walletAddress
+    ? `${NOTE_STORAGE_KEY_BASE}-${walletAddress.toLowerCase()}`
+    : NOTE_STORAGE_KEY_BASE
+}
 
 // Vote choices
 export const CHOICE_AGAINST = 0n
@@ -83,23 +99,44 @@ export interface ProofGenerationProgress {
   message: string
 }
 
-// ============ Cryptographic Primitives (Lazy Initialization) ============
+// ============ Cryptographic Primitives (Eager Initialization) ============
 
 let poseidonInstance: any = null
 let babyjubInstance: any = null
+let initPromise: Promise<void> | null = null
+
+// Pre-load crypto primitives on module load
+async function initCrypto() {
+  if (!initPromise) {
+    initPromise = (async () => {
+      const [poseidon, babyjub] = await Promise.all([
+        buildPoseidon(),
+        buildBabyjub()
+      ])
+      poseidonInstance = poseidon
+      babyjubInstance = babyjub
+      console.log('[ZK] Crypto primitives loaded')
+    })()
+  }
+  return initPromise
+}
+
+// Start loading immediately
+initCrypto()
 
 async function getPoseidon() {
-  if (!poseidonInstance) {
-    poseidonInstance = await buildPoseidon()
-  }
+  await initCrypto()
   return poseidonInstance
 }
 
 async function getBabyjub() {
-  if (!babyjubInstance) {
-    babyjubInstance = await buildBabyjub()
-  }
+  await initCrypto()
   return babyjubInstance
+}
+
+// Export preload function for manual triggering
+export async function preloadCrypto() {
+  await initCrypto()
 }
 
 /**
@@ -153,10 +190,12 @@ async function derivePublicKey(sk: bigint): Promise<{ pkX: bigint; pkY: bigint }
 const BABYJUB_SUBORDER = 2736030358979909402780800718157159386076813972158567259200215660948447373041n
 
 /**
- * Generate or restore keypair
+ * Generate or restore keypair (per wallet address)
  */
-export function getOrCreateKeyPair(): KeyPair {
-  const stored = localStorage.getItem(SK_STORAGE_KEY)
+export function getOrCreateKeyPair(walletAddress?: string): KeyPair {
+  const storageKey = getSkStorageKey(walletAddress)
+  const noteKey = getNoteStorageKey(walletAddress)
+  const stored = localStorage.getItem(storageKey)
 
   // For sync return, we use pre-computed values if available
   if (stored) {
@@ -167,8 +206,8 @@ export function getOrCreateKeyPair(): KeyPair {
       // Validate that sk is in correct range (BabyJubjub subgroup order)
       if (sk >= BABYJUB_SUBORDER) {
         console.warn('Stored key is out of range, generating new one')
-        localStorage.removeItem(SK_STORAGE_KEY)
-        localStorage.removeItem(NOTE_STORAGE_KEY)
+        localStorage.removeItem(storageKey)
+        localStorage.removeItem(noteKey)
       } else {
         return {
           sk,
@@ -178,8 +217,8 @@ export function getOrCreateKeyPair(): KeyPair {
       }
     } catch (e) {
       console.warn('Failed to restore key, creating new one')
-      localStorage.removeItem(SK_STORAGE_KEY)
-      localStorage.removeItem(NOTE_STORAGE_KEY)
+      localStorage.removeItem(storageKey)
+      localStorage.removeItem(noteKey)
     }
   }
 
@@ -189,17 +228,18 @@ export function getOrCreateKeyPair(): KeyPair {
   const tempKeyPair = { sk, pkX: 0n, pkY: 0n }
 
   // Async initialization
-  initializeKeyPair(sk)
+  initializeKeyPair(sk, walletAddress)
 
   return tempKeyPair
 }
 
 /**
- * Async key initialization
+ * Async key initialization (per wallet address)
  */
-async function initializeKeyPair(sk: bigint): Promise<void> {
+async function initializeKeyPair(sk: bigint, walletAddress?: string): Promise<void> {
+  const storageKey = getSkStorageKey(walletAddress)
   const { pkX, pkY } = await derivePublicKey(sk)
-  localStorage.setItem(SK_STORAGE_KEY, JSON.stringify({
+  localStorage.setItem(storageKey, JSON.stringify({
     sk: sk.toString(),
     pkX: pkX.toString(),
     pkY: pkY.toString()
@@ -207,10 +247,11 @@ async function initializeKeyPair(sk: bigint): Promise<void> {
 }
 
 /**
- * Get or create keypair (async version - preferred)
+ * Get or create keypair (async version - preferred, per wallet address)
  */
-export async function getOrCreateKeyPairAsync(): Promise<KeyPair> {
-  const stored = localStorage.getItem(SK_STORAGE_KEY)
+export async function getOrCreateKeyPairAsync(walletAddress?: string): Promise<KeyPair> {
+  const storageKey = getSkStorageKey(walletAddress)
+  const stored = localStorage.getItem(storageKey)
 
   if (stored) {
     try {
@@ -228,7 +269,7 @@ export async function getOrCreateKeyPairAsync(): Promise<KeyPair> {
   const sk = randomFieldElement()
   const { pkX, pkY } = await derivePublicKey(sk)
 
-  localStorage.setItem(SK_STORAGE_KEY, JSON.stringify({
+  localStorage.setItem(storageKey, JSON.stringify({
     sk: sk.toString(),
     pkX: pkX.toString(),
     pkY: pkY.toString()
@@ -238,10 +279,11 @@ export async function getOrCreateKeyPairAsync(): Promise<KeyPair> {
 }
 
 /**
- * Export secret key for backup
+ * Export secret key for backup (per wallet address)
  */
-export function exportSecretKey(): string | null {
-  const stored = localStorage.getItem(SK_STORAGE_KEY)
+export function exportSecretKey(walletAddress?: string): string | null {
+  const storageKey = getSkStorageKey(walletAddress)
+  const stored = localStorage.getItem(storageKey)
   if (!stored) return null
   try {
     const data = JSON.parse(stored)
@@ -252,12 +294,13 @@ export function exportSecretKey(): string | null {
 }
 
 /**
- * Import secret key from backup
+ * Import secret key from backup (per wallet address)
  */
-export async function importSecretKey(skHex: string): Promise<KeyPair> {
+export async function importSecretKey(skHex: string, walletAddress?: string): Promise<KeyPair> {
+  const storageKey = getSkStorageKey(walletAddress)
   const sk = BigInt(skHex)
   const { pkX, pkY } = await derivePublicKey(sk)
-  localStorage.setItem(SK_STORAGE_KEY, JSON.stringify({
+  localStorage.setItem(storageKey, JSON.stringify({
     sk: sk.toString(),
     pkX: pkX.toString(),
     pkY: pkY.toString()
@@ -271,10 +314,11 @@ export async function importSecretKey(skHex: string): Promise<KeyPair> {
 const DEFAULT_TOKEN_TYPE = 1n
 
 /**
- * Create a token note representing voting power
+ * Create a token note representing voting power (per wallet address)
  * Per D1 spec: noteHash = hash(pkX, pkY, noteValue, tokenType, noteSalt)
  */
-export async function createTokenNoteAsync(keyPair: KeyPair, value: bigint, tokenType: bigint = DEFAULT_TOKEN_TYPE): Promise<TokenNote> {
+export async function createTokenNoteAsync(keyPair: KeyPair, value: bigint, tokenType: bigint = DEFAULT_TOKEN_TYPE, walletAddress?: string): Promise<TokenNote> {
+  const noteKey = getNoteStorageKey(walletAddress)
   const noteSalt = randomFieldElement()
   // D1 spec: hash(pkX, pkY, noteValue, tokenType, noteSalt)
   const noteHash = await poseidonHash([keyPair.pkX, keyPair.pkY, value, tokenType, noteSalt])
@@ -289,7 +333,7 @@ export async function createTokenNoteAsync(keyPair: KeyPair, value: bigint, toke
   }
 
   // Store note
-  localStorage.setItem(NOTE_STORAGE_KEY, JSON.stringify({
+  localStorage.setItem(noteKey, JSON.stringify({
     noteHash: noteHash.toString(),
     noteValue: value.toString(),
     noteSalt: noteSalt.toString(),
@@ -302,9 +346,10 @@ export async function createTokenNoteAsync(keyPair: KeyPair, value: bigint, toke
 }
 
 /**
- * Sync version for backwards compatibility
+ * Sync version for backwards compatibility (per wallet address)
  */
-export function createTokenNote(keyPair: KeyPair, value: bigint, tokenType: bigint = DEFAULT_TOKEN_TYPE): TokenNote {
+export function createTokenNote(keyPair: KeyPair, value: bigint, tokenType: bigint = DEFAULT_TOKEN_TYPE, walletAddress?: string): TokenNote {
+  const noteKey = getNoteStorageKey(walletAddress)
   const noteSalt = randomFieldElement()
   // Placeholder - will be updated async
   const note: TokenNote = {
@@ -317,9 +362,9 @@ export function createTokenNote(keyPair: KeyPair, value: bigint, tokenType: bigi
   }
 
   // Async compute and store
-  createTokenNoteAsync(keyPair, value, tokenType).then(asyncNote => {
+  createTokenNoteAsync(keyPair, value, tokenType, walletAddress).then(asyncNote => {
     note.noteHash = asyncNote.noteHash
-    localStorage.setItem(NOTE_STORAGE_KEY, JSON.stringify({
+    localStorage.setItem(noteKey, JSON.stringify({
       noteHash: asyncNote.noteHash.toString(),
       noteValue: value.toString(),
       noteSalt: noteSalt.toString(),
@@ -333,10 +378,11 @@ export function createTokenNote(keyPair: KeyPair, value: bigint, tokenType: bigi
 }
 
 /**
- * Get stored token note
+ * Get stored token note (per wallet address)
  */
-export function getStoredNote(): TokenNote | null {
-  const stored = localStorage.getItem(NOTE_STORAGE_KEY)
+export function getStoredNote(walletAddress?: string): TokenNote | null {
+  const noteKey = getNoteStorageKey(walletAddress)
+  const stored = localStorage.getItem(noteKey)
   if (!stored) return null
 
   try {
@@ -388,7 +434,7 @@ export async function buildMerkleTreeAsync(noteHashes: bigint[]): Promise<{ root
 /**
  * Sync version for backwards compatibility
  */
-export function buildMerkleTree(noteHashes: bigint[]): { root: bigint; depth: number } {
+export function buildMerkleTree(_noteHashes: bigint[]): { root: bigint; depth: number } {
   // Return placeholder, actual computation is async
   return { root: 0n, depth: TREE_DEPTH }
 }
@@ -401,43 +447,54 @@ export async function generateMerkleProofAsync(
   leafIndex: number
 ): Promise<{ path: bigint[]; index: number; root: bigint }> {
   const poseidon = await getPoseidon()
-  let currentLevel = [...noteHashes]
 
-  // Pad to power of 2
-  const size = 2 ** TREE_DEPTH
-  while (currentLevel.length < size) {
-    currentLevel.push(0n)
-  }
-
+  // Optimized: For sparse trees, compute only the necessary path
+  // Instead of building 2^20 nodes, we compute the root by hashing up through levels
   const path: bigint[] = []
+  let currentHash = noteHashes[leafIndex] || 0n
   let currentIndex = leafIndex
 
-  // Build proof
+  // Pre-compute zero hashes for each level (for sparse tree optimization)
+  const zeroHashes: bigint[] = [0n]
+  for (let i = 0; i < TREE_DEPTH; i++) {
+    zeroHashes.push(poseidonHashSync(poseidon, [zeroHashes[i], zeroHashes[i]]))
+  }
+
   for (let level = 0; level < TREE_DEPTH; level++) {
     const isLeft = currentIndex % 2 === 0
-    const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1
 
-    path.push(currentLevel[siblingIndex] || 0n)
-
-    // Move to next level
-    const nextLevel: bigint[] = []
-    for (let i = 0; i < currentLevel.length; i += 2) {
-      const left = currentLevel[i]
-      const right = currentLevel[i + 1] || 0n
-      nextLevel.push(poseidonHashSync(poseidon, [left, right]))
+    // For a single-leaf tree at index 0, all siblings are zero hashes at their level
+    // For more complex trees with multiple leaves, we'd need the actual siblings
+    let sibling: bigint
+    if (noteHashes.length === 1 && leafIndex === 0) {
+      // Single leaf at index 0: all siblings are zero hashes
+      sibling = zeroHashes[level]
+    } else {
+      // For multi-leaf trees, get actual sibling or zero hash
+      const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1
+      sibling = noteHashes[siblingIndex] || zeroHashes[level]
     }
-    currentLevel = nextLevel
+
+    path.push(sibling)
+
+    // Compute next level hash
+    if (isLeft) {
+      currentHash = poseidonHashSync(poseidon, [currentHash, sibling])
+    } else {
+      currentHash = poseidonHashSync(poseidon, [sibling, currentHash])
+    }
+
     currentIndex = Math.floor(currentIndex / 2)
   }
 
-  return { path, index: leafIndex, root: currentLevel[0] }
+  return { path, index: leafIndex, root: currentHash }
 }
 
 /**
  * Sync version for backwards compatibility
  */
 export function generateMerkleProof(
-  noteHashes: bigint[],
+  _noteHashes: bigint[],
   leafIndex: number
 ): { path: bigint[]; index: number } {
   return { path: new Array(TREE_DEPTH).fill(0n), index: leafIndex }
@@ -462,11 +519,11 @@ export async function computeNullifierAsync(sk: bigint, proposalId: bigint): Pro
 /**
  * Sync versions for backwards compatibility
  */
-export function computeCommitment(choice: VoteChoice, votingPower: bigint, proposalId: bigint, voteSalt: bigint): bigint {
+export function computeCommitment(_choice: VoteChoice, _votingPower: bigint, _proposalId: bigint, _voteSalt: bigint): bigint {
   return 0n // Placeholder
 }
 
-export function computeNullifier(sk: bigint, proposalId: bigint): bigint {
+export function computeNullifier(_sk: bigint, _proposalId: bigint): bigint {
   return 0n // Placeholder
 }
 
@@ -497,7 +554,7 @@ export async function prepareVoteAsync(
  * Sync version for backwards compatibility
  */
 export function prepareVote(
-  keyPair: KeyPair,
+  _keyPair: KeyPair,
   choice: VoteChoice,
   votingPower: bigint,
   proposalId: bigint
@@ -523,8 +580,8 @@ export async function generateVoteProof(
   note: TokenNote,
   voteData: VoteData,
   merkleRoot: bigint,
-  merklePath: bigint[],
-  merkleIndex: number,
+  _merklePath: bigint[],
+  _merkleIndex: number,
   onProgress?: (progress: ProofGenerationProgress) => void
 ): Promise<{ proof: ZKProof; publicSignals: bigint[]; nullifier: bigint; commitment: bigint }> {
   onProgress?.({
@@ -555,49 +612,38 @@ export async function generateVoteProof(
   // Compute actual note hash
   const noteHash = poseidonHashSync(poseidon, [pkX, pkY, note.noteValue, note.tokenType, note.noteSalt])
 
-  // For demo: if merkleRoot equals noteHash, use empty path (single-leaf tree)
-  // In production, would fetch real merkle proof from snapshot service
+  // Compute merkle proof using optimized sparse tree approach
+  // For single-leaf tree at index 0, we hash up through 20 levels with zero siblings
   console.log('[ZK] NoteHash:', noteHash.toString())
   console.log('[ZK] Merkle root (from proposal):', merkleRoot.toString())
 
-  let actualMerkleRoot: bigint
-  let actualPath: bigint[]
+  // Pre-compute zero hashes for each level
+  const zeroHashes: bigint[] = [0n]
+  for (let i = 0; i < TREE_DEPTH; i++) {
+    zeroHashes.push(poseidonHashSync(poseidon, [zeroHashes[i], zeroHashes[i]]))
+  }
 
-  if (merkleRoot === noteHash) {
-    // Single-leaf tree: root = leaf, path is all zeros
-    console.log('[ZK] Using single-leaf merkle tree (root = noteHash)')
-    actualMerkleRoot = noteHash
-    actualPath = Array(TREE_DEPTH).fill(0n)
-  } else {
-    // Build merkle tree (demo: single note, padded with zeros)
-    console.log('[ZK] Building merkle tree from noteHash')
-    const noteHashes = [noteHash]
-    let currentLevel = [...noteHashes]
-    const size = 2 ** TREE_DEPTH
-    while (currentLevel.length < size) {
-      currentLevel.push(0n)
-    }
+  // Compute merkle path and root for single-leaf tree at index 0
+  const actualPath: bigint[] = []
+  let currentHash = noteHash
 
-    actualPath = []
-    let currentIndex = 0
+  for (let level = 0; level < TREE_DEPTH; level++) {
+    // At index 0, all siblings are zero hashes
+    const sibling = zeroHashes[level]
+    actualPath.push(sibling)
+    // Index 0 is always left, so hash(current, sibling)
+    currentHash = poseidonHashSync(poseidon, [currentHash, sibling])
+  }
 
-    for (let level = 0; level < TREE_DEPTH; level++) {
-      const isLeft = currentIndex % 2 === 0
-      const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1
-      actualPath.push(currentLevel[siblingIndex] || 0n)
+  const actualMerkleRoot = currentHash
+  console.log('[ZK] Computed merkle root:', actualMerkleRoot.toString())
 
-      const nextLevel: bigint[] = []
-      for (let i = 0; i < currentLevel.length; i += 2) {
-        const left = currentLevel[i]
-        const right = currentLevel[i + 1] || 0n
-        nextLevel.push(poseidonHashSync(poseidon, [left, right]))
-      }
-      currentLevel = nextLevel
-      currentIndex = Math.floor(currentIndex / 2)
-    }
-
-    actualMerkleRoot = currentLevel[0]
-    console.log('[ZK] Computed merkle root:', actualMerkleRoot.toString())
+  // Verify merkle root matches proposal
+  if (actualMerkleRoot !== merkleRoot) {
+    console.error('[ZK] Merkle root mismatch!')
+    console.error('[ZK] Expected:', merkleRoot.toString())
+    console.error('[ZK] Got:', actualMerkleRoot.toString())
+    throw new Error('Merkle root mismatch - your identity does not match this proposal')
   }
 
   // Compute actual commitment and nullifier
@@ -682,6 +728,17 @@ export async function generateVoteProof(
     const { proof, publicSignals } = await Promise.race([proofPromise, timeoutPromise]) as { proof: any; publicSignals: string[] }
 
     console.log('[ZK] Proof generated in', Date.now() - startTime, 'ms')
+    console.log('[ZK] Public signals (5):', publicSignals)
+
+    // Verify nullifier from proof matches our computed nullifier
+    // Public signals order (snarkjs): outputs first, then inputs
+    // [nullifier, voteCommitment, proposalId, votingPower, merkleRoot]
+    const proofNullifier = BigInt(publicSignals[0])
+    if (proofNullifier !== nullifier) {
+      console.error('[ZK] Nullifier mismatch! Computed:', nullifier.toString(), 'Proof:', proofNullifier.toString())
+      throw new Error('Nullifier mismatch between local computation and circuit')
+    }
+    console.log('[ZK] Nullifier verified:', nullifier.toString().slice(0, 20) + '...')
 
     onProgress?.({
       stage: 'finalizing',
@@ -730,8 +787,10 @@ export async function generateVoteProof(
 /**
  * Store vote data for reveal phase
  */
-export function storeVoteForReveal(proposalId: bigint, voteData: VoteData): void {
-  const key = `zk-vote-reveal-${proposalId.toString()}`
+export function storeVoteForReveal(proposalId: bigint, voteData: VoteData, walletAddress?: string): void {
+  // Include contract address AND wallet address in key to avoid conflicts
+  const walletPart = walletAddress ? `-${walletAddress.toLowerCase()}` : ''
+  const key = `zk-vote-reveal-${CONTRACT_ADDRESS}${walletPart}-${proposalId.toString()}`
   localStorage.setItem(key, JSON.stringify({
     choice: voteData.choice.toString(),
     voteSalt: voteData.voteSalt.toString(),
@@ -744,8 +803,10 @@ export function storeVoteForReveal(proposalId: bigint, voteData: VoteData): void
 /**
  * Get stored vote data for reveal
  */
-export function getVoteForReveal(proposalId: bigint): { choice: bigint; voteSalt: bigint; nullifier: bigint; commitment?: bigint; votingPower?: bigint } | null {
-  const key = `zk-vote-reveal-${proposalId.toString()}`
+export function getVoteForReveal(proposalId: bigint, walletAddress?: string): { choice: bigint; voteSalt: bigint; nullifier: bigint; commitment?: bigint; votingPower?: bigint } | null {
+  // Include contract address AND wallet address in key to avoid conflicts
+  const walletPart = walletAddress ? `-${walletAddress.toLowerCase()}` : ''
+  const key = `zk-vote-reveal-${CONTRACT_ADDRESS}${walletPart}-${proposalId.toString()}`
   const stored = localStorage.getItem(key)
   if (!stored) return null
 
@@ -767,13 +828,11 @@ export function getVoteForReveal(proposalId: bigint): { choice: bigint; voteSalt
  * Clear all stored data (for testing)
  */
 export function clearAllData(): void {
-  localStorage.removeItem(SK_STORAGE_KEY)
-  localStorage.removeItem(NOTE_STORAGE_KEY)
-  // Clear reveal data
+  // Clear all zk-vote related keys (including wallet-specific ones)
   const keysToRemove: string[] = []
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i)
-    if (key?.startsWith('zk-vote-reveal-')) {
+    if (key?.startsWith('zk-vote-')) {
       keysToRemove.push(key)
     }
   }

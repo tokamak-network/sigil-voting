@@ -20,7 +20,7 @@ interface IVerifier {
         uint256[2] calldata _pA,
         uint256[2][2] calldata _pB,
         uint256[2] calldata _pC,
-        uint256[4] calldata _pubSignals  // [voteCommitment, proposalId, votingPower, merkleRoot]
+        uint256[5] calldata _pubSignals  // [voteCommitment, proposalId, votingPower, merkleRoot, nullifier]
     ) external view returns (bool);
 }
 
@@ -115,6 +115,8 @@ contract PrivateVoting {
     error CommitmentNotFound();
     error InvalidReveal();
     error ZeroVotingPower();
+    error NotProposer();
+    error ProposalHasVotes();
 
     // ============ Constructor ============
     constructor(address _verifier) {
@@ -186,6 +188,20 @@ contract PrivateVoting {
         return proposalId;
     }
 
+    /**
+     * @dev Delete a proposal (only proposer, only if no votes)
+     * @param _proposalId Proposal ID to delete
+     */
+    function deleteProposal(uint256 _proposalId) external {
+        Proposal storage proposal = proposals[_proposalId];
+
+        if (!proposal.exists) revert ProposalNotFound();
+        if (proposal.proposer != msg.sender) revert NotProposer();
+        if (proposal.totalCommitments > 0) revert ProposalHasVotes();
+
+        delete proposals[_proposalId];
+    }
+
     // ============ Voting Functions ============
 
     /**
@@ -224,8 +240,11 @@ contract PrivateVoting {
         if (_votingPower == 0) revert ZeroVotingPower();
 
         // Verify ZK proof
-        // Public signals: [voteCommitment, proposalId, votingPower, merkleRoot] (4 as per D1 spec)
-        uint256[4] memory pubSignals = [
+        // Public signals order (snarkjs): outputs first, then inputs
+        // [nullifier, voteCommitment, proposalId, votingPower, merkleRoot]
+        // CRITICAL: Nullifier is now verified as part of ZK proof to prevent double voting
+        uint256[5] memory pubSignals = [
+            _nullifier,
             _commitment,
             _proposalId,
             _votingPower,
@@ -234,8 +253,6 @@ contract PrivateVoting {
 
         bool validProof = verifier.verifyProof(_pA, _pB, _pC, pubSignals);
 
-        // Note: Nullifier is provided separately and verified by contract
-        // The nullifier should be hash(sk, proposalId) computed in the circuit
         if (!validProof) revert InvalidProof();
 
         // Mark nullifier as used

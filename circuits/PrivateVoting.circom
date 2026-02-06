@@ -164,17 +164,14 @@ template PrivateVoting(merkleTreeDepth) {
 
     // ============ Nullifier Computation (for double-spend prevention) ============
     // Nullifier = hash(sk, proposalId)
-    // Note: Nullifier is computed here but verified off-chain or in contract
-    // The contract should track used nullifiers per proposal
-    signal nullifier;
+    // CRITICAL: Nullifier MUST be a public output to prevent double voting
+    signal output nullifier;
     component nullifierHasher = Poseidon(2);
     nullifierHasher.inputs[0] <== sk;
     nullifierHasher.inputs[1] <== proposalId;
     nullifier <== nullifierHasher.out;
-
-    // Nullifier is an internal signal, passed to contract separately
 }
 
 // Instantiate with 20-level merkle tree (supports ~1M leaves)
-// Public inputs: voteCommitment, proposalId, votingPower, merkleRoot (4 as per spec)
+// Public signals: voteCommitment, proposalId, votingPower, merkleRoot (4 inputs) + nullifier (1 output) = 5 total
 component main {public [voteCommitment, proposalId, votingPower, merkleRoot]} = PrivateVoting(20);

@@ -1,13 +1,10 @@
 {
   "transactions": [
     {
-      "rpc": "https://ethereum-sepolia-rpc.publicnode.com"
+      "rpc": "https://1rpc.io/sepolia"
     },
     {
-      "rpc": "https://ethereum-sepolia-rpc.publicnode.com"
-    },
-    {
-      "rpc": "https://ethereum-sepolia-rpc.publicnode.com"
+      "rpc": "https://1rpc.io/sepolia"
     }
   ]
 }
