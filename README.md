@@ -61,6 +61,7 @@ forge test -vv
 - Reveal phase
 - Double-vote prevention
 - Real token integration
+- UI improvements
 
 ## References
 
