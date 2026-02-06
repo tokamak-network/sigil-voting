@@ -19,7 +19,7 @@ const SK_STORAGE_KEY_BASE = 'zk-vote-secret-key'
 const NOTE_STORAGE_KEY_BASE = 'zk-vote-note'
 
 // Contract address for vote storage (to avoid conflicts between contract deployments)
-const CONTRACT_ADDRESS = '0xA26ABcfFC9Af5c60CbE5a40E9FA397341aDC7Eb7'
+const CONTRACT_ADDRESS = '0x7675FeDbc7420c7d3D14cdc62BEAa94f4E49082F'
 
 // Helper to get wallet-specific storage key
 function getSkStorageKey(walletAddress?: string): string {
@@ -441,6 +441,7 @@ export function buildMerkleTree(_noteHashes: bigint[]): { root: bigint; depth: n
 
 /**
  * Generate merkle proof for a leaf using Poseidon
+ * Supports multi-leaf trees by building the full tree structure
  */
 export async function generateMerkleProofAsync(
   noteHashes: bigint[],
@@ -448,46 +449,67 @@ export async function generateMerkleProofAsync(
 ): Promise<{ path: bigint[]; index: number; root: bigint }> {
   const poseidon = await getPoseidon()
 
-  // Optimized: For sparse trees, compute only the necessary path
-  // Instead of building 2^20 nodes, we compute the root by hashing up through levels
-  const path: bigint[] = []
-  let currentHash = noteHashes[leafIndex] || 0n
-  let currentIndex = leafIndex
-
   // Pre-compute zero hashes for each level (for sparse tree optimization)
   const zeroHashes: bigint[] = [0n]
   for (let i = 0; i < TREE_DEPTH; i++) {
     zeroHashes.push(poseidonHashSync(poseidon, [zeroHashes[i], zeroHashes[i]]))
   }
 
+  // Build the tree level by level
+  // Start with leaves padded to tree size (2^20)
+  const treeSize = 2 ** TREE_DEPTH
+
+  // Initialize leaves array with note hashes and zeros
+  let currentLevel: bigint[] = new Array(treeSize).fill(0n)
+  for (let i = 0; i < noteHashes.length; i++) {
+    currentLevel[i] = noteHashes[i]
+  }
+
+  const path: bigint[] = []
+  let currentIndex = leafIndex
+
+  // Build tree and collect path
   for (let level = 0; level < TREE_DEPTH; level++) {
     const isLeft = currentIndex % 2 === 0
+    const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1
 
-    // For a single-leaf tree at index 0, all siblings are zero hashes at their level
-    // For more complex trees with multiple leaves, we'd need the actual siblings
-    let sibling: bigint
-    if (noteHashes.length === 1 && leafIndex === 0) {
-      // Single leaf at index 0: all siblings are zero hashes
-      sibling = zeroHashes[level]
-    } else {
-      // For multi-leaf trees, get actual sibling or zero hash
-      const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1
-      sibling = noteHashes[siblingIndex] || zeroHashes[level]
-    }
-
+    // Get sibling from current level
+    const sibling = currentLevel[siblingIndex] || zeroHashes[level]
     path.push(sibling)
 
-    // Compute next level hash
-    if (isLeft) {
-      currentHash = poseidonHashSync(poseidon, [currentHash, sibling])
-    } else {
-      currentHash = poseidonHashSync(poseidon, [sibling, currentHash])
+    // Build next level
+    const nextLevelSize = currentLevel.length / 2
+    const nextLevel: bigint[] = new Array(nextLevelSize).fill(0n)
+
+    for (let i = 0; i < nextLevelSize; i++) {
+      const left = currentLevel[i * 2]
+      const right = currentLevel[i * 2 + 1]
+
+      // Use zero hash optimization for empty subtrees
+      if (left === 0n && right === 0n) {
+        nextLevel[i] = zeroHashes[level + 1]
+      } else {
+        nextLevel[i] = poseidonHashSync(poseidon, [left, right])
+      }
     }
 
+    currentLevel = nextLevel
     currentIndex = Math.floor(currentIndex / 2)
   }
 
-  return { path, index: leafIndex, root: currentHash }
+  return { path, index: leafIndex, root: currentLevel[0] }
+}
+
+/**
+ * Find a voter's index in the registered voters list
+ */
+export function findVoterIndex(registeredVoters: bigint[], noteHash: bigint): number {
+  for (let i = 0; i < registeredVoters.length; i++) {
+    if (registeredVoters[i] === noteHash) {
+      return i
+    }
+  }
+  return -1 // Not found
 }
 
 /**
@@ -574,13 +596,14 @@ export function prepareVote(
 
 /**
  * Generate ZK proof for vote commitment using snarkjs
+ * @param registeredVoters - List of all registered voter note hashes (from contract)
  */
 export async function generateVoteProof(
   keyPair: KeyPair,
   note: TokenNote,
   voteData: VoteData,
   merkleRoot: bigint,
-  _merklePath: bigint[],
+  registeredVoters: bigint[],
   _merkleIndex: number,
   onProgress?: (progress: ProofGenerationProgress) => void
 ): Promise<{ proof: ZKProof; publicSignals: bigint[]; nullifier: bigint; commitment: bigint }> {
@@ -612,30 +635,24 @@ export async function generateVoteProof(
   // Compute actual note hash
   const noteHash = poseidonHashSync(poseidon, [pkX, pkY, note.noteValue, note.tokenType, note.noteSalt])
 
-  // Compute merkle proof using optimized sparse tree approach
-  // For single-leaf tree at index 0, we hash up through 20 levels with zero siblings
+  // Find voter's index in registered voters list
   console.log('[ZK] NoteHash:', noteHash.toString())
   console.log('[ZK] Merkle root (from proposal):', merkleRoot.toString())
+  console.log('[ZK] Registered voters count:', registeredVoters.length)
 
-  // Pre-compute zero hashes for each level
-  const zeroHashes: bigint[] = [0n]
-  for (let i = 0; i < TREE_DEPTH; i++) {
-    zeroHashes.push(poseidonHashSync(poseidon, [zeroHashes[i], zeroHashes[i]]))
+  const voterIndex = findVoterIndex(registeredVoters, noteHash)
+  if (voterIndex === -1) {
+    console.error('[ZK] Voter not found in registered voters list!')
+    console.error('[ZK] Your noteHash:', noteHash.toString())
+    console.error('[ZK] Registered voters:', registeredVoters.map(v => v.toString().slice(0, 20) + '...'))
+    throw new Error('You are not registered as a voter. Please register first.')
   }
 
-  // Compute merkle path and root for single-leaf tree at index 0
-  const actualPath: bigint[] = []
-  let currentHash = noteHash
+  console.log('[ZK] Voter index:', voterIndex)
 
-  for (let level = 0; level < TREE_DEPTH; level++) {
-    // At index 0, all siblings are zero hashes
-    const sibling = zeroHashes[level]
-    actualPath.push(sibling)
-    // Index 0 is always left, so hash(current, sibling)
-    currentHash = poseidonHashSync(poseidon, [currentHash, sibling])
-  }
+  // Generate merkle proof for this voter
+  const { path: actualPath, root: actualMerkleRoot } = await generateMerkleProofAsync(registeredVoters, voterIndex)
 
-  const actualMerkleRoot = currentHash
   console.log('[ZK] Computed merkle root:', actualMerkleRoot.toString())
 
   // Verify merkle root matches proposal
@@ -643,7 +660,7 @@ export async function generateVoteProof(
     console.error('[ZK] Merkle root mismatch!')
     console.error('[ZK] Expected:', merkleRoot.toString())
     console.error('[ZK] Got:', actualMerkleRoot.toString())
-    throw new Error('Merkle root mismatch - your identity does not match this proposal')
+    throw new Error('Merkle root mismatch - voter registry has changed since proposal creation')
   }
 
   // Compute actual commitment and nullifier
@@ -681,7 +698,7 @@ export async function generateVoteProof(
     choice: voteData.choice.toString(),
     voteSalt: voteSalt.toString(),
     merklePath: actualPath.map(p => p.toString()),
-    merkleIndex: 0,
+    merkleIndex: voterIndex,
   }
 
   onProgress?.({

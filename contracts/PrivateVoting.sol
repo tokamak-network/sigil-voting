@@ -74,6 +74,10 @@ contract PrivateVoting {
     mapping(uint256 => bool) public validMerkleRoots;
     uint256[] public merkleRootHistory;
 
+    // Shared voter registry - stores all registered note hashes
+    uint256[] public registeredVoters;
+    mapping(uint256 => bool) public isVoterRegistered;
+
     // ============ Events ============
     event ProposalCreated(
         uint256 indexed proposalId,
@@ -85,6 +89,8 @@ contract PrivateVoting {
     );
 
     event MerkleRootRegistered(uint256 indexed merkleRoot, uint256 timestamp);
+
+    event VoterRegistered(uint256 indexed noteHash, uint256 timestamp);
 
     event VoteCommitted(uint256 indexed proposalId, uint256 indexed nullifier, uint256 commitment, uint256 votingPower);
 
@@ -122,6 +128,33 @@ contract PrivateVoting {
         merkleRootHistory.push(_merkleRoot);
 
         emit MerkleRootRegistered(_merkleRoot, block.timestamp);
+    }
+
+    /**
+     * @dev Register a voter's note hash to the shared registry
+     * @param _noteHash The hash of the voter's token note
+     */
+    function registerVoter(uint256 _noteHash) external {
+        if (isVoterRegistered[_noteHash]) return; // Already registered, skip
+
+        isVoterRegistered[_noteHash] = true;
+        registeredVoters.push(_noteHash);
+
+        emit VoterRegistered(_noteHash, block.timestamp);
+    }
+
+    /**
+     * @dev Get all registered voter note hashes
+     */
+    function getRegisteredVoters() external view returns (uint256[] memory) {
+        return registeredVoters;
+    }
+
+    /**
+     * @dev Get the number of registered voters
+     */
+    function getVoterCount() external view returns (uint256) {
+        return registeredVoters.length;
     }
 
     // ============ Proposal Functions ============
