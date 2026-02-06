@@ -4,18 +4,17 @@ import { injected } from 'wagmi/connectors'
 import { sepolia } from './wagmi'
 import { PRIVATE_VOTING_ADDRESS, PRIVATE_VOTING_ABI, CHOICE_FOR, CHOICE_AGAINST, CHOICE_ABSTAIN } from './contract'
 import {
-  getOrCreateKeyPair,
-  createTokenNote,
+  getOrCreateKeyPairAsync,
+  createTokenNoteAsync,
   getStoredNote,
   prepareVote,
   generateVoteProof,
   storeVoteForReveal,
   getVoteForReveal,
-  buildMerkleTree,
-  generateMerkleProof,
+  generateMerkleProofAsync,
   formatBigInt,
   getKeyInfo,
-  computeNullifier,
+  preloadCrypto,
   type KeyPair,
   type TokenNote,
   type VoteData,
@@ -52,9 +51,6 @@ interface Proposal {
   phase: ProposalPhase
   status: ProposalStatus
 }
-
-// Demo merkle root (in production, this comes from token snapshot)
-const DEMO_MERKLE_ROOT = 12345678901234567890n
 
 function App() {
   const { address, isConnected, chainId } = useAccount()
@@ -94,20 +90,52 @@ function App() {
   const [hasAlreadyVoted, setHasAlreadyVoted] = useState(false)
   const [checkingVoteStatus, setCheckingVoteStatus] = useState(false)
 
-  // Initialize ZK identity on connect
-  useEffect(() => {
-    if (isConnected && !keyPair) {
-      const kp = getOrCreateKeyPair()
-      setKeyPair(kp)
+  // Eligibility state (merkle root match)
+  const [isEligible, setIsEligible] = useState(true)
 
-      // Create or restore token note
-      let note = getStoredNote()
-      if (!note) {
-        note = createTokenNote(kp, votingPower)
-      }
-      setTokenNote(note)
+  // Pre-load crypto on mount
+  useEffect(() => {
+    preloadCrypto()
+  }, [])
+
+  // Track current address for change detection
+  const [currentAddress, setCurrentAddress] = useState<string | undefined>()
+
+  // Reset ZK identity when wallet address changes
+  useEffect(() => {
+    if (address !== currentAddress) {
+      setKeyPair(null)
+      setTokenNote(null)
+      setCurrentAddress(address)
     }
-  }, [isConnected, keyPair, votingPower])
+  }, [address, currentAddress])
+
+  // Initialize ZK identity on connect or address change
+  useEffect(() => {
+    if (isConnected && address && !keyPair) {
+      // Use async initialization to get proper pkX, pkY
+      const initIdentity = async () => {
+        // Pass wallet address to get wallet-specific keypair
+        const kp = await getOrCreateKeyPairAsync(address)
+        setKeyPair(kp)
+        console.log('[App] KeyPair initialized for', address, ', pkX:', kp.pkX.toString().slice(0, 20) + '...')
+
+        // Try to restore existing note for this wallet, or create new one
+        let note = getStoredNote(address)
+
+        // Verify the stored note matches current keypair
+        if (note && note.pkX === kp.pkX && note.pkY === kp.pkY) {
+          console.log('[App] Token note restored from storage, noteHash:', note.noteHash.toString().slice(0, 20) + '...')
+        } else {
+          // Create new note (stored note missing or keypair changed)
+          note = await createTokenNoteAsync(kp, votingPower, 1n, address)
+          console.log('[App] Token note created, noteHash:', note.noteHash.toString().slice(0, 20) + '...')
+        }
+        setTokenNote(note)
+      }
+      initIdentity()
+    }
+  }, [isConnected, keyPair, votingPower, address])
 
   // Load proposals from on-chain contract
   // Read proposal count from contract
@@ -136,9 +164,7 @@ function App() {
   useEffect(() => {
     if (proposalsData && proposalsData.length > 0) {
       const loadedProposals: Proposal[] = proposalsData
-        .filter((result): result is { status: 'success'; result: unknown[] } =>
-          result.status === 'success' && result.result !== undefined
-        )
+        .filter((result) => result.status === 'success' && result.result !== undefined)
         .map((result) => {
           const data = result.result as [
             bigint, string, string, string, bigint, bigint, bigint,
@@ -289,34 +315,26 @@ function App() {
     setProofProgress(null)
     setCurrentVoteData(null)
     setHasAlreadyVoted(false)
+    setIsEligible(true) // Reset eligibility
 
     // Check if we have stored vote data for reveal
-    const storedVote = getVoteForReveal(BigInt(proposal.id))
+    const storedVote = getVoteForReveal(BigInt(proposal.id), address)
     if (storedVote && proposal.phase === 'reveal') {
       setVotingPhase('committed')
     }
 
-    // Check if user has already voted on-chain (via nullifier)
-    if (keyPair && proposal.phase === 'commit') {
+    // Check vote status (eligibility check happens during proof generation)
+    if (keyPair && tokenNote && proposal.phase === 'commit') {
       setCheckingVoteStatus(true)
       try {
-        const nullifier = computeNullifier(keyPair.sk, BigInt(proposal.id))
-        // Check on-chain if nullifier is already used
-        const { createPublicClient, http } = await import('viem')
-        const client = createPublicClient({
-          chain: sepolia,
-          transport: http('https://ethereum-sepolia-rpc.publicnode.com'),
-        })
-        const isUsed = await client.readContract({
-          address: PRIVATE_VOTING_ADDRESS,
-          abi: PRIVATE_VOTING_ABI,
-          functionName: 'isNullifierUsed',
-          args: [BigInt(proposal.id), nullifier],
-        }) as boolean
-        setHasAlreadyVoted(isUsed)
-        if (isUsed) {
+        // Quick check: if there's stored vote data, user has already voted
+        const storedVoteData = getVoteForReveal(BigInt(proposal.id), address)
+        if (storedVoteData) {
+          setHasAlreadyVoted(true)
           setVotingPhase('committed')
         }
+        // Skip slow merkle root computation - eligibility checked during proof generation
+        setIsEligible(true)
       } catch (error) {
         console.error('Failed to check vote status:', error)
       } finally {
@@ -327,13 +345,13 @@ function App() {
 
   // Open confirmation modal before voting
   const openVoteConfirmation = () => {
-    if (!selectedChoice) return
+    if (selectedChoice === null) return
     setShowConfirmModal(true)
   }
 
   // Commit Phase: Generate ZK proof and submit commitment
   const handleCommitVote = useCallback(async () => {
-    if (!selectedChoice || !selectedProposal || !keyPair || !tokenNote) return
+    if (selectedChoice === null || !selectedProposal || !keyPair || !tokenNote) return
 
     setShowConfirmModal(false)
     setVotingPhase('generating')
@@ -361,13 +379,13 @@ function App() {
       // For demo: single-note tree where the noteHash must equal the merkle root
       // In production: would fetch proof from snapshot service
       const noteHashes = [tokenNote.noteHash]
-      const { path } = generateMerkleProof(noteHashes, 0)
+      const { path } = await generateMerkleProofAsync(noteHashes, 0)
 
       console.log('[Vote] Proposal merkle root:', proposalMerkleRoot.toString())
       console.log('[Vote] User noteHash:', tokenNote.noteHash.toString())
 
       // Generate ZK proof (4 public inputs per D1 spec)
-      const { proof, publicSignals, nullifier, commitment } = await generateVoteProof(
+      const { proof, nullifier, commitment } = await generateVoteProof(
         keyPair,
         tokenNote,
         voteData,
@@ -410,8 +428,8 @@ function App() {
 
       setTxHash(hash)
 
-      // Store vote data for reveal phase
-      storeVoteForReveal(proposalId, voteData)
+      // Store vote data for reveal phase (per wallet address)
+      storeVoteForReveal(proposalId, voteData, address)
 
       // Refresh on-chain data
       await refetchProposals()
@@ -430,7 +448,7 @@ function App() {
     if (!selectedProposal) return
 
     const proposalId = BigInt(selectedProposal.id)
-    const storedVote = getVoteForReveal(proposalId)
+    const storedVote = getVoteForReveal(proposalId, address)
 
     if (!storedVote) {
       alert('No committed vote found for this proposal.')
@@ -864,7 +882,7 @@ function App() {
               {createProposalStep !== 'idle' && createProposalStep !== 'error' && (
                 <div className="create-progress">
                   <div className="progress-steps">
-                    <div className={`progress-step ${createProposalStep === 'registering' ? 'active' : createProposalStep !== 'idle' ? 'done' : ''}`}>
+                    <div className={`progress-step ${createProposalStep === 'registering' ? 'active' : 'done'}`}>
                       <div className="step-indicator">{createProposalStep === 'registering' ? <span className="spinner"></span> : '✓'}</div>
                       <span>Register Merkle Root</span>
                     </div>
@@ -903,27 +921,29 @@ function App() {
                   setCreateProposalStep('registering')
 
                   try {
-                    // For demo: use user's noteHash as merkle root (single-leaf tree)
-                    // In production, this would be a snapshot of all token holders
+                    // For demo: compute actual merkle root for single-leaf tree
+                    // The circuit computes root through 20 levels, so we must match that
                     if (!tokenNote || tokenNote.noteHash === 0n) {
                       throw new Error('Token note not initialized. Please refresh and try again.')
                     }
 
-                    const userMerkleRoot = tokenNote.noteHash
-                    console.log('[Proposal] Using user noteHash as merkle root:', userMerkleRoot.toString())
+                    // Always compute fresh merkle root from current tokenNote
+                    const { root: computedMerkleRoot } = await generateMerkleProofAsync([tokenNote.noteHash], 0)
+                    console.log('[Proposal] User noteHash:', tokenNote.noteHash.toString())
+                    console.log('[Proposal] Merkle root:', computedMerkleRoot.toString())
 
                     // Step 1: Register the merkle root first
                     await writeContractAsync({
                       address: PRIVATE_VOTING_ADDRESS,
                       abi: PRIVATE_VOTING_ABI,
                       functionName: 'registerMerkleRoot',
-                      args: [userMerkleRoot],
+                      args: [computedMerkleRoot],
                       gas: BigInt(100000),
                     })
 
                     // Wait for merkle root registration to be confirmed
                     setCreateProposalStep('waiting')
-                    await new Promise(resolve => setTimeout(resolve, 15000))
+                    await new Promise(resolve => setTimeout(resolve, 3000))
 
                     // Step 2: Create the proposal
                     setCreateProposalStep('creating')
@@ -937,7 +957,7 @@ function App() {
                       args: [
                         newProposalTitle,
                         newProposalDescription,
-                        userMerkleRoot, // Use user's noteHash as merkle root
+                        computedMerkleRoot, // Use computed merkle root (20-level tree)
                         votingDuration,
                         revealDuration,
                       ],
@@ -1035,6 +1055,19 @@ function App() {
                           <p>Come back during the <strong>Reveal Phase</strong> to reveal your choice. Your vote won't count until revealed.</p>
                         </div>
                       </div>
+                    ) : !isEligible ? (
+                      <div className="not-eligible">
+                        <div className="not-eligible-icon">🚫</div>
+                        <h3>Not Eligible</h3>
+                        <p className="not-eligible-subtitle">Your ZK identity is not in this proposal's voter snapshot.</p>
+                        <div className="not-eligible-info">
+                          <p>Each proposal has a specific merkle root (voter snapshot). Only users whose identity is included in that snapshot can vote.</p>
+                          <p><strong>Solution:</strong> Create your own proposal to test voting with your identity.</p>
+                        </div>
+                        <button className="submit-vote-btn" onClick={() => setCurrentPage('create-proposal')}>
+                          Create Your Proposal
+                        </button>
+                      </div>
                     ) : votingPhase === 'select' ? (
                       <>
                         {keyPair && (
@@ -1079,7 +1112,7 @@ function App() {
 
                         <button
                           className="submit-vote-btn"
-                          disabled={!selectedChoice}
+                          disabled={selectedChoice === null}
                           onClick={openVoteConfirmation}
                         >
                           Continue to Vote
@@ -1162,7 +1195,7 @@ function App() {
                       </div>
                     ) : votingPhase === 'committed' || votingPhase === 'select' ? (
                       <>
-                        {getVoteForReveal(BigInt(selectedProposal.id)) ? (
+                        {getVoteForReveal(BigInt(selectedProposal.id), address) ? (
                           <>
                             <div className="reveal-info">
                               <p>You have a committed vote ready to reveal.</p>

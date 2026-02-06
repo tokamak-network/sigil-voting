@@ -4,6 +4,10 @@ out = "out"
 libs = ["node_modules", "lib"]
 via_ir = true
 
+[fmt]
+# Exclude auto-generated files from formatting
+ignore = ["contracts/PoseidonT5.sol", "contracts/Groth16Verifier.sol"]
+
 [rpc_endpoints]
 sepolia = "${SEPOLIA_RPC_URL}"
 

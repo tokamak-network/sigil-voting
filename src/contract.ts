@@ -4,9 +4,9 @@
  * Based on: https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d1-private-voting.md
  */
 
-// Contract addresses (Sepolia Testnet) - Updated with Poseidon hash support
-export const PRIVATE_VOTING_ADDRESS = '0xC4e1D6f22633224Df80245c71cf86118E7399f93' as const
-export const VERIFIER_ADDRESS = '0x6BA110D76df5aAB3501dca0cc52f64f46BC1eB4f' as const
+// Contract addresses (Sepolia Testnet) - Updated with nullifier verification fix
+export const PRIVATE_VOTING_ADDRESS = '0xA26ABcfFC9Af5c60CbE5a40E9FA397341aDC7Eb7' as const
+export const VERIFIER_ADDRESS = '0x2a1727135e3067c417dA2AD10f439675d04cdB69' as const
 
 // Vote choices matching spec
 export const CHOICE_AGAINST = 0n
@@ -42,6 +42,13 @@ export const PRIVATE_VOTING_ABI = [
       { name: '_revealDuration', type: 'uint256' },
     ],
     outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'deleteProposal',
+    inputs: [{ name: '_proposalId', type: 'uint256' }],
+    outputs: [],
     stateMutability: 'nonpayable',
   },
 
@@ -204,4 +211,6 @@ export const PRIVATE_VOTING_ABI = [
   { type: 'error', name: 'CommitmentNotFound', inputs: [] },
   { type: 'error', name: 'InvalidReveal', inputs: [] },
   { type: 'error', name: 'ZeroVotingPower', inputs: [] },
+  { type: 'error', name: 'NotProposer', inputs: [] },
+  { type: 'error', name: 'ProposalHasVotes', inputs: [] },
 ] as const
