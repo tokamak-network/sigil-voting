@@ -19,7 +19,7 @@ const SK_STORAGE_KEY_BASE = 'zk-vote-secret-key'
 const NOTE_STORAGE_KEY_BASE = 'zk-vote-note'
 
 // Contract address for vote storage (to avoid conflicts between contract deployments)
-const CONTRACT_ADDRESS = '0x7675FeDbc7420c7d3D14cdc62BEAa94f4E49082F'
+const CONTRACT_ADDRESS = '0xc3bF134b60FA8ac7366CA0DeDbD50ECd9751ab39'
 
 // Helper to get wallet-specific storage key
 function getSkStorageKey(walletAddress?: string): string {
@@ -441,7 +441,7 @@ export function buildMerkleTree(_noteHashes: bigint[]): { root: bigint; depth: n
 
 /**
  * Generate merkle proof for a leaf using Poseidon
- * Supports multi-leaf trees by building the full tree structure
+ * Uses efficient sparse tree approach - only computes necessary nodes
  */
 export async function generateMerkleProofAsync(
   noteHashes: bigint[],
@@ -455,49 +455,69 @@ export async function generateMerkleProofAsync(
     zeroHashes.push(poseidonHashSync(poseidon, [zeroHashes[i], zeroHashes[i]]))
   }
 
-  // Build the tree level by level
-  // Start with leaves padded to tree size (2^20)
-  const treeSize = 2 ** TREE_DEPTH
+  // Use sparse tree approach: only store non-zero nodes
+  // Map from index to hash value for each level
+  let currentLevel: Map<number, bigint> = new Map()
 
-  // Initialize leaves array with note hashes and zeros
-  let currentLevel: bigint[] = new Array(treeSize).fill(0n)
+  // Initialize with actual leaves
   for (let i = 0; i < noteHashes.length; i++) {
-    currentLevel[i] = noteHashes[i]
+    if (noteHashes[i] !== 0n) {
+      currentLevel.set(i, noteHashes[i])
+    }
   }
 
   const path: bigint[] = []
   let currentIndex = leafIndex
 
-  // Build tree and collect path
+  // Build tree level by level, only computing necessary nodes
   for (let level = 0; level < TREE_DEPTH; level++) {
     const isLeft = currentIndex % 2 === 0
     const siblingIndex = isLeft ? currentIndex + 1 : currentIndex - 1
 
-    // Get sibling from current level
-    const sibling = currentLevel[siblingIndex] || zeroHashes[level]
+    // Get sibling from current level (or zero hash if not present)
+    const sibling = currentLevel.get(siblingIndex) ?? zeroHashes[level]
     path.push(sibling)
 
-    // Build next level
-    const nextLevelSize = currentLevel.length / 2
-    const nextLevel: bigint[] = new Array(nextLevelSize).fill(0n)
+    // Build next level - only compute parents of non-zero nodes
+    const nextLevel: Map<number, bigint> = new Map()
+    const processedParents = new Set<number>()
 
-    for (let i = 0; i < nextLevelSize; i++) {
-      const left = currentLevel[i * 2]
-      const right = currentLevel[i * 2 + 1]
+    // Process all non-zero nodes and their siblings
+    for (const [idx] of currentLevel) {
+      const parentIdx = Math.floor(idx / 2)
+      if (processedParents.has(parentIdx)) continue
+      processedParents.add(parentIdx)
 
-      // Use zero hash optimization for empty subtrees
-      if (left === 0n && right === 0n) {
-        nextLevel[i] = zeroHashes[level + 1]
-      } else {
-        nextLevel[i] = poseidonHashSync(poseidon, [left, right])
+      const leftIdx = parentIdx * 2
+      const rightIdx = parentIdx * 2 + 1
+      const left = currentLevel.get(leftIdx) ?? zeroHashes[level]
+      const right = currentLevel.get(rightIdx) ?? zeroHashes[level]
+
+      const parentHash = poseidonHashSync(poseidon, [left, right])
+      if (parentHash !== zeroHashes[level + 1]) {
+        nextLevel.set(parentIdx, parentHash)
       }
+    }
+
+    // Also ensure we compute the path for our target leaf
+    const targetParentIdx = Math.floor(currentIndex / 2)
+    if (!processedParents.has(targetParentIdx)) {
+      const leftIdx = targetParentIdx * 2
+      const rightIdx = targetParentIdx * 2 + 1
+      const left = currentLevel.get(leftIdx) ?? zeroHashes[level]
+      const right = currentLevel.get(rightIdx) ?? zeroHashes[level]
+      const parentHash = poseidonHashSync(poseidon, [left, right])
+      nextLevel.set(targetParentIdx, parentHash)
     }
 
     currentLevel = nextLevel
     currentIndex = Math.floor(currentIndex / 2)
   }
 
-  return { path, index: leafIndex, root: currentLevel[0] }
+  // Root is at index 0
+  const root = currentLevel.get(0) ?? zeroHashes[TREE_DEPTH]
+
+  return { path, index: leafIndex, root }
 }
 
 /**

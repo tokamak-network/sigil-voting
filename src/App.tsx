@@ -91,8 +91,13 @@ function App() {
   const [hasAlreadyVoted, setHasAlreadyVoted] = useState(false)
   const [checkingVoteStatus, setCheckingVoteStatus] = useState(false)
 
-  // Eligibility state (merkle root match)
+  // Eligibility state (merkle root match) - reset when proposal changes
   const [isEligible, setIsEligible] = useState(true)
+
+  // Reset eligibility when proposal changes
+  useEffect(() => {
+    setIsEligible(true)
+  }, [selectedProposal?.id])
 
   // Voter registration state
   const [isVoterRegistered, setIsVoterRegistered] = useState(false)
@@ -111,6 +116,8 @@ function App() {
     if (address !== currentAddress) {
       setKeyPair(null)
       setTokenNote(null)
+      setIsVoterRegistered(false)
+      setIsEligible(true)
       setCurrentAddress(address)
     }
   }, [address, currentAddress])
@@ -240,10 +247,11 @@ function App() {
   }, [proposalsData])
 
   // Refresh proposals after transaction
-  const refreshProposals = useCallback(() => {
+  const _refreshProposals = useCallback(() => {
     refetchProposalCount()
     refetchProposals()
   }, [refetchProposalCount, refetchProposals])
+  void _refreshProposals // suppress unused warning
 
   const isCorrectChain = chainId === sepolia.id
 
@@ -254,45 +262,24 @@ function App() {
     }
   }, [isUserRegistered])
 
-  // Auto-register voter when they have a token note and are not registered
+  // Check if voter is already registered on mount/address change
   useEffect(() => {
-    const registerVoter = async () => {
-      if (!isConnected || !isCorrectChain || !tokenNote || tokenNote.noteHash === 0n) return
-      if (isVoterRegistered || isRegisteringVoter) return
-
-      // Check if already registered (refetch to be sure)
-      const { data: alreadyRegistered } = await refetchIsUserRegistered()
-      if (alreadyRegistered) {
-        setIsVoterRegistered(true)
+    const checkRegistration = async () => {
+      if (!tokenNote || tokenNote.noteHash === 0n) {
+        console.log('[App] No tokenNote, skipping registration check')
         return
       }
-
-      setIsRegisteringVoter(true)
-      try {
-        console.log('[App] Registering voter with noteHash:', tokenNote.noteHash.toString().slice(0, 20) + '...')
-        await writeContractAsync({
-          address: PRIVATE_VOTING_ADDRESS,
-          abi: PRIVATE_VOTING_ABI,
-          functionName: 'registerVoter',
-          args: [tokenNote.noteHash],
-          gas: BigInt(100000),
-        })
+      console.log('[App] Checking registration for noteHash:', tokenNote.noteHash.toString().slice(0, 20) + '...')
+      const { data: alreadyRegistered } = await refetchIsUserRegistered()
+      console.log('[App] Registration status:', alreadyRegistered)
+      if (alreadyRegistered) {
         setIsVoterRegistered(true)
-        await refetchRegisteredVoters()
-        showToast('Voter registered successfully!', 'success')
-      } catch (error) {
-        console.error('Failed to register voter:', error)
-        // Don't show error toast for user rejection
-        if ((error as Error).message?.includes('User rejected')) {
-          showToast('Voter registration cancelled', 'info')
-        }
-      } finally {
-        setIsRegisteringVoter(false)
+      } else {
+        setIsVoterRegistered(false)
       }
     }
-
-    registerVoter()
-  }, [isConnected, isCorrectChain, tokenNote, isVoterRegistered, isRegisteringVoter, writeContractAsync, refetchIsUserRegistered, refetchRegisteredVoters])
+    checkRegistration()
+  }, [tokenNote, refetchIsUserRegistered])
 
   const handleSwitchNetwork = async () => {
     try {
@@ -439,23 +426,69 @@ function App() {
       const voteData = prepareVote(keyPair, choice as VoteChoice, tokenNote.noteValue, proposalId)
       setCurrentVoteData(voteData)
 
-      // Use the proposal's merkle root for proof generation
-      const proposalMerkleRoot = selectedProposal.merkleRoot
+      // Step 1: Auto-register if not registered
+      if (!isVoterRegistered) {
+        setProofProgress({ stage: 'preparing', progress: 5, message: 'Registering as voter...' })
+        console.log('[Vote] Auto-registering voter...')
+        await writeContractAsync({
+          address: PRIVATE_VOTING_ADDRESS,
+          abi: PRIVATE_VOTING_ABI,
+          functionName: 'registerVoter',
+          args: [tokenNote.noteHash],
+          gas: BigInt(100000),
+        })
+        setIsVoterRegistered(true)
+        // Wait for tx confirmation
+        await new Promise(resolve => setTimeout(resolve, 3000))
+      }
 
-      // Fetch registered voters (snapshot of eligible voters)
-      const { data: voters } = await refetchRegisteredVoters()
-      const registeredVoters = voters as bigint[] | undefined
+      // Step 2: Fetch current registered voters
+      setProofProgress({ stage: 'preparing', progress: 10, message: 'Fetching voter list...' })
+      const { data: allVoters } = await refetchRegisteredVoters()
+      const registeredVoters = (allVoters as bigint[]) || []
 
-      if (!registeredVoters || registeredVoters.length === 0) {
+      console.log('[Vote] All registered voters:', registeredVoters.length)
+
+      if (registeredVoters.length === 0) {
         throw new Error('No registered voters found')
       }
 
-      // Check if user is in the registered voters list
-      const voterIndex = findVoterIndex(registeredVoters, tokenNote.noteHash)
+      // Step 3: Check if user is in the list
+      let voterIndex = findVoterIndex(registeredVoters, tokenNote.noteHash)
+
       if (voterIndex === -1) {
-        setIsEligible(false)
-        throw new Error('You are not registered as a voter for this proposal')
+        // User just registered, add to list manually
+        registeredVoters.push(tokenNote.noteHash)
+        voterIndex = registeredVoters.length - 1
       }
+
+      // Step 4: Compute new merkle root from ALL current voters
+      const { root: newMerkleRoot } = await generateMerkleProofAsync(registeredVoters, voterIndex)
+      console.log('[Vote] Computed merkle root:', newMerkleRoot.toString())
+
+      // Step 5: Update proposal if merkle root doesn't match
+      let proposalMerkleRoot = selectedProposal.merkleRoot
+      if (newMerkleRoot !== proposalMerkleRoot) {
+        setProofProgress({ stage: 'preparing', progress: 15, message: 'Updating proposal voters...' })
+        console.log('[Vote] Updating proposal voter snapshot...')
+        await writeContractAsync({
+          address: PRIVATE_VOTING_ADDRESS,
+          abi: PRIVATE_VOTING_ABI,
+          functionName: 'updateProposalVoters',
+          args: [proposalId, newMerkleRoot],
+          gas: BigInt(500000),
+        })
+        proposalMerkleRoot = newMerkleRoot
+        // Wait for tx confirmation
+        await new Promise(resolve => setTimeout(resolve, 3000))
+        // Refresh proposal data
+        await refetchProposals()
+      }
+
+      console.log('[Vote] Proposal merkle root:', proposalMerkleRoot.toString())
+      console.log('[Vote] User noteHash:', tokenNote.noteHash.toString())
+      console.log('[Vote] Voter index:', voterIndex)
+      console.log('[Vote] Total voters:', registeredVoters.length)
 
       console.log('[Vote] Proposal merkle root:', proposalMerkleRoot.toString())
       console.log('[Vote] User noteHash:', tokenNote.noteHash.toString())
@@ -519,7 +552,7 @@ function App() {
       setVotingPhase('select')
       showToast('Vote commit failed. Please try again.', 'error')
     }
-  }, [selectedChoice, selectedProposal, keyPair, tokenNote, writeContractAsync, refetchProposals, refetchRegisteredVoters, address])
+  }, [selectedChoice, selectedProposal, keyPair, tokenNote, writeContractAsync, refetchProposals, refetchRegisteredVoters, isVoterRegistered, address])
 
   // Reveal Phase: Submit choice and salt
   const handleRevealVote = useCallback(async () => {
@@ -658,8 +691,7 @@ function App() {
             <div className="identity-badge" title={`Public Key: ${formatBigInt(keyPair.pkX)}`}>
               <span className="identity-icon">🔑</span>
               <span className="identity-text">{getKeyInfo(keyPair).shortPk}</span>
-              {isRegisteringVoter && <span className="registering-badge">⏳</span>}
-              {isVoterRegistered && <span className="registered-badge">✓</span>}
+              {isVoterRegistered && <span className="registered-badge" title="Registered Voter">✓</span>}
             </div>
           )}
           {isConnected ? (
@@ -677,6 +709,47 @@ function App() {
                 <span className="wallet-address">{shortenAddress(address!)}</span>
               </div>
               <button className="disconnect-btn" onClick={() => disconnect()}>×</button>
+              <button
+                className="reset-btn"
+                title="Reset ZK Identity"
+                onClick={() => {
+                  if (confirm('ZK Identity 초기화하시겠습니까?')) {
+                    localStorage.clear()
+                    window.location.reload()
+                  }
+                }}
+              >↺</button>
+              {!isVoterRegistered && !isRegisteringVoter && tokenNote && tokenNote.noteHash !== 0n && (
+                <button
+                  className="register-voter-btn"
+                  onClick={async () => {
+                    if (!tokenNote || tokenNote.noteHash === 0n) return
+                    setIsRegisteringVoter(true)
+                    try {
+                      await writeContractAsync({
+                        address: PRIVATE_VOTING_ADDRESS,
+                        abi: PRIVATE_VOTING_ABI,
+                        functionName: 'registerVoter',
+                        args: [tokenNote.noteHash],
+                        gas: BigInt(100000),
+                      })
+                      setIsVoterRegistered(true)
+                      showToast('Voter registered successfully!', 'success')
+                    } catch (error) {
+                      if (!(error as Error).message?.includes('User rejected')) {
+                        showToast('Registration failed', 'error')
+                      }
+                    } finally {
+                      setIsRegisteringVoter(false)
+                    }
+                  }}
+                >
+                  Register to Vote
+                </button>
+              )}
+              {isRegisteringVoter && (
+                <span className="registering-status">Registering...</span>
+              )}
             </div>
           ) : (
             <button className="connect-btn" onClick={handleConnect} disabled={isConnecting}>
@@ -1016,7 +1089,7 @@ function App() {
                     console.log('[Proposal] Merkle root (from all voters):', computedMerkleRoot.toString())
 
                     // Step 1: Register the merkle root first
-                    await writeContractAsync({
+                    const merkleRootHash = await writeContractAsync({
                       address: PRIVATE_VOTING_ADDRESS,
                       abi: PRIVATE_VOTING_ABI,
                       functionName: 'registerMerkleRoot',
@@ -1026,7 +1099,22 @@ function App() {
 
                     // Wait for merkle root registration to be confirmed
                     setCreateProposalStep('waiting')
-                    await new Promise(resolve => setTimeout(resolve, 3000))
+                    for (let i = 0; i < 30; i++) {
+                      await new Promise(resolve => setTimeout(resolve, 1000))
+                      try {
+                        const receipt = await fetch('https://ethereum-sepolia-rpc.publicnode.com', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            jsonrpc: '2.0',
+                            method: 'eth_getTransactionReceipt',
+                            params: [merkleRootHash],
+                            id: 1
+                          })
+                        }).then(r => r.json())
+                        if (receipt.result && receipt.result.blockNumber) break
+                      } catch { /* ignore */ }
+                    }
 
                     // Step 2: Create the proposal
                     setCreateProposalStep('creating')
@@ -1050,17 +1138,30 @@ function App() {
                     setTxHash(hash)
                     setCreateProposalStep('success')
 
-                    // Immediately refresh proposals list
-                    await refreshProposals()
+                    // Wait for transaction to be mined
+                    for (let i = 0; i < 30; i++) {
+                      await new Promise(resolve => setTimeout(resolve, 1000))
+                      try {
+                        const receipt = await fetch('https://ethereum-sepolia-rpc.publicnode.com', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            jsonrpc: '2.0',
+                            method: 'eth_getTransactionReceipt',
+                            params: [hash],
+                            id: 1
+                          })
+                        }).then(r => r.json())
+                        if (receipt.result && receipt.result.blockNumber) break
+                      } catch { /* ignore */ }
+                    }
+
                     showToast('Proposal created successfully!', 'success')
 
-                    // Clear form and redirect after short delay
+                    // Force page reload to show new proposal
                     setTimeout(() => {
-                      setNewProposalTitle('')
-                      setNewProposalDescription('')
-                      setCreateProposalStep('idle')
-                      setCurrentPage('proposals')
-                    }, 1500)
+                      window.location.reload()
+                    }, 1000)
 
                   } catch (error) {
                     console.error('Failed to create proposal:', error)
