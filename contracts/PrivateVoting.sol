@@ -20,7 +20,7 @@ interface IVerifier {
         uint256[2] calldata _pA,
         uint256[2][2] calldata _pB,
         uint256[2] calldata _pC,
-        uint256[5] calldata _pubSignals  // [voteCommitment, proposalId, votingPower, merkleRoot, nullifier]
+        uint256[5] calldata _pubSignals // [voteCommitment, proposalId, votingPower, merkleRoot, nullifier]
     ) external view returns (bool);
 }
 
@@ -40,9 +40,9 @@ contract PrivateVoting {
         string description;
         address proposer;
         uint256 startTime;
-        uint256 endTime;          // End of commit phase
-        uint256 revealEndTime;    // End of reveal phase
-        uint256 merkleRoot;       // Snapshot eligibility tree root
+        uint256 endTime; // End of commit phase
+        uint256 revealEndTime; // End of reveal phase
+        uint256 merkleRoot; // Snapshot eligibility tree root
         uint256 forVotes;
         uint256 againstVotes;
         uint256 abstainVotes;
@@ -52,7 +52,7 @@ contract PrivateVoting {
     }
 
     struct VoteCommitment {
-        uint256 commitment;       // hash(choice, voteSalt, proposalId)
+        uint256 commitment; // hash(choice, voteSalt, proposalId)
         uint256 votingPower;
         uint256 nullifier;
         uint256 timestamp;
@@ -84,24 +84,11 @@ contract PrivateVoting {
         uint256 revealEndTime
     );
 
-    event MerkleRootRegistered(
-        uint256 indexed merkleRoot,
-        uint256 timestamp
-    );
+    event MerkleRootRegistered(uint256 indexed merkleRoot, uint256 timestamp);
 
-    event VoteCommitted(
-        uint256 indexed proposalId,
-        uint256 indexed nullifier,
-        uint256 commitment,
-        uint256 votingPower
-    );
+    event VoteCommitted(uint256 indexed proposalId, uint256 indexed nullifier, uint256 commitment, uint256 votingPower);
 
-    event VoteRevealed(
-        uint256 indexed proposalId,
-        uint256 indexed nullifier,
-        uint256 choice,
-        uint256 votingPower
-    );
+    event VoteRevealed(uint256 indexed proposalId, uint256 indexed nullifier, uint256 choice, uint256 votingPower);
 
     // ============ Errors ============
     error ProposalNotFound();
@@ -243,13 +230,7 @@ contract PrivateVoting {
         // Public signals order (snarkjs): outputs first, then inputs
         // [nullifier, voteCommitment, proposalId, votingPower, merkleRoot]
         // CRITICAL: Nullifier is now verified as part of ZK proof to prevent double voting
-        uint256[5] memory pubSignals = [
-            _nullifier,
-            _commitment,
-            _proposalId,
-            _votingPower,
-            proposal.merkleRoot
-        ];
+        uint256[5] memory pubSignals = [_nullifier, _commitment, _proposalId, _votingPower, proposal.merkleRoot];
 
         bool validProof = verifier.verifyProof(_pA, _pB, _pC, pubSignals);
 
@@ -287,12 +268,7 @@ contract PrivateVoting {
      * @param _choice Vote choice (0=against, 1=for, 2=abstain)
      * @param _voteSalt Salt used in commitment
      */
-    function revealVote(
-        uint256 _proposalId,
-        uint256 _nullifier,
-        uint256 _choice,
-        uint256 _voteSalt
-    ) external {
+    function revealVote(uint256 _proposalId, uint256 _nullifier, uint256 _choice, uint256 _voteSalt) external {
         Proposal storage proposal = proposals[_proposalId];
         VoteCommitment storage vc = commitments[_proposalId][_nullifier];
 
@@ -331,21 +307,25 @@ contract PrivateVoting {
     /**
      * @dev Get proposal details
      */
-    function getProposal(uint256 _proposalId) external view returns (
-        uint256 id,
-        string memory title,
-        string memory description,
-        address proposer,
-        uint256 merkleRoot,
-        uint256 endTime,
-        uint256 revealEndTime,
-        uint256 forVotes,
-        uint256 againstVotes,
-        uint256 abstainVotes,
-        uint256 totalCommitments,
-        uint256 revealedVotes,
-        uint8 phase // 0=commit, 1=reveal, 2=ended
-    ) {
+    function getProposal(uint256 _proposalId)
+        external
+        view
+        returns (
+            uint256 id,
+            string memory title,
+            string memory description,
+            address proposer,
+            uint256 merkleRoot,
+            uint256 endTime,
+            uint256 revealEndTime,
+            uint256 forVotes,
+            uint256 againstVotes,
+            uint256 abstainVotes,
+            uint256 totalCommitments,
+            uint256 revealedVotes,
+            uint8 phase // 0=commit, 1=reveal, 2=ended
+        )
+    {
         Proposal storage p = proposals[_proposalId];
         if (!p.exists) revert ProposalNotFound();
 
@@ -378,12 +358,11 @@ contract PrivateVoting {
     /**
      * @dev Get commitment by nullifier
      */
-    function getCommitment(uint256 _proposalId, uint256 _nullifier) external view returns (
-        uint256 commitment,
-        uint256 votingPower,
-        bool revealed,
-        uint256 revealedChoice
-    ) {
+    function getCommitment(uint256 _proposalId, uint256 _nullifier)
+        external
+        view
+        returns (uint256 commitment, uint256 votingPower, bool revealed, uint256 revealedChoice)
+    {
         VoteCommitment storage vc = commitments[_proposalId][_nullifier];
         return (vc.commitment, vc.votingPower, vc.revealed, vc.revealedChoice);
     }
@@ -416,8 +395,8 @@ contract PrivateVoting {
         Proposal storage p = proposals[_proposalId];
         if (!p.exists) revert ProposalNotFound();
 
-        if (block.timestamp <= p.endTime) return 0;      // Commit
+        if (block.timestamp <= p.endTime) return 0; // Commit
         if (block.timestamp <= p.revealEndTime) return 1; // Reveal
-        return 2;                                          // Ended
+        return 2; // Ended
     }
 }
