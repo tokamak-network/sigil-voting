@@ -17,12 +17,12 @@ contract MockVerifier is IVerifier {
         shouldPass = _shouldPass;
     }
 
-    function verifyProof(
-        uint256[2] calldata,
-        uint256[2][2] calldata,
-        uint256[2] calldata,
-        uint256[5] calldata
-    ) external view override returns (bool) {
+    function verifyProof(uint256[2] calldata, uint256[2][2] calldata, uint256[2] calldata, uint256[5] calldata)
+        external
+        view
+        override
+        returns (bool)
+    {
         return shouldPass;
     }
 }
@@ -56,12 +56,11 @@ contract PrivateVotingTest is Test {
 
     // D1 Spec: commitment = hash(choice, votingPower, proposalId, voteSalt)
     // Using Poseidon hash (same as ZK circuit)
-    function computeCommitment(
-        uint256 choice,
-        uint256 votingPower,
-        uint256 proposalId,
-        uint256 voteSalt
-    ) internal pure returns (uint256) {
+    function computeCommitment(uint256 choice, uint256 votingPower, uint256 proposalId, uint256 voteSalt)
+        internal
+        pure
+        returns (uint256)
+    {
         return PoseidonT5.hash([choice, votingPower, proposalId, voteSalt]);
     }
 
@@ -103,13 +102,8 @@ contract PrivateVotingTest is Test {
     function test_CreateProposal() public {
         voting.registerMerkleRoot(MERKLE_ROOT);
 
-        uint256 proposalId = voting.createProposal(
-            "Test Proposal",
-            "Test Description",
-            MERKLE_ROOT,
-            VOTING_DURATION,
-            REVEAL_DURATION
-        );
+        uint256 proposalId =
+            voting.createProposal("Test Proposal", "Test Description", MERKLE_ROOT, VOTING_DURATION, REVEAL_DURATION);
 
         assertEq(proposalId, 1);
         assertEq(voting.proposalCount(), 1);
@@ -119,11 +113,7 @@ contract PrivateVotingTest is Test {
         voting.registerMerkleRoot(MERKLE_ROOT);
 
         voting.createProposal(
-            "Upgrade Protocol",
-            "Proposal to upgrade the protocol to v2",
-            MERKLE_ROOT,
-            VOTING_DURATION,
-            REVEAL_DURATION
+            "Upgrade Protocol", "Proposal to upgrade the protocol to v2", MERKLE_ROOT, VOTING_DURATION, REVEAL_DURATION
         );
 
         (
@@ -190,7 +180,7 @@ contract PrivateVotingTest is Test {
         // Verify commitment stored
         assertTrue(voting.isNullifierUsed(proposalId, nullifier));
 
-        (uint256 storedCommitment, uint256 storedPower, bool revealed, ) = voting.getCommitment(proposalId, nullifier);
+        (uint256 storedCommitment, uint256 storedPower, bool revealed,) = voting.getCommitment(proposalId, nullifier);
         assertEq(storedCommitment, commitment);
         assertEq(storedPower, votingPower);
         assertFalse(revealed);
@@ -208,7 +198,7 @@ contract PrivateVotingTest is Test {
         vm.prank(bob);
         voting.commitVote(1, commitment + 1, 200, 22222, pA, pB, pC);
 
-        (,,,,,,,,,,uint256 totalCommitments,,) = voting.getProposal(1);
+        (,,,,,,,,,, uint256 totalCommitments,,) = voting.getProposal(1);
         assertEq(totalCommitments, 2);
     }
 
@@ -289,7 +279,7 @@ contract PrivateVotingTest is Test {
         assertEq(revealedChoice, choice);
 
         // Verify tally
-        (,,,,,,,uint256 forVotes,,,,,) = voting.getProposal(proposalId);
+        (,,,,,,, uint256 forVotes,,,,,) = voting.getProposal(proposalId);
         assertEq(forVotes, votingPower);
     }
 
@@ -312,7 +302,7 @@ contract PrivateVotingTest is Test {
         vm.prank(alice);
         voting.revealVote(1, nullifier, choice, voteSalt);
 
-        (,,,,,,,,uint256 againstVotes,,,,) = voting.getProposal(1);
+        (,,,,,,,, uint256 againstVotes,,,,) = voting.getProposal(1);
         assertEq(againstVotes, votingPower);
     }
 
@@ -335,7 +325,7 @@ contract PrivateVotingTest is Test {
         vm.prank(alice);
         voting.revealVote(1, nullifier, choice, voteSalt);
 
-        (,,,,,,,,,uint256 abstainVotes,,,) = voting.getProposal(1);
+        (,,,,,,,,, uint256 abstainVotes,,,) = voting.getProposal(1);
         assertEq(abstainVotes, votingPower);
     }
 
@@ -359,14 +349,14 @@ contract PrivateVotingTest is Test {
         vm.prank(alice);
         voting.revealVote(1, 11111, 1, 111);
 
-        (,,,,,,,,,,,uint256 revealedVotes,) = voting.getProposal(1);
+        (,,,,,,,,,,, uint256 revealedVotes,) = voting.getProposal(1);
         assertEq(revealedVotes, 1);
 
         // Bob reveals
         vm.prank(bob);
         voting.revealVote(1, 22222, 0, 222);
 
-        (,,,,,,,,,,,revealedVotes,) = voting.getProposal(1);
+        (,,,,,,,,,,, revealedVotes,) = voting.getProposal(1);
         assertEq(revealedVotes, 2);
     }
 
@@ -520,7 +510,7 @@ contract PrivateVotingTest is Test {
         voting.commitVote(1, charlieCommitment, 200, charlieNullifier, pA, pB, pC);
 
         // Verify commit phase state
-        (,,,,,,,,,,uint256 totalCommitments,,uint8 phase) = voting.getProposal(1);
+        (,,,,,,,,,, uint256 totalCommitments,, uint8 phase) = voting.getProposal(1);
         assertEq(totalCommitments, 3);
         assertEq(phase, 0); // Still commit phase
 
@@ -542,17 +532,16 @@ contract PrivateVotingTest is Test {
             ,,,,,,,
             uint256 forVotes,
             uint256 againstVotes,
-            uint256 abstainVotes,
-            ,
+            uint256 abstainVotes,,
             uint256 revealedVotes,
             uint8 finalPhase
         ) = voting.getProposal(1);
 
-        assertEq(forVotes, 300);      // Alice (100) + Charlie (200)
-        assertEq(againstVotes, 150);  // Bob (150)
+        assertEq(forVotes, 300); // Alice (100) + Charlie (200)
+        assertEq(againstVotes, 150); // Bob (150)
         assertEq(abstainVotes, 0);
         assertEq(revealedVotes, 3);
-        assertEq(finalPhase, 1);      // Reveal phase
+        assertEq(finalPhase, 1); // Reveal phase
 
         // 9. Move to ended phase
         vm.warp(block.timestamp + REVEAL_DURATION + 1);
