@@ -78,6 +78,9 @@ contract PrivateVoting {
     uint256[] public registeredVoters;
     mapping(uint256 => bool) public isVoterRegistered;
 
+    // Per-proposal voter snapshots
+    mapping(uint256 => uint256[]) public proposalVoterSnapshots;
+
     // ============ Events ============
     event ProposalCreated(
         uint256 indexed proposalId,
@@ -157,6 +160,39 @@ contract PrivateVoting {
         return registeredVoters.length;
     }
 
+    /**
+     * @dev Get voter snapshot for a specific proposal
+     * @param _proposalId The proposal ID
+     */
+    function getProposalVoterSnapshot(uint256 _proposalId) external view returns (uint256[] memory) {
+        return proposalVoterSnapshots[_proposalId];
+    }
+
+    /**
+     * @dev [DEMO ONLY] Update proposal to include all current registered voters
+     * @param _proposalId The proposal ID
+     * @param _newMerkleRoot The new merkle root computed from all registered voters
+     */
+    function updateProposalVoters(uint256 _proposalId, uint256 _newMerkleRoot) external {
+        Proposal storage proposal = proposals[_proposalId];
+        if (!proposal.exists) revert ProposalNotFound();
+
+        // Update merkle root
+        proposal.merkleRoot = _newMerkleRoot;
+
+        // Clear and rebuild voter snapshot
+        delete proposalVoterSnapshots[_proposalId];
+        for (uint256 i = 0; i < registeredVoters.length; i++) {
+            proposalVoterSnapshots[_proposalId].push(registeredVoters[i]);
+        }
+
+        // Register new merkle root if not already
+        if (!validMerkleRoots[_newMerkleRoot]) {
+            validMerkleRoots[_newMerkleRoot] = true;
+            merkleRootHistory.push(_newMerkleRoot);
+        }
+    }
+
     // ============ Proposal Functions ============
 
     /**
@@ -195,6 +231,11 @@ contract PrivateVoting {
             revealedVotes: 0,
             exists: true
         });
+
+        // Store voter snapshot for this proposal
+        for (uint256 i = 0; i < registeredVoters.length; i++) {
+            proposalVoterSnapshots[proposalId].push(registeredVoters[i]);
+        }
 
         emit ProposalCreated(
             proposalId,

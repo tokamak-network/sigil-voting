@@ -4,9 +4,9 @@
  * Based on: https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d1-private-voting.md
  */
 
-// Contract addresses (Sepolia Testnet) - Updated with shared voter registry
-export const PRIVATE_VOTING_ADDRESS = '0x7675FeDbc7420c7d3D14cdc62BEAa94f4E49082F' as const
-export const VERIFIER_ADDRESS = '0x8BC97fEcee88d8669e7A85188dc7D9EAA968Aa3f' as const
+// Contract addresses (Sepolia Testnet) - Auto voter registration & snapshot update
+export const PRIVATE_VOTING_ADDRESS = '0xc3bF134b60FA8ac7366CA0DeDbD50ECd9751ab39' as const
+export const VERIFIER_ADDRESS = '0x4E510852F416144f0C0d7Ef83F0a4ab28aCba864' as const
 
 // Vote choices matching spec
 export const CHOICE_AGAINST = 0n
@@ -183,6 +183,23 @@ export const PRIVATE_VOTING_ABI = [
     inputs: [{ name: '_noteHash', type: 'uint256' }],
     outputs: [{ name: '', type: 'bool' }],
     stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getProposalVoterSnapshot',
+    inputs: [{ name: '_proposalId', type: 'uint256' }],
+    outputs: [{ name: '', type: 'uint256[]' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'updateProposalVoters',
+    inputs: [
+      { name: '_proposalId', type: 'uint256' },
+      { name: '_newMerkleRoot', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
   },
 
   // Events
