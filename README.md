@@ -56,12 +56,18 @@ forge test -vv
 - **Frontend**: React + Viem + Wagmi
 - **Hash**: Poseidon
 
-## Next Steps (Not Yet Tested)
+## Implemented Features
 
-- Reveal phase
-- Double-vote prevention
-- Real token integration
-- UI improvements
+- ✅ **Commit-Reveal voting** - 2-phase voting with ZK proof
+- ✅ **Reveal phase** - Vote reveal and tally
+- ✅ **Double-vote prevention** - Nullifier mechanism
+- ✅ **Auto-registration** - Dynamic voter snapshot updates
+
+## Future Enhancements (Optional)
+
+- Real ERC20 token integration (currently uses fixed voting power)
+- Automated snapshot system
+- Access control / governance
 
 ## References
 
