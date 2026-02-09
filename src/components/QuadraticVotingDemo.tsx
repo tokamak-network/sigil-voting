@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
+import { useAccount, useWriteContract, useReadContract } from 'wagmi'
+import { useConnect } from 'wagmi'
+import { injected } from 'wagmi/connectors'
 import {
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -9,16 +11,104 @@ import {
   ReferenceLine,
   Area,
   AreaChart,
+  Line,
 } from 'recharts'
+
+// Contract configuration for ZkVotingFinal
+const ZK_VOTING_FINAL_ADDRESS = '0x0000000000000000000000000000000000000000' as const // Will be updated after deployment
+
+const ZK_VOTING_FINAL_ABI = [
+  {
+    type: 'function',
+    name: 'mintTestTokens',
+    inputs: [{ name: 'amount', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getAvailableCredits',
+    inputs: [{ name: 'user', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'calculateQuadraticCost',
+    inputs: [{ name: 'numVotes', type: 'uint256' }],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'pure',
+  },
+  {
+    type: 'function',
+    name: 'proposalCountD2',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'castVoteD2',
+    inputs: [
+      { name: '_proposalId', type: 'uint256' },
+      { name: '_commitment', type: 'uint256' },
+      { name: '_numVotes', type: 'uint256' },
+      { name: '_creditsSpent', type: 'uint256' },
+      { name: '_nullifier', type: 'uint256' },
+      { name: '_pA', type: 'uint256[2]' },
+      { name: '_pB', type: 'uint256[2][2]' },
+      { name: '_pC', type: 'uint256[2]' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'createProposalD2',
+    inputs: [
+      { name: '_title', type: 'string' },
+      { name: '_description', type: 'string' },
+      { name: '_creditRoot', type: 'uint256' },
+      { name: '_votingDuration', type: 'uint256' },
+      { name: '_revealDuration', type: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'registerCreditRoot',
+    inputs: [{ name: '_creditRoot', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+] as const
 
 interface QuadraticVotingDemoProps {
   onBack?: () => void
 }
 
 export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
+  const { address, isConnected } = useAccount()
+  const { connect } = useConnect()
+  const { writeContractAsync } = useWriteContract()
+
   const [numVotes, setNumVotes] = useState(10)
-  const [totalCredits] = useState(10000)
   const [selectedChoice, setSelectedChoice] = useState<0 | 1 | 2 | null>(null)
+  const [isVoting, setIsVoting] = useState(false)
+  const [isMinting, setIsMinting] = useState(false)
+  const [txHash, setTxHash] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  // Read user's available credits
+  const { data: availableCredits, refetch: refetchCredits } = useReadContract({
+    address: ZK_VOTING_FINAL_ADDRESS,
+    abi: ZK_VOTING_FINAL_ABI,
+    functionName: 'getAvailableCredits',
+    args: address ? [address] : undefined,
+  })
+
+  const totalCredits = availableCredits ? Number(availableCredits) : 10000
 
   // Calculate quadratic cost
   const quadraticCost = numVotes * numVotes
@@ -32,7 +122,7 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
       data.push({
         votes: i,
         cost: i * i,
-        linear: i * 100, // Comparison: if linear cost
+        linear: i * 100,
       })
     }
     return data
@@ -40,17 +130,14 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
 
   // Whale comparison
   const whaleAnalysis = useMemo(() => {
-    // 1000 credits each
     const smallHolder = {
       credits: 1000,
-      maxVotes: Math.floor(Math.sqrt(1000)), // 31 votes
+      maxVotes: Math.floor(Math.sqrt(1000)),
     }
-    // 100,000 credits
     const whale = {
       credits: 100000,
-      maxVotes: Math.floor(Math.sqrt(100000)), // 316 votes
+      maxVotes: Math.floor(Math.sqrt(100000)),
     }
-    // Ratio: whale has 100x credits but only 10x votes
     return {
       smallHolder,
       whale,
@@ -58,6 +145,56 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
       voteRatio: whale.maxVotes / smallHolder.maxVotes,
     }
   }, [])
+
+  // Mint test tokens
+  const handleMintTokens = useCallback(async () => {
+    if (!isConnected) return
+
+    setIsMinting(true)
+    setError(null)
+
+    try {
+      const hash = await writeContractAsync({
+        address: ZK_VOTING_FINAL_ADDRESS,
+        abi: ZK_VOTING_FINAL_ABI,
+        functionName: 'mintTestTokens',
+        args: [BigInt(10000)],
+      })
+      setTxHash(hash)
+      await refetchCredits()
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setIsMinting(false)
+    }
+  }, [isConnected, writeContractAsync, refetchCredits])
+
+  // Cast vote (demo - requires ZK proof in production)
+  const handleCastVote = useCallback(async () => {
+    if (!isConnected || selectedChoice === null) return
+    if (quadraticCost > totalCredits) {
+      setError('Insufficient credits')
+      return
+    }
+
+    setIsVoting(true)
+    setError(null)
+
+    try {
+      // In production, this would:
+      // 1. Generate ZK proof
+      // 2. Call castVoteD2 with proof
+
+      // For demo, show the transaction flow
+      setError('Demo mode: Full ZK voting requires deployed ZkVotingFinal contract. Use D1 voting for now.')
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setIsVoting(false)
+    }
+  }, [isConnected, selectedChoice, quadraticCost, totalCredits])
+
+  const handleConnect = () => connect({ connector: injected() })
 
   return (
     <div className="quadratic-voting-demo">
@@ -113,6 +250,28 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
         <div className="demo-layout">
           {/* Left: Slider and Calculator */}
           <div className="calculator-panel">
+            {/* Wallet Connection */}
+            {!isConnected ? (
+              <div className="connect-prompt-qv">
+                <p>Connect wallet to vote</p>
+                <button className="connect-btn large" onClick={handleConnect}>
+                  Connect Wallet
+                </button>
+              </div>
+            ) : (
+              <div className="wallet-info">
+                <span className="wallet-label">Connected:</span>
+                <code>{address?.slice(0, 6)}...{address?.slice(-4)}</code>
+                <button
+                  className="mint-btn"
+                  onClick={handleMintTokens}
+                  disabled={isMinting}
+                >
+                  {isMinting ? 'Minting...' : '+ Mint 10,000 Credits'}
+                </button>
+              </div>
+            )}
+
             <div className="slider-container">
               <label className="slider-label">
                 <span>Number of Votes</span>
@@ -168,7 +327,7 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
               </div>
             </div>
 
-            {/* Vote Choice Preview */}
+            {/* Vote Choice */}
             <div className="choice-preview">
               <h4>Select Your Choice</h4>
               <div className="choice-buttons">
@@ -196,10 +355,51 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
               </div>
             </div>
 
-            {selectedChoice !== null && quadraticCost <= totalCredits && (
+            {error && (
+              <div className="error-message">
+                <p>{error}</p>
+              </div>
+            )}
+
+            {txHash && (
+              <div className="tx-success">
+                <p>Transaction submitted!</p>
+                <a
+                  href={`https://sepolia.etherscan.io/tx/${txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View on Etherscan ↗
+                </a>
+              </div>
+            )}
+
+            {isConnected && selectedChoice !== null && quadraticCost <= totalCredits && (
+              <button
+                className="submit-demo-btn active"
+                onClick={handleCastVote}
+                disabled={isVoting}
+              >
+                {isVoting ? (
+                  <>
+                    <span className="spinner-small"></span>
+                    Voting...
+                  </>
+                ) : (
+                  <>
+                    Cast {numVotes} Vote{numVotes > 1 ? 's' : ''} for {quadraticCost.toLocaleString()} Credits
+                  </>
+                )}
+              </button>
+            )}
+
+            {(!isConnected || selectedChoice === null || quadraticCost > totalCredits) && (
               <button className="submit-demo-btn" disabled>
-                Cast {numVotes} Vote{numVotes > 1 ? 's' : ''} for {quadraticCost.toLocaleString()} Credits
-                <span className="demo-tag">(Demo Only)</span>
+                {!isConnected
+                  ? 'Connect Wallet to Vote'
+                  : selectedChoice === null
+                  ? 'Select a Choice'
+                  : 'Insufficient Credits'}
               </button>
             )}
           </div>

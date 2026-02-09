@@ -1,0 +1,12 @@
+{
+  "network": "sepolia",
+  "contracts": {
+    "verifierD1": "0x4E510852F416144f0C0d7Ef83F0a4ab28aCba864",
+    "verifierD2": "",
+    "zkVotingFinal": "",
+    "privateVoting": "0xc3bF134b60FA8ac7366CA0DeDbD50ECd9751ab39",
+    "groth16Verifier": "0x4E510852F416144f0C0d7Ef83F0a4ab28aCba864"
+  },
+  "deployedAt": "",
+  "deployer": ""
+}
