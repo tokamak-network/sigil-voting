@@ -103,14 +103,17 @@ export function Header({
         <div className="logo" onClick={() => setCurrentPage('landing')}>
           <span className="logo-icon">🗳️</span>
           <span className="logo-text">ZK Vote</span>
-          <span className="logo-badge">D1 Spec</span>
+          <span className="logo-badge">D1 + D2</span>
         </div>
         <nav className="nav">
           <button className={`nav-item ${currentPage === 'landing' ? 'active' : ''}`} onClick={() => setCurrentPage('landing')}>
             Home
           </button>
           <button className={`nav-item ${currentPage === 'proposals' ? 'active' : ''}`} onClick={() => setCurrentPage('proposals')}>
-            Proposals
+            D1: Private Vote
+          </button>
+          <button className={`nav-item d2-tab ${currentPage === 'quadratic-voting' ? 'active' : ''}`} onClick={() => setCurrentPage('quadratic-voting')}>
+            D2: Quadratic
           </button>
         </nav>
       </div>

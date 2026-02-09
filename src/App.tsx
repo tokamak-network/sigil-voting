@@ -17,7 +17,7 @@ import {
   type VoteData,
   type ProofGenerationProgress,
 } from './zkproof'
-import { Header, Footer, Toast, VoteConfirmModal, LandingPage, ProposalCard } from './components'
+import { Header, Footer, Toast, VoteConfirmModal, LandingPage, ProposalCard, QuadraticVotingDemo } from './components'
 import { useProposals, useZkIdentity } from './hooks'
 import { getTimeRemaining, getPhaseLabel, getPhaseColor, getVotePercentages } from './utils'
 import type { Page, Proposal } from './types'
@@ -333,6 +333,10 @@ function App() {
 
       <main className="main">
         {currentPage === 'landing' && <LandingPage setCurrentPage={setCurrentPage} />}
+
+        {currentPage === 'quadratic-voting' && (
+          <QuadraticVotingDemo onBack={() => setCurrentPage('proposals')} />
+        )}
 
         {currentPage === 'proposals' && (
           <div className="proposals-page">

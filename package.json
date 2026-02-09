@@ -20,6 +20,7 @@
     "poseidon-solidity": "^0.0.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "recharts": "^3.7.0",
     "snarkjs": "^0.7.6",
     "viem": "^2.45.1",
     "vite-plugin-node-polyfills": "^0.25.0",
