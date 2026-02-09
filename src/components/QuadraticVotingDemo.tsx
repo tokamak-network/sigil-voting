@@ -103,14 +103,25 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
       const stored = getStoredCreditNote(address)
       if (stored) {
         setCreditNote(stored)
-        setCurrentStep('proposal')
-      } else {
-        setCurrentStep('setup')
+        // Don't skip to proposal yet - wait for credit notes check
       }
+      // Always start at setup, will advance after checking blockchain
+      setCurrentStep('setup')
     } else {
       setCurrentStep('connect')
     }
   }, [isConnected, address])
+
+  // Check if credit notes are registered on blockchain and advance step
+  useEffect(() => {
+    if (currentStep === 'setup' && creditNote && registeredCreditNotes) {
+      const notes = registeredCreditNotes as bigint[]
+      if (notes.length > 0) {
+        // Credit notes exist on blockchain, can proceed to proposal
+        setCurrentStep('proposal')
+      }
+    }
+  }, [currentStep, creditNote, registeredCreditNotes])
 
   // Chart data for cost visualization
   const chartData = useMemo(() => {
