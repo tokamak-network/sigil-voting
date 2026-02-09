@@ -1,0 +1,237 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "/Users/meeso/MEEE_SO/WORK/05_온더/00_ai/zk-dex-d1-private-voting/contracts/Groth16Verifier.sol": {
+      "lastModificationDate": 1770375366723,
+      "contentHash": "6a1c26df453b8069296266cfe32c7aef",
+      "sourceName": "contracts/Groth16Verifier.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        ">=0.7.0 <0.9.0"
+      ],
+      "artifacts": [
+        "Groth16Verifier"
+      ]
+    },
+    "/Users/meeso/MEEE_SO/WORK/05_온더/00_ai/zk-dex-d1-private-voting/contracts/Groth16VerifierD2.sol": {
+      "lastModificationDate": 1770637776260,
+      "contentHash": "2f4ca4d8dba57b4d013c2be95e1dc7b5",
+      "sourceName": "contracts/Groth16VerifierD2.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        ">=0.7.0 <0.9.0"
+      ],
+      "artifacts": [
+        "Groth16Verifier"
+      ]
+    },
+    "/Users/meeso/MEEE_SO/WORK/05_온더/00_ai/zk-dex-d1-private-voting/contracts/PoseidonT5.sol": {
+      "lastModificationDate": 1770375366723,
+      "contentHash": "57699bea1548ea11303d4b2d8d61aa35",
+      "sourceName": "contracts/PoseidonT5.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        ">=0.7.0"
+      ],
+      "artifacts": [
+        "PoseidonT5"
+      ]
+    },
+    "/Users/meeso/MEEE_SO/WORK/05_온더/00_ai/zk-dex-d1-private-voting/contracts/ZkVotingFinal.sol": {
+      "lastModificationDate": 1770638992263,
+      "contentHash": "8a7377ce73c531322221f997aed78aba",
+      "sourceName": "contracts/ZkVotingFinal.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./PoseidonT5.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.24"
+      ],
+      "artifacts": [
+        "IVerifierD1",
+        "IVerifierD2",
+        "ZkVotingFinal"
+      ]
+    },
+    "/Users/meeso/MEEE_SO/WORK/05_온더/00_ai/zk-dex-d1-private-voting/contracts/QuadraticVoting.sol": {
+      "lastModificationDate": 1770638997315,
+      "contentHash": "bf37bb6ddc10be5a57c24459b0b8bbb5",
+      "sourceName": "contracts/QuadraticVoting.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./PoseidonT5.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.24"
+      ],
+      "artifacts": [
+        "IVerifierD2",
+        "QuadraticVoting"
+      ]
+    },
+    "/Users/meeso/MEEE_SO/WORK/05_온더/00_ai/zk-dex-d1-private-voting/contracts/PrivateVoting.sol": {
+      "lastModificationDate": 1770375366724,
+      "contentHash": "bf62b920cc7484265373c3ba38d75faa",
+      "sourceName": "contracts/PrivateVoting.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "./PoseidonT5.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.24"
+      ],
+      "artifacts": [
+        "IVerifier",
+        "PrivateVoting"
+      ]
+    }
+  }
+}

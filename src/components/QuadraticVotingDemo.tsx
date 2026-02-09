@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useAccount, useWriteContract, useReadContract } from 'wagmi'
 import { useConnect } from 'wagmi'
 import { injected } from 'wagmi/connectors'
@@ -13,9 +13,26 @@ import {
   AreaChart,
   Line,
 } from 'recharts'
+import {
+  getOrCreateKeyPairAsync,
+  createCreditNoteAsync,
+  getStoredCreditNote,
+  prepareD2VoteAsync,
+  generateQuadraticProof,
+  storeD2VoteForReveal,
+  generateMerkleProofAsync,
+  type KeyPair,
+  type CreditNote,
+  type VoteChoice,
+  type ProofGenerationProgress,
+  CHOICE_FOR,
+  CHOICE_AGAINST,
+  CHOICE_ABSTAIN,
+} from '../zkproof'
+import config from '../config.json'
 
-// Contract configuration for ZkVotingFinal
-const ZK_VOTING_FINAL_ADDRESS = '0x0000000000000000000000000000000000000000' as const // Will be updated after deployment
+// Contract configuration - read from config.json
+const ZK_VOTING_FINAL_ADDRESS = (config.contracts.zkVotingFinal || '0x0000000000000000000000000000000000000000') as `0x${string}`
 
 const ZK_VOTING_FINAL_ABI = [
   {
@@ -34,10 +51,24 @@ const ZK_VOTING_FINAL_ABI = [
   },
   {
     type: 'function',
-    name: 'calculateQuadraticCost',
-    inputs: [{ name: 'numVotes', type: 'uint256' }],
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'pure',
+    name: 'registerCreditRoot',
+    inputs: [{ name: '_creditRoot', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'registerCreditNote',
+    inputs: [{ name: '_creditNoteHash', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getRegisteredCreditNotes',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256[]' }],
+    stateMutability: 'view',
   },
   {
     type: 'function',
@@ -75,13 +106,6 @@ const ZK_VOTING_FINAL_ABI = [
     outputs: [{ name: '', type: 'uint256' }],
     stateMutability: 'nonpayable',
   },
-  {
-    type: 'function',
-    name: 'registerCreditRoot',
-    inputs: [{ name: '_creditRoot', type: 'uint256' }],
-    outputs: [],
-    stateMutability: 'nonpayable',
-  },
 ] as const
 
 interface QuadraticVotingDemoProps {
@@ -93,12 +117,21 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
   const { connect } = useConnect()
   const { writeContractAsync } = useWriteContract()
 
+  // ZK Identity State
+  const [keyPair, setKeyPair] = useState<KeyPair | null>(null)
+  const [creditNote, setCreditNote] = useState<CreditNote | null>(null)
+
+  // Voting State
   const [numVotes, setNumVotes] = useState(10)
-  const [selectedChoice, setSelectedChoice] = useState<0 | 1 | 2 | null>(null)
+  const [selectedChoice, setSelectedChoice] = useState<VoteChoice | null>(null)
   const [isVoting, setIsVoting] = useState(false)
-  const [isMinting, setIsMinting] = useState(false)
+  const [isRegistering, setIsRegistering] = useState(false)
   const [txHash, setTxHash] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [proofProgress, setProofProgress] = useState<ProofGenerationProgress | null>(null)
+
+  // Contract deployed check
+  const isContractDeployed = ZK_VOTING_FINAL_ADDRESS !== '0x0000000000000000000000000000000000000000'
 
   // Read user's available credits
   const { data: availableCredits, refetch: refetchCredits } = useReadContract({
@@ -106,9 +139,27 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
     abi: ZK_VOTING_FINAL_ABI,
     functionName: 'getAvailableCredits',
     args: address ? [address] : undefined,
+    query: { enabled: isContractDeployed && !!address }
   })
 
-  const totalCredits = availableCredits ? Number(availableCredits) : 10000
+  // Read registered credit notes
+  const { data: registeredCreditNotes, refetch: refetchCreditNotes } = useReadContract({
+    address: ZK_VOTING_FINAL_ADDRESS,
+    abi: ZK_VOTING_FINAL_ABI,
+    functionName: 'getRegisteredCreditNotes',
+    query: { enabled: isContractDeployed }
+  })
+
+  const totalCredits = creditNote?.totalCredits ? Number(creditNote.totalCredits) : (availableCredits ? Number(availableCredits) : 10000)
+
+  // Initialize ZK identity
+  useEffect(() => {
+    if (isConnected && address) {
+      getOrCreateKeyPairAsync(address).then(setKeyPair)
+      const stored = getStoredCreditNote(address)
+      if (stored) setCreditNote(stored)
+    }
+  }, [isConnected, address])
 
   // Calculate quadratic cost
   const quadraticCost = numVotes * numVotes
@@ -146,53 +197,128 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
     }
   }, [])
 
-  // Mint test tokens
-  const handleMintTokens = useCallback(async () => {
-    if (!isConnected) return
+  // Initialize credits and create credit note
+  const handleInitializeCredits = useCallback(async () => {
+    if (!isConnected || !keyPair || !isContractDeployed) return
 
-    setIsMinting(true)
+    setIsRegistering(true)
     setError(null)
 
     try {
+      // Create credit note locally
+      const newCreditNote = await createCreditNoteAsync(keyPair, BigInt(10000), address)
+      setCreditNote(newCreditNote)
+
+      // Register credit note on-chain
+      await writeContractAsync({
+        address: ZK_VOTING_FINAL_ADDRESS,
+        abi: ZK_VOTING_FINAL_ABI,
+        functionName: 'registerCreditNote',
+        args: [newCreditNote.creditNoteHash],
+      })
+
+      // Mint test tokens
       const hash = await writeContractAsync({
         address: ZK_VOTING_FINAL_ADDRESS,
         abi: ZK_VOTING_FINAL_ABI,
         functionName: 'mintTestTokens',
         args: [BigInt(10000)],
       })
+
       setTxHash(hash)
       await refetchCredits()
+      await refetchCreditNotes()
     } catch (err) {
       setError((err as Error).message)
     } finally {
-      setIsMinting(false)
+      setIsRegistering(false)
     }
-  }, [isConnected, writeContractAsync, refetchCredits])
+  }, [isConnected, keyPair, address, isContractDeployed, writeContractAsync, refetchCredits, refetchCreditNotes])
 
-  // Cast vote (demo - requires ZK proof in production)
+  // Cast D2 quadratic vote with ZK proof
   const handleCastVote = useCallback(async () => {
-    if (!isConnected || selectedChoice === null) return
+    if (!isConnected || selectedChoice === null || !keyPair || !creditNote) return
     if (quadraticCost > totalCredits) {
       setError('Insufficient credits')
+      return
+    }
+    if (!isContractDeployed) {
+      setError('Contract not deployed. Run: npm run deploy')
       return
     }
 
     setIsVoting(true)
     setError(null)
+    setProofProgress({ stage: 'preparing', progress: 0, message: 'Preparing vote...' })
 
     try {
-      // In production, this would:
-      // 1. Generate ZK proof
-      // 2. Call castVoteD2 with proof
+      const proposalId = BigInt(1) // Demo proposal
 
-      // For demo, show the transaction flow
-      setError('Demo mode: Full ZK voting requires deployed ZkVotingFinal contract. Use D1 voting for now.')
+      // Prepare vote data
+      const voteData = await prepareD2VoteAsync(keyPair, selectedChoice, BigInt(numVotes), proposalId)
+
+      // Get registered credit notes
+      const creditNotes = (registeredCreditNotes as bigint[]) || []
+
+      if (creditNotes.length === 0) {
+        throw new Error('No registered credit notes. Please initialize credits first.')
+      }
+
+      // Generate merkle root
+      const { root: creditRoot } = await generateMerkleProofAsync(creditNotes, 0)
+
+      // Register credit root if needed
+      setProofProgress({ stage: 'preparing', progress: 10, message: 'Registering credit root...' })
+      await writeContractAsync({
+        address: ZK_VOTING_FINAL_ADDRESS,
+        abi: ZK_VOTING_FINAL_ABI,
+        functionName: 'registerCreditRoot',
+        args: [creditRoot],
+      })
+
+      // Generate ZK proof
+      const { proof, nullifier, commitment } = await generateQuadraticProof(
+        keyPair,
+        creditNote,
+        voteData,
+        creditRoot,
+        creditNotes,
+        setProofProgress
+      )
+
+      // Submit vote to contract
+      setProofProgress({ stage: 'finalizing', progress: 95, message: 'Submitting to blockchain...' })
+
+      const hash = await writeContractAsync({
+        address: ZK_VOTING_FINAL_ADDRESS,
+        abi: ZK_VOTING_FINAL_ABI,
+        functionName: 'castVoteD2',
+        args: [
+          proposalId,
+          commitment,
+          BigInt(numVotes),
+          voteData.creditsSpent,
+          nullifier,
+          proof.pA,
+          proof.pB,
+          proof.pC,
+        ],
+        gas: BigInt(1000000),
+      })
+
+      setTxHash(hash)
+      storeD2VoteForReveal(proposalId, voteData, address)
+      await refetchCredits()
+
+      setProofProgress({ stage: 'finalizing', progress: 100, message: 'Vote submitted!' })
     } catch (err) {
+      console.error('D2 voting failed:', err)
       setError((err as Error).message)
+      setProofProgress(null)
     } finally {
       setIsVoting(false)
     }
-  }, [isConnected, selectedChoice, quadraticCost, totalCredits])
+  }, [isConnected, selectedChoice, keyPair, creditNote, numVotes, quadraticCost, totalCredits, isContractDeployed, registeredCreditNotes, writeContractAsync, refetchCredits, address])
 
   const handleConnect = () => connect({ connector: injected() })
 
@@ -209,6 +335,11 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
         <p className="demo-subtitle">
           Prevent Whale Domination with Quadratic Costs
         </p>
+        {!isContractDeployed && (
+          <div className="contract-warning">
+            Contract not deployed. Run: <code>npm run deploy</code>
+          </div>
+        )}
       </div>
 
       {/* Core Concept Section */}
@@ -262,13 +393,18 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
               <div className="wallet-info">
                 <span className="wallet-label">Connected:</span>
                 <code>{address?.slice(0, 6)}...{address?.slice(-4)}</code>
-                <button
-                  className="mint-btn"
-                  onClick={handleMintTokens}
-                  disabled={isMinting}
-                >
-                  {isMinting ? 'Minting...' : '+ Mint 10,000 Credits'}
-                </button>
+                {!creditNote && isContractDeployed && (
+                  <button
+                    className="mint-btn"
+                    onClick={handleInitializeCredits}
+                    disabled={isRegistering}
+                  >
+                    {isRegistering ? 'Initializing...' : 'Initialize 10,000 Credits'}
+                  </button>
+                )}
+                {creditNote && (
+                  <span className="credit-badge">Credits: {totalCredits.toLocaleString()}</span>
+                )}
               </div>
             )}
 
@@ -332,22 +468,22 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
               <h4>Select Your Choice</h4>
               <div className="choice-buttons">
                 <button
-                  className={`choice-btn for ${selectedChoice === 1 ? 'selected' : ''}`}
-                  onClick={() => setSelectedChoice(1)}
+                  className={`choice-btn for ${selectedChoice === CHOICE_FOR ? 'selected' : ''}`}
+                  onClick={() => setSelectedChoice(CHOICE_FOR)}
                 >
                   <span className="choice-icon">👍</span>
                   <span>For</span>
                 </button>
                 <button
-                  className={`choice-btn against ${selectedChoice === 0 ? 'selected' : ''}`}
-                  onClick={() => setSelectedChoice(0)}
+                  className={`choice-btn against ${selectedChoice === CHOICE_AGAINST ? 'selected' : ''}`}
+                  onClick={() => setSelectedChoice(CHOICE_AGAINST)}
                 >
                   <span className="choice-icon">👎</span>
                   <span>Against</span>
                 </button>
                 <button
-                  className={`choice-btn abstain ${selectedChoice === 2 ? 'selected' : ''}`}
-                  onClick={() => setSelectedChoice(2)}
+                  className={`choice-btn abstain ${selectedChoice === CHOICE_ABSTAIN ? 'selected' : ''}`}
+                  onClick={() => setSelectedChoice(CHOICE_ABSTAIN)}
                 >
                   <span className="choice-icon">⏸️</span>
                   <span>Abstain</span>
@@ -361,9 +497,18 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
               </div>
             )}
 
-            {txHash && (
+            {proofProgress && isVoting && (
+              <div className="proof-progress">
+                <div className="progress-bar">
+                  <div className="progress-fill" style={{ width: `${proofProgress.progress}%` }}></div>
+                </div>
+                <p className="progress-message">{proofProgress.message}</p>
+              </div>
+            )}
+
+            {txHash && !isVoting && (
               <div className="tx-success">
-                <p>Transaction submitted!</p>
+                <p>Vote submitted successfully!</p>
                 <a
                   href={`https://sepolia.etherscan.io/tx/${txHash}`}
                   target="_blank"
@@ -374,16 +519,16 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
               </div>
             )}
 
-            {isConnected && selectedChoice !== null && quadraticCost <= totalCredits && (
+            {isConnected && selectedChoice !== null && quadraticCost <= totalCredits && creditNote && (
               <button
                 className="submit-demo-btn active"
                 onClick={handleCastVote}
-                disabled={isVoting}
+                disabled={isVoting || !isContractDeployed}
               >
                 {isVoting ? (
                   <>
                     <span className="spinner-small"></span>
-                    Voting...
+                    Generating ZK Proof...
                   </>
                 ) : (
                   <>
@@ -393,10 +538,12 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
               </button>
             )}
 
-            {(!isConnected || selectedChoice === null || quadraticCost > totalCredits) && (
+            {(!isConnected || selectedChoice === null || quadraticCost > totalCredits || !creditNote) && (
               <button className="submit-demo-btn" disabled>
                 {!isConnected
                   ? 'Connect Wallet to Vote'
+                  : !creditNote
+                  ? 'Initialize Credits First'
                   : selectedChoice === null
                   ? 'Select a Choice'
                   : 'Insufficient Credits'}

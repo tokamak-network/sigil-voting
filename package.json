@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npx hardhat run scripts/deploy_final.cjs --network sepolia",
+    "deploy:local": "npx hardhat run scripts/deploy_final.cjs --network localhost"
   },
   "dependencies": {
     "@semaphore-protocol/core": "^4.14.2",
@@ -27,6 +29,9 @@
     "wagmi": "^3.4.2"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "dotenv": "^16.3.1",
+    "hardhat": "^2.19.0",
     "@eslint/js": "^9.39.1",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
