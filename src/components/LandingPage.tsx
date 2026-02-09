@@ -8,157 +8,121 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
   return (
     <div className="landing-page">
       <section className="hero-section-new">
-        <div className="hero-badge-new">D1 Private Voting Spec</div>
-        <h1 className="hero-title-new">Commit-Reveal ZK Voting</h1>
+        <div className="hero-badge-new">Sepolia Testnet</div>
+        <h1 className="hero-title-new">ZK Private Voting</h1>
         <p className="hero-subtitle-new">
-          Zero-knowledge proofs for hidden ballot choices. Prevent vote buying and coercion while maintaining verifiable voting power.
+          영지식 증명으로 보호되는 비밀 투표.
+          투표 내용은 암호화되고, Quadratic 비용으로 공정성을 보장합니다.
         </p>
 
         <div className="stats-bar">
           <div className="stat-item-new">
-            <span className="stat-number">~150K</span>
-            <span className="stat-label-new">Circuit Constraints</span>
+            <span className="stat-number">🔐</span>
+            <span className="stat-label-new">비밀 투표</span>
           </div>
           <div className="stat-divider"></div>
           <div className="stat-item-new">
-            <span className="stat-number">20</span>
-            <span className="stat-label-new">Merkle Depth</span>
+            <span className="stat-number">⚖️</span>
+            <span className="stat-label-new">Quadratic 비용</span>
           </div>
           <div className="stat-divider"></div>
           <div className="stat-item-new">
-            <span className="stat-number">6</span>
-            <span className="stat-label-new">Verification Stages</span>
+            <span className="stat-number">✓</span>
+            <span className="stat-label-new">온체인 검증</span>
           </div>
         </div>
 
         <div className="hero-cta-new">
           <button className="cta-primary-new" onClick={() => setCurrentPage('proposals')}>
-            Try Demo
+            투표하기
           </button>
-          <a href="https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d1-private-voting.md" target="_blank" rel="noopener noreferrer" className="cta-secondary-new">
-            View Spec
+          <a href="https://github.com/tokamak-network/zk-dex" target="_blank" rel="noopener noreferrer" className="cta-secondary-new">
+            GitHub
           </a>
         </div>
       </section>
 
       <section id="security" className="security-section">
-        <h2>Security Properties</h2>
-        <p className="section-subtitle">From the D1 specification</p>
+        <h2>어떻게 작동하나요?</h2>
+        <p className="section-subtitle">간단한 3단계</p>
 
-        <div className="security-grid">
+        <div className="security-grid three-cols">
           <div className="security-card">
-            <div className="security-icon">🔒</div>
-            <h3>Ballot Privacy</h3>
-            <p>Choice hidden until reveal phase; observers cannot determine individual votes.</p>
-            <div className="security-tech">Commit-Reveal</div>
+            <div className="security-icon">1️⃣</div>
+            <h3>크레딧 받기</h3>
+            <p>테스트용 10,000 크레딧을 받으세요. 이 크레딧으로 투표합니다.</p>
           </div>
           <div className="security-card">
-            <div className="security-icon">🛡️</div>
-            <h3>Anti-Coercion</h3>
-            <p>Voters cannot prove their selection to potential bribers.</p>
-            <div className="security-tech">ZK Proof</div>
+            <div className="security-icon">2️⃣</div>
+            <h3>제안 만들기</h3>
+            <p>커뮤니티에 물어보고 싶은 질문을 제안으로 등록하세요.</p>
           </div>
           <div className="security-card">
-            <div className="security-icon">🚫</div>
-            <h3>Double-Spend Prevention</h3>
-            <p>Nullifier derived from hash(sk, proposalId) prevents reuse.</p>
-            <div className="security-tech">Nullifier System</div>
-          </div>
-          <div className="security-card">
-            <div className="security-icon">📊</div>
-            <h3>Verifiable Voting Power</h3>
-            <p>Token ownership proven via merkle proof without revealing identity.</p>
-            <div className="security-tech">Snapshot Merkle Tree</div>
-          </div>
-          <div className="security-card">
-            <div className="security-icon">🔐</div>
-            <h3>Ownership Proof</h3>
-            <p>Secret key derives public key, proving note ownership.</p>
-            <div className="security-tech">Baby Jubjub</div>
-          </div>
-          <div className="security-card">
-            <div className="security-icon">✅</div>
-            <h3>On-Chain Verification</h3>
-            <p>Groth16 proofs verified by smart contract.</p>
-            <div className="security-tech">Groth16 Verifier</div>
+            <div className="security-icon">3️⃣</div>
+            <h3>투표하기</h3>
+            <p>찬성 또는 반대를 선택하세요. 강도를 높이면 더 많은 크레딧이 소비됩니다.</p>
           </div>
         </div>
       </section>
 
       <section className="how-section">
-        <h2>6 Verification Stages</h2>
-        <div className="stages-grid">
-          <div className="stage-card">
-            <div className="stage-number">1</div>
-            <h3>Token Verification</h3>
-            <p>Reconstruct note hash from key and value</p>
-            <code>noteHash = hash(pkX, pkY, value, salt)</code>
+        <h2>Quadratic Voting이란?</h2>
+        <div className="qv-explain">
+          <div className="qv-formula">
+            <span className="formula">비용 = 투표수²</span>
           </div>
-          <div className="stage-card">
-            <div className="stage-number">2</div>
-            <h3>Snapshot Inclusion</h3>
-            <p>Validate token existence via merkle proof</p>
-            <code>verify(noteHash, merklePath, root)</code>
+          <div className="qv-examples">
+            <div className="qv-example">
+              <span className="ex-votes">1표</span>
+              <span className="ex-arrow">→</span>
+              <span className="ex-cost">1 크레딧</span>
+            </div>
+            <div className="qv-example">
+              <span className="ex-votes">10표</span>
+              <span className="ex-arrow">→</span>
+              <span className="ex-cost">100 크레딧</span>
+            </div>
+            <div className="qv-example highlight">
+              <span className="ex-votes">100표</span>
+              <span className="ex-arrow">→</span>
+              <span className="ex-cost">10,000 크레딧</span>
+            </div>
           </div>
-          <div className="stage-card">
-            <div className="stage-number">3</div>
-            <h3>Ownership Proof</h3>
-            <p>Confirm secret key derives public key</p>
-            <code>pk = derive(sk)</code>
-          </div>
-          <div className="stage-card">
-            <div className="stage-number">4</div>
-            <h3>Power Consistency</h3>
-            <p>Ensure declared power matches note value</p>
-            <code>votingPower === noteValue</code>
-          </div>
-          <div className="stage-card">
-            <div className="stage-number">5</div>
-            <h3>Choice Validation</h3>
-            <p>Restrict vote to valid options</p>
-            <code>choice in [0, 1, 2]</code>
-          </div>
-          <div className="stage-card">
-            <div className="stage-number">6</div>
-            <h3>Commitment Creation</h3>
-            <p>Generate binding hash including proposal ID</p>
-            <code>commit = hash(choice, salt, id)</code>
-          </div>
+          <p className="qv-benefit">
+            💡 고래가 100배 더 많은 크레딧을 가져도 10배의 영향력만 행사할 수 있습니다.
+          </p>
         </div>
       </section>
 
       <section className="compare-section">
-        <h2>Commit-Reveal Flow</h2>
+        <h2>ZK 프라이버시</h2>
         <div className="flow-diagram">
           <div className="flow-phase">
-            <h3>Phase 1: Commit</h3>
+            <h3>🔐 투표 제출</h3>
             <ul>
-              <li>Generate ZK proof of token ownership</li>
-              <li>Submit voteCommitment on-chain</li>
-              <li>Nullifier prevents double voting</li>
-              <li>Choice remains hidden</li>
+              <li>선택이 ZK 증명으로 암호화됨</li>
+              <li>누구도 투표 내용을 볼 수 없음</li>
+              <li>Nullifier로 중복 투표 방지</li>
             </ul>
           </div>
           <div className="flow-arrow">→</div>
           <div className="flow-phase">
-            <h3>Phase 2: Reveal</h3>
+            <h3>🔓 결과 공개</h3>
             <ul>
-              <li>Submit choice and voteSalt</li>
-              <li>Contract verifies commitment</li>
-              <li>Vote counted in tally</li>
-              <li>Time-locked to prevent manipulation</li>
+              <li>공개 기간에 투표 내용 공개</li>
+              <li>컨트랙트가 암호화 검증</li>
+              <li>최종 결과 집계</li>
             </ul>
           </div>
         </div>
       </section>
 
       <section className="cta-section-new">
-        <h2>Try the Demo</h2>
-        <p>Experience ZK commit-reveal voting with the D1 specification.</p>
+        <h2>지금 시작하세요</h2>
+        <p>Sepolia 테스트넷에서 ZK 투표를 체험해보세요.</p>
         <button className="cta-primary-new large" onClick={() => setCurrentPage('proposals')}>
-          Launch Demo
+          투표하기
         </button>
-        <span className="network-note">Demo mode - Contract not yet deployed</span>
       </section>
     </div>
   )

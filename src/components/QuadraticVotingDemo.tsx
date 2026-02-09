@@ -1,16 +1,7 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useAccount, useWriteContract, useReadContract } from 'wagmi'
 import { useConnect } from 'wagmi'
 import { injected } from 'wagmi/connectors'
-import {
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-} from 'recharts'
 import {
   getOrCreateKeyPairAsync,
   createCreditNoteAsync,
@@ -25,7 +16,6 @@ import {
   type ProofGenerationProgress,
   CHOICE_FOR,
   CHOICE_AGAINST,
-  CHOICE_ABSTAIN,
 } from '../zkproof'
 import config from '../config.json'
 
@@ -46,27 +36,23 @@ interface QuadraticVotingDemoProps {
   onBack?: () => void
 }
 
-type Step = 'connect' | 'setup' | 'proposal' | 'vote' | 'confirm' | 'success'
+type Step = 'connect' | 'setup' | 'proposal' | 'vote' | 'success'
 
 export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
   const { address, isConnected } = useAccount()
   const { connect } = useConnect()
   const { writeContractAsync } = useWriteContract()
 
-  // Step-based flow (Gitcoin style)
   const [currentStep, setCurrentStep] = useState<Step>('connect')
-
-  // ZK Identity
   const [keyPair, setKeyPair] = useState<KeyPair | null>(null)
   const [creditNote, setCreditNote] = useState<CreditNote | null>(null)
-
-  // Proposal State
   const [selectedProposal, setSelectedProposal] = useState<{id: number, title: string} | null>(null)
   const [newProposalTitle, setNewProposalTitle] = useState('')
 
-  // Voting State
+  // Voting state
   const [numVotes, setNumVotes] = useState(1)
   const [selectedChoice, setSelectedChoice] = useState<VoteChoice | null>(null)
+  const [showIntensity, setShowIntensity] = useState(false) // Progressive disclosure
   const [isProcessing, setIsProcessing] = useState(false)
   const [proofProgress, setProofProgress] = useState<ProofGenerationProgress | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
@@ -74,7 +60,6 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
 
   const isContractDeployed = ZK_VOTING_FINAL_ADDRESS !== '0x0000000000000000000000000000000000000000'
 
-  // Read credits
   const { refetch: refetchCredits } = useReadContract({
     address: ZK_VOTING_FINAL_ADDRESS,
     abi: ZK_VOTING_FINAL_ABI,
@@ -92,49 +77,33 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
 
   const totalCredits = creditNote?.totalCredits ? Number(creditNote.totalCredits) : 10000
   const quadraticCost = numVotes * numVotes
-  const remainingCredits = totalCredits - quadraticCost
   const maxVotes = Math.floor(Math.sqrt(totalCredits))
-  const costEfficiency = numVotes > 0 ? (quadraticCost / numVotes).toFixed(1) : '0'
 
-  // Initialize on connect
+  // Cost level for visual feedback (0-100)
+  const costLevel = Math.min((quadraticCost / totalCredits) * 100, 100)
+  const isHighCost = costLevel > 30
+  const isDanger = costLevel > 70
+
   useEffect(() => {
     if (isConnected && address) {
       getOrCreateKeyPairAsync(address).then(setKeyPair)
       const stored = getStoredCreditNote(address)
-      if (stored) {
-        setCreditNote(stored)
-        // Don't skip to proposal yet - wait for credit notes check
-      }
-      // Always start at setup, will advance after checking blockchain
+      if (stored) setCreditNote(stored)
       setCurrentStep('setup')
     } else {
       setCurrentStep('connect')
     }
   }, [isConnected, address])
 
-  // Check if credit notes are registered on blockchain and advance step
   useEffect(() => {
     if (currentStep === 'setup' && creditNote && registeredCreditNotes) {
       const notes = registeredCreditNotes as bigint[]
-      if (notes.length > 0) {
-        // Credit notes exist on blockchain, can proceed to proposal
-        setCurrentStep('proposal')
-      }
+      if (notes.length > 0) setCurrentStep('proposal')
     }
   }, [currentStep, creditNote, registeredCreditNotes])
 
-  // Chart data for cost visualization
-  const chartData = useMemo(() => {
-    const data = []
-    for (let i = 1; i <= maxVotes + 10; i++) {
-      data.push({ votes: i, cost: i * i })
-    }
-    return data
-  }, [maxVotes])
-
   const handleConnect = () => connect({ connector: injected() })
 
-  // Step 1: Initialize Credits
   const handleSetupCredits = useCallback(async () => {
     if (!keyPair || !address) return
     setIsProcessing(true)
@@ -168,7 +137,6 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
     }
   }, [keyPair, address, writeContractAsync, refetchCredits, refetchCreditNotes])
 
-  // Step 2: Create or Select Proposal
   const handleCreateProposal = useCallback(async () => {
     if (!newProposalTitle.trim()) return
     setIsProcessing(true)
@@ -176,7 +144,7 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
 
     try {
       const creditNotes = (registeredCreditNotes as bigint[]) || []
-      if (creditNotes.length === 0) throw new Error('No credit notes registered')
+      if (creditNotes.length === 0) throw new Error('크레딧을 먼저 초기화해주세요')
 
       const { root: creditRoot } = await generateMerkleProofAsync(creditNotes, 0)
 
@@ -191,7 +159,7 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
         address: ZK_VOTING_FINAL_ADDRESS,
         abi: ZK_VOTING_FINAL_ABI,
         functionName: 'createProposalD2',
-        args: [newProposalTitle, 'Quadratic voting proposal', creditRoot, BigInt(86400), BigInt(86400)],
+        args: [newProposalTitle, '', creditRoot, BigInt(86400), BigInt(86400)],
       })
 
       setSelectedProposal({ id: 1, title: newProposalTitle })
@@ -203,28 +171,28 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
     }
   }, [newProposalTitle, registeredCreditNotes, writeContractAsync])
 
-  // Step 3: Cast Vote
-  const handleCastVote = useCallback(async () => {
-    if (selectedChoice === null || !keyPair || !creditNote || !selectedProposal) return
+  const handleVote = useCallback(async (choice: VoteChoice) => {
+    if (!keyPair || !creditNote || !selectedProposal) return
     if (quadraticCost > totalCredits) {
-      setError('Insufficient credits')
+      setError('크레딧이 부족합니다')
       return
     }
 
+    setSelectedChoice(choice)
     setIsProcessing(true)
     setError(null)
-    setProofProgress({ stage: 'preparing', progress: 0, message: 'Preparing vote data...' })
+    setProofProgress({ stage: 'preparing', progress: 0, message: '투표 준비 중...' })
 
     try {
       const proposalId = BigInt(selectedProposal.id)
-      const voteData = await prepareD2VoteAsync(keyPair, selectedChoice, BigInt(numVotes), proposalId)
+      const voteData = await prepareD2VoteAsync(keyPair, choice, BigInt(numVotes), proposalId)
       const creditNotes = (registeredCreditNotes as bigint[]) || []
 
-      if (creditNotes.length === 0) throw new Error('No registered credit notes')
+      if (creditNotes.length === 0) throw new Error('등록된 크레딧이 없습니다')
 
       const { root: creditRoot } = await generateMerkleProofAsync(creditNotes, 0)
 
-      setProofProgress({ stage: 'preparing', progress: 10, message: 'Registering credit root...' })
+      setProofProgress({ stage: 'preparing', progress: 10, message: '크레딧 루트 등록...' })
       await writeContractAsync({
         address: ZK_VOTING_FINAL_ADDRESS,
         abi: ZK_VOTING_FINAL_ABI,
@@ -241,7 +209,7 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
         setProofProgress
       )
 
-      setProofProgress({ stage: 'finalizing', progress: 95, message: 'Submitting to blockchain...' })
+      setProofProgress({ stage: 'finalizing', progress: 95, message: '블록체인에 제출 중...' })
 
       const hash = await writeContractAsync({
         address: ZK_VOTING_FINAL_ADDRESS,
@@ -254,7 +222,6 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
       setTxHash(hash)
       storeD2VoteForReveal(proposalId, voteData, address)
       await refetchCredits()
-
       setCurrentStep('success')
     } catch (err) {
       console.error('Vote failed:', err)
@@ -263,394 +230,267 @@ export function QuadraticVotingDemo({ onBack }: QuadraticVotingDemoProps) {
       setIsProcessing(false)
       setProofProgress(null)
     }
-  }, [selectedChoice, keyPair, creditNote, selectedProposal, numVotes, quadraticCost, totalCredits, registeredCreditNotes, writeContractAsync, refetchCredits, address])
+  }, [keyPair, creditNote, selectedProposal, numVotes, quadraticCost, totalCredits, registeredCreditNotes, writeContractAsync, refetchCredits, address])
+
+  // ============ STYLES ============
+  const getIntensityColor = () => {
+    if (isDanger) return { bg: 'rgba(239, 68, 68, 0.15)', border: '#ef4444', text: '#fca5a5' }
+    if (isHighCost) return { bg: 'rgba(251, 191, 36, 0.15)', border: '#f59e0b', text: '#fcd34d' }
+    return { bg: 'rgba(34, 197, 94, 0.1)', border: '#22c55e', text: '#86efac' }
+  }
+
+  const colors = getIntensityColor()
 
   // ============ RENDER ============
   return (
-    <div className="qv-container">
+    <div className="unified-voting">
       {onBack && (
-        <button className="qv-back-btn" onClick={onBack}>← Back to Proposals</button>
+        <button className="uv-back" onClick={onBack}>← 뒤로</button>
       )}
 
-      {/* Header with Voting Power (Snapshot style) */}
-      <header className="qv-header">
-        <div className="qv-header-left">
-          <h1>D2: Quadratic Voting</h1>
-          <p className="qv-tagline">Fair governance through quadratic costs</p>
+      {/* STEP: Connect */}
+      {currentStep === 'connect' && (
+        <div className="uv-card uv-center">
+          <div className="uv-icon">🗳️</div>
+          <h1>Private Voting</h1>
+          <p className="uv-subtitle">영지식 증명으로 보호되는 비밀 투표</p>
+          <button className="uv-btn uv-btn-primary" onClick={handleConnect}>
+            지갑 연결
+          </button>
         </div>
-        {isConnected && creditNote && (
-          <div className="qv-voting-power">
-            <div className="qv-power-label">Your Voting Power</div>
-            <div className="qv-power-value">{totalCredits.toLocaleString()}</div>
-            <div className="qv-power-unit">credits</div>
+      )}
+
+      {/* STEP: Setup Credits */}
+      {currentStep === 'setup' && (
+        <div className="uv-card uv-center">
+          <div className="uv-icon">💎</div>
+          <h1>투표권 받기</h1>
+          <p className="uv-subtitle">테스트용 10,000 크레딧을 받으세요</p>
+
+          <div className="uv-credit-preview">
+            <span className="uv-credit-amount">10,000</span>
+            <span className="uv-credit-label">Credits</span>
           </div>
-        )}
-      </header>
 
-      {/* Progress Steps */}
-      <div className="qv-steps">
-        <div className={`qv-step ${currentStep === 'connect' ? 'active' : creditNote ? 'done' : ''}`}>
-          <div className="qv-step-num">{creditNote ? '✓' : '1'}</div>
-          <div className="qv-step-label">Connect</div>
-        </div>
-        <div className="qv-step-line" />
-        <div className={`qv-step ${currentStep === 'setup' ? 'active' : creditNote ? 'done' : ''}`}>
-          <div className="qv-step-num">{creditNote ? '✓' : '2'}</div>
-          <div className="qv-step-label">Setup</div>
-        </div>
-        <div className="qv-step-line" />
-        <div className={`qv-step ${currentStep === 'proposal' ? 'active' : selectedProposal ? 'done' : ''}`}>
-          <div className="qv-step-num">{selectedProposal ? '✓' : '3'}</div>
-          <div className="qv-step-label">Proposal</div>
-        </div>
-        <div className="qv-step-line" />
-        <div className={`qv-step ${currentStep === 'vote' || currentStep === 'confirm' ? 'active' : currentStep === 'success' ? 'done' : ''}`}>
-          <div className="qv-step-num">{currentStep === 'success' ? '✓' : '4'}</div>
-          <div className="qv-step-label">Vote</div>
-        </div>
-      </div>
+          {error && <div className="uv-error">{error}</div>}
 
-      {/* Main Content */}
-      <main className="qv-main">
-        {/* Step: Connect Wallet */}
-        {currentStep === 'connect' && (
-          <div className="qv-step-content qv-connect">
-            <div className="qv-card qv-card-center">
-              <div className="qv-icon-large">🔗</div>
-              <h2>Connect Your Wallet</h2>
-              <p>Connect to participate in quadratic voting on Sepolia testnet</p>
-              <button className="qv-btn qv-btn-primary qv-btn-large" onClick={handleConnect}>
-                Connect Wallet
-              </button>
-            </div>
+          <button
+            className="uv-btn uv-btn-primary"
+            onClick={handleSetupCredits}
+            disabled={isProcessing || !isContractDeployed}
+          >
+            {isProcessing ? '처리 중...' : '크레딧 받기'}
+          </button>
+        </div>
+      )}
+
+      {/* STEP: Create Proposal */}
+      {currentStep === 'proposal' && (
+        <div className="uv-card">
+          <h1>새 제안</h1>
+          <p className="uv-subtitle">커뮤니티에 의견을 물어보세요</p>
+
+          <input
+            type="text"
+            className="uv-input"
+            placeholder="제안 제목을 입력하세요"
+            value={newProposalTitle}
+            onChange={(e) => setNewProposalTitle(e.target.value)}
+          />
+
+          {error && <div className="uv-error">{error}</div>}
+
+          <button
+            className="uv-btn uv-btn-primary"
+            onClick={handleCreateProposal}
+            disabled={!newProposalTitle.trim() || isProcessing}
+          >
+            {isProcessing ? '생성 중...' : '제안 생성'}
+          </button>
+        </div>
+      )}
+
+      {/* STEP: Vote - Unified Single Flow */}
+      {currentStep === 'vote' && selectedProposal && (
+        <div
+          className="uv-card uv-vote-card"
+          style={{
+            backgroundColor: colors.bg,
+            borderColor: colors.border,
+          }}
+        >
+          <h1>{selectedProposal.title}</h1>
+
+          {/* Simple Vote Buttons */}
+          <div className="uv-vote-buttons">
+            <button
+              className={`uv-vote-btn uv-vote-for ${selectedChoice === CHOICE_FOR ? 'selected' : ''}`}
+              onClick={() => !isProcessing && handleVote(CHOICE_FOR)}
+              disabled={isProcessing}
+            >
+              <span className="uv-vote-icon">👍</span>
+              <span>찬성</span>
+            </button>
+            <button
+              className={`uv-vote-btn uv-vote-against ${selectedChoice === CHOICE_AGAINST ? 'selected' : ''}`}
+              onClick={() => !isProcessing && handleVote(CHOICE_AGAINST)}
+              disabled={isProcessing}
+            >
+              <span className="uv-vote-icon">👎</span>
+              <span>반대</span>
+            </button>
           </div>
-        )}
 
-        {/* Step: Setup Credits */}
-        {currentStep === 'setup' && (
-          <div className="qv-step-content qv-setup">
-            <div className="qv-card qv-card-center">
-              <div className="qv-icon-large">💰</div>
-              <h2>Initialize Your Credits</h2>
-              <p>Get 10,000 test credits to participate in quadratic voting</p>
-
-              <div className="qv-credit-preview">
-                <div className="qv-credit-amount">10,000</div>
-                <div className="qv-credit-label">Test Credits</div>
-              </div>
-
-              <div className="qv-info-box">
-                <div className="qv-info-row">
-                  <span>Max votes with 10,000 credits:</span>
-                  <strong>100 votes</strong>
-                </div>
-                <div className="qv-info-row">
-                  <span>Cost formula:</span>
-                  <strong>votes² = credits</strong>
-                </div>
-              </div>
-
-              {error && <div className="qv-error">{error}</div>}
-
-              <button
-                className="qv-btn qv-btn-primary qv-btn-large"
-                onClick={handleSetupCredits}
-                disabled={isProcessing || !isContractDeployed}
-              >
-                {isProcessing ? 'Initializing...' : 'Get 10,000 Credits'}
-              </button>
-            </div>
+          {/* Current Vote Info */}
+          <div className="uv-vote-info" style={{ color: colors.text }}>
+            <span className="uv-vote-count">{numVotes}표</span>
+            <span className="uv-vote-cost">{quadraticCost} 크레딧</span>
           </div>
-        )}
 
-        {/* Step: Create/Select Proposal */}
-        {currentStep === 'proposal' && (
-          <div className="qv-step-content qv-proposal">
-            <div className="qv-card">
-              <h2>Create a Proposal</h2>
-              <p>What would you like the community to vote on?</p>
-
-              <div className="qv-form-group">
-                <label>Proposal Title</label>
-                <input
-                  type="text"
-                  className="qv-input"
-                  placeholder="e.g., Fund community development"
-                  value={newProposalTitle}
-                  onChange={(e) => setNewProposalTitle(e.target.value)}
-                />
-              </div>
-
-              <div className="qv-info-box qv-info-box-muted">
-                <p><strong>Voting Duration:</strong> 24 hours</p>
-                <p><strong>Reveal Duration:</strong> 24 hours</p>
-              </div>
-
-              {error && <div className="qv-error">{error}</div>}
-
-              <button
-                className="qv-btn qv-btn-primary"
-                onClick={handleCreateProposal}
-                disabled={!newProposalTitle.trim() || isProcessing}
-              >
-                {isProcessing ? 'Creating...' : 'Create Proposal & Continue'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Step: Vote with Quadratic Cost Visualization */}
-        {currentStep === 'vote' && selectedProposal && (
-          <div className="qv-step-content qv-vote">
-            <div className="qv-vote-layout">
-              {/* Left: Voting Panel */}
-              <div className="qv-card qv-vote-panel">
-                <div className="qv-proposal-badge">
-                  <span className="qv-badge-id">#{selectedProposal.id}</span>
-                  <span className="qv-badge-status">Active</span>
-                </div>
-                <h2>{selectedProposal.title}</h2>
-
-                {/* Choice Selection */}
-                <div className="qv-choice-section">
-                  <h3>Your Choice</h3>
-                  <div className="qv-choices">
-                    <button
-                      className={`qv-choice ${selectedChoice === CHOICE_FOR ? 'selected for' : ''}`}
-                      onClick={() => setSelectedChoice(CHOICE_FOR)}
-                    >
-                      <span className="qv-choice-icon">👍</span>
-                      <span>For</span>
-                    </button>
-                    <button
-                      className={`qv-choice ${selectedChoice === CHOICE_AGAINST ? 'selected against' : ''}`}
-                      onClick={() => setSelectedChoice(CHOICE_AGAINST)}
-                    >
-                      <span className="qv-choice-icon">👎</span>
-                      <span>Against</span>
-                    </button>
-                    <button
-                      className={`qv-choice ${selectedChoice === CHOICE_ABSTAIN ? 'selected abstain' : ''}`}
-                      onClick={() => setSelectedChoice(CHOICE_ABSTAIN)}
-                    >
-                      <span className="qv-choice-icon">⏸️</span>
-                      <span>Abstain</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Vote Amount Slider */}
-                <div className="qv-amount-section">
-                  <h3>Number of Votes</h3>
-                  <div className="qv-slider-container">
-                    <input
-                      type="range"
-                      min="1"
-                      max={maxVotes}
-                      value={numVotes}
-                      onChange={(e) => setNumVotes(Number(e.target.value))}
-                      className="qv-slider"
-                    />
-                    <div className="qv-slider-value">{numVotes}</div>
-                  </div>
-                </div>
-
-                {/* GITCOIN STYLE: Cost vs Voice Comparison */}
-                <div className="qv-cost-voice-comparison">
-                  <div className="qv-metric qv-metric-cost">
-                    <div className="qv-metric-label">Your Cost</div>
-                    <div className={`qv-metric-value ${quadraticCost > totalCredits * 0.5 ? 'warning' : ''} ${quadraticCost > totalCredits ? 'danger' : ''}`}>
-                      {quadraticCost.toLocaleString()}
-                    </div>
-                    <div className="qv-metric-unit">credits</div>
-                  </div>
-                  <div className="qv-metric-divider">
-                    <span className="qv-vs">vs</span>
-                  </div>
-                  <div className="qv-metric qv-metric-voice">
-                    <div className="qv-metric-label">Your Voice</div>
-                    <div className="qv-metric-value">{numVotes}</div>
-                    <div className="qv-metric-unit">votes</div>
-                  </div>
-                </div>
-
-                {/* Efficiency Warning (Gitcoin style pain point) */}
-                <div className={`qv-efficiency ${Number(costEfficiency) > 10 ? 'inefficient' : ''}`}>
-                  <div className="qv-efficiency-icon">
-                    {Number(costEfficiency) > 10 ? '⚠️' : '💡'}
-                  </div>
-                  <div className="qv-efficiency-text">
-                    <strong>{costEfficiency} credits per vote</strong>
-                    {Number(costEfficiency) > 10 && (
-                      <span className="qv-efficiency-warning">
-                        High concentration! Consider spreading votes across proposals.
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Credits Bar */}
-                <div className="qv-credits-section">
-                  <div className="qv-credits-header">
-                    <span>Credit Usage</span>
-                    <span>{remainingCredits.toLocaleString()} / {totalCredits.toLocaleString()} remaining</span>
-                  </div>
-                  <div className="qv-credits-bar">
-                    <div
-                      className={`qv-credits-fill ${quadraticCost > totalCredits ? 'overflow' : ''}`}
-                      style={{ width: `${Math.min((quadraticCost / totalCredits) * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* ZK Privacy Notice (Snapshot style) */}
-                <div className="qv-privacy-notice">
-                  <div className="qv-privacy-icon">🔐</div>
-                  <div className="qv-privacy-text">
-                    <strong>Private Vote</strong>
-                    <span>Your choice is encrypted until reveal phase</span>
-                  </div>
-                </div>
-
-                {error && <div className="qv-error">{error}</div>}
-
-                {proofProgress && (
-                  <div className="qv-progress">
-                    <div className="qv-progress-bar">
-                      <div className="qv-progress-fill" style={{ width: `${proofProgress.progress}%` }} />
-                    </div>
-                    <p className="qv-progress-text">{proofProgress.message}</p>
-                  </div>
-                )}
-
-                <button
-                  className="qv-btn qv-btn-primary qv-btn-large"
-                  disabled={selectedChoice === null || quadraticCost > totalCredits || isProcessing}
-                  onClick={handleCastVote}
-                >
-                  {isProcessing
-                    ? 'Generating ZK Proof...'
-                    : selectedChoice === null
-                      ? 'Select a choice'
-                      : quadraticCost > totalCredits
-                        ? 'Insufficient Credits'
-                        : `Cast ${numVotes} Vote${numVotes > 1 ? 's' : ''} for ${quadraticCost} Credits`
-                  }
+          {/* Progressive Disclosure: Intensity Slider */}
+          {!showIntensity ? (
+            <button
+              className="uv-intensity-toggle"
+              onClick={() => setShowIntensity(true)}
+            >
+              더 강력한 의사표시를 원하시나요?
+            </button>
+          ) : (
+            <div className="uv-intensity-panel">
+              <div className="uv-intensity-header">
+                <span>투표 강도</span>
+                <button className="uv-intensity-close" onClick={() => { setShowIntensity(false); setNumVotes(1); }}>
+                  ✕ 닫기
                 </button>
               </div>
 
-              {/* Right: Cost Curve Chart */}
-              <div className="qv-card qv-chart-panel">
-                <h3>Quadratic Cost Curve</h3>
-                <p className="qv-chart-subtitle">See how costs grow exponentially</p>
-
-                <div className="qv-chart-container">
-                  <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart data={chartData}>
-                      <defs>
-                        <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                      <XAxis dataKey="votes" stroke="#9ca3af" />
-                      <YAxis stroke="#9ca3af" />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px' }}
-                        formatter={(value) => [`${value} credits`, 'Cost']}
-                        labelFormatter={(label) => `${label} votes`}
-                      />
-                      <Area type="monotone" dataKey="cost" stroke="#ef4444" fill="url(#costGradient)" strokeWidth={2} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Quick Reference */}
-                <div className="qv-quick-ref">
-                  <h4>Quick Reference</h4>
-                  <div className="qv-ref-grid">
-                    <div className="qv-ref-item"><span>1 vote</span><span>1 credit</span></div>
-                    <div className="qv-ref-item"><span>5 votes</span><span>25 credits</span></div>
-                    <div className="qv-ref-item"><span>10 votes</span><span>100 credits</span></div>
-                    <div className="qv-ref-item"><span>50 votes</span><span>2,500 credits</span></div>
-                    <div className="qv-ref-item highlight"><span>100 votes</span><span>10,000 credits</span></div>
-                  </div>
-                </div>
-
-                {/* Anti-Whale Explanation */}
-                <div className="qv-antiwhale">
-                  <h4>Why Quadratic?</h4>
-                  <p>
-                    A whale with <strong>100x more credits</strong> only gets <strong>~10x more votes</strong>.
-                    This prevents plutocracy and encourages broad participation.
-                  </p>
-                </div>
+              <div className="uv-slider-container">
+                <input
+                  type="range"
+                  min="1"
+                  max={maxVotes}
+                  value={numVotes}
+                  onChange={(e) => setNumVotes(Number(e.target.value))}
+                  className="uv-slider"
+                  style={{
+                    background: `linear-gradient(to right, ${colors.border} 0%, ${colors.border} ${(numVotes / maxVotes) * 100}%, #374151 ${(numVotes / maxVotes) * 100}%, #374151 100%)`
+                  }}
+                />
               </div>
-            </div>
-          </div>
-        )}
 
-        {/* Step: Success */}
-        {currentStep === 'success' && (
-          <div className="qv-step-content qv-success">
-            <div className="qv-card qv-card-center">
-              <div className="qv-success-icon">✅</div>
-              <h2>Vote Committed!</h2>
-              <p className="qv-success-subtitle">Your vote has been encrypted and submitted</p>
-
-              <div className="qv-success-details">
-                <div className="qv-detail-row">
-                  <span className="qv-detail-label">Proposal</span>
-                  <span className="qv-detail-value">{selectedProposal?.title}</span>
+              {/* Cost Visualization */}
+              <div className="uv-cost-visual">
+                <div className="uv-cost-bar-container">
+                  <div
+                    className="uv-cost-bar"
+                    style={{
+                      width: `${costLevel}%`,
+                      backgroundColor: colors.border,
+                    }}
+                  />
                 </div>
-                <div className="qv-detail-row">
-                  <span className="qv-detail-label">Votes Cast</span>
-                  <span className="qv-detail-value">{numVotes}</span>
-                </div>
-                <div className="qv-detail-row">
-                  <span className="qv-detail-label">Credits Spent</span>
-                  <span className="qv-detail-value">{quadraticCost}</span>
-                </div>
-                <div className="qv-detail-row qv-detail-hidden">
-                  <span className="qv-detail-label">Your Choice</span>
-                  <span className="qv-detail-value">🔐 Hidden until reveal</span>
+                <div className="uv-cost-labels">
+                  <span>0</span>
+                  <span>{totalCredits.toLocaleString()}</span>
                 </div>
               </div>
 
-              {txHash && (
-                <a
-                  href={`https://sepolia.etherscan.io/tx/${txHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="qv-tx-link"
-                >
-                  View on Etherscan ↗
-                </a>
+              {/* Cost Table */}
+              <div className="uv-cost-table">
+                <div className={`uv-cost-row ${numVotes === 1 ? 'active' : ''}`}>
+                  <span>1표</span><span>1 크레딧</span>
+                </div>
+                <div className={`uv-cost-row ${numVotes >= 5 && numVotes < 10 ? 'active' : ''}`}>
+                  <span>5표</span><span>25 크레딧</span>
+                </div>
+                <div className={`uv-cost-row ${numVotes >= 10 && numVotes < 50 ? 'active' : ''}`}>
+                  <span>10표</span><span>100 크레딧</span>
+                </div>
+                <div className={`uv-cost-row ${numVotes >= 50 ? 'active' : ''}`}>
+                  <span>100표</span><span>10,000 크레딧</span>
+                </div>
+              </div>
+
+              {isDanger && (
+                <div className="uv-warning">
+                  ⚠️ 크레딧의 {costLevel.toFixed(0)}%를 사용합니다
+                </div>
               )}
+            </div>
+          )}
 
-              <div className="qv-next-steps">
-                <h4>What's Next?</h4>
-                <p>Return during the <strong>Reveal Phase</strong> to reveal your vote and see the results.</p>
+          {/* Progress */}
+          {proofProgress && (
+            <div className="uv-progress">
+              <div className="uv-progress-bar">
+                <div className="uv-progress-fill" style={{ width: `${proofProgress.progress}%` }} />
               </div>
+              <p className="uv-progress-text">{proofProgress.message}</p>
+            </div>
+          )}
 
-              <button
-                className="qv-btn qv-btn-secondary"
-                onClick={() => {
-                  setCurrentStep('proposal')
-                  setSelectedProposal(null)
-                  setNewProposalTitle('')
-                  setSelectedChoice(null)
-                  setNumVotes(1)
-                  setTxHash(null)
-                }}
-              >
-                Create Another Proposal
-              </button>
+          {error && <div className="uv-error">{error}</div>}
+
+          {/* Privacy Badge */}
+          <div className="uv-privacy">
+            🔐 투표 내용은 공개 전까지 암호화됩니다
+          </div>
+        </div>
+      )}
+
+      {/* STEP: Success */}
+      {currentStep === 'success' && (
+        <div className="uv-card uv-center uv-success">
+          <div className="uv-icon uv-success-icon">✅</div>
+          <h1>투표 완료!</h1>
+          <p className="uv-subtitle">투표가 암호화되어 제출되었습니다</p>
+
+          <div className="uv-result-summary">
+            <div className="uv-result-row">
+              <span>제안</span>
+              <strong>{selectedProposal?.title}</strong>
+            </div>
+            <div className="uv-result-row">
+              <span>투표 수</span>
+              <strong>{numVotes}표</strong>
+            </div>
+            <div className="uv-result-row">
+              <span>사용 크레딧</span>
+              <strong>{quadraticCost}</strong>
+            </div>
+            <div className="uv-result-row uv-hidden">
+              <span>선택</span>
+              <strong>🔐 공개 대기 중</strong>
             </div>
           </div>
-        )}
-      </main>
+
+          {txHash && (
+            <a
+              href={`https://sepolia.etherscan.io/tx/${txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="uv-tx-link"
+            >
+              Etherscan에서 확인 ↗
+            </a>
+          )}
+
+          <button
+            className="uv-btn uv-btn-secondary"
+            onClick={() => {
+              setCurrentStep('proposal')
+              setSelectedProposal(null)
+              setNewProposalTitle('')
+              setSelectedChoice(null)
+              setNumVotes(1)
+              setShowIntensity(false)
+              setTxHash(null)
+            }}
+          >
+            새 제안 만들기
+          </button>
+        </div>
+      )}
     </div>
   )
 }
