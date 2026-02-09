@@ -404,112 +404,122 @@ export function QuadraticVotingDemo() {
       {/* VIEW: Vote */}
       {currentView === 'vote' && selectedProposal && (
         <div className="uv-vote-view">
-          <button className="uv-back" onClick={() => { setCurrentView('list'); setSelectedProposal(null); setNumVotes(1); setShowIntensity(false); }}>
+          <button className="uv-back" onClick={() => { setCurrentView('list'); setSelectedProposal(null); setNumVotes(1); setShowIntensity(false); setError(null); }}>
             ← 목록으로
           </button>
 
-          {!hasCredits ? (
-            <div className="uv-card uv-center">
-              <div className="uv-icon">💎</div>
-              <h2>크레딧이 필요합니다</h2>
-              <p className="uv-subtitle">투표하려면 먼저 크레딧을 받으세요</p>
-              <button className="uv-btn uv-btn-primary" onClick={handleGetCredits} disabled={isProcessing}>
-                {isProcessing ? '처리 중...' : '10,000 크레딧 받기'}
+          <div
+            className="uv-card uv-vote-card"
+            style={{ backgroundColor: hasCredits ? colors.bg : 'rgba(255,255,255,0.03)', borderColor: hasCredits ? colors.border : 'rgba(255,255,255,0.08)' }}
+          >
+            <h1>{selectedProposal.title}</h1>
+
+            <div className="uv-proposal-info">
+              <span>👤 {selectedProposal.creator.slice(0, 6)}...{selectedProposal.creator.slice(-4)}</span>
+              <span>🗳️ {selectedProposal.totalVotes}표</span>
+            </div>
+
+            <div className="uv-vote-buttons">
+              <button
+                className={`uv-vote-btn uv-vote-for ${selectedChoice === CHOICE_FOR ? 'selected' : ''}`}
+                onClick={() => {
+                  if (!hasCredits) {
+                    setError('투표하려면 크레딧이 필요합니다. 상단의 "크레딧 받기" 버튼을 눌러주세요.')
+                    return
+                  }
+                  if (!isProcessing) handleVote(CHOICE_FOR)
+                }}
+                disabled={isProcessing}
+              >
+                <span className="uv-vote-icon">👍</span>
+                <span>찬성</span>
+              </button>
+              <button
+                className={`uv-vote-btn uv-vote-against ${selectedChoice === CHOICE_AGAINST ? 'selected' : ''}`}
+                onClick={() => {
+                  if (!hasCredits) {
+                    setError('투표하려면 크레딧이 필요합니다. 상단의 "크레딧 받기" 버튼을 눌러주세요.')
+                    return
+                  }
+                  if (!isProcessing) handleVote(CHOICE_AGAINST)
+                }}
+                disabled={isProcessing}
+              >
+                <span className="uv-vote-icon">👎</span>
+                <span>반대</span>
               </button>
             </div>
-          ) : (
-            <div
-              className="uv-card uv-vote-card"
-              style={{ backgroundColor: colors.bg, borderColor: colors.border }}
-            >
-              <h1>{selectedProposal.title}</h1>
 
-              <div className="uv-vote-buttons">
-                <button
-                  className={`uv-vote-btn uv-vote-for ${selectedChoice === CHOICE_FOR ? 'selected' : ''}`}
-                  onClick={() => !isProcessing && handleVote(CHOICE_FOR)}
-                  disabled={isProcessing}
-                >
-                  <span className="uv-vote-icon">👍</span>
-                  <span>찬성</span>
-                </button>
-                <button
-                  className={`uv-vote-btn uv-vote-against ${selectedChoice === CHOICE_AGAINST ? 'selected' : ''}`}
-                  onClick={() => !isProcessing && handleVote(CHOICE_AGAINST)}
-                  disabled={isProcessing}
-                >
-                  <span className="uv-vote-icon">👎</span>
-                  <span>반대</span>
-                </button>
-              </div>
-
-              <div className="uv-vote-info" style={{ color: colors.text }}>
-                <span className="uv-vote-count">{numVotes}표</span>
-                <span className="uv-vote-cost">{quadraticCost} 크레딧</span>
-              </div>
-
-              {!showIntensity ? (
-                <button className="uv-intensity-toggle" onClick={() => setShowIntensity(true)}>
-                  더 강력한 의사표시를 원하시나요?
-                </button>
-              ) : (
-                <div className="uv-intensity-panel">
-                  <div className="uv-intensity-header">
-                    <span>투표 강도</span>
-                    <button className="uv-intensity-close" onClick={() => { setShowIntensity(false); setNumVotes(1); }}>
-                      ✕ 닫기
-                    </button>
-                  </div>
-
-                  <div className="uv-slider-container">
-                    <input
-                      type="range"
-                      min="1"
-                      max={maxVotes}
-                      value={numVotes}
-                      onChange={(e) => setNumVotes(Number(e.target.value))}
-                      className="uv-slider"
-                      style={{
-                        background: `linear-gradient(to right, ${colors.border} 0%, ${colors.border} ${(numVotes / maxVotes) * 100}%, #374151 ${(numVotes / maxVotes) * 100}%, #374151 100%)`
-                      }}
-                    />
-                  </div>
-
-                  <div className="uv-cost-visual">
-                    <div className="uv-cost-bar-container">
-                      <div className="uv-cost-bar" style={{ width: `${costLevel}%`, backgroundColor: colors.border }} />
-                    </div>
-                    <div className="uv-cost-labels">
-                      <span>0</span>
-                      <span>{totalCredits.toLocaleString()}</span>
-                    </div>
-                  </div>
-
-                  <div className="uv-cost-table">
-                    <div className={`uv-cost-row ${numVotes === 1 ? 'active' : ''}`}><span>1표</span><span>1 크레딧</span></div>
-                    <div className={`uv-cost-row ${numVotes >= 5 && numVotes < 10 ? 'active' : ''}`}><span>5표</span><span>25 크레딧</span></div>
-                    <div className={`uv-cost-row ${numVotes >= 10 && numVotes < 50 ? 'active' : ''}`}><span>10표</span><span>100 크레딧</span></div>
-                    <div className={`uv-cost-row ${numVotes >= 50 ? 'active' : ''}`}><span>100표</span><span>10,000 크레딧</span></div>
-                  </div>
-
-                  {isDanger && <div className="uv-warning">⚠️ 크레딧의 {costLevel.toFixed(0)}%를 사용합니다</div>}
+            {hasCredits && (
+              <>
+                <div className="uv-vote-info" style={{ color: colors.text }}>
+                  <span className="uv-vote-count">{numVotes}표</span>
+                  <span className="uv-vote-cost">{quadraticCost} 크레딧</span>
                 </div>
-              )}
 
-              {proofProgress && (
-                <div className="uv-progress">
-                  <div className="uv-progress-bar">
-                    <div className="uv-progress-fill" style={{ width: `${proofProgress.progress}%` }} />
+                {!showIntensity ? (
+                  <button className="uv-intensity-toggle" onClick={() => setShowIntensity(true)}>
+                    더 강력한 의사표시를 원하시나요?
+                  </button>
+                ) : (
+                  <div className="uv-intensity-panel">
+                    <div className="uv-intensity-header">
+                      <span>투표 강도</span>
+                      <button className="uv-intensity-close" onClick={() => { setShowIntensity(false); setNumVotes(1); }}>
+                        ✕ 닫기
+                      </button>
+                    </div>
+
+                    <div className="uv-slider-container">
+                      <input
+                        type="range"
+                        min="1"
+                        max={maxVotes}
+                        value={numVotes}
+                        onChange={(e) => setNumVotes(Number(e.target.value))}
+                        className="uv-slider"
+                        style={{
+                          background: `linear-gradient(to right, ${colors.border} 0%, ${colors.border} ${(numVotes / maxVotes) * 100}%, #374151 ${(numVotes / maxVotes) * 100}%, #374151 100%)`
+                        }}
+                      />
+                    </div>
+
+                    <div className="uv-cost-visual">
+                      <div className="uv-cost-bar-container">
+                        <div className="uv-cost-bar" style={{ width: `${costLevel}%`, backgroundColor: colors.border }} />
+                      </div>
+                      <div className="uv-cost-labels">
+                        <span>0</span>
+                        <span>{totalCredits.toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    <div className="uv-cost-table">
+                      <div className={`uv-cost-row ${numVotes === 1 ? 'active' : ''}`}><span>1표</span><span>1 크레딧</span></div>
+                      <div className={`uv-cost-row ${numVotes >= 5 && numVotes < 10 ? 'active' : ''}`}><span>5표</span><span>25 크레딧</span></div>
+                      <div className={`uv-cost-row ${numVotes >= 10 && numVotes < 50 ? 'active' : ''}`}><span>10표</span><span>100 크레딧</span></div>
+                      <div className={`uv-cost-row ${numVotes >= 50 ? 'active' : ''}`}><span>100표</span><span>10,000 크레딧</span></div>
+                    </div>
+
+                    {isDanger && <div className="uv-warning">⚠️ 크레딧의 {costLevel.toFixed(0)}%를 사용합니다</div>}
                   </div>
-                  <p className="uv-progress-text">{proofProgress.message}</p>
+                )}
+              </>
+            )}
+
+            {proofProgress && (
+              <div className="uv-progress">
+                <div className="uv-progress-bar">
+                  <div className="uv-progress-fill" style={{ width: `${proofProgress.progress}%` }} />
                 </div>
-              )}
+                <p className="uv-progress-text">{proofProgress.message}</p>
+              </div>
+            )}
 
-              {error && <div className="uv-error">{error}</div>}
+            {error && <div className="uv-error">{error}</div>}
 
-              <div className="uv-privacy">🔐 투표 내용은 공개 전까지 암호화됩니다</div>
-            </div>
-          )}
+            <div className="uv-privacy">🔐 투표 내용은 공개 전까지 암호화됩니다</div>
+          </div>
         </div>
       )}
 

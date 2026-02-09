@@ -7001,3 +7001,13 @@ body {
   max-width: 500px;
   margin: 0 auto;
 }
+
+/* Proposal Info in Vote View */
+.uv-proposal-info {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 24px;
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.5);
+}
