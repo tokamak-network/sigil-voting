@@ -26,29 +26,47 @@ async function main() {
     throw new Error("Insufficient balance. Need at least 0.01 ETH for deployment.");
   }
 
-  // Step 1: Deploy VerifierD1 (기존 Groth16Verifier)
-  console.log("--- Step 1: Deploying VerifierD1 ---");
-  const VerifierD1 = await hre.ethers.getContractFactory("contracts/Groth16Verifier.sol:Groth16Verifier");
-  const verifierD1 = await VerifierD1.deploy();
-  await verifierD1.waitForDeployment();
-  const verifierD1Address = await verifierD1.getAddress();
-  console.log("VerifierD1 deployed at:", verifierD1Address);
+  // Pre-deployed PoseidonT5 via CREATE2 factory (same address on all EVM chains)
+  const POSEIDON_T5_ADDRESS = "0x555333f3f677Ca3930Bf7c56ffc75144c51D9767";
 
-  // Step 2: Deploy VerifierD2
-  console.log("\n--- Step 2: Deploying VerifierD2 ---");
-  const VerifierD2 = await hre.ethers.getContractFactory("contracts/Groth16VerifierD2.sol:Groth16Verifier");
-  const verifierD2 = await VerifierD2.deploy();
-  await verifierD2.waitForDeployment();
-  const verifierD2Address = await verifierD2.getAddress();
-  console.log("VerifierD2 deployed at:", verifierD2Address);
+  // Check if we should reuse existing verifiers (from previous partial deployment)
+  const existingVerifierD1 = process.env.VERIFIER_D1_ADDRESS;
+  const existingVerifierD2 = process.env.VERIFIER_D2_ADDRESS;
 
-  // Step 3: Deploy PoseidonT5 library
-  console.log("\n--- Step 3: Deploying PoseidonT5 library ---");
-  const PoseidonT5 = await hre.ethers.getContractFactory("PoseidonT5");
-  const poseidonT5 = await PoseidonT5.deploy();
-  await poseidonT5.waitForDeployment();
-  const poseidonT5Address = await poseidonT5.getAddress();
-  console.log("PoseidonT5 deployed at:", poseidonT5Address);
+  let verifierD1Address, verifierD2Address;
+
+  // Step 1: Deploy or reuse VerifierD1
+  if (existingVerifierD1) {
+    console.log("--- Step 1: Reusing existing VerifierD1 ---");
+    verifierD1Address = existingVerifierD1;
+    console.log("VerifierD1 at:", verifierD1Address);
+  } else {
+    console.log("--- Step 1: Deploying VerifierD1 ---");
+    const VerifierD1 = await hre.ethers.getContractFactory("contracts/Groth16Verifier.sol:Groth16Verifier");
+    const verifierD1 = await VerifierD1.deploy();
+    await verifierD1.waitForDeployment();
+    verifierD1Address = await verifierD1.getAddress();
+    console.log("VerifierD1 deployed at:", verifierD1Address);
+  }
+
+  // Step 2: Deploy or reuse VerifierD2
+  if (existingVerifierD2) {
+    console.log("\n--- Step 2: Reusing existing VerifierD2 ---");
+    verifierD2Address = existingVerifierD2;
+    console.log("VerifierD2 at:", verifierD2Address);
+  } else {
+    console.log("\n--- Step 2: Deploying VerifierD2 ---");
+    const VerifierD2 = await hre.ethers.getContractFactory("contracts/Groth16VerifierD2.sol:Groth16Verifier");
+    const verifierD2 = await VerifierD2.deploy();
+    await verifierD2.waitForDeployment();
+    verifierD2Address = await verifierD2.getAddress();
+    console.log("VerifierD2 deployed at:", verifierD2Address);
+  }
+
+  // Step 3: Use pre-deployed PoseidonT5 (via CREATE2 factory)
+  console.log("\n--- Step 3: Using pre-deployed PoseidonT5 ---");
+  const poseidonT5Address = POSEIDON_T5_ADDRESS;
+  console.log("PoseidonT5 at:", poseidonT5Address);
 
   // Step 4: Deploy ZkVotingFinal (linked with PoseidonT5)
   console.log("\n--- Step 4: Deploying ZkVotingFinal ---");
