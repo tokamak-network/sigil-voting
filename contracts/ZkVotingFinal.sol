@@ -535,9 +535,9 @@ contract ZkVotingFinal {
         if (vc.revealed) revert AlreadyRevealed();
         if (_choice > CHOICE_ABSTAIN) revert InvalidChoice();
 
-        // Verify reveal: commitment = hash(choice, numVotes, creditsSpent, proposalId, voteSalt)
-        uint256[5] memory inputs = [_choice, _numVotes, vc.creditsSpent, _proposalId, _voteSalt];
-        uint256 computedCommitment = PoseidonT5.hash(inputs);
+        // Verify reveal: commitment = hash(hash(choice, numVotes, creditsSpent, proposalId), voteSalt, 0, 0)
+        uint256 inner = PoseidonT5.hash([_choice, _numVotes, vc.creditsSpent, _proposalId]);
+        uint256 computedCommitment = PoseidonT5.hash([inner, _voteSalt, uint256(0), uint256(0)]);
         if (computedCommitment != vc.commitment) revert InvalidReveal();
 
         vc.revealed = true;

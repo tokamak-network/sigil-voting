@@ -876,6 +876,340 @@ export function clearAllData(): void {
   keysToRemove.forEach(key => localStorage.removeItem(key))
 }
 
+// ============ D2 Quadratic Voting ZK Proof Generation ============
+
+/**
+ * D2 Vote Data Interface
+ */
+export interface D2VoteData {
+  choice: VoteChoice
+  numVotes: bigint
+  creditsSpent: bigint  // = numVotes^2
+  voteSalt: bigint
+  proposalId: bigint
+  commitment: bigint
+  nullifier: bigint
+}
+
+/**
+ * D2 Credit Note Interface
+ */
+export interface CreditNote {
+  creditNoteHash: bigint
+  totalCredits: bigint
+  creditSalt: bigint
+  pkX: bigint
+  pkY: bigint
+}
+
+/**
+ * Create a credit note for D2 voting
+ * creditNoteHash = hash(pkX, pkY, totalCredits, creditSalt)
+ */
+export async function createCreditNoteAsync(keyPair: KeyPair, totalCredits: bigint, walletAddress?: string): Promise<CreditNote> {
+  const creditSalt = randomFieldElement()
+  const creditNoteHash = await poseidonHash([keyPair.pkX, keyPair.pkY, totalCredits, creditSalt])
+
+  const note: CreditNote = {
+    creditNoteHash,
+    totalCredits,
+    creditSalt,
+    pkX: keyPair.pkX,
+    pkY: keyPair.pkY,
+  }
+
+  // Store credit note
+  const storageKey = `zk-credit-note-${walletAddress?.toLowerCase() || 'default'}`
+  localStorage.setItem(storageKey, JSON.stringify({
+    creditNoteHash: creditNoteHash.toString(),
+    totalCredits: totalCredits.toString(),
+    creditSalt: creditSalt.toString(),
+    pkX: keyPair.pkX.toString(),
+    pkY: keyPair.pkY.toString(),
+  }))
+
+  return note
+}
+
+/**
+ * Get stored credit note
+ */
+export function getStoredCreditNote(walletAddress?: string): CreditNote | null {
+  const storageKey = `zk-credit-note-${walletAddress?.toLowerCase() || 'default'}`
+  const stored = localStorage.getItem(storageKey)
+  if (!stored) return null
+
+  try {
+    const parsed = JSON.parse(stored)
+    return {
+      creditNoteHash: BigInt(parsed.creditNoteHash),
+      totalCredits: BigInt(parsed.totalCredits),
+      creditSalt: BigInt(parsed.creditSalt),
+      pkX: BigInt(parsed.pkX),
+      pkY: BigInt(parsed.pkY),
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Compute D2 vote commitment: hash(hash(choice, numVotes, creditsSpent, proposalId), voteSalt, 0, 0)
+ * Two-stage hash to match contract's PoseidonT5 (4 inputs)
+ */
+export async function computeD2CommitmentAsync(
+  choice: VoteChoice,
+  numVotes: bigint,
+  creditsSpent: bigint,
+  proposalId: bigint,
+  voteSalt: bigint
+): Promise<bigint> {
+  const inner = await poseidonHash([choice, numVotes, creditsSpent, proposalId])
+  return poseidonHash([inner, voteSalt, 0n, 0n])
+}
+
+/**
+ * Prepare D2 vote data
+ */
+export async function prepareD2VoteAsync(
+  keyPair: KeyPair,
+  choice: VoteChoice,
+  numVotes: bigint,
+  proposalId: bigint
+): Promise<D2VoteData> {
+  const creditsSpent = numVotes * numVotes  // Quadratic cost!
+  const voteSalt = randomFieldElement()
+  const commitment = await computeD2CommitmentAsync(choice, numVotes, creditsSpent, proposalId, voteSalt)
+  const nullifier = await computeNullifierAsync(keyPair.sk, proposalId)
+
+  return {
+    choice,
+    numVotes,
+    creditsSpent,
+    voteSalt,
+    proposalId,
+    commitment,
+    nullifier,
+  }
+}
+
+/**
+ * Generate ZK proof for D2 Quadratic Voting
+ *
+ * Circuit public inputs: [voteCommitment, proposalId, creditsSpent, creditRoot]
+ * Circuit output: nullifier
+ */
+export async function generateQuadraticProof(
+  keyPair: KeyPair,
+  creditNote: CreditNote,
+  voteData: D2VoteData,
+  creditRoot: bigint,
+  registeredCreditNotes: bigint[],
+  onProgress?: (progress: ProofGenerationProgress) => void
+): Promise<{ proof: ZKProof; publicSignals: bigint[]; nullifier: bigint; commitment: bigint }> {
+  onProgress?.({
+    stage: 'preparing',
+    progress: 10,
+    message: 'Preparing D2 circuit inputs...'
+  })
+
+  await new Promise(resolve => setTimeout(resolve, 100))
+
+  console.log('[ZK-D2] Loading crypto libraries...')
+  const poseidon = await getPoseidon()
+  const babyjub = await getBabyjub()
+
+  // Derive actual public key
+  const pubKey = babyjub.mulPointEscalar(babyjub.Base8, keyPair.sk)
+  const pkX = babyjub.F.toObject(pubKey[0])
+  const pkY = babyjub.F.toObject(pubKey[1])
+
+  // Compute actual credit note hash
+  const creditNoteHash = poseidonHashSync(poseidon, [pkX, pkY, creditNote.totalCredits, creditNote.creditSalt])
+
+  console.log('[ZK-D2] CreditNoteHash:', creditNoteHash.toString())
+  console.log('[ZK-D2] Credit root:', creditRoot.toString())
+  console.log('[ZK-D2] Registered credit notes:', registeredCreditNotes.length)
+
+  // Find index in registered credit notes
+  const noteIndex = findVoterIndex(registeredCreditNotes, creditNoteHash)
+  if (noteIndex === -1) {
+    console.error('[ZK-D2] Credit note not found!')
+    throw new Error('Your credit note is not registered. Please register first.')
+  }
+
+  console.log('[ZK-D2] Note index:', noteIndex)
+
+  // Generate merkle proof
+  const { path: merklePath, root: actualCreditRoot } = await generateMerkleProofAsync(registeredCreditNotes, noteIndex)
+
+  console.log('[ZK-D2] Computed credit root:', actualCreditRoot.toString())
+
+  if (actualCreditRoot !== creditRoot) {
+    console.error('[ZK-D2] Credit root mismatch!')
+    throw new Error('Credit root mismatch - credit registry has changed')
+  }
+
+  // Compute commitment and nullifier (two-stage hash to match contract)
+  const inner = poseidonHashSync(poseidon, [
+    voteData.choice,
+    voteData.numVotes,
+    voteData.creditsSpent,
+    voteData.proposalId
+  ])
+  const commitment = poseidonHashSync(poseidon, [inner, voteData.voteSalt, 0n, 0n])
+  const nullifier = poseidonHashSync(poseidon, [keyPair.sk, voteData.proposalId])
+
+  onProgress?.({
+    stage: 'computing-witness',
+    progress: 30,
+    message: 'Computing D2 witness...'
+  })
+
+  // Prepare circuit inputs for D2
+  const circuitInputs = {
+    // Public inputs
+    voteCommitment: commitment.toString(),
+    proposalId: voteData.proposalId.toString(),
+    creditsSpent: voteData.creditsSpent.toString(),
+    creditRoot: actualCreditRoot.toString(),
+
+    // Private inputs
+    sk: keyPair.sk.toString(),
+    pkX: pkX.toString(),
+    pkY: pkY.toString(),
+    totalCredits: creditNote.totalCredits.toString(),
+    numVotes: voteData.numVotes.toString(),
+    choice: voteData.choice.toString(),
+    voteSalt: voteData.voteSalt.toString(),
+    creditNoteHash: creditNoteHash.toString(),
+    creditSalt: creditNote.creditSalt.toString(),
+    merklePath: merklePath.map(p => p.toString()),
+    merkleIndex: noteIndex,
+  }
+
+  onProgress?.({
+    stage: 'generating-proof',
+    progress: 50,
+    message: 'Loading D2 circuit files...'
+  })
+
+  try {
+    console.log('[ZK-D2] Importing snarkjs...')
+    const snarkjs = await import('snarkjs')
+
+    // D2 circuit files
+    const wasmUrl = '/circuits/D2_QuadraticVoting.wasm'
+    const zkeyUrl = '/circuits/D2_QuadraticVoting_final.zkey'
+
+    onProgress?.({
+      stage: 'generating-proof',
+      progress: 60,
+      message: 'Generating D2 ZK proof...'
+    })
+
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    console.log('[ZK-D2] Starting proof generation...')
+    console.log('[ZK-D2] Circuit inputs:', JSON.stringify(circuitInputs, (_, v) => typeof v === 'bigint' ? v.toString() : v))
+
+    const startTime = Date.now()
+
+    const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+      circuitInputs,
+      wasmUrl,
+      zkeyUrl
+    )
+
+    console.log('[ZK-D2] Proof generated in', Date.now() - startTime, 'ms')
+    console.log('[ZK-D2] Public signals:', publicSignals)
+
+    // Verify nullifier
+    const proofNullifier = BigInt(publicSignals[0])
+    if (proofNullifier !== nullifier) {
+      throw new Error('Nullifier mismatch in D2 proof')
+    }
+
+    onProgress?.({
+      stage: 'finalizing',
+      progress: 90,
+      message: 'Finalizing D2 proof...'
+    })
+
+    // Convert proof to contract format
+    const zkProof: ZKProof = {
+      pA: [BigInt(proof.pi_a[0]), BigInt(proof.pi_a[1])],
+      pB: [
+        [BigInt(proof.pi_b[0][1]), BigInt(proof.pi_b[0][0])],
+        [BigInt(proof.pi_b[1][1]), BigInt(proof.pi_b[1][0])]
+      ],
+      pC: [BigInt(proof.pi_c[0]), BigInt(proof.pi_c[1])]
+    }
+
+    onProgress?.({
+      stage: 'finalizing',
+      progress: 100,
+      message: 'D2 Proof generated!'
+    })
+
+    return {
+      proof: zkProof,
+      publicSignals: publicSignals.map((s: string) => BigInt(s)),
+      nullifier,
+      commitment
+    }
+  } catch (error) {
+    console.error('[ZK-D2] Proof generation failed:', error)
+    onProgress?.({
+      stage: 'finalizing',
+      progress: 0,
+      message: 'D2 proof generation failed: ' + (error as Error).message
+    })
+    throw new Error('D2 ZK proof generation failed: ' + (error as Error).message)
+  }
+}
+
+/**
+ * Store D2 vote data for reveal phase
+ */
+export function storeD2VoteForReveal(proposalId: bigint, voteData: D2VoteData, walletAddress?: string): void {
+  const walletPart = walletAddress ? `-${walletAddress.toLowerCase()}` : ''
+  const key = `zk-d2-vote-reveal${walletPart}-${proposalId.toString()}`
+  localStorage.setItem(key, JSON.stringify({
+    choice: voteData.choice.toString(),
+    numVotes: voteData.numVotes.toString(),
+    creditsSpent: voteData.creditsSpent.toString(),
+    voteSalt: voteData.voteSalt.toString(),
+    nullifier: voteData.nullifier.toString(),
+    commitment: voteData.commitment.toString(),
+  }))
+}
+
+/**
+ * Get stored D2 vote data for reveal
+ */
+export function getD2VoteForReveal(proposalId: bigint, walletAddress?: string): D2VoteData | null {
+  const walletPart = walletAddress ? `-${walletAddress.toLowerCase()}` : ''
+  const key = `zk-d2-vote-reveal${walletPart}-${proposalId.toString()}`
+  const stored = localStorage.getItem(key)
+  if (!stored) return null
+
+  try {
+    const parsed = JSON.parse(stored)
+    return {
+      choice: BigInt(parsed.choice) as VoteChoice,
+      numVotes: BigInt(parsed.numVotes),
+      creditsSpent: BigInt(parsed.creditsSpent),
+      voteSalt: BigInt(parsed.voteSalt),
+      proposalId,
+      nullifier: BigInt(parsed.nullifier),
+      commitment: BigInt(parsed.commitment),
+    }
+  } catch {
+    return null
+  }
+}
+
 // ============ Display Utilities ============
 
 /**
