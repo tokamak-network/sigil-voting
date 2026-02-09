@@ -28,7 +28,7 @@ async function main() {
 
   // Step 1: Deploy VerifierD1 (기존 Groth16Verifier)
   console.log("--- Step 1: Deploying VerifierD1 ---");
-  const VerifierD1 = await hre.ethers.getContractFactory("Groth16Verifier");
+  const VerifierD1 = await hre.ethers.getContractFactory("contracts/Groth16Verifier.sol:Groth16Verifier");
   const verifierD1 = await VerifierD1.deploy();
   await verifierD1.waitForDeployment();
   const verifierD1Address = await verifierD1.getAddress();
@@ -42,16 +42,28 @@ async function main() {
   const verifierD2Address = await verifierD2.getAddress();
   console.log("VerifierD2 deployed at:", verifierD2Address);
 
-  // Step 3: Deploy ZkVotingFinal
-  console.log("\n--- Step 3: Deploying ZkVotingFinal ---");
-  const ZkVotingFinal = await hre.ethers.getContractFactory("ZkVotingFinal");
+  // Step 3: Deploy PoseidonT5 library
+  console.log("\n--- Step 3: Deploying PoseidonT5 library ---");
+  const PoseidonT5 = await hre.ethers.getContractFactory("PoseidonT5");
+  const poseidonT5 = await PoseidonT5.deploy();
+  await poseidonT5.waitForDeployment();
+  const poseidonT5Address = await poseidonT5.getAddress();
+  console.log("PoseidonT5 deployed at:", poseidonT5Address);
+
+  // Step 4: Deploy ZkVotingFinal (linked with PoseidonT5)
+  console.log("\n--- Step 4: Deploying ZkVotingFinal ---");
+  const ZkVotingFinal = await hre.ethers.getContractFactory("ZkVotingFinal", {
+    libraries: {
+      PoseidonT5: poseidonT5Address,
+    },
+  });
   const zkVotingFinal = await ZkVotingFinal.deploy(verifierD1Address, verifierD2Address);
   await zkVotingFinal.waitForDeployment();
   const zkVotingFinalAddress = await zkVotingFinal.getAddress();
   console.log("ZkVotingFinal deployed at:", zkVotingFinalAddress);
 
-  // Step 4: Update frontend config
-  console.log("\n--- Step 4: Updating frontend config ---");
+  // Step 5: Update frontend config
+  console.log("\n--- Step 5: Updating frontend config ---");
   const configPath = path.join(__dirname, "..", "src", "config.json");
   const config = {
     network: "sepolia",
@@ -59,6 +71,7 @@ async function main() {
       verifierD1: verifierD1Address,
       verifierD2: verifierD2Address,
       zkVotingFinal: zkVotingFinalAddress,
+      poseidonT5: poseidonT5Address,
       // Keep old D1 addresses for backwards compatibility
       privateVoting: "0xc3bF134b60FA8ac7366CA0DeDbD50ECd9751ab39",
       groth16Verifier: "0x4E510852F416144f0C0d7Ef83F0a4ab28aCba864",
@@ -70,8 +83,8 @@ async function main() {
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
   console.log("Config updated:", configPath);
 
-  // Step 5: Copy D2 circuit files to public folder
-  console.log("\n--- Step 5: Copying D2 circuit files ---");
+  // Step 6: Copy D2 circuit files to public folder
+  console.log("\n--- Step 6: Copying D2 circuit files ---");
   const circuitsPublicDir = path.join(__dirname, "..", "public", "circuits");
   if (!fs.existsSync(circuitsPublicDir)) {
     fs.mkdirSync(circuitsPublicDir, { recursive: true });
@@ -99,10 +112,12 @@ async function main() {
   console.log("\nContract Addresses:");
   console.log("  VerifierD1:      ", verifierD1Address);
   console.log("  VerifierD2:      ", verifierD2Address);
+  console.log("  PoseidonT5:      ", poseidonT5Address);
   console.log("  ZkVotingFinal:   ", zkVotingFinalAddress);
   console.log("\nEtherscan links:");
   console.log(`  https://sepolia.etherscan.io/address/${verifierD1Address}`);
   console.log(`  https://sepolia.etherscan.io/address/${verifierD2Address}`);
+  console.log(`  https://sepolia.etherscan.io/address/${poseidonT5Address}`);
   console.log(`  https://sepolia.etherscan.io/address/${zkVotingFinalAddress}`);
 
   return {

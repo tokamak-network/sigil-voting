@@ -19,7 +19,11 @@ module.exports = {
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
     localhost: {
-      url: "http://127.0.0.1:8545"
+      url: "http://127.0.0.1:8545",
+      allowUnlimitedContractSize: true
+    },
+    hardhat: {
+      allowUnlimitedContractSize: true
     }
   },
   paths: {

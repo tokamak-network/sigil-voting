@@ -153,16 +153,23 @@ template QuadraticVoting(TREE_DEPTH) {
     validChoice === 1;
 
     // ============ Stage 7: Commitment Binding ============
-    // Create commitment: hash(choice, numVotes, creditsSpent, proposalId, voteSalt)
-    component commit = Poseidon(5);
-    commit.inputs[0] <== choice;
-    commit.inputs[1] <== numVotes;
-    commit.inputs[2] <== creditsSpent;
-    commit.inputs[3] <== proposalId;
-    commit.inputs[4] <== voteSalt;
+    // Two-stage hash to match PoseidonT5 contract (4 inputs max)
+    // inner = hash(choice, numVotes, creditsSpent, proposalId)
+    // commitment = hash(inner, voteSalt, 0, 0)
+    component commitInner = Poseidon(4);
+    commitInner.inputs[0] <== choice;
+    commitInner.inputs[1] <== numVotes;
+    commitInner.inputs[2] <== creditsSpent;
+    commitInner.inputs[3] <== proposalId;
+
+    component commitFinal = Poseidon(4);
+    commitFinal.inputs[0] <== commitInner.out;
+    commitFinal.inputs[1] <== voteSalt;
+    commitFinal.inputs[2] <== 0;
+    commitFinal.inputs[3] <== 0;
 
     // Verify commitment matches
-    commit.out === voteCommitment;
+    commitFinal.out === voteCommitment;
 
     // ============ Nullifier Computation ============
     // Nullifier = hash(sk, proposalId) - prevents double voting
@@ -174,5 +181,7 @@ template QuadraticVoting(TREE_DEPTH) {
 }
 
 // Instantiate with 20-level merkle tree (supports ~1M leaves)
-// Public signals: voteCommitment, proposalId, creditsSpent, creditRoot (4 inputs) + nullifier (1 output) = 5 total
+// Public signals order: [nullifier, voteCommitment, proposalId, creditsSpent, creditRoot]
+// Contract expects: pubSignals[0]=nullifier, pubSignals[1]=commitment, pubSignals[2]=proposalId,
+//                   pubSignals[3]=creditsSpent, pubSignals[4]=creditRoot
 component main {public [voteCommitment, proposalId, creditsSpent, creditRoot]} = QuadraticVoting(20);
