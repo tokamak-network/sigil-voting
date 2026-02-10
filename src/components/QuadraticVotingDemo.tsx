@@ -188,13 +188,13 @@ export function QuadraticVotingDemo() {
   }, [keyPair, address, writeContractAsync, refetchCredits, refetchCreditNotes])
 
   const handleCreateProposal = useCallback(async () => {
-    if (!newProposalTitle.trim() || !hasCredits) return
+    if (!newProposalTitle.trim()) return
     setIsProcessing(true)
     setError(null)
 
     try {
       const creditNotes = (registeredCreditNotes as bigint[]) || []
-      if (creditNotes.length === 0) throw new Error('크레딧을 먼저 받아주세요')
+      if (creditNotes.length === 0) throw new Error('아직 등록된 투표자가 없습니다. 첫 번째 투표자가 되어주세요!')
 
       const { root: creditRoot } = await generateMerkleProofAsync(creditNotes, 0)
 
@@ -314,7 +314,7 @@ export function QuadraticVotingDemo() {
         <div className="uv-list-view">
           <div className="uv-list-header">
             <h1>제안 목록</h1>
-            {isConnected && hasCredits && (
+            {isConnected && (
               <button className="uv-create-btn" onClick={() => setCurrentView('create')}>
                 + 새 제안
               </button>
@@ -335,15 +335,9 @@ export function QuadraticVotingDemo() {
               <div className="uv-icon">📭</div>
               <h2>아직 제안이 없습니다</h2>
               <p className="uv-subtitle">첫 번째 제안을 만들어보세요</p>
-              {hasCredits ? (
-                <button className="uv-btn uv-btn-primary" onClick={() => setCurrentView('create')}>
-                  제안 만들기
-                </button>
-              ) : (
-                <button className="uv-btn uv-btn-primary" onClick={handleGetCredits} disabled={isProcessing}>
-                  {isProcessing ? '처리 중...' : '먼저 크레딧 받기'}
-                </button>
-              )}
+              <button className="uv-btn uv-btn-primary" onClick={() => setCurrentView('create')}>
+                제안 만들기
+              </button>
             </div>
           ) : (
             <div className="uv-proposals-grid">
