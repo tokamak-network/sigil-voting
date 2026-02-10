@@ -14,10 +14,10 @@ import {
   type KeyPair,
   type CreditNote,
   type VoteChoice,
-  type ProofGenerationProgress,
   CHOICE_FOR,
   CHOICE_AGAINST,
 } from '../zkproof'
+import { useVotingMachine } from '../hooks/useVotingMachine'
 import config from '../config.json'
 
 const ZK_VOTING_FINAL_ADDRESS = (config.contracts.zkVotingFinal || '0x0000000000000000000000000000000000000000') as `0x${string}`
@@ -44,6 +44,7 @@ interface Proposal {
   creator: string
   endTime: Date
   totalVotes: number
+  creditRoot: bigint
 }
 
 type View = 'list' | 'create' | 'vote' | 'success'
@@ -63,14 +64,26 @@ export function QuadraticVotingDemo() {
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null)
   const [newProposalTitle, setNewProposalTitle] = useState('')
 
-  // Voting state
-  const [numVotes, setNumVotes] = useState(1)
+  // Voting state machine
+  const {
+    context: votingContext,
+    isProcessing,
+    setVotes,
+    startVote,
+    updateProgress,
+    proofComplete,
+    signed,
+    txConfirmed,
+    setError: setVotingError,
+    reset: resetVoting,
+  } = useVotingMachine()
+
   const [selectedChoice, setSelectedChoice] = useState<VoteChoice | null>(null)
   const [showIntensity, setShowIntensity] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [proofProgress, setProofProgress] = useState<ProofGenerationProgress | null>(null)
-  const [txHash, setTxHash] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const numVotes = votingContext.numVotes
+  const txHash = votingContext.txHash
 
   const isContractDeployed = ZK_VOTING_FINAL_ADDRESS !== '0x0000000000000000000000000000000000000000'
 
@@ -153,7 +166,8 @@ export function QuadraticVotingDemo() {
                 title: decoded.title,
                 creator: decoded.creator,
                 endTime: new Date(Number(decoded.endTime) * 1000),
-                totalVotes: Number(decoded.totalVotes)
+                totalVotes: Number(decoded.totalVotes),
+                creditRoot: decoded.creditRoot,
               })
             }
           }
@@ -172,41 +186,52 @@ export function QuadraticVotingDemo() {
   const handleConnect = () => connect({ connector: injected() })
 
   const [createStatus, setCreateStatus] = useState<string | null>(null)
+  const [isCreatingProposal, setIsCreatingProposal] = useState(false)
 
   const handleCreateProposal = useCallback(async () => {
-    if (!newProposalTitle.trim() || !publicClient) return
-    setIsProcessing(true)
+    if (!newProposalTitle.trim() || !publicClient || !keyPair || !address) return
+    setIsCreatingProposal(true)
     setError(null)
     setCreateStatus('준비 중...')
 
     try {
-      // Try to get existing credit root from contract (index 0)
-      let creditRoot: bigint
-      try {
-        setCreateStatus('기존 설정 확인 중...')
-        const existingRoot = await publicClient.readContract({
-          address: ZK_VOTING_FINAL_ADDRESS,
-          abi: ZK_VOTING_FINAL_ABI,
-          functionName: 'creditRootHistory',
-          args: [BigInt(0)],
-        })
-        creditRoot = existingRoot as bigint
-      } catch {
-        // No existing root, need to register one first
-        setCreateStatus('초기 설정 중... (1/2)')
-        creditRoot = BigInt(Date.now())
-
-        const registerHash = await writeContractAsync({
-          address: ZK_VOTING_FINAL_ADDRESS,
-          abi: ZK_VOTING_FINAL_ABI,
-          functionName: 'registerCreditRoot',
-          args: [creditRoot],
-        })
-        setCreateStatus('블록 확인 대기 중...')
-        await publicClient.waitForTransactionReceipt({ hash: registerHash })
+      // Ensure creator's creditNote is registered
+      setCreateStatus('투표자 등록 확인 중...')
+      let creditNote: CreditNote | null = getStoredCreditNote(address)
+      if (!creditNote) {
+        creditNote = await createCreditNoteAsync(keyPair, BigInt(totalVotingPower), address)
       }
 
-      // Create proposal
+      const noteHash = creditNote.creditNoteHash
+      let creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
+
+      if (!creditNotes.includes(noteHash)) {
+        setCreateStatus('투표자 등록 중...')
+        const registerNoteHash = await writeContractAsync({
+          address: ZK_VOTING_FINAL_ADDRESS,
+          abi: ZK_VOTING_FINAL_ABI,
+          functionName: 'registerCreditNote',
+          args: [noteHash],
+        })
+        await publicClient.waitForTransactionReceipt({ hash: registerNoteHash })
+        creditNotes.push(noteHash)
+        await refetchCreditNotes()
+      }
+
+      // Build merkle tree from registered credit notes to get the proper root
+      setCreateStatus('투표자 목록 설정 중...')
+      const { root: creditRoot } = await generateMerkleProofAsync(creditNotes, 0)
+
+      // Register this creditRoot
+      const registerRootHash = await writeContractAsync({
+        address: ZK_VOTING_FINAL_ADDRESS,
+        abi: ZK_VOTING_FINAL_ABI,
+        functionName: 'registerCreditRoot',
+        args: [creditRoot],
+      })
+      await publicClient.waitForTransactionReceipt({ hash: registerRootHash })
+
+      // Create proposal with proper creditRoot
       setCreateStatus('제안 생성 중...')
       const createHash = await writeContractAsync({
         address: ZK_VOTING_FINAL_ADDRESS,
@@ -235,10 +260,10 @@ export function QuadraticVotingDemo() {
         setError('제안 생성에 실패했습니다. 다시 시도해주세요.')
       }
     } finally {
-      setIsProcessing(false)
+      setIsCreatingProposal(false)
       setCreateStatus(null)
     }
-  }, [newProposalTitle, publicClient, writeContractAsync, refetchProposalCount])
+  }, [newProposalTitle, publicClient, writeContractAsync, refetchProposalCount, keyPair, address, totalVotingPower, registeredCreditNotes, refetchCreditNotes])
 
   const handleVote = useCallback(async (choice: VoteChoice) => {
     if (!keyPair || !selectedProposal || !hasTon || !address) return
@@ -248,12 +273,12 @@ export function QuadraticVotingDemo() {
     }
 
     setSelectedChoice(choice)
-    setIsProcessing(true)
     setError(null)
-    setProofProgress({ stage: 'preparing', progress: 0, message: '투표 준비 중...' })
+    startVote() // State: IDLE -> PROOFING
 
     try {
       const proposalId = BigInt(selectedProposal.id)
+      updateProgress(5, '투표 데이터 준비 중...')
       const voteData = await prepareD2VoteAsync(keyPair, choice, BigInt(numVotes), proposalId)
 
       // Get or create credit note with proper Poseidon hash
@@ -266,7 +291,7 @@ export function QuadraticVotingDemo() {
       let creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
 
       if (!creditNotes.includes(noteHash)) {
-        setProofProgress({ stage: 'preparing', progress: 5, message: '투표자 등록 중...' })
+        updateProgress(10, '투표자 등록 중...')
         await writeContractAsync({
           address: ZK_VOTING_FINAL_ADDRESS,
           abi: ZK_VOTING_FINAL_ABI,
@@ -277,28 +302,23 @@ export function QuadraticVotingDemo() {
         await refetchCreditNotes()
       }
 
-      const voterIndex = creditNotes.indexOf(noteHash)
-      const { root: creditRoot } = await generateMerkleProofAsync(creditNotes, voterIndex >= 0 ? voterIndex : 0)
+      // Use the proposal's creditRoot for proof generation (must match contract verification)
+      const proposalCreditRoot = selectedProposal.creditRoot
+      updateProgress(15, 'ZK 증명 준비 중...')
 
-      setProofProgress({ stage: 'preparing', progress: 10, message: '크레딧 루트 등록...' })
-      await writeContractAsync({
-        address: ZK_VOTING_FINAL_ADDRESS,
-        abi: ZK_VOTING_FINAL_ABI,
-        functionName: 'registerCreditRoot',
-        args: [creditRoot],
-      })
-
+      // Generate ZK proof using proposal's creditRoot
       const { proof, nullifier, commitment } = await generateQuadraticProof(
         keyPair,
         creditNote,
         voteData,
-        creditRoot,
+        proposalCreditRoot,
         creditNotes,
-        setProofProgress
+        (progress) => updateProgress(20 + Math.floor(progress.progress * 0.3), progress.message)
       )
 
-      setProofProgress({ stage: 'finalizing', progress: 95, message: '블록체인에 제출 중...' })
+      proofComplete() // State: PROOFING -> SIGNING
 
+      // Wait for user to sign
       const hash = await writeContractAsync({
         address: ZK_VOTING_FINAL_ADDRESS,
         abi: ZK_VOTING_FINAL_ABI,
@@ -307,18 +327,29 @@ export function QuadraticVotingDemo() {
         gas: BigInt(1000000),
       })
 
-      setTxHash(hash)
+      signed() // State: SIGNING -> SUBMITTING
+
+      // Wait for confirmation
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash })
+      }
+
       storeD2VoteForReveal(proposalId, voteData, address)
       await refetchTonBalance()
+      txConfirmed(hash) // State: SUBMITTING -> SUCCESS
       setCurrentView('success')
     } catch (err) {
       console.error('Vote failed:', err)
-      setError((err as Error).message)
-    } finally {
-      setIsProcessing(false)
-      setProofProgress(null)
+      const errorMsg = (err as Error).message || ''
+      if (errorMsg.includes('User rejected') || errorMsg.includes('user rejected') || errorMsg.includes('denied')) {
+        setVotingError('트랜잭션이 취소되었습니다')
+        setError('트랜잭션이 취소되었습니다')
+      } else {
+        setVotingError(errorMsg)
+        setError(errorMsg)
+      }
     }
-  }, [keyPair, selectedProposal, hasTon, address, numVotes, quadraticCost, totalVotingPower, registeredCreditNotes, writeContractAsync, refetchCreditNotes, refetchTonBalance])
+  }, [keyPair, selectedProposal, hasTon, address, numVotes, quadraticCost, totalVotingPower, registeredCreditNotes, writeContractAsync, refetchCreditNotes, refetchTonBalance, startVote, updateProgress, proofComplete, signed, txConfirmed, setVotingError, publicClient])
 
   const getIntensityColor = () => {
     if (isDanger) return { bg: 'rgba(239, 68, 68, 0.15)', border: '#ef4444', text: '#fca5a5' }
@@ -411,7 +442,7 @@ export function QuadraticVotingDemo() {
       {/* VIEW: Create Proposal */}
       {currentView === 'create' && (
         <div className="uv-create-view">
-          <button className="uv-back" onClick={() => setCurrentView('list')} disabled={isProcessing}>← 목록으로</button>
+          <button className="uv-back" onClick={() => setCurrentView('list')} disabled={isCreatingProposal}>← 목록으로</button>
 
           <div className="uv-card">
             <h1>새 제안</h1>
@@ -423,7 +454,7 @@ export function QuadraticVotingDemo() {
               placeholder="제안 제목을 입력하세요"
               value={newProposalTitle}
               onChange={(e) => setNewProposalTitle(e.target.value)}
-              disabled={isProcessing}
+              disabled={isCreatingProposal}
             />
 
             {createStatus && (
@@ -438,9 +469,9 @@ export function QuadraticVotingDemo() {
             <button
               className="uv-btn uv-btn-primary"
               onClick={handleCreateProposal}
-              disabled={!newProposalTitle.trim() || isProcessing}
+              disabled={!newProposalTitle.trim() || isCreatingProposal}
             >
-              {isProcessing ? '처리 중...' : '제안 생성'}
+              {isCreatingProposal ? '처리 중...' : '제안 생성'}
             </button>
           </div>
         </div>
@@ -449,7 +480,7 @@ export function QuadraticVotingDemo() {
       {/* VIEW: Vote */}
       {currentView === 'vote' && selectedProposal && (
         <div className="uv-vote-view">
-          <button className="uv-back" onClick={() => { setCurrentView('list'); setSelectedProposal(null); setNumVotes(1); setShowIntensity(false); setError(null); }}>
+          <button className="uv-back" onClick={() => { setCurrentView('list'); setSelectedProposal(null); setShowIntensity(false); setError(null); resetVoting(); }}>
             ← 목록으로
           </button>
 
@@ -519,7 +550,7 @@ export function QuadraticVotingDemo() {
                   <div className="uv-intensity-panel">
                     <div className="uv-intensity-header">
                       <span>투표 강도</span>
-                      <button className="uv-intensity-close" onClick={() => { setShowIntensity(false); setNumVotes(1); }}>
+                      <button className="uv-intensity-close" onClick={() => { setShowIntensity(false); setVotes(1); }}>
                         ✕ 닫기
                       </button>
                     </div>
@@ -530,7 +561,7 @@ export function QuadraticVotingDemo() {
                         min="1"
                         max={maxVotes}
                         value={numVotes}
-                        onChange={(e) => setNumVotes(Number(e.target.value))}
+                        onChange={(e) => setVotes(Number(e.target.value))}
                         className="uv-slider"
                         style={{
                           background: `linear-gradient(to right, ${colors.border} 0%, ${colors.border} ${(numVotes / maxVotes) * 100}%, #374151 ${(numVotes / maxVotes) * 100}%, #374151 100%)`
@@ -561,12 +592,17 @@ export function QuadraticVotingDemo() {
               </>
             )}
 
-            {proofProgress && (
+            {isProcessing && (
               <div className="uv-progress">
                 <div className="uv-progress-bar">
-                  <div className="uv-progress-fill" style={{ width: `${proofProgress.progress}%` }} />
+                  <div className="uv-progress-fill" style={{ width: `${votingContext.progress}%` }} />
                 </div>
-                <p className="uv-progress-text">{proofProgress.message}</p>
+                <p className="uv-progress-text">
+                  {votingContext.state === 'PROOFING' && '🔐 '}
+                  {votingContext.state === 'SIGNING' && '✍️ '}
+                  {votingContext.state === 'SUBMITTING' && '⏳ '}
+                  {votingContext.message}
+                </p>
               </div>
             )}
 
@@ -616,9 +652,8 @@ export function QuadraticVotingDemo() {
                 setCurrentView('list')
                 setSelectedProposal(null)
                 setSelectedChoice(null)
-                setNumVotes(1)
                 setShowIntensity(false)
-                setTxHash(null)
+                resetVoting()
               }}
             >
               목록으로 돌아가기
@@ -637,10 +672,10 @@ function getProposalSelector(proposalId: number): string {
   return selector + paddedId
 }
 
-function decodeProposalResult(hex: string): { title: string; creator: string; endTime: bigint; totalVotes: bigint } {
+function decodeProposalResult(hex: string): { title: string; creator: string; endTime: bigint; totalVotes: bigint; creditRoot: bigint } {
   try {
     if (!hex || hex === '0x' || hex.length < 66) {
-      return { title: '', creator: '', endTime: 0n, totalVotes: 0n }
+      return { title: '', creator: '', endTime: 0n, totalVotes: 0n, creditRoot: 0n }
     }
 
     // ProposalD2 struct: id, title, description, proposer, startTime, endTime, ...
@@ -670,9 +705,10 @@ function decodeProposalResult(hex: string): { title: string; creator: string; en
       creator: decoded[3] as string,
       endTime: decoded[5] as bigint,
       totalVotes: (decoded[8] as bigint) + (decoded[9] as bigint),
+      creditRoot: decoded[7] as bigint,
     }
   } catch (e) {
     console.error('Failed to decode proposal:', e)
-    return { title: '', creator: '', endTime: 0n, totalVotes: 0n }
+    return { title: '', creator: '', endTime: 0n, totalVotes: 0n, creditRoot: 0n }
   }
 }

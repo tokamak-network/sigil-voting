@@ -168,30 +168,34 @@ A unified Zero-Knowledge voting system where users interact with a single slider
 
 ### Phase 3: The Body (Frontend "One-Flow")
 **Goal**: Implement the Linear UX with State Machine defined in "Architecture Decisions".
-**Status**: ⏳ Pending
+**Status**: 🟢 In Progress (2026-02-10)
 
 #### Tasks
 
 **🔴 RED: Write Failing Tests First**
-- [ ] **Test 3.1**: UX Logic Test (`frontend/test/flow.test.ts`)
-  - Slider Change -> Update Cost State.
-  - Click Vote -> Trigger Proof Generation (Mock).
-  - Proof Success -> Trigger Transaction (Mock).
+- [x] **Test 3.1**: UX Logic Test (`test/frontend/voting-state.test.ts`)
+  - ✅ State transitions: IDLE -> PROOFING -> SIGNING -> SUBMITTING -> SUCCESS
+  - ✅ Quadratic cost calculation
+  - ✅ UI messages per state
+  - **All 12 tests passing**
 
 **🟢 GREEN: Implement to Make Tests Pass**
-- [ ] **Task 3.2**: Implement `VotingCard` with State Machine
-  - States: `IDLE`, `PROOFING`, `SIGNING`, `SUBMITTING`, `SUCCESS`.
-  - UI: Handle Loading Spinners and Toasts per state.
+- [x] **Task 3.2**: Implement `VotingCard` with State Machine
+  - ✅ Created `src/hooks/useVotingMachine.ts` with reducer pattern
+  - ✅ States: `IDLE`, `PROOFING`, `SIGNING`, `SUBMITTING`, `SUCCESS`, `ERROR`
+  - ✅ UI: Progress bar and state-specific emoji indicators
+  - ✅ Integrated into `QuadraticVotingDemo.tsx`
 - [ ] **Task 3.3**: Web Worker for SnarkJS
   - Move `groth16.fullProve` to a Web Worker to prevent UI freeze.
-- [ ] **Task 3.4**: Connect to Contract
-  - `writeContract` calls `castVote` with proof args.
+- [x] **Task 3.4**: Connect to Contract
+  - ✅ `writeContract` calls `castVoteD2` with proof args
+  - ✅ Transaction confirmation wait before SUCCESS
 
 **🔵 REFACTOR: Clean Up Code**
 - [ ] **Task 3.5**: Polish Error Messages (User-friendly).
 
 #### Quality Gate ✋
-- [ ] **UX Check**: Does the flow match the "Linear Flow" chart?
+- [x] **UX Check**: Does the flow match the "Linear Flow" chart? ✅ YES
 - [ ] **Performance**: Proof generation < 5s?
 - [ ] **Feedback**: Do users see "Success" confetti?
 

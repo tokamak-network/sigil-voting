@@ -1047,7 +1047,13 @@ export async function generateQuadraticProof(
 
   if (actualCreditRoot !== creditRoot) {
     console.error('[ZK-D2] Credit root mismatch!')
-    throw new Error('Credit root mismatch - credit registry has changed')
+    console.error('[ZK-D2] Proposal creditRoot:', creditRoot.toString())
+    console.error('[ZK-D2] Computed merkle root:', actualCreditRoot.toString())
+    // Check if the proposal's creditRoot looks like a timestamp (old bug)
+    if (creditRoot < BigInt(10000000000000)) {
+      throw new Error('이 제안은 이전 버전에서 생성되어 투표할 수 없습니다. 새 제안을 생성해주세요.')
+    }
+    throw new Error('투표자 목록이 변경되어 투표할 수 없습니다. 새 제안을 생성해주세요.')
   }
 
   // Compute commitment and nullifier (two-stage hash to match contract)
