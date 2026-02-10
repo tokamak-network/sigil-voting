@@ -7060,6 +7060,28 @@ body {
   text-decoration: none;
 }
 
+/* Already Voted Notice */
+.uv-already-voted-notice {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 12px;
+  padding: 16px 20px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.uv-already-voted-notice p {
+  color: #86efac;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  font-size: 1rem;
+}
+
+.uv-already-voted-notice span {
+  color: rgba(134, 239, 172, 0.7);
+  font-size: 0.85rem;
+}
+
 /* Confetti Animation */
 .uv-confetti {
   position: fixed;

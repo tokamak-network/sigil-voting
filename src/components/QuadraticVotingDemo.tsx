@@ -23,6 +23,36 @@ import config from '../config.json'
 const ZK_VOTING_FINAL_ADDRESS = (config.contracts.zkVotingFinal || '0x0000000000000000000000000000000000000000') as `0x${string}`
 const TON_TOKEN_ADDRESS = (config.contracts.tonToken || '0xa30fe40285B8f5c0457DbC3B7C8A280373c40044') as `0x${string}`
 
+// Local storage helpers for tracking voted proposals
+const VOTED_PROPOSALS_KEY = 'zk-voted-proposals'
+
+function getVotedProposals(address: string): number[] {
+  try {
+    const key = `${VOTED_PROPOSALS_KEY}-${address.toLowerCase()}`
+    const stored = localStorage.getItem(key)
+    return stored ? JSON.parse(stored) : []
+  } catch {
+    return []
+  }
+}
+
+function markProposalAsVoted(address: string, proposalId: number): void {
+  try {
+    const key = `${VOTED_PROPOSALS_KEY}-${address.toLowerCase()}`
+    const voted = getVotedProposals(address)
+    if (!voted.includes(proposalId)) {
+      voted.push(proposalId)
+      localStorage.setItem(key, JSON.stringify(voted))
+    }
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function hasVotedOnProposal(address: string, proposalId: number): boolean {
+  return getVotedProposals(address).includes(proposalId)
+}
+
 const ZK_VOTING_FINAL_ABI = [
   { type: 'function', name: 'registerCreditRoot', inputs: [{ name: '_creditRoot', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'registerCreditNote', inputs: [{ name: '_creditNoteHash', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
@@ -272,6 +302,12 @@ export function QuadraticVotingDemo() {
       return
     }
 
+    // Check if already voted (local check to save gas)
+    if (hasVotedOnProposal(address, selectedProposal.id)) {
+      setError('이미 이 제안에 투표하셨습니다. 제안당 1번만 투표할 수 있습니다.')
+      return
+    }
+
     setSelectedChoice(choice)
     setError(null)
     startVote() // State: IDLE -> PROOFING
@@ -335,19 +371,38 @@ export function QuadraticVotingDemo() {
       }
 
       storeD2VoteForReveal(proposalId, voteData, address)
+      markProposalAsVoted(address, selectedProposal.id) // Track locally to prevent re-voting
       await refetchTonBalance()
       txConfirmed(hash) // State: SUBMITTING -> SUCCESS
       setCurrentView('success')
     } catch (err) {
       console.error('Vote failed:', err)
       const errorMsg = (err as Error).message || ''
+
+      // User-friendly error messages
+      let userMessage = errorMsg
       if (errorMsg.includes('User rejected') || errorMsg.includes('user rejected') || errorMsg.includes('denied')) {
-        setVotingError('트랜잭션이 취소되었습니다')
-        setError('트랜잭션이 취소되었습니다')
-      } else {
-        setVotingError(errorMsg)
-        setError(errorMsg)
+        userMessage = '트랜잭션이 취소되었습니다'
+      } else if (errorMsg.includes('NullifierAlreadyUsed') || errorMsg.includes('already used') || errorMsg.includes('0x3c712b18')) {
+        userMessage = '이미 이 제안에 투표하셨습니다. 제안당 1번만 투표할 수 있습니다.'
+      } else if (errorMsg.includes('NotInCommitPhase') || errorMsg.includes('commit phase')) {
+        userMessage = '투표 기간이 종료되었습니다.'
+      } else if (errorMsg.includes('ProposalNotFound')) {
+        userMessage = '제안을 찾을 수 없습니다.'
+      } else if (errorMsg.includes('InvalidProof')) {
+        userMessage = 'ZK 증명 검증에 실패했습니다. 다시 시도해주세요.'
+      } else if (errorMsg.includes('InsufficientCredits')) {
+        userMessage = '크레딧이 부족합니다.'
+      } else if (errorMsg.includes('InvalidQuadraticCost')) {
+        userMessage = '투표 비용 계산 오류입니다.'
+      } else if (errorMsg.includes('insufficient funds')) {
+        userMessage = 'Sepolia ETH가 부족합니다. Faucet에서 받아주세요.'
+      } else if (errorMsg.includes('이전 버전') || errorMsg.includes('새 제안을 생성')) {
+        userMessage = errorMsg // Already user-friendly from zkproof.ts
       }
+
+      setVotingError(userMessage)
+      setError(userMessage)
     }
   }, [keyPair, selectedProposal, hasTon, address, numVotes, quadraticCost, totalVotingPower, registeredCreditNotes, writeContractAsync, refetchCreditNotes, refetchTonBalance, startVote, updateProgress, proofComplete, signed, txConfirmed, setVotingError, publicClient])
 
@@ -501,6 +556,13 @@ export function QuadraticVotingDemo() {
                 <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="uv-btn uv-btn-primary">
                   💎 Faucet에서 TON 받기
                 </a>
+              </div>
+            )}
+
+            {address && hasVotedOnProposal(address, selectedProposal.id) && (
+              <div className="uv-already-voted-notice">
+                <p>✅ 이미 이 제안에 투표하셨습니다</p>
+                <span>제안당 1번만 투표할 수 있습니다</span>
               </div>
             )}
 
