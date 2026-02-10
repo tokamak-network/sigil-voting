@@ -54,7 +54,14 @@ interface IERC20OnApprove {
     ) external returns (bool);
 }
 
-contract ZkVotingFinal {
+/**
+ * @dev ERC165 interface for interface detection
+ */
+interface IERC165 {
+    function supportsInterface(bytes4 interfaceId) external view returns (bool);
+}
+
+contract ZkVotingFinal is IERC165 {
     // ============ Constants ============
     uint256 public constant CHOICE_AGAINST = 0;
     uint256 public constant CHOICE_FOR = 1;
@@ -197,6 +204,15 @@ contract ZkVotingFinal {
         verifierD2 = IVerifierD2(_verifierD2);
         tonToken = IERC20(_tonToken);
         treasury = _treasury;
+    }
+
+    // ============ ERC165 Interface Support ============
+    // Required for TON's approveAndCall to work
+    bytes4 private constant ON_APPROVE_SELECTOR = bytes4(keccak256("onApprove(address,address,uint256,bytes)"));
+    bytes4 private constant ERC165_INTERFACE_ID = 0x01ffc9a7;
+
+    function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
+        return interfaceId == ON_APPROVE_SELECTOR || interfaceId == ERC165_INTERFACE_ID;
     }
 
     // ============================================================
@@ -542,7 +558,7 @@ contract ZkVotingFinal {
      * @param owner The user who approved the tokens
      * @param spender This contract's address
      * @param amount The amount of TON approved (in wei)
-     * @param data Encoded vote parameters: (proposalId, commitment, numVotes, creditsSpent, nullifier, pA, pB, pC)
+     * @param data Encoded vote parameters: (proposalId, commitment, numVotes, creditsSpent, nullifier, creditRoot, pA, pB, pC)
      */
     function onApprove(
         address owner,
@@ -554,23 +570,27 @@ contract ZkVotingFinal {
         require(msg.sender == address(tonToken), "Only TON token can call");
         require(spender == address(this), "Invalid spender");
 
-        // Decode vote parameters
+        // Decode vote parameters (now includes creditRoot)
         (
             uint256 _proposalId,
             uint256 _commitment,
             uint256 _numVotes,
             uint256 _creditsSpent,
             uint256 _nullifier,
+            uint256 _creditRoot,
             uint256[2] memory _pA,
             uint256[2][2] memory _pB,
             uint256[2] memory _pC
-        ) = abi.decode(data, (uint256, uint256, uint256, uint256, uint256, uint256[2], uint256[2][2], uint256[2]));
+        ) = abi.decode(data, (uint256, uint256, uint256, uint256, uint256, uint256, uint256[2], uint256[2][2], uint256[2]));
 
         ProposalD2 storage proposal = proposalsD2[_proposalId];
 
         if (!proposal.exists) revert ProposalNotFound();
         if (block.timestamp > proposal.endTime) revert NotInCommitPhase();
         if (nullifierUsedD2[_proposalId][_nullifier]) revert NullifierAlreadyUsed();
+
+        // Verify creditRoot is valid (registered in history)
+        if (!validCreditRoots[_creditRoot]) revert InvalidCreditRoot();
 
         // Verify quadratic cost
         uint256 expectedCost = calculateQuadraticCost(_numVotes);
@@ -580,14 +600,18 @@ contract ZkVotingFinal {
         uint256 tonAmount = _creditsSpent * 1e18;
         require(amount >= tonAmount, "Insufficient approved amount");
 
-        // Verify ZK proof
-        uint256[5] memory pubSignals = [_nullifier, _commitment, _proposalId, _creditsSpent, proposal.creditRoot];
+        // Verify ZK proof with the provided creditRoot (not proposal's fixed root)
+        uint256[5] memory pubSignals = [_nullifier, _commitment, _proposalId, _creditsSpent, _creditRoot];
         bool validProof = verifierD2.verifyProof(_pA, _pB, _pC, pubSignals);
         if (!validProof) revert InvalidProof();
 
-        // Transfer TON from user to treasury (we are approved via approveAndCall)
-        bool success = tonToken.transferFrom(owner, treasury, tonAmount);
-        require(success, "TON transfer failed");
+        // Transfer TON: first to this contract (we are recipient, so SeigToken allows it)
+        // Then forward to treasury
+        bool success = tonToken.transferFrom(owner, address(this), tonAmount);
+        require(success, "TON transfer from user failed");
+
+        bool forwardSuccess = tonToken.transfer(treasury, tonAmount);
+        require(forwardSuccess, "TON forward to treasury failed");
 
         uint256 userBalance = tonToken.balanceOf(owner);
         emit CreditsBurned(owner, _creditsSpent, userBalance / 1e18);

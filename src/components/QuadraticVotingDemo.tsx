@@ -153,7 +153,7 @@ export function QuadraticVotingDemo() {
   } = useVotingMachine()
 
   const [selectedChoice, setSelectedChoice] = useState<VoteChoice | null>(null)
-  const [showIntensity, setShowIntensity] = useState(false)
+  // Removed: showIntensity (no longer needed with new UI flow)
   const [error, setError] = useState<string | null>(null)
 
   // Rule #7 & #8: Pre-Flight Modal state
@@ -282,13 +282,16 @@ export function QuadraticVotingDemo() {
   const [isCreatingProposal, setIsCreatingProposal] = useState(false)
 
   const handleCreateProposal = useCallback(async () => {
-    if (!newProposalTitle.trim() || !publicClient || !keyPair || !address) return
+    if (!newProposalTitle.trim() || !publicClient || !address || !keyPair) return
     setIsCreatingProposal(true)
     setError(null)
     setCreateStatus('준비 중...')
 
     try {
-      // Ensure creator's creditNote is registered
+      // Get existing registered credit notes
+      let creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
+
+      // Register creator's creditNote for creditRoot (but won't auto-vote)
       setCreateStatus('투표자 등록 확인 중...')
       let creditNote: CreditNote | null = getStoredCreditNote(address)
       if (!creditNote) {
@@ -296,8 +299,6 @@ export function QuadraticVotingDemo() {
       }
 
       const noteHash = creditNote.creditNoteHash
-      let creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
-
       if (!creditNotes.includes(noteHash)) {
         setCreateStatus('투표자 등록 중...')
         const registerNoteHash = await writeContractAsync({
@@ -311,7 +312,7 @@ export function QuadraticVotingDemo() {
         await refetchCreditNotes()
       }
 
-      // Build merkle tree from registered credit notes to get the proper root
+      // Build creditRoot from all registered notes
       setCreateStatus('투표자 목록 설정 중...')
       const { root: creditRoot } = await generateMerkleProofAsync(creditNotes, 0)
 
@@ -324,7 +325,7 @@ export function QuadraticVotingDemo() {
       })
       await publicClient.waitForTransactionReceipt({ hash: registerRootHash })
 
-      // Create proposal with proper creditRoot
+      // Create proposal (NO auto-vote, creator votes separately if they want)
       setCreateStatus('제안 생성 중...')
       const createHash = await writeContractAsync({
         address: ZK_VOTING_FINAL_ADDRESS,
@@ -356,10 +357,10 @@ export function QuadraticVotingDemo() {
       setIsCreatingProposal(false)
       setCreateStatus(null)
     }
-  }, [newProposalTitle, publicClient, writeContractAsync, refetchProposalCount, keyPair, address, totalVotingPower, registeredCreditNotes, refetchCreditNotes])
+  }, [newProposalTitle, publicClient, writeContractAsync, refetchProposalCount, address, keyPair, totalVotingPower, registeredCreditNotes, refetchCreditNotes])
 
   const handleVote = useCallback(async (choice: VoteChoice) => {
-    if (!keyPair || !selectedProposal || !hasTon || !address) return
+    if (!keyPair || !selectedProposal || !hasTon || !address || !publicClient) return
     if (quadraticCost > totalVotingPower) {
       setError('TON이 부족합니다')
       return
@@ -389,35 +390,52 @@ export function QuadraticVotingDemo() {
       const noteHash = creditNote.creditNoteHash
       let creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
 
+      // Register voter's creditNote if not already registered (on-demand registration)
       if (!creditNotes.includes(noteHash)) {
         updateProgress(10, '투표자 등록 중...')
-        await writeContractAsync({
+        const registerHash = await writeContractAsync({
           address: ZK_VOTING_FINAL_ADDRESS,
           abi: ZK_VOTING_FINAL_ABI,
           functionName: 'registerCreditNote',
           args: [noteHash],
         })
+        await publicClient.waitForTransactionReceipt({ hash: registerHash })
         creditNotes.push(noteHash)
         await refetchCreditNotes()
       }
 
-      // Use the proposal's creditRoot for proof generation (must match contract verification)
-      const proposalCreditRoot = selectedProposal.creditRoot
+      // Build new merkle tree with all current creditNotes (including newly registered voter)
+      updateProgress(12, '투표자 목록 갱신 중...')
+      const voterIndex = creditNotes.findIndex(n => n === noteHash)
+      const { root: newCreditRoot } = await generateMerkleProofAsync(creditNotes, voterIndex)
+
+      // Register this new creditRoot if different from proposal's
+      if (newCreditRoot !== selectedProposal.creditRoot) {
+        updateProgress(14, '투표자 목록 등록 중...')
+        const registerRootHash = await writeContractAsync({
+          address: ZK_VOTING_FINAL_ADDRESS,
+          abi: ZK_VOTING_FINAL_ABI,
+          functionName: 'registerCreditRoot',
+          args: [newCreditRoot],
+        })
+        await publicClient.waitForTransactionReceipt({ hash: registerRootHash })
+      }
+
       updateProgress(15, 'ZK 증명 준비 중...')
 
-      // Generate ZK proof using proposal's creditRoot
+      // Generate ZK proof using the creditRoot that includes this voter
       const { proof, nullifier, commitment } = await generateQuadraticProof(
         keyPair,
         creditNote,
         voteData,
-        proposalCreditRoot,
+        newCreditRoot,  // Use the new creditRoot that includes this voter
         creditNotes,
         (progress) => updateProgress(20 + Math.floor(progress.progress * 0.3), progress.message)
       )
 
       proofComplete() // State: PROOFING -> SIGNING
 
-      // Encode vote data for approveAndCall
+      // Encode vote data for approveAndCall (now includes creditRoot)
       const tonAmountNeeded = voteData.creditsSpent * BigInt(1e18) // 1 credit = 1 TON
       const voteCallData = encodeAbiParameters(
         [
@@ -426,11 +444,12 @@ export function QuadraticVotingDemo() {
           { name: 'numVotes', type: 'uint256' },
           { name: 'creditsSpent', type: 'uint256' },
           { name: 'nullifier', type: 'uint256' },
+          { name: 'creditRoot', type: 'uint256' },
           { name: 'pA', type: 'uint256[2]' },
           { name: 'pB', type: 'uint256[2][2]' },
           { name: 'pC', type: 'uint256[2]' },
         ],
-        [proposalId, commitment, BigInt(numVotes), voteData.creditsSpent, nullifier, proof.pA, proof.pB, proof.pC]
+        [proposalId, commitment, BigInt(numVotes), voteData.creditsSpent, nullifier, newCreditRoot, proof.pA, proof.pB, proof.pC]
       )
 
       updateProgress(55, '투표 트랜잭션 서명 대기...')
@@ -442,7 +461,7 @@ export function QuadraticVotingDemo() {
         abi: ERC20_ABI,
         functionName: 'approveAndCall',
         args: [ZK_VOTING_FINAL_ADDRESS, tonAmountNeeded, voteCallData],
-        gas: BigInt(1500000),
+        gas: BigInt(2000000), // Rule #9: Sufficient gas buffer
       })
 
       signed() // State: SIGNING -> SUBMITTING
@@ -525,21 +544,24 @@ export function QuadraticVotingDemo() {
           <div className="uv-list-header">
             <h1>제안 목록</h1>
             {isConnected && (
-              <div className="uv-create-btn-wrapper" title={!canCreateProposal ? `제안 생성에는 ${MIN_TON_FOR_PROPOSAL} TON 이상이 필요합니다` : ''}>
+              <div className="uv-create-btn-wrapper">
                 <button
                   className={`uv-create-btn ${!canCreateProposal ? 'uv-btn-disabled' : ''}`}
                   onClick={() => canCreateProposal && setCurrentView('create')}
                   disabled={!canCreateProposal}
                 >
-                  + 새 제안 {!canCreateProposal && '🔒'}
+                  + 새 제안
                 </button>
+                {!canCreateProposal && (
+                  <span className="uv-tooltip">100 TON 이상 필요</span>
+                )}
               </div>
             )}
           </div>
 
           {!isConnected ? (
             <div className="uv-card uv-center">
-              <div className="uv-icon">🗳️</div>
+              <div className="uv-icon"><TonIcon size={48} /></div>
               <h2>ZK Private Voting</h2>
               <p className="uv-subtitle">지갑을 연결하고 투표에 참여하세요</p>
               <button className="uv-btn uv-btn-primary" onClick={handleConnect}>
@@ -555,7 +577,7 @@ export function QuadraticVotingDemo() {
             </div>
           ) : proposals.length === 0 ? (
             <div className="uv-card uv-center">
-              <div className="uv-icon">📭</div>
+              <div className="uv-icon"><TonIcon size={48} /></div>
               <h2>아직 제안이 없습니다</h2>
               <p className="uv-subtitle">첫 번째 제안을 만들어보세요</p>
               {canCreateProposal ? (
@@ -564,7 +586,7 @@ export function QuadraticVotingDemo() {
                 </button>
               ) : (
                 <div className="uv-ineligible-notice">
-                  <p>🔒 제안 생성에는 {MIN_TON_FOR_PROPOSAL} TON 이상이 필요합니다</p>
+                  <p><TonIcon size={14} /> 제안 생성에는 {MIN_TON_FOR_PROPOSAL} TON 이상이 필요합니다</p>
                   <p className="uv-balance-info">현재 잔액: {tonBalanceFormatted.toFixed(2)} TON</p>
                 </div>
               )}
@@ -585,13 +607,13 @@ export function QuadraticVotingDemo() {
                     <div className="uv-proposal-header">
                       <div className="uv-proposal-id">#{proposal.id}</div>
                       <div className={`uv-countdown ${countdown.isExpired ? 'expired' : ''}`}>
-                        ⏱️ {countdown.text}
+                        {countdown.text}
                       </div>
                     </div>
                     <h3>{proposal.title}</h3>
                     <div className="uv-proposal-meta">
-                      <span>👤 {proposal.creator.slice(0, 6)}...{proposal.creator.slice(-4)}</span>
-                      <span>🗳️ {proposal.totalVotes}표</span>
+                      <span><TonIcon size={12} /> {proposal.creator.slice(0, 6)}...{proposal.creator.slice(-4)}</span>
+                      <span><TonIcon size={12} /> {proposal.totalVotes}표</span>
                     </div>
                   </div>
                 )
@@ -641,97 +663,78 @@ export function QuadraticVotingDemo() {
         </div>
       )}
 
-      {/* VIEW: Vote */}
+      {/* VIEW: Vote - New CEO-approved flow */}
       {currentView === 'vote' && selectedProposal && (
         <div className="uv-vote-view">
-          <button className="uv-back" onClick={() => { setCurrentView('list'); setSelectedProposal(null); setShowIntensity(false); setError(null); resetVoting(); }}>
+          {/* Loading Overlay (Rule #6) */}
+          {isProcessing && (
+            <div className="uv-loading-overlay">
+              <div className="uv-loading-content">
+                <div className="uv-spinner-large"></div>
+                <p className="uv-loading-text">{votingContext.message}</p>
+                <div className="uv-progress-bar">
+                  <div className="uv-progress-fill" style={{ width: `${votingContext.progress}%` }} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button className="uv-back" onClick={() => { setCurrentView('list'); setSelectedProposal(null); setSelectedChoice(null); setError(null); resetVoting(); setVotes(1); }} disabled={isProcessing}>
             ← 목록으로
           </button>
 
-          <div
-            className="uv-card uv-vote-card"
-            style={{ backgroundColor: hasTon ? colors.bg : 'rgba(255,255,255,0.03)', borderColor: hasTon ? colors.border : 'rgba(255,255,255,0.08)' }}
-          >
+          <div className="uv-card uv-vote-card">
             <h1>{selectedProposal.title}</h1>
 
             <div className="uv-proposal-info">
-              <span>👤 {selectedProposal.creator.slice(0, 6)}...{selectedProposal.creator.slice(-4)}</span>
-              <span>🗳️ {selectedProposal.totalVotes}표</span>
+              <span><TonIcon size={14} /> {selectedProposal.creator.slice(0, 6)}...{selectedProposal.creator.slice(-4)}</span>
+              <span><TonIcon size={14} /> {selectedProposal.totalVotes}표</span>
             </div>
 
-            {!hasTon && (
+            {/* Already Voted State (Rule #5) */}
+            {address && hasVotedOnProposal(address, selectedProposal.id) ? (
+              <div className="uv-voted-state">
+                <div className="uv-voted-icon"><TonIcon size={32} /></div>
+                <h2>투표 완료</h2>
+                <p className="uv-encrypted-notice">투표 내용이 암호화되었습니다</p>
+                <p className="uv-reveal-notice">공개 단계까지 비밀이 유지됩니다</p>
+              </div>
+            ) : !hasTon ? (
+              /* No TON State */
               <div className="uv-no-token-notice">
                 <p>투표하려면 TON이 필요합니다</p>
                 <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="uv-btn uv-btn-primary">
                   <TonIcon size={14} /> Faucet에서 TON 받기
                 </a>
               </div>
-            )}
-
-            {address && hasVotedOnProposal(address, selectedProposal.id) && (
-              <div className="uv-already-voted-notice">
-                <p>✅ 이미 이 제안에 투표하셨습니다</p>
-                <span>제안당 1번만 투표할 수 있습니다</span>
-              </div>
-            )}
-
-            <div className="uv-vote-buttons">
-              <button
-                className={`uv-vote-btn uv-vote-for ${selectedChoice === CHOICE_FOR ? 'selected' : ''}`}
-                onClick={() => {
-                  if (!hasTon) {
-                    setError('투표하려면 TON이 필요합니다. Faucet에서 받아주세요.')
-                    return
-                  }
-                  if (!isProcessing) {
-                    setPendingVoteChoice(CHOICE_FOR)
-                    setShowConfirmModal(true)
-                  }
-                }}
-                disabled={isProcessing || !hasTon}
-              >
-                <span className="uv-vote-icon">👍</span>
-                <span>찬성</span>
-              </button>
-              <button
-                className={`uv-vote-btn uv-vote-against ${selectedChoice === CHOICE_AGAINST ? 'selected' : ''}`}
-                onClick={() => {
-                  if (!hasTon) {
-                    setError('투표하려면 TON이 필요합니다. Faucet에서 받아주세요.')
-                    return
-                  }
-                  if (!isProcessing) {
-                    setPendingVoteChoice(CHOICE_AGAINST)
-                    setShowConfirmModal(true)
-                  }
-                }}
-                disabled={isProcessing || !hasTon}
-              >
-                <span className="uv-vote-icon">👎</span>
-                <span>반대</span>
-              </button>
-            </div>
-
-            {hasTon && (
+            ) : (
+              /* Voting Flow (Rule #3, #4) */
               <>
-                <div className="uv-vote-info" style={{ color: colors.text }}>
-                  <span className="uv-vote-count">{numVotes}표</span>
-                  <span className="uv-vote-cost"><TonIcon size={14} /> {quadraticCost} TON</span>
+                {/* Section A: Direction Toggle */}
+                <div className="uv-section">
+                  <label className="uv-section-label">1. 투표 방향 선택</label>
+                  <div className="uv-direction-toggle">
+                    <button
+                      className={`uv-toggle-btn uv-toggle-for ${selectedChoice === CHOICE_FOR ? 'active' : ''}`}
+                      onClick={() => setSelectedChoice(CHOICE_FOR)}
+                      disabled={isProcessing}
+                    >
+                      <TonIcon size={18} /> 찬성
+                    </button>
+                    <button
+                      className={`uv-toggle-btn uv-toggle-against ${selectedChoice === CHOICE_AGAINST ? 'active' : ''}`}
+                      onClick={() => setSelectedChoice(CHOICE_AGAINST)}
+                      disabled={isProcessing}
+                    >
+                      <TonIcon size={18} /> 반대
+                    </button>
+                  </div>
                 </div>
 
-                {!showIntensity ? (
-                  <button className="uv-intensity-toggle" onClick={() => setShowIntensity(true)}>
-                    더 강력한 의사표시를 원하시나요?
-                  </button>
-                ) : (
-                  <div className="uv-intensity-panel">
-                    <div className="uv-intensity-header">
-                      <span>투표 강도</span>
-                      <button className="uv-intensity-close" onClick={() => { setShowIntensity(false); setVotes(1); }}>
-                        ✕ 닫기
-                      </button>
-                    </div>
-
+                {/* Section B: Intensity Slider (only enabled after direction selected) */}
+                <div className={`uv-section ${selectedChoice === null ? 'disabled' : ''}`}>
+                  <label className="uv-section-label">2. 투표 강도</label>
+                  <div className="uv-intensity-section">
                     <div className="uv-slider-container">
                       <input
                         type="range"
@@ -740,52 +743,53 @@ export function QuadraticVotingDemo() {
                         value={numVotes}
                         onChange={(e) => setVotes(Number(e.target.value))}
                         className="uv-slider"
+                        disabled={selectedChoice === null || isProcessing}
                         style={{
                           background: `linear-gradient(to right, ${colors.border} 0%, ${colors.border} ${(numVotes / maxVotes) * 100}%, #374151 ${(numVotes / maxVotes) * 100}%, #374151 100%)`
                         }}
                       />
                     </div>
-
-                    <div className="uv-cost-visual">
-                      <div className="uv-cost-bar-container">
-                        <div className="uv-cost-bar" style={{ width: `${costLevel}%`, backgroundColor: colors.border }} />
+                    <div className="uv-intensity-display">
+                      <div className="uv-votes-display">
+                        <span className="uv-votes-number">{numVotes}</span>
+                        <span className="uv-votes-label">표</span>
                       </div>
-                      <div className="uv-cost-labels">
-                        <span>0</span>
-                        <span><TonIcon size={14} /> {totalVotingPower.toLocaleString()} TON</span>
+                      <div className="uv-cost-display">
+                        <TonIcon size={20} />
+                        <span className="uv-cost-number">{quadraticCost}</span>
+                        <span className="uv-cost-label">TON</span>
                       </div>
                     </div>
-
-                    <div className="uv-cost-table">
-                      <div className={`uv-cost-row ${numVotes === 1 ? 'active' : ''}`}><span>1표</span><span>1 TON</span></div>
-                      <div className={`uv-cost-row ${numVotes >= 5 && numVotes < 10 ? 'active' : ''}`}><span>5표</span><span>25 TON</span></div>
-                      <div className={`uv-cost-row ${numVotes >= 10 && numVotes < 50 ? 'active' : ''}`}><span>10표</span><span>100 TON</span></div>
-                      <div className={`uv-cost-row ${numVotes >= 50 ? 'active' : ''}`}><span>100표</span><span>10,000 TON</span></div>
+                    <div className="uv-cost-formula">
+                      비용 = {numVotes} × {numVotes} = {quadraticCost} TON
                     </div>
-
-                    {isDanger && <div className="uv-warning">⚠️ TON의 {costLevel.toFixed(0)}%를 사용합니다</div>}
+                    {isDanger && <div className="uv-warning-text">잔액의 {costLevel.toFixed(0)}%를 사용합니다</div>}
                   </div>
-                )}
+                </div>
+
+                {/* Section C: Single Cast Vote Button */}
+                <div className="uv-section">
+                  <button
+                    className="uv-cast-vote-btn"
+                    onClick={() => {
+                      if (selectedChoice !== null) {
+                        setPendingVoteChoice(selectedChoice)
+                        setShowConfirmModal(true)
+                      }
+                    }}
+                    disabled={selectedChoice === null || isProcessing || quadraticCost > totalVotingPower}
+                  >
+                    {selectedChoice === null ? '방향을 먼저 선택하세요' : '투표하기'}
+                  </button>
+                </div>
+
+                {error && <div className="uv-error">{error}</div>}
+
+                <div className="uv-privacy-notice">
+                  <TonIcon size={14} /> 투표 내용은 공개 전까지 암호화됩니다
+                </div>
               </>
             )}
-
-            {isProcessing && (
-              <div className="uv-progress">
-                <div className="uv-progress-bar">
-                  <div className="uv-progress-fill" style={{ width: `${votingContext.progress}%` }} />
-                </div>
-                <p className="uv-progress-text">
-                  {votingContext.state === 'PROOFING' && '🔐 '}
-                  {votingContext.state === 'SIGNING' && '✍️ '}
-                  {votingContext.state === 'SUBMITTING' && '⏳ '}
-                  {votingContext.message}
-                </p>
-              </div>
-            )}
-
-            {error && <div className="uv-error">{error}</div>}
-
-            <div className="uv-privacy">🔐 투표 내용은 공개 전까지 암호화됩니다</div>
           </div>
         </div>
       )}
@@ -801,7 +805,7 @@ export function QuadraticVotingDemo() {
           </div>
 
           <div className="uv-card uv-center uv-success">
-            <div className="uv-icon uv-success-icon">🎉</div>
+            <div className="uv-icon uv-success-icon"><TonIcon size={48} /></div>
             <h1>투표 완료!</h1>
             <p className="uv-subtitle">투표가 암호화되어 제출되었습니다</p>
 
@@ -820,7 +824,7 @@ export function QuadraticVotingDemo() {
               </div>
               <div className="uv-result-row uv-hidden">
                 <span>선택</span>
-                <strong>🔐 공개 대기 중</strong>
+                <strong><TonIcon size={14} /> 공개 대기 중</strong>
               </div>
             </div>
 
@@ -836,7 +840,6 @@ export function QuadraticVotingDemo() {
                 setCurrentView('list')
                 setSelectedProposal(null)
                 setSelectedChoice(null)
-                setShowIntensity(false)
                 resetVoting()
               }}
             >
@@ -857,7 +860,7 @@ export function QuadraticVotingDemo() {
                 <div className="uv-modal-row">
                   <span>선택</span>
                   <strong className={pendingVoteChoice === CHOICE_FOR ? 'uv-for' : 'uv-against'}>
-                    {pendingVoteChoice === CHOICE_FOR ? '👍 찬성' : '👎 반대'}
+                    {pendingVoteChoice === CHOICE_FOR ? '찬성' : '반대'}
                   </strong>
                 </div>
                 <div className="uv-modal-row">
