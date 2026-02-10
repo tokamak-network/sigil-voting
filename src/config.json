@@ -6,7 +6,8 @@
     "zkVotingFinal": "0xFef153ADfC04790906a8dF8573545E9b7589fa58",
     "poseidonT5": "0x555333f3f677Ca3930Bf7c56ffc75144c51D9767",
     "privateVoting": "0xc3bF134b60FA8ac7366CA0DeDbD50ECd9751ab39",
-    "groth16Verifier": "0x4E510852F416144f0C0d7Ef83F0a4ab28aCba864"
+    "groth16Verifier": "0x4E510852F416144f0C0d7Ef83F0a4ab28aCba864",
+    "tonToken": "0xa30fe40285B8f5c0457DbC3B7C8A280373c40044"
   },
   "deployedAt": "2026-02-09T12:31:25.900Z",
   "deployer": "0x9f2429c483802e5A8dcF8cD6AF4e30c0479cD841"

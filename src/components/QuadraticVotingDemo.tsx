@@ -2,16 +2,14 @@ import { useState, useCallback, useEffect } from 'react'
 import { useAccount, useWriteContract, useReadContract } from 'wagmi'
 import { useConnect } from 'wagmi'
 import { injected } from 'wagmi/connectors'
+import { formatUnits } from 'viem'
 import {
   getOrCreateKeyPairAsync,
-  createCreditNoteAsync,
-  getStoredCreditNote,
   prepareD2VoteAsync,
   generateQuadraticProof,
   storeD2VoteForReveal,
   generateMerkleProofAsync,
   type KeyPair,
-  type CreditNote,
   type VoteChoice,
   type ProofGenerationProgress,
   CHOICE_FOR,
@@ -20,17 +18,20 @@ import {
 import config from '../config.json'
 
 const ZK_VOTING_FINAL_ADDRESS = (config.contracts.zkVotingFinal || '0x0000000000000000000000000000000000000000') as `0x${string}`
+const TON_TOKEN_ADDRESS = (config.contracts.tonToken || '0xa30fe40285B8f5c0457DbC3B7C8A280373c40044') as `0x${string}`
 
 const ZK_VOTING_FINAL_ABI = [
-  { type: 'function', name: 'mintTestTokens', inputs: [{ name: 'amount', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
-  { type: 'function', name: 'getAvailableCredits', inputs: [{ name: 'user', type: 'address' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
   { type: 'function', name: 'registerCreditRoot', inputs: [{ name: '_creditRoot', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'registerCreditNote', inputs: [{ name: '_creditNoteHash', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'getRegisteredCreditNotes', inputs: [], outputs: [{ name: '', type: 'uint256[]' }], stateMutability: 'view' },
   { type: 'function', name: 'proposalCountD2', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
-  { type: 'function', name: 'getProposalD2', inputs: [{ name: '_proposalId', type: 'uint256' }], outputs: [{ name: 'title', type: 'string' }, { name: 'description', type: 'string' }, { name: 'creator', type: 'address' }, { name: 'creditRoot', type: 'uint256' }, { name: 'startTime', type: 'uint256' }, { name: 'endTime', type: 'uint256' }, { name: 'revealEndTime', type: 'uint256' }, { name: 'totalVotes', type: 'uint256' }], stateMutability: 'view' },
   { type: 'function', name: 'createProposalD2', inputs: [{ name: '_title', type: 'string' }, { name: '_description', type: 'string' }, { name: '_creditRoot', type: 'uint256' }, { name: '_votingDuration', type: 'uint256' }, { name: '_revealDuration', type: 'uint256' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'nonpayable' },
   { type: 'function', name: 'castVoteD2', inputs: [{ name: '_proposalId', type: 'uint256' }, { name: '_commitment', type: 'uint256' }, { name: '_numVotes', type: 'uint256' }, { name: '_creditsSpent', type: 'uint256' }, { name: '_nullifier', type: 'uint256' }, { name: '_pA', type: 'uint256[2]' }, { name: '_pB', type: 'uint256[2][2]' }, { name: '_pC', type: 'uint256[2]' }], outputs: [], stateMutability: 'nonpayable' },
+] as const
+
+const ERC20_ABI = [
+  { type: 'function', name: 'balanceOf', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'symbol', inputs: [], outputs: [{ name: '', type: 'string' }], stateMutability: 'view' },
 ] as const
 
 interface Proposal {
@@ -43,6 +44,8 @@ interface Proposal {
 
 type View = 'list' | 'create' | 'vote' | 'success'
 
+const FAUCET_URL = 'https://docs.tokamak.network/home/service-guide/faucet-testnet'
+
 export function QuadraticVotingDemo() {
   const { address, isConnected } = useAccount()
   const { connect } = useConnect()
@@ -50,7 +53,6 @@ export function QuadraticVotingDemo() {
 
   const [currentView, setCurrentView] = useState<View>('list')
   const [keyPair, setKeyPair] = useState<KeyPair | null>(null)
-  const [creditNote, setCreditNote] = useState<CreditNote | null>(null)
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null)
   const [newProposalTitle, setNewProposalTitle] = useState('')
@@ -66,19 +68,20 @@ export function QuadraticVotingDemo() {
 
   const isContractDeployed = ZK_VOTING_FINAL_ADDRESS !== '0x0000000000000000000000000000000000000000'
 
+  // Read TON balance
+  const { data: tonBalance, refetch: refetchTonBalance } = useReadContract({
+    address: TON_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address }
+  })
+
   const { data: proposalCount, refetch: refetchProposalCount } = useReadContract({
     address: ZK_VOTING_FINAL_ADDRESS,
     abi: ZK_VOTING_FINAL_ABI,
     functionName: 'proposalCountD2',
     query: { enabled: isContractDeployed }
-  })
-
-  const { refetch: refetchCredits } = useReadContract({
-    address: ZK_VOTING_FINAL_ADDRESS,
-    abi: ZK_VOTING_FINAL_ABI,
-    functionName: 'getAvailableCredits',
-    args: address ? [address] : undefined,
-    query: { enabled: isContractDeployed && !!address }
   })
 
   const { data: registeredCreditNotes, refetch: refetchCreditNotes } = useReadContract({
@@ -88,12 +91,15 @@ export function QuadraticVotingDemo() {
     query: { enabled: isContractDeployed }
   })
 
-  const totalCredits = creditNote?.totalCredits ? Number(creditNote.totalCredits) : 10000
-  const quadraticCost = numVotes * numVotes
-  const maxVotes = Math.floor(Math.sqrt(totalCredits))
-  const hasCredits = creditNote !== null
+  // Convert TON balance to voting power (1 TON = 1 voting power unit)
+  const tonBalanceFormatted = tonBalance ? Number(formatUnits(tonBalance, 18)) : 0
+  const totalVotingPower = Math.floor(tonBalanceFormatted)
+  const hasTon = totalVotingPower > 0
 
-  const costLevel = Math.min((quadraticCost / totalCredits) * 100, 100)
+  const quadraticCost = numVotes * numVotes
+  const maxVotes = Math.floor(Math.sqrt(totalVotingPower))
+
+  const costLevel = totalVotingPower > 0 ? Math.min((quadraticCost / totalVotingPower) * 100, 100) : 0
   const isHighCost = costLevel > 30
   const isDanger = costLevel > 70
 
@@ -101,8 +107,6 @@ export function QuadraticVotingDemo() {
   useEffect(() => {
     if (isConnected && address) {
       getOrCreateKeyPairAsync(address).then(setKeyPair)
-      const stored = getStoredCreditNote(address)
-      if (stored) setCreditNote(stored)
     }
   }, [isConnected, address])
 
@@ -155,38 +159,6 @@ export function QuadraticVotingDemo() {
 
   const handleConnect = () => connect({ connector: injected() })
 
-  const handleGetCredits = useCallback(async () => {
-    if (!keyPair || !address) return
-    setIsProcessing(true)
-    setError(null)
-
-    try {
-      const newCreditNote = await createCreditNoteAsync(keyPair, BigInt(10000), address)
-      setCreditNote(newCreditNote)
-
-      await writeContractAsync({
-        address: ZK_VOTING_FINAL_ADDRESS,
-        abi: ZK_VOTING_FINAL_ABI,
-        functionName: 'registerCreditNote',
-        args: [newCreditNote.creditNoteHash],
-      })
-
-      await writeContractAsync({
-        address: ZK_VOTING_FINAL_ADDRESS,
-        abi: ZK_VOTING_FINAL_ABI,
-        functionName: 'mintTestTokens',
-        args: [BigInt(10000)],
-      })
-
-      await refetchCredits()
-      await refetchCreditNotes()
-    } catch (err) {
-      setError((err as Error).message)
-    } finally {
-      setIsProcessing(false)
-    }
-  }, [keyPair, address, writeContractAsync, refetchCredits, refetchCreditNotes])
-
   const handleCreateProposal = useCallback(async () => {
     if (!newProposalTitle.trim()) return
     setIsProcessing(true)
@@ -194,9 +166,17 @@ export function QuadraticVotingDemo() {
 
     try {
       const creditNotes = (registeredCreditNotes as bigint[]) || []
-      if (creditNotes.length === 0) throw new Error('아직 등록된 투표자가 없습니다. 첫 번째 투표자가 되어주세요!')
 
-      const { root: creditRoot } = await generateMerkleProofAsync(creditNotes, 0)
+      // If no credit notes, we need at least one voter registered
+      // For now, use a dummy root if empty (first proposal scenario)
+      let creditRoot: bigint
+      if (creditNotes.length === 0) {
+        // Use a placeholder root - first voter will register when voting
+        creditRoot = BigInt(1)
+      } else {
+        const { root } = await generateMerkleProofAsync(creditNotes, 0)
+        creditRoot = root
+      }
 
       await writeContractAsync({
         address: ZK_VOTING_FINAL_ADDRESS,
@@ -220,12 +200,12 @@ export function QuadraticVotingDemo() {
     } finally {
       setIsProcessing(false)
     }
-  }, [newProposalTitle, hasCredits, registeredCreditNotes, writeContractAsync, refetchProposalCount])
+  }, [newProposalTitle, registeredCreditNotes, writeContractAsync, refetchProposalCount])
 
   const handleVote = useCallback(async (choice: VoteChoice) => {
-    if (!keyPair || !creditNote || !selectedProposal) return
-    if (quadraticCost > totalCredits) {
-      setError('크레딧이 부족합니다')
+    if (!keyPair || !selectedProposal || !hasTon) return
+    if (quadraticCost > totalVotingPower) {
+      setError('TON이 부족합니다')
       return
     }
 
@@ -237,11 +217,25 @@ export function QuadraticVotingDemo() {
     try {
       const proposalId = BigInt(selectedProposal.id)
       const voteData = await prepareD2VoteAsync(keyPair, choice, BigInt(numVotes), proposalId)
-      const creditNotes = (registeredCreditNotes as bigint[]) || []
 
-      if (creditNotes.length === 0) throw new Error('등록된 크레딧이 없습니다')
+      // Auto-register voter if needed
+      const noteHash = BigInt(keyPair.pkX.toString())
+      let creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
 
-      const { root: creditRoot } = await generateMerkleProofAsync(creditNotes, 0)
+      if (!creditNotes.includes(noteHash)) {
+        setProofProgress({ stage: 'preparing', progress: 5, message: '투표자 등록 중...' })
+        await writeContractAsync({
+          address: ZK_VOTING_FINAL_ADDRESS,
+          abi: ZK_VOTING_FINAL_ABI,
+          functionName: 'registerCreditNote',
+          args: [noteHash],
+        })
+        creditNotes.push(noteHash)
+        await refetchCreditNotes()
+      }
+
+      const voterIndex = creditNotes.indexOf(noteHash)
+      const { root: creditRoot } = await generateMerkleProofAsync(creditNotes, voterIndex >= 0 ? voterIndex : 0)
 
       setProofProgress({ stage: 'preparing', progress: 10, message: '크레딧 루트 등록...' })
       await writeContractAsync({
@@ -251,9 +245,18 @@ export function QuadraticVotingDemo() {
         args: [creditRoot],
       })
 
+      // Create a credit note based on TON balance
+      const mockCreditNote = {
+        creditNoteHash: noteHash,
+        totalCredits: BigInt(totalVotingPower),
+        creditSalt: BigInt(Date.now()),
+        pkX: keyPair.pkX,
+        pkY: keyPair.pkY
+      }
+
       const { proof, nullifier, commitment } = await generateQuadraticProof(
         keyPair,
-        creditNote,
+        mockCreditNote,
         voteData,
         creditRoot,
         creditNotes,
@@ -272,7 +275,7 @@ export function QuadraticVotingDemo() {
 
       setTxHash(hash)
       storeD2VoteForReveal(proposalId, voteData, address)
-      await refetchCredits()
+      await refetchTonBalance()
       setCurrentView('success')
     } catch (err) {
       console.error('Vote failed:', err)
@@ -281,7 +284,7 @@ export function QuadraticVotingDemo() {
       setIsProcessing(false)
       setProofProgress(null)
     }
-  }, [keyPair, creditNote, selectedProposal, numVotes, quadraticCost, totalCredits, registeredCreditNotes, writeContractAsync, refetchCredits, address])
+  }, [keyPair, selectedProposal, hasTon, numVotes, quadraticCost, totalVotingPower, registeredCreditNotes, writeContractAsync, refetchCreditNotes, refetchTonBalance, address])
 
   const getIntensityColor = () => {
     if (isDanger) return { bg: 'rgba(239, 68, 68, 0.15)', border: '#ef4444', text: '#fca5a5' }
@@ -291,20 +294,19 @@ export function QuadraticVotingDemo() {
 
   const colors = getIntensityColor()
 
-  // ============ RENDER ============
   return (
     <div className="unified-voting">
-      {/* Header with credits */}
+      {/* Header with TON balance */}
       {isConnected && (
         <div className="uv-header-bar">
-          {hasCredits ? (
+          {hasTon ? (
             <div className="uv-credits-badge">
-              💎 {totalCredits.toLocaleString()} 크레딧
+              🪙 {totalVotingPower.toLocaleString()} TON
             </div>
           ) : (
-            <button className="uv-get-credits-btn" onClick={handleGetCredits} disabled={isProcessing}>
-              {isProcessing ? '처리 중...' : '💎 크레딧 받기'}
-            </button>
+            <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="uv-get-credits-btn">
+              🪙 TON 받으러 가기
+            </a>
           )}
         </div>
       )}
@@ -404,7 +406,7 @@ export function QuadraticVotingDemo() {
 
           <div
             className="uv-card uv-vote-card"
-            style={{ backgroundColor: hasCredits ? colors.bg : 'rgba(255,255,255,0.03)', borderColor: hasCredits ? colors.border : 'rgba(255,255,255,0.08)' }}
+            style={{ backgroundColor: hasTon ? colors.bg : 'rgba(255,255,255,0.03)', borderColor: hasTon ? colors.border : 'rgba(255,255,255,0.08)' }}
           >
             <h1>{selectedProposal.title}</h1>
 
@@ -413,17 +415,26 @@ export function QuadraticVotingDemo() {
               <span>🗳️ {selectedProposal.totalVotes}표</span>
             </div>
 
+            {!hasTon && (
+              <div className="uv-no-token-notice">
+                <p>투표하려면 TON이 필요합니다</p>
+                <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="uv-btn uv-btn-primary">
+                  🪙 Faucet에서 TON 받기
+                </a>
+              </div>
+            )}
+
             <div className="uv-vote-buttons">
               <button
                 className={`uv-vote-btn uv-vote-for ${selectedChoice === CHOICE_FOR ? 'selected' : ''}`}
                 onClick={() => {
-                  if (!hasCredits) {
-                    setError('투표하려면 크레딧이 필요합니다. 상단의 "크레딧 받기" 버튼을 눌러주세요.')
+                  if (!hasTon) {
+                    setError('투표하려면 TON이 필요합니다. Faucet에서 받아주세요.')
                     return
                   }
                   if (!isProcessing) handleVote(CHOICE_FOR)
                 }}
-                disabled={isProcessing}
+                disabled={isProcessing || !hasTon}
               >
                 <span className="uv-vote-icon">👍</span>
                 <span>찬성</span>
@@ -431,24 +442,24 @@ export function QuadraticVotingDemo() {
               <button
                 className={`uv-vote-btn uv-vote-against ${selectedChoice === CHOICE_AGAINST ? 'selected' : ''}`}
                 onClick={() => {
-                  if (!hasCredits) {
-                    setError('투표하려면 크레딧이 필요합니다. 상단의 "크레딧 받기" 버튼을 눌러주세요.')
+                  if (!hasTon) {
+                    setError('투표하려면 TON이 필요합니다. Faucet에서 받아주세요.')
                     return
                   }
                   if (!isProcessing) handleVote(CHOICE_AGAINST)
                 }}
-                disabled={isProcessing}
+                disabled={isProcessing || !hasTon}
               >
                 <span className="uv-vote-icon">👎</span>
                 <span>반대</span>
               </button>
             </div>
 
-            {hasCredits && (
+            {hasTon && (
               <>
                 <div className="uv-vote-info" style={{ color: colors.text }}>
                   <span className="uv-vote-count">{numVotes}표</span>
-                  <span className="uv-vote-cost">{quadraticCost} 크레딧</span>
+                  <span className="uv-vote-cost">{quadraticCost} TON</span>
                 </div>
 
                 {!showIntensity ? (
@@ -484,18 +495,18 @@ export function QuadraticVotingDemo() {
                       </div>
                       <div className="uv-cost-labels">
                         <span>0</span>
-                        <span>{totalCredits.toLocaleString()}</span>
+                        <span>{totalVotingPower.toLocaleString()} TON</span>
                       </div>
                     </div>
 
                     <div className="uv-cost-table">
-                      <div className={`uv-cost-row ${numVotes === 1 ? 'active' : ''}`}><span>1표</span><span>1 크레딧</span></div>
-                      <div className={`uv-cost-row ${numVotes >= 5 && numVotes < 10 ? 'active' : ''}`}><span>5표</span><span>25 크레딧</span></div>
-                      <div className={`uv-cost-row ${numVotes >= 10 && numVotes < 50 ? 'active' : ''}`}><span>10표</span><span>100 크레딧</span></div>
-                      <div className={`uv-cost-row ${numVotes >= 50 ? 'active' : ''}`}><span>100표</span><span>10,000 크레딧</span></div>
+                      <div className={`uv-cost-row ${numVotes === 1 ? 'active' : ''}`}><span>1표</span><span>1 TON</span></div>
+                      <div className={`uv-cost-row ${numVotes >= 5 && numVotes < 10 ? 'active' : ''}`}><span>5표</span><span>25 TON</span></div>
+                      <div className={`uv-cost-row ${numVotes >= 10 && numVotes < 50 ? 'active' : ''}`}><span>10표</span><span>100 TON</span></div>
+                      <div className={`uv-cost-row ${numVotes >= 50 ? 'active' : ''}`}><span>100표</span><span>10,000 TON</span></div>
                     </div>
 
-                    {isDanger && <div className="uv-warning">⚠️ 크레딧의 {costLevel.toFixed(0)}%를 사용합니다</div>}
+                    {isDanger && <div className="uv-warning">⚠️ TON의 {costLevel.toFixed(0)}%를 사용합니다</div>}
                   </div>
                 )}
               </>
@@ -535,8 +546,8 @@ export function QuadraticVotingDemo() {
                 <strong>{numVotes}표</strong>
               </div>
               <div className="uv-result-row">
-                <span>사용 크레딧</span>
-                <strong>{quadraticCost}</strong>
+                <span>사용 TON</span>
+                <strong>{quadraticCost} TON</strong>
               </div>
               <div className="uv-result-row uv-hidden">
                 <span>선택</span>
@@ -570,17 +581,12 @@ export function QuadraticVotingDemo() {
   )
 }
 
-// Helper to encode getProposalD2 call
 function getProposalSelector(proposalId: number): string {
-  // getProposalD2(uint256) selector = keccak256("getProposalD2(uint256)")[0:4]
-  const selector = 'a7c6f7a5' // This should be computed, using placeholder
+  const selector = 'a7c6f7a5'
   const paddedId = proposalId.toString(16).padStart(64, '0')
   return selector + paddedId
 }
 
-// Helper to decode proposal result
 function decodeProposalResult(_hex: string): { title: string; creator: string; endTime: bigint; totalVotes: bigint } {
-  // Simplified - real implementation would use ethers.js AbiCoder
-  // For now, return empty to avoid complex parsing
   return { title: '', creator: '', endTime: 0n, totalVotes: 0n }
 }

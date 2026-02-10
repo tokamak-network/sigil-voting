@@ -7011,3 +7011,23 @@ body {
   font-size: 0.9rem;
   color: rgba(255,255,255,0.5);
 }
+
+/* No Token Notice */
+.uv-no-token-notice {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.uv-no-token-notice p {
+  color: #fcd34d;
+  margin-bottom: 12px;
+}
+
+.uv-no-token-notice .uv-btn {
+  display: inline-flex;
+  text-decoration: none;
+}
