@@ -61,11 +61,14 @@ const ZK_VOTING_FINAL_ABI = [
   { type: 'function', name: 'createProposalD2', inputs: [{ name: '_title', type: 'string' }, { name: '_description', type: 'string' }, { name: '_creditRoot', type: 'uint256' }, { name: '_votingDuration', type: 'uint256' }, { name: '_revealDuration', type: 'uint256' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'nonpayable' },
   { type: 'function', name: 'castVoteD2', inputs: [{ name: '_proposalId', type: 'uint256' }, { name: '_commitment', type: 'uint256' }, { name: '_numVotes', type: 'uint256' }, { name: '_creditsSpent', type: 'uint256' }, { name: '_nullifier', type: 'uint256' }, { name: '_pA', type: 'uint256[2]' }, { name: '_pB', type: 'uint256[2][2]' }, { name: '_pC', type: 'uint256[2]' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'creditRootHistory', inputs: [{ name: '', type: 'uint256' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'getAvailableCredits', inputs: [{ name: 'user', type: 'address' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
 ] as const
 
 const ERC20_ABI = [
   { type: 'function', name: 'balanceOf', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
   { type: 'function', name: 'symbol', inputs: [], outputs: [{ name: '', type: 'string' }], stateMutability: 'view' },
+  { type: 'function', name: 'allowance', inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+  { type: 'function', name: 'approve', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'nonpayable' },
 ] as const
 
 interface Proposal {
@@ -117,8 +120,8 @@ export function QuadraticVotingDemo() {
 
   const isContractDeployed = ZK_VOTING_FINAL_ADDRESS !== '0x0000000000000000000000000000000000000000'
 
-  // Read TON balance
-  const { data: tonBalance, refetch: refetchTonBalance } = useReadContract({
+  // Read TON balance (for eligibility check)
+  const { data: tonBalance } = useReadContract({
     address: TON_TOKEN_ADDRESS,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
@@ -140,10 +143,21 @@ export function QuadraticVotingDemo() {
     query: { enabled: isContractDeployed }
   })
 
-  // Convert TON balance to voting power (1 TON = 1 voting power unit)
+  // Fetch available credits from contract
+  const { data: availableCredits, refetch: refetchCredits } = useReadContract({
+    address: ZK_VOTING_FINAL_ADDRESS,
+    abi: ZK_VOTING_FINAL_ABI,
+    functionName: 'getAvailableCredits',
+    args: address ? [address] : undefined,
+    query: { enabled: isContractDeployed && !!address }
+  })
+
+  // TON balance for eligibility check
   const tonBalanceFormatted = tonBalance ? Number(formatUnits(tonBalance, 18)) : 0
-  const totalVotingPower = Math.floor(tonBalanceFormatted)
-  const hasTon = totalVotingPower > 0
+  const hasTon = tonBalanceFormatted > 0
+
+  // Use contract credits for voting power (default 10000 if not initialized)
+  const totalVotingPower = availableCredits ? Number(availableCredits) : 10000
 
   const quadraticCost = numVotes * numVotes
   const maxVotes = Math.floor(Math.sqrt(totalVotingPower))
@@ -354,7 +368,31 @@ export function QuadraticVotingDemo() {
 
       proofComplete() // State: PROOFING -> SIGNING
 
-      // Wait for user to sign
+      // Check and approve TON spending if needed
+      const tonAmountNeeded = voteData.creditsSpent * BigInt(1e18) // 1 credit = 1 TON
+      if (publicClient) {
+        const currentAllowance = await publicClient.readContract({
+          address: TON_TOKEN_ADDRESS,
+          abi: ERC20_ABI,
+          functionName: 'allowance',
+          args: [address, ZK_VOTING_FINAL_ADDRESS],
+        }) as bigint
+
+        if (currentAllowance < tonAmountNeeded) {
+          updateProgress(55, 'TON 사용 승인 중...')
+          const approveHash = await writeContractAsync({
+            address: TON_TOKEN_ADDRESS,
+            abi: ERC20_ABI,
+            functionName: 'approve',
+            args: [ZK_VOTING_FINAL_ADDRESS, tonAmountNeeded],
+          })
+          await publicClient.waitForTransactionReceipt({ hash: approveHash })
+        }
+      }
+
+      updateProgress(60, '투표 트랜잭션 서명 대기...')
+
+      // Wait for user to sign vote transaction
       const hash = await writeContractAsync({
         address: ZK_VOTING_FINAL_ADDRESS,
         abi: ZK_VOTING_FINAL_ABI,
@@ -372,7 +410,7 @@ export function QuadraticVotingDemo() {
 
       storeD2VoteForReveal(proposalId, voteData, address)
       markProposalAsVoted(address, selectedProposal.id) // Track locally to prevent re-voting
-      await refetchTonBalance()
+      await refetchCredits() // Refresh available credits after voting
       txConfirmed(hash) // State: SUBMITTING -> SUCCESS
       setCurrentView('success')
     } catch (err) {
@@ -392,7 +430,7 @@ export function QuadraticVotingDemo() {
       } else if (errorMsg.includes('InvalidProof')) {
         userMessage = 'ZK 증명 검증에 실패했습니다. 다시 시도해주세요.'
       } else if (errorMsg.includes('InsufficientCredits')) {
-        userMessage = '크레딧이 부족합니다.'
+        userMessage = 'TON이 부족합니다.'
       } else if (errorMsg.includes('InvalidQuadraticCost')) {
         userMessage = '투표 비용 계산 오류입니다.'
       } else if (errorMsg.includes('insufficient funds')) {
@@ -404,7 +442,7 @@ export function QuadraticVotingDemo() {
       setVotingError(userMessage)
       setError(userMessage)
     }
-  }, [keyPair, selectedProposal, hasTon, address, numVotes, quadraticCost, totalVotingPower, registeredCreditNotes, writeContractAsync, refetchCreditNotes, refetchTonBalance, startVote, updateProgress, proofComplete, signed, txConfirmed, setVotingError, publicClient])
+  }, [keyPair, selectedProposal, hasTon, address, numVotes, quadraticCost, totalVotingPower, registeredCreditNotes, writeContractAsync, refetchCreditNotes, refetchCredits, startVote, updateProgress, proofComplete, signed, txConfirmed, setVotingError, publicClient])
 
   const getIntensityColor = () => {
     if (isDanger) return { bg: 'rgba(239, 68, 68, 0.15)', border: '#ef4444', text: '#fca5a5' }
@@ -416,12 +454,12 @@ export function QuadraticVotingDemo() {
 
   return (
     <div className="unified-voting">
-      {/* Header with TON balance */}
+      {/* Header with Credits balance */}
       {isConnected && (
         <div className="uv-header-bar">
           {hasTon ? (
             <div className="uv-credits-badge">
-              💎 {totalVotingPower.toLocaleString()} TON
+              🗳️ {totalVotingPower.toLocaleString()} TON
             </div>
           ) : (
             <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="uv-get-credits-btn">

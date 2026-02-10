@@ -35,6 +35,13 @@ interface IVerifierD2 {
     ) external view returns (bool);
 }
 
+interface IERC20 {
+    function balanceOf(address account) external view returns (uint256);
+    function transfer(address to, uint256 amount) external returns (bool);
+    function transferFrom(address from, address to, uint256 amount) external returns (bool);
+    function approve(address spender, uint256 amount) external returns (bool);
+}
+
 contract ZkVotingFinal {
     // ============ Constants ============
     uint256 public constant CHOICE_AGAINST = 0;
@@ -45,6 +52,10 @@ contract ZkVotingFinal {
     // ============ Verifiers ============
     IVerifierD1 public immutable verifierD1;
     IVerifierD2 public immutable verifierD2;
+
+    // ============ TON Token ============
+    IERC20 public immutable tonToken;
+    address public treasury; // Where spent TON goes (can be burn address or DAO treasury)
 
     // ============ Counters ============
     uint256 public proposalCountD1;
@@ -169,9 +180,11 @@ contract ZkVotingFinal {
     error InvalidQuadraticCost();
 
     // ============ Constructor ============
-    constructor(address _verifierD1, address _verifierD2) {
+    constructor(address _verifierD1, address _verifierD2, address _tonToken, address _treasury) {
         verifierD1 = IVerifierD1(_verifierD1);
         verifierD2 = IVerifierD2(_verifierD2);
+        tonToken = IERC20(_tonToken);
+        treasury = _treasury;
     }
 
     // ============================================================
@@ -212,9 +225,8 @@ contract ZkVotingFinal {
      * @dev Get available credits for a user
      */
     function getAvailableCredits(address user) external view returns (uint256) {
-        UserCredits storage uc = userCredits[user];
-        if (!uc.initialized) return INITIAL_CREDITS;
-        return uc.totalCredits - uc.usedCredits;
+        // Return user's TON balance as credits (1 TON = 1 credit)
+        return tonToken.balanceOf(user) / 1e18;
     }
 
     /**
@@ -482,22 +494,16 @@ contract ZkVotingFinal {
         bool validProof = verifierD2.verifyProof(_pA, _pB, _pC, pubSignals);
         if (!validProof) revert InvalidProof();
 
-        // Initialize credits if needed
-        if (!userCredits[msg.sender].initialized) {
-            userCredits[msg.sender] = UserCredits({
-                totalCredits: INITIAL_CREDITS,
-                usedCredits: 0,
-                initialized: true
-            });
-        }
+        // Transfer TON tokens (quadratic cost) - 1 credit = 1 TON (in wei, 18 decimals)
+        uint256 tonAmount = _creditsSpent * 1e18; // Convert credits to TON wei
+        uint256 userBalance = tonToken.balanceOf(msg.sender);
+        if (userBalance < tonAmount) revert InsufficientCredits();
 
-        // BURN credits (quadratic cost)
-        UserCredits storage uc = userCredits[msg.sender];
-        uint256 available = uc.totalCredits - uc.usedCredits;
-        if (_creditsSpent > available) revert InsufficientCredits();
+        // Transfer TON from user to treasury
+        bool success = tonToken.transferFrom(msg.sender, treasury, tonAmount);
+        require(success, "TON transfer failed");
 
-        uc.usedCredits += _creditsSpent;
-        emit CreditsBurned(msg.sender, _creditsSpent, uc.totalCredits - uc.usedCredits);
+        emit CreditsBurned(msg.sender, _creditsSpent, userBalance / 1e18 - _creditsSpent);
 
         // Store commitment
         nullifierUsedD2[_proposalId][_nullifier] = true;

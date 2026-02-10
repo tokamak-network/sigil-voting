@@ -16,7 +16,26 @@ const path = require("path");
 async function main() {
   console.log("=== ZkVotingFinal Deployment to Sepolia ===\n");
 
-  const [deployer] = await hre.ethers.getSigners();
+  // Check for required environment variable
+  if (!process.env.PRIVATE_KEY) {
+    console.error("오류: PRIVATE_KEY 환경변수가 설정되지 않았습니다.");
+    console.error("");
+    console.error("해결 방법:");
+    console.error("  1. .env 파일 생성: cp .env.example .env");
+    console.error("  2. .env 파일에서 PRIVATE_KEY 설정");
+    console.error("");
+    console.error("또는 직접 실행:");
+    console.error("  PRIVATE_KEY=0x... npx hardhat run scripts/deploy_final.cjs --network sepolia");
+    process.exit(1);
+  }
+
+  const signers = await hre.ethers.getSigners();
+  if (signers.length === 0) {
+    console.error("오류: 서명자를 가져올 수 없습니다. PRIVATE_KEY가 올바른지 확인하세요.");
+    process.exit(1);
+  }
+
+  const [deployer] = signers;
   console.log("Deployer address:", deployer.address);
 
   const balance = await hre.ethers.provider.getBalance(deployer.address);
@@ -28,6 +47,12 @@ async function main() {
 
   // Pre-deployed PoseidonT5 via CREATE2 factory (same address on all EVM chains)
   const POSEIDON_T5_ADDRESS = "0x555333f3f677Ca3930Bf7c56ffc75144c51D9767";
+
+  // Sepolia TON Token address
+  const TON_TOKEN_ADDRESS = "0xa30fe40285B8f5c0457DbC3B7C8A280373c40044";
+
+  // Treasury address (where spent TON goes - using deployer for now)
+  const TREASURY_ADDRESS = deployer.address;
 
   // Check if we should reuse existing verifiers (from previous partial deployment)
   const existingVerifierD1 = process.env.VERIFIER_D1_ADDRESS;
@@ -75,10 +100,17 @@ async function main() {
       PoseidonT5: poseidonT5Address,
     },
   });
-  const zkVotingFinal = await ZkVotingFinal.deploy(verifierD1Address, verifierD2Address);
+  const zkVotingFinal = await ZkVotingFinal.deploy(
+    verifierD1Address,
+    verifierD2Address,
+    TON_TOKEN_ADDRESS,
+    TREASURY_ADDRESS
+  );
   await zkVotingFinal.waitForDeployment();
   const zkVotingFinalAddress = await zkVotingFinal.getAddress();
   console.log("ZkVotingFinal deployed at:", zkVotingFinalAddress);
+  console.log("TON Token:", TON_TOKEN_ADDRESS);
+  console.log("Treasury:", TREASURY_ADDRESS);
 
   // Step 5: Update frontend config
   console.log("\n--- Step 5: Updating frontend config ---");
@@ -90,6 +122,8 @@ async function main() {
       verifierD2: verifierD2Address,
       zkVotingFinal: zkVotingFinalAddress,
       poseidonT5: poseidonT5Address,
+      tonToken: TON_TOKEN_ADDRESS,
+      treasury: TREASURY_ADDRESS,
       // Keep old D1 addresses for backwards compatibility
       privateVoting: "0xc3bF134b60FA8ac7366CA0DeDbD50ECd9751ab39",
       groth16Verifier: "0x4E510852F416144f0C0d7Ef83F0a4ab28aCba864",
