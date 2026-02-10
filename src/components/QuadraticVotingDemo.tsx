@@ -59,6 +59,7 @@ export function QuadraticVotingDemo() {
   const [currentView, setCurrentView] = useState<View>('list')
   const [keyPair, setKeyPair] = useState<KeyPair | null>(null)
   const [proposals, setProposals] = useState<Proposal[]>([])
+  const [isLoadingProposals, setIsLoadingProposals] = useState(true)
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null)
   const [newProposalTitle, setNewProposalTitle] = useState('')
 
@@ -118,7 +119,12 @@ export function QuadraticVotingDemo() {
   // Fetch proposals
   useEffect(() => {
     const fetchProposals = async () => {
-      if (!proposalCount || proposalCount === 0n) return
+      setIsLoadingProposals(true)
+
+      if (!proposalCount || proposalCount === 0n) {
+        setIsLoadingProposals(false)
+        return
+      }
 
       const count = Number(proposalCount)
       const fetchedProposals: Proposal[] = []
@@ -157,6 +163,7 @@ export function QuadraticVotingDemo() {
       }
 
       setProposals(fetchedProposals)
+      setIsLoadingProposals(false)
     }
 
     fetchProposals()
@@ -358,6 +365,13 @@ export function QuadraticVotingDemo() {
               <button className="uv-btn uv-btn-primary" onClick={handleConnect}>
                 지갑 연결
               </button>
+            </div>
+          ) : isLoadingProposals ? (
+            <div className="uv-card uv-center">
+              <div className="uv-loading">
+                <div className="uv-spinner"></div>
+                <span>제안 목록 불러오는 중...</span>
+              </div>
             </div>
           ) : proposals.length === 0 ? (
             <div className="uv-card uv-center">
