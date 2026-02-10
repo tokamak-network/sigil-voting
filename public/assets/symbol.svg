@@ -1,0 +1,12 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- TON Token Symbol -->
+  <circle cx="16" cy="16" r="14" fill="url(#ton-gradient)" stroke="#4FC3F7" stroke-width="1"/>
+  <path d="M16 6L24 16L16 26L8 16L16 6Z" fill="#FFFFFF" fill-opacity="0.9"/>
+  <path d="M16 10L20 16L16 22L12 16L16 10Z" fill="#0288D1"/>
+  <defs>
+    <linearGradient id="ton-gradient" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0288D1"/>
+      <stop offset="100%" stop-color="#00BCD4"/>
+    </linearGradient>
+  </defs>
+</svg>

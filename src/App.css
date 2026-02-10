@@ -6978,8 +6978,40 @@ body {
   transition: transform 0.2s;
 }
 
-.uv-create-btn:hover {
+.uv-create-btn:hover:not(:disabled) {
   transform: translateY(-2px);
+}
+
+.uv-create-btn:disabled,
+.uv-create-btn.uv-btn-disabled {
+  background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.uv-create-btn-wrapper {
+  position: relative;
+}
+
+/* Ineligible Notice for proposal creation */
+.uv-ineligible-notice {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  padding: 16px 20px;
+  text-align: center;
+}
+
+.uv-ineligible-notice p {
+  margin: 0;
+  color: #fca5a5;
+  font-size: 14px;
+}
+
+.uv-ineligible-notice .uv-balance-info {
+  margin-top: 8px;
+  color: #9ca3af;
+  font-size: 13px;
 }
 
 /* Proposals Grid */
@@ -7003,10 +7035,34 @@ body {
   transform: translateY(-2px);
 }
 
+.uv-proposal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
 .uv-proposal-id {
   font-size: 0.8rem;
   color: rgba(255,255,255,0.4);
-  margin-bottom: 8px;
+}
+
+.uv-countdown {
+  font-size: 0.75rem;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.uv-countdown.expired {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.uv-proposal-card.uv-proposal-expired {
+  opacity: 0.6;
 }
 
 .uv-proposal-card h3 {
@@ -7140,3 +7196,126 @@ body {
 .uv-confetti-piece:nth-child(even) { --drift: -1; border-radius: 2px; }
 .uv-confetti-piece:nth-child(3n) { width: 8px; height: 8px; }
 .uv-confetti-piece:nth-child(5n) { width: 12px; height: 12px; }
+
+
+/* Rule #7 & #8: Pre-Flight Confirmation Modal */
+.uv-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+}
+
+.uv-modal {
+  background: #1a1a2e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 24px;
+  max-width: 400px;
+  width: 100%;
+  animation: modalSlideIn 0.2s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.uv-modal h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.uv-modal-content {
+  margin-bottom: 20px;
+}
+
+.uv-modal-vote-info {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.uv-modal-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.uv-modal-row:not(:last-child) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.uv-modal-row span {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+}
+
+.uv-modal-row strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.uv-modal-row strong.uv-for {
+  color: #22c55e;
+}
+
+.uv-modal-row strong.uv-against {
+  color: #ef4444;
+}
+
+/* One-Shot Warning (Red) */
+.uv-modal-warning {
+  display: flex;
+  gap: 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.uv-warning-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.uv-warning-text strong {
+  display: block;
+  color: #fca5a5;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.uv-warning-text p {
+  color: #f87171;
+  font-size: 0.85rem;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.uv-modal-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.uv-modal-buttons .uv-btn {
+  flex: 1;
+}
+

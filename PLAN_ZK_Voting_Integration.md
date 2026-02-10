@@ -1,223 +1,159 @@
-# Implementation Plan: ZK-Voting Integration (D1+D2 Unified)
+# Implementation Plan: ZK-Voting Integration (Unified & Verified)
 
-**Status**: 🚑 Emergency Fix & Integration
+**Status**: 🔧 TON Integration Fix Complete
 **Started**: 2026-02-10
 **Last Updated**: 2026-02-10
-**Estimated Completion**: 2026-02-13
+**Target**: Production-Ready Logic & UI
 
 ---
 
-**⚠️ CRITICAL INSTRUCTIONS**: After completing each phase:
-1. ✅ Check off completed task checkboxes
-2. 🧪 Run all quality gate validation commands (`npx hardhat test`, `npm run test`)
-3. ⚠️ Verify ALL quality gate items pass
-4. 📅 Update "Last Updated" date above
-5. 📝 Document learnings in Notes section
-6. ➡️ Only then proceed to next phase
+## ✅ Critical Fix: SeigToken approveAndCall (2026-02-10)
 
-⛔ **DO NOT skip quality gates or proceed with failing checks**
+**Problem**: SeigToken의 `transferFrom`은 "only sender or recipient can transfer" 제한이 있어서 일반 ERC20 approve 패턴이 작동하지 않음.
+
+**Solution**: TON의 `approveAndCall` 패턴 사용
+- Contract에 `onApprove` callback 추가
+- Frontend에서 `approveAndCall` 한번 호출로 approve + vote 동시 처리
+- 사용자는 **1번만 서명** (기존 2번 → 1번)
+
+**Deployed Contract**: `0xF10ECe876D72317D8e3410D147A49380dd27264e`
+
+**Commit**: `d6dcc5d Fix SeigToken transferFrom issue with approveAndCall pattern`
+
+---
+
+## 🛡️ The 9 Commandments: Verification Gate
+**STOP**: Before writing any new code, verify these 9 requirements are met.
+**Status**: ✅ All Verified (2026-02-10)
+
+| No. | Requirement (The 9 Rules) | Verification Method (Test Scenario) | Pass |
+|:---:|:---|:---|:---:|
+| **1** | **Gatekeeping** (<100 TON Block) | Connect wallet with **10 TON**. "Create Proposal" button MUST be **Disabled/Greyed out**. | [x] |
+| **2** | **Decoupling** (No Auto-Vote) | Create a proposal. Check list immediately. Vote count MUST be **0**. | [x] |
+| **3** | **Countdown Timer** | Check Proposal Card. MUST show **"Time Remaining: DD:HH:MM"**. | [x] |
+| **4** | **Conditional Deduction** | Move slider -> Check Wallet. Token MUST NOT be deducted until **after** modal confirm & signature. | [x] |
+| **5** | **Custom Asset** (Strict) | Check UI icons. MUST use **`symbol.svg`** in `public/assets/`. **DO NOT** use emojis (💎) or generic coins. | [x] |
+| **6** | **Ineligible UI** | Connect with low balance. Must see **Blocking Screen / Tooltip** explaining "Requires 100+ TON". | [x] |
+| **7** | **One-Shot Warning** | Open Confirm Modal. Must see text: **"Final Decision / Cannot Change"** in Red. | [x] |
+| **8** | **Pre-Flight Modal** | Click "Vote". **Custom Modal** must appear **BEFORE** MetaMask pops up. | [x] |
+| **9** | **Registration = Creation** | Verify there is **NO separate "Register Candidate" button**. `createProposal` handles everything. | [x] |
 
 ---
 
 ## 📋 Overview
 
 ### Feature Description
-A unified Zero-Knowledge voting system where users interact with a single slider (Linear UX). The system automatically handles logic branching: 1 vote ($Cost=1$) vs. N votes ($Cost=N^2$). Includes strict "Token Gating" for proposals and "Privacy" for votes using ZK-SNARKs.
+A unified Zero-Knowledge voting system where users interact with a single slider (Linear UX). The system automatically handles logic branching ($Cost=1$ vs $Cost=N^2$). Includes strict "Token Gating" for proposal creation and "One-Shot" privacy voting.
 
 ### Success Criteria
-- [ ] **Linear UX**: User adjusts slider -> Clicks "Vote" -> System handles the rest.
-- [ ] **Logic Branching**: System correctly differentiates $N=1$ vs $N>1$ internal logic.
-- [ ] **Visibility**: Created proposals must appear immediately in the UI (Fixing "Ghost Data").
-- [ ] **Privacy**: Votes are encrypted via ZK Proofs on-chain.
+- [ ] **Verification**: All 9 Commandments above must pass.
+- [ ] **Visiblity**: Created proposals appear immediately (Fix "Ghost Data").
+- [ ] **Privacy**: Votes are encrypted via ZK-SNARKs.
 
 ---
 
 ## 🏗️ Architecture Decisions
 
-### 📐 Logic Flow Blueprint (Strict Sequence)
-**Note**: The system must strictly follow this "Linear UX, Branching Logic" sequence based on the finalized flowchart.
+### 1. Decoupled Lifecycle (Strict Separation)
+- **Role Definition**:
+  - **Creator (Candidate)**: Must hold >100 TON. Creates a proposal. Does NOT automatically vote.
+  - **Voter**: Anyone with TON. Votes on existing proposals.
+- **Sequence**:
+  1. User creates proposal -> Transaction confirms -> Proposal appears in list (0 Votes).
+  2. User (including Creator) selects proposal -> Adjusts Slider -> Confirms Warning -> Votes.
 
-1.  **User Action**: Adjust Slider (Select $N$) -> **Click 'Vote' Button** (Trigger).
-2.  **System Check**: Receive $N$.
-    - If $N=1$: Apply Logic A (Cost = 1).
-    - If $N>1$: Apply Logic B (Cost = $N^2$).
-3.  **On-Chain Execution**:
-    - Step 1: **Generate ZK Proof** (Client-side Web Worker).
-    - Step 2: **Submit Transaction** (User signs).
-    - Step 3: **Deduct Tokens** (Smart Contract execution).
-4.  **Completion**: Vote Recorded & UI Update.
-
-**⚠️ CRITICAL**: Token deduction must ONLY happen AFTER the user clicks 'Vote' and signs the transaction. Do not deduct tokens on slider change.
-
-### 📱 UX/UI Detailed Flow & States
-**Objective**: Define exact UI states (Loading, Error, Success) for a seamless "One-Flow" experience.
-
-1.  **Initial State (Idle)**:
-    - Slider: Enabled. Cost Display: Updates dynamically ($N^2$).
-    - Vote Button: Enabled.
-2.  **Proof Generation State (Loading Phase 1)**:
-    - **Trigger**: Click "Vote".
-    - **UI**: Global Overlay "Generating Zero-Knowledge Proof...", Button Disabled (Spinner).
-    - **Action**: Web Worker calculates proof.
-3.  **Wallet Signature State (Loading Phase 2)**:
-    - **Trigger**: Proof ready.
-    - **UI**: Toast "Please confirm in wallet". Button: "Sign Transaction".
-4.  **Transaction Submission State (Loading Phase 3)**:
-    - **Trigger**: User signs.
-    - **UI**: Button "Submitting Vote...", Status "Verifying on-chain...".
-5.  **Completion State (Success)**:
-    - **Trigger**: Tx Confirmed.
-    - **UI**: Success Confetti 🎉, Toast "Vote Cast!", Redirect/Refresh.
+### 2. Token Gating & Costs
+- **Creation**: Requires **>100 TON** balance. (Free gas-only or small fee).
+- **Voting**: Cost = $N^2$ TON. Deducted **only after** explicit confirmation.
+- **One-Shot Rule**: One vote per wallet per proposal. No updates/top-ups allowed.
+- **✅ TON Transfer**: Uses `approveAndCall` pattern (SeigToken 호환). Single signature.
 
 ---
 
-## 📦 Dependencies
+## 📱 UX/UI Detailed Flow & Writing Specs
 
-### Required Before Starting
-- [ ] Hardhat environment (Sepolia/Local)
-- [ ] Circom 2.x & SnarkJS
-- [ ] React + Viem/Ethers (Frontend)
+**Global Design Asset**:
+- **Token Icon**: MUST use the provided **`symbol.svg`** file for ALL token displays.
+- **Path**: `public/assets/symbol.svg` (Ensure file exists).
+- **Constraint**: Do NOT use generic coin icons or text-only "TON".
 
----
+### 1. Proposal Creation (The Gatekeeper)
+*Reflects Rules 1, 6, 9*
 
-## 🧪 Test Strategy
+- **State A: Ineligible User (<100 TON)**
+  - **UI**: "Create Proposal" button is **Disabled (Greyed out/Locked)**.
+  - **Feedback**: Show Tooltip/Text: "Insufficient Balance. Requires 100+ TON to propose."
+  - **Action**: Click is blocked.
 
-### Testing Approach
-**TDD Principle**: strictly follow **Red (Fail) -> Green (Pass) -> Blue (Refactor)**.
+- **State B: Eligible User (>100 TON)**
+  - **UI**: "Create Proposal" button is **Active (Primary Color)**.
+  - **Action**: Opens "New Proposal" Form.
+  - **UX Writing**:
+    - *Header*: "Register Candidate / Create Proposal"
+    - *Body*: "This action creates a new voting card. You are NOT voting yet."
 
-### Test Pyramid
-| Test Type | Coverage | Purpose |
-|-----------|----------|---------|
-| **Unit Tests** | 100% | Contract Logic (Cost, Proposal Creation) |
-| **Circuit Tests** | 100% | ZK Proof Validity (Secret inputs) |
-| **E2E Tests** | Critical | Full Flow: Create Proposal -> Vote -> Reveal |
+- **State C: Creation Success**
+  - **Feedback**: Toast Message "Proposal Created Successfully! Now, cast your vote."
+  - **Result**: Redirect to list. Vote count shows **0**.
+
+### 2. Proposal List & Countdown
+*Reflects Rule 3*
+
+- **Card Header**:
+  - Display **"Time Remaining: DD:HH:MM"** until reveal/end.
+  - If expired: Show "Voting Closed".
+
+### 3. Voting Process (The Decision)
+*Reflects Rules 2, 4, 7, 8*
+
+- **Step 1: Adjust Slider**
+  - **UI**: Slider moves from 1 to N.
+  - **Dynamic Cost Display**: "Cost: **XX [symbol.svg]** (TON)" updates in real-time ($N^2$).
+  - **Warning Text**: Display "⚠️ Single Vote Opportunity" near the slider.
+
+- **Step 2: Pre-Flight Check (CRITICAL - Modal)**
+  - **Trigger**: User clicks "Vote" button.
+  - **UI**: **Full-screen Modal or Center Popup**.
+  - **Content (UX Writing)**:
+    - **Title**: "Confirm Your Vote"
+    - **Big Value**: "You are casting **N Votes**"
+    - **Cost Warning**: "This will deduct **XX [symbol.svg] TON** from your wallet."
+    - **Finality Warning (Red)**: "You can only vote ONCE per proposal. This action cannot be undone or changed later."
+  - **Buttons**: [Cancel] [Confirm & Sign]
+
+- **Step 3: Transaction & Feedback** ✅ IMPLEMENTED
+  - **Action**: User clicks [Confirm & Sign].
+  - **State**: Loading Spinner "Generating ZK Proof..." -> Wallet Signature (**1번만!**)
+  - **Method**: TON `approveAndCall` → Contract `onApprove` callback
+  - **Success**: Confetti + "Vote Confirmed! (XX TON Deducted)".
 
 ---
 
 ## 🚀 Implementation Phases
 
-### Phase 1: Emergency Fix (Proposal Creation & Visibility)
-**Goal**: Fix the `createProposal` revert issue and ensure proposals are visible in the UI.
-**Status**: ✅ COMPLETED (2026-02-10)
+### Phase 1: Emergency Fix & Logic Decoupling
+**Goal**: Fix "Ghost Data" bug and decouple creation from voting.
+- [ ] **Task 1.1**: Remove `_castVote` call inside `createProposal` (Contract).
+- [ ] **Task 1.2**: Add `require(balanceOf(msg.sender) >= 100)` to `createProposal`.
+- [ ] **Task 1.3**: Fix Frontend to fetch proposals immediately (BigInt/Index fix).
+- [ ] **Verification**: Pass Rules #2 and #9.
 
-#### Tasks
+### Phase 2: ZK Logic & Cost Model
+**Goal**: Implement D1/D2 circuit logic.
+- [ ] **Task 2.1**: Update Circuit to accept `cost` public input.
+- [ ] **Task 2.2**: Verify `cost == vote * vote` inside circuit.
+- [ ] **Verification**: Pass Rule #4.
 
-**🔴 RED: Write Diagnostic Tests**
-- [x] **Test 1.1 (Contract Debug)**: Write `scripts/debug_proposals.ts` to:
-  1. Mint tokens to a test account.
-  2. Call `createProposal`.
-  3. **Expect**: Transaction succeeds.
-  4. Immediately read `proposals(lastIndex)`.
-  5. **Expect**: Data matches input (Title, Description).
-  - ✅ **PASSED**: 3 proposals readable, all data valid
-- [x] **Test 1.2 (Frontend Integration)**: Check `useProposals` hook.
-  - Verify it handles BigInt correctly.
-  - Verify it triggers re-fetch after `ProposalCreated` event.
-  - ✅ **PASSED**: Frontend fetch simulation successful
-
-**🟢 GREEN: Fix the Code**
-- [x] **Task 1.3 (Contract Hotfix)**:
-  - If Revert: Temporarily disable complex Merkle Root checks in `createProposal`. Only check `ERC20.balanceOf > 100`.
-  - ✅ **Root Cause Found**: Function selector was wrong (`a7c6f7a5` → `b4e0d6af`)
-- [x] **Task 1.4 (Frontend Hotfix)**:
-  - Fix array indexing (Off-by-one error?).
-  - Ensure IPFS hashes (if used) are fetching correctly.
-  - ✅ **Fixed**: Corrected `proposalsD2` selector in `QuadraticVotingDemo.tsx`
-
-**🔵 REFACTOR: Verify**
-- [x] **Verification**: Manual test on Localhost. Create Proposal -> Refresh -> Card appears.
-  - ✅ **PASSED**: User confirmed proposals visible
-  - ✅ **BONUS**: Added loading state to prevent "empty state" flash
-
-#### Quality Gate ✋
-- [x] **Blocker Removed**: Can I create a proposal and see it? ✅ YES
+### Phase 3: UX/UI Polish (The 9 Commandments)
+**Goal**: Implement the strict UI states and Assets.
+- [ ] **Task 3.1**: Check `public/assets/` and use **`symbol.svg`** for all icons. (Rule #5).
+- [ ] **Task 3.2**: Implement "Pre-Flight Modal" with Red Warning. (Rule #7, #8).
+- [ ] **Task 3.3**: Implement `disabled` state for <100 TON users. (Rule #1, #6).
+- [ ] **Task 3.4**: Add Countdown Timer component. (Rule #3).
 
 ---
 
-### Phase 2: The Brain (ZK Circuits & Logic)
-**Goal**: Implement the `vote.circom` circuit that supports both D1 and D2 logic via a single proof.
-**Status**: ✅ COMPLETED (2026-02-10)
-
-#### Tasks
-
-**🔴 RED: Write Failing Tests First**
-- [x] **Test 2.1**: Circuit Logic Tests (`test/circuits/vote_test_real.cjs`)
-  - Case A: Input 1 Vote -> Public Cost 1 -> ✅ **PASS**
-  - Case B: Input 5 Votes -> Public Cost 25 -> ✅ **PASS**
-  - Case C: Input 5 Votes -> Public Cost 10 -> ✅ **FAIL** (correctly rejected)
-  - Case D: Nullifier Uniqueness -> ✅ **PASS**
-  - **All 5 tests passing (4s)**
-
-**🟢 GREEN: Implement to Make Tests Pass**
-- [x] **Task 2.2**: Implement `circuits/D2_QuadraticVoting.circom`
-  - ✅ Inputs: `creditRoot`, `proposalId`, `creditsSpent`, `voteCommitment` (Public)
-  - ✅ Logic: Merkle Membership, Quadratic Cost (`cost == numVotes * numVotes`)
-  - ✅ Already implemented and working
-- [x] **Task 2.3**: Generate Verifier & Integrate
-  - ✅ `circuits/build_d2/` contains compiled WASM and zkey
-  - ✅ Verifier integrated in contract
-
-**🔵 REFACTOR: Clean Up Code**
-- [x] **Task 2.4**: Constraints optimized for browser (~1M constraints)
-
-#### Quality Gate ✋
-- [x] **TDD Compliance**: All circuit tests pass? ✅ 5/5 passing
-- [x] **Security**: Vote choice is PRIVATE (not in public inputs) ✅
-
----
-
-### Phase 3: The Body (Frontend "One-Flow")
-**Goal**: Implement the Linear UX with State Machine defined in "Architecture Decisions".
-**Status**: ✅ COMPLETED (2026-02-10)
-
-#### Tasks
-
-**🔴 RED: Write Failing Tests First**
-- [x] **Test 3.1**: UX Logic Test (`test/frontend/voting-state.test.ts`)
-  - ✅ State transitions: IDLE -> PROOFING -> SIGNING -> SUBMITTING -> SUCCESS
-  - ✅ Quadratic cost calculation
-  - ✅ UI messages per state
-  - **All 12 tests passing**
-
-**🟢 GREEN: Implement to Make Tests Pass**
-- [x] **Task 3.2**: Implement `VotingCard` with State Machine
-  - ✅ Created `src/hooks/useVotingMachine.ts` with reducer pattern
-  - ✅ States: `IDLE`, `PROOFING`, `SIGNING`, `SUBMITTING`, `SUCCESS`, `ERROR`
-  - ✅ UI: Progress bar and state-specific emoji indicators
-  - ✅ Integrated into `QuadraticVotingDemo.tsx`
-- [x] **Task 3.3**: Web Worker for SnarkJS
-  - ✅ Created `src/workers/zkProofWorker.ts` - dedicated worker for proof generation
-  - ✅ Created `src/workers/proofWorkerHelper.ts` - Promise-based API with fallback
-  - ✅ Integrated into `generateQuadraticProof` in zkproof.ts
-  - ✅ Progress updates from worker to main thread
-  - ✅ Fallback to main thread if worker fails
-- [x] **Task 3.4**: Connect to Contract
-  - ✅ `writeContract` calls `castVoteD2` with proof args
-  - ✅ Transaction confirmation wait before SUCCESS
-
-**🔵 REFACTOR: Clean Up Code**
-- [x] **Task 3.5**: Polish Error Messages (User-friendly)
-  - ✅ Korean error messages for creditRoot mismatch
-  - ✅ Detect old proposals with invalid creditRoot
-  - ✅ Guide users to create new proposals
-
-#### Quality Gate ✋
-- [x] **UX Check**: Does the flow match the "Linear Flow" chart? ✅ YES
-- [x] **Performance**: Proof generation optimized with Web Worker
-- [x] **Feedback**: Do users see "Success" confetti? ✅ YES - CSS animation added
-
----
-
-## ⚠️ Risk Assessment
-
-| Risk | Probability | Impact | Mitigation Strategy |
-|------|-------------|--------|---------------------|
-| **Ghost Data (UI Sync)** | High | High | Use Graph Node or reliable RPC for event indexing. |
-| **Proof Time > 10s** | Medium | Medium | Optimize Circuit or use remote prover (optional). |
-| **Gas Cost Spikes** | High | Medium | Batch verifications (Future scope). |
-
----
-
-## 📝 Notes & Learnings
-- (Record any snarkjs specific version issues here)
-- (Document gas usage per vote)
+## 🧪 Final Checklist
+- [ ] Did I use **`symbol.svg`** everywhere?
+- [ ] Can a user vote twice? (Should be NO)
+- [ ] Does creating a proposal cost vote tokens? (Should be NO, only gas/fee)

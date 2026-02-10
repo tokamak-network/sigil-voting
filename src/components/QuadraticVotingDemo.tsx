@@ -85,6 +85,39 @@ type View = 'list' | 'create' | 'vote' | 'success'
 
 const FAUCET_URL = 'https://docs.tokamak.network/home/service-guide/faucet-testnet'
 
+// Rule #5: TON Token Icon component
+const TonIcon = ({ size = 16 }: { size?: number }) => (
+  <img
+    src="/assets/symbol.svg"
+    alt="TON"
+    width={size}
+    height={size}
+    style={{ verticalAlign: 'middle', marginRight: '4px' }}
+  />
+)
+
+// Rule #3: Countdown Timer helper
+function formatCountdown(endTime: Date): { text: string; isExpired: boolean } {
+  const now = new Date()
+  const diff = endTime.getTime() - now.getTime()
+
+  if (diff <= 0) {
+    return { text: '투표 종료', isExpired: true }
+  }
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+
+  if (days > 0) {
+    return { text: `${days}일 ${hours}시간 ${minutes}분`, isExpired: false }
+  } else if (hours > 0) {
+    return { text: `${hours}시간 ${minutes}분`, isExpired: false }
+  } else {
+    return { text: `${minutes}분`, isExpired: false }
+  }
+}
+
 export function QuadraticVotingDemo() {
   const { address, isConnected } = useAccount()
   const { connect } = useConnect()
@@ -97,6 +130,13 @@ export function QuadraticVotingDemo() {
   const [isLoadingProposals, setIsLoadingProposals] = useState(true)
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null)
   const [newProposalTitle, setNewProposalTitle] = useState('')
+
+  // Rule #3: Live countdown timer
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 60000) // Update every minute
+    return () => clearInterval(interval)
+  }, [])
 
   // Voting state machine
   const {
@@ -115,6 +155,10 @@ export function QuadraticVotingDemo() {
   const [selectedChoice, setSelectedChoice] = useState<VoteChoice | null>(null)
   const [showIntensity, setShowIntensity] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Rule #7 & #8: Pre-Flight Modal state
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [pendingVoteChoice, setPendingVoteChoice] = useState<VoteChoice | null>(null)
 
   const numVotes = votingContext.numVotes
   const txHash = votingContext.txHash
@@ -156,6 +200,10 @@ export function QuadraticVotingDemo() {
   // TON balance for eligibility check
   const tonBalanceFormatted = tonBalance ? Number(formatUnits(tonBalance, 18)) : 0
   const hasTon = tonBalanceFormatted > 0
+
+  // Rule #1: Gatekeeping - 100 TON required for proposal creation
+  const MIN_TON_FOR_PROPOSAL = 100
+  const canCreateProposal = tonBalanceFormatted >= MIN_TON_FOR_PROPOSAL
 
   // Use contract credits for voting power (default 10000 if not initialized)
   const totalVotingPower = availableCredits ? Number(availableCredits) : 10000
@@ -461,11 +509,11 @@ export function QuadraticVotingDemo() {
         <div className="uv-header-bar">
           {hasTon ? (
             <div className="uv-credits-badge">
-              🗳️ {totalVotingPower.toLocaleString()} TON
+              <TonIcon size={18} /> {totalVotingPower.toLocaleString()} TON
             </div>
           ) : (
             <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="uv-get-credits-btn">
-              💎 TON 받으러 가기
+              <TonIcon size={14} /> TON 받으러 가기
             </a>
           )}
         </div>
@@ -477,9 +525,15 @@ export function QuadraticVotingDemo() {
           <div className="uv-list-header">
             <h1>제안 목록</h1>
             {isConnected && (
-              <button className="uv-create-btn" onClick={() => setCurrentView('create')}>
-                + 새 제안
-              </button>
+              <div className="uv-create-btn-wrapper" title={!canCreateProposal ? `제안 생성에는 ${MIN_TON_FOR_PROPOSAL} TON 이상이 필요합니다` : ''}>
+                <button
+                  className={`uv-create-btn ${!canCreateProposal ? 'uv-btn-disabled' : ''}`}
+                  onClick={() => canCreateProposal && setCurrentView('create')}
+                  disabled={!canCreateProposal}
+                >
+                  + 새 제안 {!canCreateProposal && '🔒'}
+                </button>
+              </div>
             )}
           </div>
 
@@ -504,29 +558,44 @@ export function QuadraticVotingDemo() {
               <div className="uv-icon">📭</div>
               <h2>아직 제안이 없습니다</h2>
               <p className="uv-subtitle">첫 번째 제안을 만들어보세요</p>
-              <button className="uv-btn uv-btn-primary" onClick={() => setCurrentView('create')}>
-                제안 만들기
-              </button>
+              {canCreateProposal ? (
+                <button className="uv-btn uv-btn-primary" onClick={() => setCurrentView('create')}>
+                  제안 만들기
+                </button>
+              ) : (
+                <div className="uv-ineligible-notice">
+                  <p>🔒 제안 생성에는 {MIN_TON_FOR_PROPOSAL} TON 이상이 필요합니다</p>
+                  <p className="uv-balance-info">현재 잔액: {tonBalanceFormatted.toFixed(2)} TON</p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="uv-proposals-grid">
-              {proposals.map(proposal => (
-                <div
-                  key={proposal.id}
-                  className="uv-proposal-card"
-                  onClick={() => {
-                    setSelectedProposal(proposal)
-                    setCurrentView('vote')
-                  }}
-                >
-                  <div className="uv-proposal-id">#{proposal.id}</div>
-                  <h3>{proposal.title}</h3>
-                  <div className="uv-proposal-meta">
-                    <span>👤 {proposal.creator.slice(0, 6)}...{proposal.creator.slice(-4)}</span>
-                    <span>🗳️ {proposal.totalVotes}표</span>
+              {proposals.map(proposal => {
+                const countdown = formatCountdown(proposal.endTime)
+                return (
+                  <div
+                    key={proposal.id}
+                    className={`uv-proposal-card ${countdown.isExpired ? 'uv-proposal-expired' : ''}`}
+                    onClick={() => {
+                      setSelectedProposal(proposal)
+                      setCurrentView('vote')
+                    }}
+                  >
+                    <div className="uv-proposal-header">
+                      <div className="uv-proposal-id">#{proposal.id}</div>
+                      <div className={`uv-countdown ${countdown.isExpired ? 'expired' : ''}`}>
+                        ⏱️ {countdown.text}
+                      </div>
+                    </div>
+                    <h3>{proposal.title}</h3>
+                    <div className="uv-proposal-meta">
+                      <span>👤 {proposal.creator.slice(0, 6)}...{proposal.creator.slice(-4)}</span>
+                      <span>🗳️ {proposal.totalVotes}표</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
 
@@ -594,7 +663,7 @@ export function QuadraticVotingDemo() {
               <div className="uv-no-token-notice">
                 <p>투표하려면 TON이 필요합니다</p>
                 <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="uv-btn uv-btn-primary">
-                  💎 Faucet에서 TON 받기
+                  <TonIcon size={14} /> Faucet에서 TON 받기
                 </a>
               </div>
             )}
@@ -614,7 +683,10 @@ export function QuadraticVotingDemo() {
                     setError('투표하려면 TON이 필요합니다. Faucet에서 받아주세요.')
                     return
                   }
-                  if (!isProcessing) handleVote(CHOICE_FOR)
+                  if (!isProcessing) {
+                    setPendingVoteChoice(CHOICE_FOR)
+                    setShowConfirmModal(true)
+                  }
                 }}
                 disabled={isProcessing || !hasTon}
               >
@@ -628,7 +700,10 @@ export function QuadraticVotingDemo() {
                     setError('투표하려면 TON이 필요합니다. Faucet에서 받아주세요.')
                     return
                   }
-                  if (!isProcessing) handleVote(CHOICE_AGAINST)
+                  if (!isProcessing) {
+                    setPendingVoteChoice(CHOICE_AGAINST)
+                    setShowConfirmModal(true)
+                  }
                 }}
                 disabled={isProcessing || !hasTon}
               >
@@ -641,7 +716,7 @@ export function QuadraticVotingDemo() {
               <>
                 <div className="uv-vote-info" style={{ color: colors.text }}>
                   <span className="uv-vote-count">{numVotes}표</span>
-                  <span className="uv-vote-cost">{quadraticCost} TON</span>
+                  <span className="uv-vote-cost"><TonIcon size={14} /> {quadraticCost} TON</span>
                 </div>
 
                 {!showIntensity ? (
@@ -677,7 +752,7 @@ export function QuadraticVotingDemo() {
                       </div>
                       <div className="uv-cost-labels">
                         <span>0</span>
-                        <span>{totalVotingPower.toLocaleString()} TON</span>
+                        <span><TonIcon size={14} /> {totalVotingPower.toLocaleString()} TON</span>
                       </div>
                     </div>
 
@@ -741,7 +816,7 @@ export function QuadraticVotingDemo() {
               </div>
               <div className="uv-result-row">
                 <span>사용 TON</span>
-                <strong>{quadraticCost} TON</strong>
+                <strong><TonIcon size={16} /> {quadraticCost} TON</strong>
               </div>
               <div className="uv-result-row uv-hidden">
                 <span>선택</span>
@@ -767,6 +842,64 @@ export function QuadraticVotingDemo() {
             >
               목록으로 돌아가기
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Rule #7 & #8: Pre-Flight Confirmation Modal */}
+      {showConfirmModal && pendingVoteChoice !== null && (
+        <div className="uv-modal-overlay" onClick={() => setShowConfirmModal(false)}>
+          <div className="uv-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>투표 확인</h2>
+
+            <div className="uv-modal-content">
+              <div className="uv-modal-vote-info">
+                <div className="uv-modal-row">
+                  <span>선택</span>
+                  <strong className={pendingVoteChoice === CHOICE_FOR ? 'uv-for' : 'uv-against'}>
+                    {pendingVoteChoice === CHOICE_FOR ? '👍 찬성' : '👎 반대'}
+                  </strong>
+                </div>
+                <div className="uv-modal-row">
+                  <span>투표 수</span>
+                  <strong>{numVotes}표</strong>
+                </div>
+                <div className="uv-modal-row">
+                  <span>사용 TON</span>
+                  <strong><TonIcon size={16} /> {quadraticCost} TON</strong>
+                </div>
+              </div>
+
+              {/* Rule #7: One-Shot Warning (Red) */}
+              <div className="uv-modal-warning">
+                <span className="uv-warning-icon">⚠️</span>
+                <div className="uv-warning-text">
+                  <strong>최종 결정입니다</strong>
+                  <p>제안당 1번만 투표할 수 있습니다. 이 결정은 나중에 변경하거나 취소할 수 없습니다.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="uv-modal-buttons">
+              <button
+                className="uv-btn uv-btn-secondary"
+                onClick={() => {
+                  setShowConfirmModal(false)
+                  setPendingVoteChoice(null)
+                }}
+              >
+                취소
+              </button>
+              <button
+                className="uv-btn uv-btn-primary"
+                onClick={() => {
+                  setShowConfirmModal(false)
+                  handleVote(pendingVoteChoice)
+                }}
+              >
+                확인 및 서명
+              </button>
+            </div>
           </div>
         </div>
       )}
