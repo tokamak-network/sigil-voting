@@ -42,6 +42,18 @@ interface IERC20 {
     function approve(address spender, uint256 amount) external returns (bool);
 }
 
+/**
+ * @dev Interface for ERC20OnApprove callback (used by TON/SeigToken)
+ */
+interface IERC20OnApprove {
+    function onApprove(
+        address owner,
+        address spender,
+        uint256 amount,
+        bytes calldata data
+    ) external returns (bool);
+}
+
 contract ZkVotingFinal {
     // ============ Constants ============
     uint256 public constant CHOICE_AGAINST = 0;
@@ -522,6 +534,83 @@ contract ZkVotingFinal {
         proposal.totalCreditsSpent += _creditsSpent;
 
         emit VoteCommittedD2(_proposalId, _nullifier, _commitment, _numVotes, _creditsSpent);
+    }
+
+    /**
+     * @dev Callback for TON's approveAndCall - enables single-transaction voting
+     * Called by TON token contract after user approves spending
+     * @param owner The user who approved the tokens
+     * @param spender This contract's address
+     * @param amount The amount of TON approved (in wei)
+     * @param data Encoded vote parameters: (proposalId, commitment, numVotes, creditsSpent, nullifier, pA, pB, pC)
+     */
+    function onApprove(
+        address owner,
+        address spender,
+        uint256 amount,
+        bytes calldata data
+    ) external returns (bool) {
+        // Only TON token can call this
+        require(msg.sender == address(tonToken), "Only TON token can call");
+        require(spender == address(this), "Invalid spender");
+
+        // Decode vote parameters
+        (
+            uint256 _proposalId,
+            uint256 _commitment,
+            uint256 _numVotes,
+            uint256 _creditsSpent,
+            uint256 _nullifier,
+            uint256[2] memory _pA,
+            uint256[2][2] memory _pB,
+            uint256[2] memory _pC
+        ) = abi.decode(data, (uint256, uint256, uint256, uint256, uint256, uint256[2], uint256[2][2], uint256[2]));
+
+        ProposalD2 storage proposal = proposalsD2[_proposalId];
+
+        if (!proposal.exists) revert ProposalNotFound();
+        if (block.timestamp > proposal.endTime) revert NotInCommitPhase();
+        if (nullifierUsedD2[_proposalId][_nullifier]) revert NullifierAlreadyUsed();
+
+        // Verify quadratic cost
+        uint256 expectedCost = calculateQuadraticCost(_numVotes);
+        if (_creditsSpent != expectedCost) revert InvalidQuadraticCost();
+
+        // Verify the approved amount matches
+        uint256 tonAmount = _creditsSpent * 1e18;
+        require(amount >= tonAmount, "Insufficient approved amount");
+
+        // Verify ZK proof
+        uint256[5] memory pubSignals = [_nullifier, _commitment, _proposalId, _creditsSpent, proposal.creditRoot];
+        bool validProof = verifierD2.verifyProof(_pA, _pB, _pC, pubSignals);
+        if (!validProof) revert InvalidProof();
+
+        // Transfer TON from user to treasury (we are approved via approveAndCall)
+        bool success = tonToken.transferFrom(owner, treasury, tonAmount);
+        require(success, "TON transfer failed");
+
+        uint256 userBalance = tonToken.balanceOf(owner);
+        emit CreditsBurned(owner, _creditsSpent, userBalance / 1e18);
+
+        // Store commitment
+        nullifierUsedD2[_proposalId][_nullifier] = true;
+        commitmentsD2[_proposalId][_nullifier] = VoteCommitmentD2({
+            commitment: _commitment,
+            creditsSpent: _creditsSpent,
+            numVotes: _numVotes,
+            nullifier: _nullifier,
+            timestamp: block.timestamp,
+            revealed: false,
+            revealedChoice: 0,
+            exists: true
+        });
+
+        proposal.totalCommitments++;
+        proposal.totalCreditsSpent += _creditsSpent;
+
+        emit VoteCommittedD2(_proposalId, _nullifier, _commitment, _numVotes, _creditsSpent);
+
+        return true;
     }
 
     function revealVoteD2(
