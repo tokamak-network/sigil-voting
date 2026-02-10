@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect } from 'react'
-import { useAccount, useWriteContract, useReadContract } from 'wagmi'
+import { useAccount, useWriteContract, useReadContract, usePublicClient } from 'wagmi'
 import { useConnect } from 'wagmi'
 import { injected } from 'wagmi/connectors'
-import { formatUnits } from 'viem'
+import { formatUnits, decodeAbiParameters } from 'viem'
 import {
   getOrCreateKeyPairAsync,
   prepareD2VoteAsync,
@@ -30,6 +30,7 @@ const ZK_VOTING_FINAL_ABI = [
   { type: 'function', name: 'proposalCountD2', inputs: [], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
   { type: 'function', name: 'createProposalD2', inputs: [{ name: '_title', type: 'string' }, { name: '_description', type: 'string' }, { name: '_creditRoot', type: 'uint256' }, { name: '_votingDuration', type: 'uint256' }, { name: '_revealDuration', type: 'uint256' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'nonpayable' },
   { type: 'function', name: 'castVoteD2', inputs: [{ name: '_proposalId', type: 'uint256' }, { name: '_commitment', type: 'uint256' }, { name: '_numVotes', type: 'uint256' }, { name: '_creditsSpent', type: 'uint256' }, { name: '_nullifier', type: 'uint256' }, { name: '_pA', type: 'uint256[2]' }, { name: '_pB', type: 'uint256[2][2]' }, { name: '_pC', type: 'uint256[2]' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'creditRootHistory', inputs: [{ name: '', type: 'uint256' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
 ] as const
 
 const ERC20_ABI = [
@@ -53,6 +54,7 @@ export function QuadraticVotingDemo() {
   const { address, isConnected } = useAccount()
   const { connect } = useConnect()
   const { writeContractAsync } = useWriteContract()
+  const publicClient = usePublicClient()
 
   const [currentView, setCurrentView] = useState<View>('list')
   const [keyPair, setKeyPair] = useState<KeyPair | null>(null)
@@ -162,59 +164,74 @@ export function QuadraticVotingDemo() {
 
   const handleConnect = () => connect({ connector: injected() })
 
+  const [createStatus, setCreateStatus] = useState<string | null>(null)
+
   const handleCreateProposal = useCallback(async () => {
-    if (!newProposalTitle.trim() || !keyPair || !address) return
+    if (!newProposalTitle.trim() || !publicClient) return
     setIsProcessing(true)
     setError(null)
+    setCreateStatus('준비 중...')
 
     try {
-      let creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
-
-      // Get or create credit note with proper Poseidon hash
-      let creditNote: CreditNote | null = getStoredCreditNote(address)
-      if (!creditNote) {
-        creditNote = await createCreditNoteAsync(keyPair, BigInt(totalVotingPower), address)
-      }
-
-      // Use proper Poseidon hash for credit note
-      const selfNoteHash = creditNote.creditNoteHash
-      if (!creditNotes.includes(selfNoteHash)) {
-        await writeContractAsync({
+      // Try to get existing credit root from contract (index 0)
+      let creditRoot: bigint
+      try {
+        setCreateStatus('기존 설정 확인 중...')
+        const existingRoot = await publicClient.readContract({
           address: ZK_VOTING_FINAL_ADDRESS,
           abi: ZK_VOTING_FINAL_ABI,
-          functionName: 'registerCreditNote',
-          args: [selfNoteHash],
+          functionName: 'creditRootHistory',
+          args: [BigInt(0)],
         })
-        creditNotes.push(selfNoteHash)
-        await refetchCreditNotes()
+        creditRoot = existingRoot as bigint
+      } catch {
+        // No existing root, need to register one first
+        setCreateStatus('초기 설정 중... (1/2)')
+        creditRoot = BigInt(Date.now())
+
+        const registerHash = await writeContractAsync({
+          address: ZK_VOTING_FINAL_ADDRESS,
+          abi: ZK_VOTING_FINAL_ABI,
+          functionName: 'registerCreditRoot',
+          args: [creditRoot],
+        })
+        setCreateStatus('블록 확인 대기 중...')
+        await publicClient.waitForTransactionReceipt({ hash: registerHash })
       }
 
-      // Generate valid Merkle root from registered voters
-      const { root: creditRoot } = await generateMerkleProofAsync(creditNotes, 0)
-
-      await writeContractAsync({
-        address: ZK_VOTING_FINAL_ADDRESS,
-        abi: ZK_VOTING_FINAL_ABI,
-        functionName: 'registerCreditRoot',
-        args: [creditRoot],
-      })
-
-      await writeContractAsync({
+      // Create proposal
+      setCreateStatus('제안 생성 중...')
+      const createHash = await writeContractAsync({
         address: ZK_VOTING_FINAL_ADDRESS,
         abi: ZK_VOTING_FINAL_ABI,
         functionName: 'createProposalD2',
         args: [newProposalTitle, '', creditRoot, BigInt(86400), BigInt(86400)],
       })
 
+      setCreateStatus('블록 확인 대기 중...')
+      await publicClient.waitForTransactionReceipt({ hash: createHash })
+
       await refetchProposalCount()
       setNewProposalTitle('')
+      setCreateStatus(null)
       setCurrentView('list')
     } catch (err) {
-      setError((err as Error).message)
+      console.error('[DEBUG] Create proposal error:', err)
+      const errorMsg = (err as Error).message || ''
+      if (errorMsg.includes('User rejected') || errorMsg.includes('user rejected') || errorMsg.includes('denied')) {
+        setError('트랜잭션이 취소되었습니다')
+      } else if (errorMsg.includes('insufficient funds')) {
+        setError('Sepolia ETH가 부족합니다. Faucet에서 받아주세요.')
+      } else if (errorMsg.includes('gas')) {
+        setError('가스 오류가 발생했습니다. 다시 시도해주세요.')
+      } else {
+        setError('제안 생성에 실패했습니다. 다시 시도해주세요.')
+      }
     } finally {
       setIsProcessing(false)
+      setCreateStatus(null)
     }
-  }, [newProposalTitle, keyPair, address, totalVotingPower, registeredCreditNotes, writeContractAsync, refetchProposalCount, refetchCreditNotes])
+  }, [newProposalTitle, publicClient, writeContractAsync, refetchProposalCount])
 
   const handleVote = useCallback(async (choice: VoteChoice) => {
     if (!keyPair || !selectedProposal || !hasTon || !address) return
@@ -311,11 +328,11 @@ export function QuadraticVotingDemo() {
         <div className="uv-header-bar">
           {hasTon ? (
             <div className="uv-credits-badge">
-              🪙 {totalVotingPower.toLocaleString()} TON
+              💎 {totalVotingPower.toLocaleString()} TON
             </div>
           ) : (
             <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="uv-get-credits-btn">
-              🪙 TON 받으러 가기
+              💎 TON 받으러 가기
             </a>
           )}
         </div>
@@ -380,7 +397,7 @@ export function QuadraticVotingDemo() {
       {/* VIEW: Create Proposal */}
       {currentView === 'create' && (
         <div className="uv-create-view">
-          <button className="uv-back" onClick={() => setCurrentView('list')}>← 목록으로</button>
+          <button className="uv-back" onClick={() => setCurrentView('list')} disabled={isProcessing}>← 목록으로</button>
 
           <div className="uv-card">
             <h1>새 제안</h1>
@@ -392,7 +409,15 @@ export function QuadraticVotingDemo() {
               placeholder="제안 제목을 입력하세요"
               value={newProposalTitle}
               onChange={(e) => setNewProposalTitle(e.target.value)}
+              disabled={isProcessing}
             />
+
+            {createStatus && (
+              <div className="uv-loading">
+                <div className="uv-spinner"></div>
+                <span>{createStatus}</span>
+              </div>
+            )}
 
             {error && <div className="uv-error">{error}</div>}
 
@@ -401,7 +426,7 @@ export function QuadraticVotingDemo() {
               onClick={handleCreateProposal}
               disabled={!newProposalTitle.trim() || isProcessing}
             >
-              {isProcessing ? '생성 중...' : '제안 생성'}
+              {isProcessing ? '처리 중...' : '제안 생성'}
             </button>
           </div>
         </div>
@@ -429,7 +454,7 @@ export function QuadraticVotingDemo() {
               <div className="uv-no-token-notice">
                 <p>투표하려면 TON이 필요합니다</p>
                 <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="uv-btn uv-btn-primary">
-                  🪙 Faucet에서 TON 받기
+                  💎 Faucet에서 TON 받기
                 </a>
               </div>
             )}
@@ -591,12 +616,49 @@ export function QuadraticVotingDemo() {
   )
 }
 
+// proposalsD2(uint256) selector = 0xb4e0d6af
 function getProposalSelector(proposalId: number): string {
-  const selector = 'a7c6f7a5'
+  const selector = 'b4e0d6af'
   const paddedId = proposalId.toString(16).padStart(64, '0')
   return selector + paddedId
 }
 
-function decodeProposalResult(_hex: string): { title: string; creator: string; endTime: bigint; totalVotes: bigint } {
-  return { title: '', creator: '', endTime: 0n, totalVotes: 0n }
+function decodeProposalResult(hex: string): { title: string; creator: string; endTime: bigint; totalVotes: bigint } {
+  try {
+    if (!hex || hex === '0x' || hex.length < 66) {
+      return { title: '', creator: '', endTime: 0n, totalVotes: 0n }
+    }
+
+    // ProposalD2 struct: id, title, description, proposer, startTime, endTime, ...
+    const decoded = decodeAbiParameters(
+      [
+        { name: 'id', type: 'uint256' },
+        { name: 'title', type: 'string' },
+        { name: 'description', type: 'string' },
+        { name: 'proposer', type: 'address' },
+        { name: 'startTime', type: 'uint256' },
+        { name: 'endTime', type: 'uint256' },
+        { name: 'revealEndTime', type: 'uint256' },
+        { name: 'creditRoot', type: 'uint256' },
+        { name: 'forVotes', type: 'uint256' },
+        { name: 'againstVotes', type: 'uint256' },
+        { name: 'abstainVotes', type: 'uint256' },
+        { name: 'totalCreditsSpent', type: 'uint256' },
+        { name: 'totalCommitments', type: 'uint256' },
+        { name: 'revealedVotes', type: 'uint256' },
+        { name: 'exists', type: 'bool' },
+      ],
+      hex as `0x${string}`
+    )
+
+    return {
+      title: decoded[1] as string,
+      creator: decoded[3] as string,
+      endTime: decoded[5] as bigint,
+      totalVotes: (decoded[8] as bigint) + (decoded[9] as bigint),
+    }
+  } catch (e) {
+    console.error('Failed to decode proposal:', e)
+    return { title: '', creator: '', endTime: 0n, totalVotes: 0n }
+  }
 }
