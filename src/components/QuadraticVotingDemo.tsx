@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { useAccount, useWriteContract, useReadContract, usePublicClient } from 'wagmi'
 import { useConnect } from 'wagmi'
 import { injected } from 'wagmi/connectors'
-import { formatUnits, decodeAbiParameters } from 'viem'
+import { formatUnits, decodeAbiParameters, encodeAbiParameters } from 'viem'
 import {
   getOrCreateKeyPairAsync,
   prepareD2VoteAsync,
@@ -69,6 +69,7 @@ const ERC20_ABI = [
   { type: 'function', name: 'symbol', inputs: [], outputs: [{ name: '', type: 'string' }], stateMutability: 'view' },
   { type: 'function', name: 'allowance', inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
   { type: 'function', name: 'approve', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'approveAndCall', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }, { name: 'data', type: 'bytes' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'nonpayable' },
 ] as const
 
 interface Proposal {
@@ -368,37 +369,32 @@ export function QuadraticVotingDemo() {
 
       proofComplete() // State: PROOFING -> SIGNING
 
-      // Check and approve TON spending if needed
+      // Encode vote data for approveAndCall
       const tonAmountNeeded = voteData.creditsSpent * BigInt(1e18) // 1 credit = 1 TON
-      if (publicClient) {
-        const currentAllowance = await publicClient.readContract({
-          address: TON_TOKEN_ADDRESS,
-          abi: ERC20_ABI,
-          functionName: 'allowance',
-          args: [address, ZK_VOTING_FINAL_ADDRESS],
-        }) as bigint
+      const voteCallData = encodeAbiParameters(
+        [
+          { name: 'proposalId', type: 'uint256' },
+          { name: 'commitment', type: 'uint256' },
+          { name: 'numVotes', type: 'uint256' },
+          { name: 'creditsSpent', type: 'uint256' },
+          { name: 'nullifier', type: 'uint256' },
+          { name: 'pA', type: 'uint256[2]' },
+          { name: 'pB', type: 'uint256[2][2]' },
+          { name: 'pC', type: 'uint256[2]' },
+        ],
+        [proposalId, commitment, BigInt(numVotes), voteData.creditsSpent, nullifier, proof.pA, proof.pB, proof.pC]
+      )
 
-        if (currentAllowance < tonAmountNeeded) {
-          updateProgress(55, 'TON 사용 승인 중...')
-          const approveHash = await writeContractAsync({
-            address: TON_TOKEN_ADDRESS,
-            abi: ERC20_ABI,
-            functionName: 'approve',
-            args: [ZK_VOTING_FINAL_ADDRESS, tonAmountNeeded],
-          })
-          await publicClient.waitForTransactionReceipt({ hash: approveHash })
-        }
-      }
+      updateProgress(55, '투표 트랜잭션 서명 대기...')
 
-      updateProgress(60, '투표 트랜잭션 서명 대기...')
-
-      // Wait for user to sign vote transaction
+      // Single transaction: approveAndCall on TON token
+      // This approves TON spending and calls our contract's onApprove callback in one tx
       const hash = await writeContractAsync({
-        address: ZK_VOTING_FINAL_ADDRESS,
-        abi: ZK_VOTING_FINAL_ABI,
-        functionName: 'castVoteD2',
-        args: [proposalId, commitment, BigInt(numVotes), voteData.creditsSpent, nullifier, proof.pA, proof.pB, proof.pC],
-        gas: BigInt(1000000),
+        address: TON_TOKEN_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: 'approveAndCall',
+        args: [ZK_VOTING_FINAL_ADDRESS, tonAmountNeeded, voteCallData],
+        gas: BigInt(1500000),
       })
 
       signed() // State: SIGNING -> SUBMITTING
@@ -437,6 +433,12 @@ export function QuadraticVotingDemo() {
         userMessage = 'Sepolia ETH가 부족합니다. Faucet에서 받아주세요.'
       } else if (errorMsg.includes('이전 버전') || errorMsg.includes('새 제안을 생성')) {
         userMessage = errorMsg // Already user-friendly from zkproof.ts
+      } else if (errorMsg.includes('TON transfer failed') || errorMsg.includes('transfer failed')) {
+        userMessage = 'TON 전송에 실패했습니다. 잔액을 확인해주세요.'
+      } else if (errorMsg.includes('Only TON token can call')) {
+        userMessage = '잘못된 컨트랙트 호출입니다.'
+      } else if (errorMsg.includes('Insufficient approved amount')) {
+        userMessage = 'TON 승인 금액이 부족합니다.'
       }
 
       setVotingError(userMessage)

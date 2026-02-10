@@ -3,13 +3,13 @@
   "contracts": {
     "verifierD1": "0xe4E6CFD30a945990Eca672a751410252b1AA903E",
     "verifierD2": "0xF4e9238Da28e3Fa9D8888A5D0Df078c02E5a45E4",
-    "zkVotingFinal": "0xECDa191bE29172Bee33C0E4DC9Ebb60fc9d1Ac09",
+    "zkVotingFinal": "0xF10ECe876D72317D8e3410D147A49380dd27264e",
     "poseidonT5": "0x555333f3f677Ca3930Bf7c56ffc75144c51D9767",
     "tonToken": "0xa30fe40285B8f5c0457DbC3B7C8A280373c40044",
     "treasury": "0x9f2429c483802e5A8dcF8cD6AF4e30c0479cD841",
     "privateVoting": "0xc3bF134b60FA8ac7366CA0DeDbD50ECd9751ab39",
     "groth16Verifier": "0x4E510852F416144f0C0d7Ef83F0a4ab28aCba864"
   },
-  "deployedAt": "2026-02-10T10:25:37.763Z",
+  "deployedAt": "2026-02-10T11:58:49.644Z",
   "deployer": "0x9f2429c483802e5A8dcF8cD6AF4e30c0479cD841"
 }
