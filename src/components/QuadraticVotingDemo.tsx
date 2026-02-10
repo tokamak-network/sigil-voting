@@ -9,7 +9,10 @@ import {
   generateQuadraticProof,
   storeD2VoteForReveal,
   generateMerkleProofAsync,
+  createCreditNoteAsync,
+  getStoredCreditNote,
   type KeyPair,
+  type CreditNote,
   type VoteChoice,
   type ProofGenerationProgress,
   CHOICE_FOR,
@@ -160,23 +163,34 @@ export function QuadraticVotingDemo() {
   const handleConnect = () => connect({ connector: injected() })
 
   const handleCreateProposal = useCallback(async () => {
-    if (!newProposalTitle.trim()) return
+    if (!newProposalTitle.trim() || !keyPair || !address) return
     setIsProcessing(true)
     setError(null)
 
     try {
-      const creditNotes = (registeredCreditNotes as bigint[]) || []
+      let creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
 
-      // If no credit notes, we need at least one voter registered
-      // For now, use a dummy root if empty (first proposal scenario)
-      let creditRoot: bigint
-      if (creditNotes.length === 0) {
-        // Use a placeholder root - first voter will register when voting
-        creditRoot = BigInt(1)
-      } else {
-        const { root } = await generateMerkleProofAsync(creditNotes, 0)
-        creditRoot = root
+      // Get or create credit note with proper Poseidon hash
+      let creditNote: CreditNote | null = getStoredCreditNote(address)
+      if (!creditNote) {
+        creditNote = await createCreditNoteAsync(keyPair, BigInt(totalVotingPower), address)
       }
+
+      // Use proper Poseidon hash for credit note
+      const selfNoteHash = creditNote.creditNoteHash
+      if (!creditNotes.includes(selfNoteHash)) {
+        await writeContractAsync({
+          address: ZK_VOTING_FINAL_ADDRESS,
+          abi: ZK_VOTING_FINAL_ABI,
+          functionName: 'registerCreditNote',
+          args: [selfNoteHash],
+        })
+        creditNotes.push(selfNoteHash)
+        await refetchCreditNotes()
+      }
+
+      // Generate valid Merkle root from registered voters
+      const { root: creditRoot } = await generateMerkleProofAsync(creditNotes, 0)
 
       await writeContractAsync({
         address: ZK_VOTING_FINAL_ADDRESS,
@@ -200,10 +214,10 @@ export function QuadraticVotingDemo() {
     } finally {
       setIsProcessing(false)
     }
-  }, [newProposalTitle, registeredCreditNotes, writeContractAsync, refetchProposalCount])
+  }, [newProposalTitle, keyPair, address, totalVotingPower, registeredCreditNotes, writeContractAsync, refetchProposalCount, refetchCreditNotes])
 
   const handleVote = useCallback(async (choice: VoteChoice) => {
-    if (!keyPair || !selectedProposal || !hasTon) return
+    if (!keyPair || !selectedProposal || !hasTon || !address) return
     if (quadraticCost > totalVotingPower) {
       setError('TON이 부족합니다')
       return
@@ -218,8 +232,13 @@ export function QuadraticVotingDemo() {
       const proposalId = BigInt(selectedProposal.id)
       const voteData = await prepareD2VoteAsync(keyPair, choice, BigInt(numVotes), proposalId)
 
-      // Auto-register voter if needed
-      const noteHash = BigInt(keyPair.pkX.toString())
+      // Get or create credit note with proper Poseidon hash
+      let creditNote: CreditNote | null = getStoredCreditNote(address)
+      if (!creditNote) {
+        creditNote = await createCreditNoteAsync(keyPair, BigInt(totalVotingPower), address)
+      }
+
+      const noteHash = creditNote.creditNoteHash
       let creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
 
       if (!creditNotes.includes(noteHash)) {
@@ -245,18 +264,9 @@ export function QuadraticVotingDemo() {
         args: [creditRoot],
       })
 
-      // Create a credit note based on TON balance
-      const mockCreditNote = {
-        creditNoteHash: noteHash,
-        totalCredits: BigInt(totalVotingPower),
-        creditSalt: BigInt(Date.now()),
-        pkX: keyPair.pkX,
-        pkY: keyPair.pkY
-      }
-
       const { proof, nullifier, commitment } = await generateQuadraticProof(
         keyPair,
-        mockCreditNote,
+        creditNote,
         voteData,
         creditRoot,
         creditNotes,
@@ -284,7 +294,7 @@ export function QuadraticVotingDemo() {
       setIsProcessing(false)
       setProofProgress(null)
     }
-  }, [keyPair, selectedProposal, hasTon, numVotes, quadraticCost, totalVotingPower, registeredCreditNotes, writeContractAsync, refetchCreditNotes, refetchTonBalance, address])
+  }, [keyPair, selectedProposal, hasTon, address, numVotes, quadraticCost, totalVotingPower, registeredCreditNotes, writeContractAsync, refetchCreditNotes, refetchTonBalance])
 
   const getIntensityColor = () => {
     if (isDanger) return { bg: 'rgba(239, 68, 68, 0.15)', border: '#ef4444', text: '#fca5a5' }
