@@ -7319,3 +7319,261 @@ body {
   flex: 1;
 }
 
+
+/* ============================================
+   NEW CEO-APPROVED VOTING UI STYLES
+   ============================================ */
+
+/* Loading Overlay (Rule #6) */
+.uv-loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+}
+
+.uv-loading-content {
+  text-align: center;
+  color: #fff;
+}
+
+.uv-spinner-large {
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(99, 102, 241, 0.2);
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+.uv-loading-text {
+  font-size: 1.1rem;
+  margin-bottom: 16px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Voted State (Rule #5) */
+.uv-voted-state {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.uv-voted-icon {
+  margin-bottom: 16px;
+}
+
+.uv-voted-state h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #22c55e;
+}
+
+.uv-encrypted-notice {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+
+.uv-reveal-notice {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
+}
+
+/* Section Layout (Rule #3) */
+.uv-section {
+  margin-bottom: 24px;
+}
+
+.uv-section.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.uv-section-label {
+  display: block;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+/* Direction Toggle (Rule #3) */
+.uv-direction-toggle {
+  display: flex;
+  gap: 12px;
+}
+
+.uv-toggle-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.uv-toggle-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.uv-toggle-btn.uv-toggle-for.active {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: #22c55e;
+  color: #22c55e;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.3);
+}
+
+.uv-toggle-btn.uv-toggle-against.active {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #ef4444;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+}
+
+/* Intensity Section */
+.uv-intensity-section {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.uv-intensity-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.uv-votes-display,
+.uv-cost-display {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.uv-votes-number,
+.uv-cost-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.uv-votes-label,
+.uv-cost-label {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.uv-cost-display {
+  color: #6366f1;
+}
+
+.uv-cost-display .uv-cost-number {
+  color: #6366f1;
+}
+
+.uv-cost-formula {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.uv-warning-text {
+  text-align: center;
+  margin-top: 12px;
+  color: #f59e0b;
+  font-size: 0.9rem;
+}
+
+/* Cast Vote Button (Rule #4) */
+.uv-cast-vote-btn {
+  width: 100%;
+  padding: 18px 24px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #fff;
+}
+
+.uv-cast-vote-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+}
+
+.uv-cast-vote-btn:disabled {
+  background: #374151;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: not-allowed;
+}
+
+/* Privacy Notice */
+.uv-privacy-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Rule #2: Locked Button Tooltip */
+.uv-create-btn-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.uv-tooltip {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f2937;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  margin-bottom: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: opacity 0.2s, visibility 0.2s;
+  z-index: 100;
+}
+
+.uv-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #1f2937;
+}
+
+.uv-create-btn-wrapper:hover .uv-tooltip {
+  visibility: visible;
+  opacity: 1;
+}

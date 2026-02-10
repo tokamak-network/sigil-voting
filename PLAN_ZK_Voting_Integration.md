@@ -1,159 +1,82 @@
-# Implementation Plan: ZK-Voting Integration (Unified & Verified)
+# Implementation Plan: ZK-Voting Integration (Strict UX Fixes)
 
-**Status**: 🔧 TON Integration Fix Complete
-**Started**: 2026-02-10
-**Last Updated**: 2026-02-10
-**Target**: Production-Ready Logic & UI
+**Status**: 🚑 Emergency Correction (Reflecting CEO's 8 Feedback Points)
+**Target**: Perfect UI Logic & Transaction Safety
 
 ---
 
-## ✅ Critical Fix: SeigToken approveAndCall (2026-02-10)
+## 🛡️ The 10 Commandments: Verification Gate
+**STOP**: Do NOT proceed until these are verified.
 
-**Problem**: SeigToken의 `transferFrom`은 "only sender or recipient can transfer" 제한이 있어서 일반 ERC20 approve 패턴이 작동하지 않음.
-
-**Solution**: TON의 `approveAndCall` 패턴 사용
-- Contract에 `onApprove` callback 추가
-- Frontend에서 `approveAndCall` 한번 호출로 approve + vote 동시 처리
-- 사용자는 **1번만 서명** (기존 2번 → 1번)
-
-**Deployed Contract**: `0xF10ECe876D72317D8e3410D147A49380dd27264e`
-
-**Commit**: `d6dcc5d Fix SeigToken transferFrom issue with approveAndCall pattern`
-
----
-
-## 🛡️ The 9 Commandments: Verification Gate
-**STOP**: Before writing any new code, verify these 9 requirements are met.
-**Status**: ✅ All Verified (2026-02-10)
-
-| No. | Requirement (The 9 Rules) | Verification Method (Test Scenario) | Pass |
+| No. | Requirement | Verification Method (Test Scenario) | Pass |
 |:---:|:---|:---|:---:|
-| **1** | **Gatekeeping** (<100 TON Block) | Connect wallet with **10 TON**. "Create Proposal" button MUST be **Disabled/Greyed out**. | [x] |
-| **2** | **Decoupling** (No Auto-Vote) | Create a proposal. Check list immediately. Vote count MUST be **0**. | [x] |
-| **3** | **Countdown Timer** | Check Proposal Card. MUST show **"Time Remaining: DD:HH:MM"**. | [x] |
-| **4** | **Conditional Deduction** | Move slider -> Check Wallet. Token MUST NOT be deducted until **after** modal confirm & signature. | [x] |
-| **5** | **Custom Asset** (Strict) | Check UI icons. MUST use **`symbol.svg`** in `public/assets/`. **DO NOT** use emojis (💎) or generic coins. | [x] |
-| **6** | **Ineligible UI** | Connect with low balance. Must see **Blocking Screen / Tooltip** explaining "Requires 100+ TON". | [x] |
-| **7** | **One-Shot Warning** | Open Confirm Modal. Must see text: **"Final Decision / Cannot Change"** in Red. | [x] |
-| **8** | **Pre-Flight Modal** | Click "Vote". **Custom Modal** must appear **BEFORE** MetaMask pops up. | [x] |
-| **9** | **Registration = Creation** | Verify there is **NO separate "Register Candidate" button**. `createProposal` handles everything. | [x] |
+| **1** | **Strict Symbol Usage** | Check `<img>` tags. MUST use `/assets/symbol.svg`. **NO** emojis/text. | [ ] |
+| **2** | **Locked Button Tooltip** | Hover over disabled "Create Proposal" button. MUST show tooltip: **"Need 100+ TON"**. | [ ] |
+| **3** | **Explicit Choice First** | UI Order: **1. Select For/Against** (Visual Highlight) -> **2. Slider** -> **3. Vote Button**. | [ ] |
+| **4** | **No Double-Action** | After slider, there should be **ONE "Confirm" button**. NOT "For/Against" buttons again. | [ ] |
+| **5** | **Post-Vote Privacy** | After voting, show: **"Vote Encrypted 🔒"**. Hide the slider. | [ ] |
+| **6** | **Loading Feedback** | During transaction: **Dim Background + Show Spinner**. Block all interaction. | [ ] |
+| **7** | **Token Deduction** | Verify `balanceOf` decreases by $N^2$ **ONLY AFTER** the transaction succeeds. | [ ] |
+| **8** | **NO Ghost Votes** | Create Proposal -> Check List. **Vote Count MUST be 0.** (Fix Contract Logic!) | [ ] |
+| **9** | **Transaction Safety** | Ensure Gas Limit is sufficient. Transaction must succeed in one go. | [ ] |
+| **10** | **Registration = Creation** | No separate "Register" step. `createProposal` is the only entry point. | [ ] |
 
 ---
 
-## 📋 Overview
+## 📱 UX/UI Detailed Specifications (The "CEO Approved" Flow)
 
-### Feature Description
-A unified Zero-Knowledge voting system where users interact with a single slider (Linear UX). The system automatically handles logic branching ($Cost=1$ vs $Cost=N^2$). Includes strict "Token Gating" for proposal creation and "One-Shot" privacy voting.
+### 1. Global Assets
+- **Symbol**: Always render `public/assets/symbol.svg` with size `w-5 h-5` (or appropriate).
+- **Style**: Dark Pop (Neon Accents) + Horizontal Scroll Layout.
 
-### Success Criteria
-- [ ] **Verification**: All 9 Commandments above must pass.
-- [ ] **Visiblity**: Created proposals appear immediately (Fix "Ghost Data").
-- [ ] **Privacy**: Votes are encrypted via ZK-SNARKs.
+### 2. Proposal Creation (Gatekeeper)
+- **Condition**: User Balance < 100 TON.
+- **UI State**:
+  - Button: **Disabled / Opacity 50% / Lock Icon**.
+  - **Interaction**: On Hover, display Tooltip **"Insufficient Balance. You need 100 TON to propose."**
+- **Logic**: Creating a proposal does **NOT** cast a vote. Initial votes = 0.
 
----
+### 3. The Voting Card (Strict Component Order)
+**Do not invent UI. Follow this exact hierarchy inside the modal/card:**
 
-## 🏗️ Architecture Decisions
+**[Section A: Direction]**
+- **Toggle/Segmented Control**: [ 👍 FOR ] | [ 👎 AGAINST ]
+- **Behavior**: User MUST select one first. The selected option gets **Neon Border/Glow**.
+- *Constraint*: Cannot move slider until direction is picked.
 
-### 1. Decoupled Lifecycle (Strict Separation)
-- **Role Definition**:
-  - **Creator (Candidate)**: Must hold >100 TON. Creates a proposal. Does NOT automatically vote.
-  - **Voter**: Anyone with TON. Votes on existing proposals.
-- **Sequence**:
-  1. User creates proposal -> Transaction confirms -> Proposal appears in list (0 Votes).
-  2. User (including Creator) selects proposal -> Adjusts Slider -> Confirms Warning -> Votes.
+**[Section B: Intensity (Power)]**
+- **Slider**: Range 1 to N.
+- **Visual**: As slider moves, show cost calculation.
+- **Display**: "Cost: **[symbol.svg]** $N^2$ TON"
 
-### 2. Token Gating & Costs
-- **Creation**: Requires **>100 TON** balance. (Free gas-only or small fee).
-- **Voting**: Cost = $N^2$ TON. Deducted **only after** explicit confirmation.
-- **One-Shot Rule**: One vote per wallet per proposal. No updates/top-ups allowed.
-- **✅ TON Transfer**: Uses `approveAndCall` pattern (SeigToken 호환). Single signature.
+**[Section C: Action]**
+- **Single Button**: Label "Cast Vote" (or "Confirm").
+- *Note*: Do NOT put "For/Against" logic here. Just "Execute".
 
----
-
-## 📱 UX/UI Detailed Flow & Writing Specs
-
-**Global Design Asset**:
-- **Token Icon**: MUST use the provided **`symbol.svg`** file for ALL token displays.
-- **Path**: `public/assets/symbol.svg` (Ensure file exists).
-- **Constraint**: Do NOT use generic coin icons or text-only "TON".
-
-### 1. Proposal Creation (The Gatekeeper)
-*Reflects Rules 1, 6, 9*
-
-- **State A: Ineligible User (<100 TON)**
-  - **UI**: "Create Proposal" button is **Disabled (Greyed out/Locked)**.
-  - **Feedback**: Show Tooltip/Text: "Insufficient Balance. Requires 100+ TON to propose."
-  - **Action**: Click is blocked.
-
-- **State B: Eligible User (>100 TON)**
-  - **UI**: "Create Proposal" button is **Active (Primary Color)**.
-  - **Action**: Opens "New Proposal" Form.
-  - **UX Writing**:
-    - *Header*: "Register Candidate / Create Proposal"
-    - *Body*: "This action creates a new voting card. You are NOT voting yet."
-
-- **State C: Creation Success**
-  - **Feedback**: Toast Message "Proposal Created Successfully! Now, cast your vote."
-  - **Result**: Redirect to list. Vote count shows **0**.
-
-### 2. Proposal List & Countdown
-*Reflects Rule 3*
-
-- **Card Header**:
-  - Display **"Time Remaining: DD:HH:MM"** until reveal/end.
-  - If expired: Show "Voting Closed".
-
-### 3. Voting Process (The Decision)
-*Reflects Rules 2, 4, 7, 8*
-
-- **Step 1: Adjust Slider**
-  - **UI**: Slider moves from 1 to N.
-  - **Dynamic Cost Display**: "Cost: **XX [symbol.svg]** (TON)" updates in real-time ($N^2$).
-  - **Warning Text**: Display "⚠️ Single Vote Opportunity" near the slider.
-
-- **Step 2: Pre-Flight Check (CRITICAL - Modal)**
-  - **Trigger**: User clicks "Vote" button.
-  - **UI**: **Full-screen Modal or Center Popup**.
-  - **Content (UX Writing)**:
-    - **Title**: "Confirm Your Vote"
-    - **Big Value**: "You are casting **N Votes**"
-    - **Cost Warning**: "This will deduct **XX [symbol.svg] TON** from your wallet."
-    - **Finality Warning (Red)**: "You can only vote ONCE per proposal. This action cannot be undone or changed later."
-  - **Buttons**: [Cancel] [Confirm & Sign]
-
-- **Step 3: Transaction & Feedback** ✅ IMPLEMENTED
-  - **Action**: User clicks [Confirm & Sign].
-  - **State**: Loading Spinner "Generating ZK Proof..." -> Wallet Signature (**1번만!**)
-  - **Method**: TON `approveAndCall` → Contract `onApprove` callback
-  - **Success**: Confetti + "Vote Confirmed! (XX TON Deducted)".
+### 4. Transaction Flow (The Feedback Loop)
+- **Step 1: Click "Cast Vote"**
+  - **Action**: Open Confirmation Modal (Red Warning: "One Shot Only").
+- **Step 2: Confirm**
+  - **UI Change**: **Immediately Dim the Screen (Overlay)**.
+  - **Loader**: Show "Processing Transaction..." spinner centrally.
+  - *Prevent any clicks on background.*
+- **Step 3: Success**
+  - **UI**: Hide Loader -> Show "Success" Toast/Confetti.
+  - **Card Update**: Replace Slider/Buttons with message:
+    > "✅ You have voted. Your choice is encrypted until the reveal phase."
 
 ---
 
-## 🚀 Implementation Phases
+## 🏗️ Logic & Contract Fixes
 
-### Phase 1: Emergency Fix & Logic Decoupling
-**Goal**: Fix "Ghost Data" bug and decouple creation from voting.
-- [ ] **Task 1.1**: Remove `_castVote` call inside `createProposal` (Contract).
-- [ ] **Task 1.2**: Add `require(balanceOf(msg.sender) >= 100)` to `createProposal`.
-- [ ] **Task 1.3**: Fix Frontend to fetch proposals immediately (BigInt/Index fix).
-- [ ] **Verification**: Pass Rules #2 and #9.
+### 1. Fix "Ghost Vote" Bug (Critical)
+- **File**: `contracts/ZkVoting.sol`
+- **Action**: Look at `createProposal` function.
+- **Fix**: Remove ANY call to `_castVote` or `voteCount++` inside this function.
+- **Verify**: New proposals must start with `voteCount = 0`.
 
-### Phase 2: ZK Logic & Cost Model
-**Goal**: Implement D1/D2 circuit logic.
-- [ ] **Task 2.1**: Update Circuit to accept `cost` public input.
-- [ ] **Task 2.2**: Verify `cost == vote * vote` inside circuit.
-- [ ] **Verification**: Pass Rule #4.
-
-### Phase 3: UX/UI Polish (The 9 Commandments)
-**Goal**: Implement the strict UI states and Assets.
-- [ ] **Task 3.1**: Check `public/assets/` and use **`symbol.svg`** for all icons. (Rule #5).
-- [ ] **Task 3.2**: Implement "Pre-Flight Modal" with Red Warning. (Rule #7, #8).
-- [ ] **Task 3.3**: Implement `disabled` state for <100 TON users. (Rule #1, #6).
-- [ ] **Task 3.4**: Add Countdown Timer component. (Rule #3).
+### 2. Transaction Reliability
+- **Frontend**: When calling `writeContract`, explicitly set a slightly higher `gasLimit` buffer (e.g., +10%) to prevent "Out of Gas" failures.
+- **Error Handling**: If User Rejects or Tx Fails -> **Remove Dimmer & Show Error Toast**.
 
 ---
-
-## 🧪 Final Checklist
-- [ ] Did I use **`symbol.svg`** everywhere?
-- [ ] Can a user vote twice? (Should be NO)
-- [ ] Does creating a proposal cost vote tokens? (Should be NO, only gas/fee)

@@ -113,8 +113,8 @@
       ]
     },
     "/Users/meeso/MEEE_SO/WORK/05_온더/00_ai/zk-dex-d1-private-voting/contracts/ZkVotingFinal.sol": {
-      "lastModificationDate": 1770724543281,
-      "contentHash": "dbbd5a8cc3354083472fee937af7b548",
+      "lastModificationDate": 1770729351056,
+      "contentHash": "e51a3c57afbf5c3e725b204edf59e971",
       "sourceName": "contracts/ZkVotingFinal.sol",
       "solcConfig": {
         "version": "0.8.24",
@@ -148,6 +148,7 @@
         "^0.8.24"
       ],
       "artifacts": [
+        "IERC165",
         "IERC20",
         "IERC20OnApprove",
         "IVerifierD1",
