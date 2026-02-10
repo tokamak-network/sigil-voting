@@ -13,6 +13,7 @@
 
 // @ts-ignore - circomlibjs doesn't have types
 import { buildPoseidon, buildBabyjub } from 'circomlibjs'
+import { generateProofWithFallback } from './workers/proofWorkerHelper'
 
 // Storage keys (base - wallet address appended at runtime)
 const SK_STORAGE_KEY_BASE = 'zk-vote-secret-key'
@@ -1091,7 +1092,7 @@ export async function generateQuadraticProof(
     creditNoteHash: creditNoteHash.toString(),
     creditSalt: creditNote.creditSalt.toString(),
     merklePath: merklePath.map(p => p.toString()),
-    merkleIndex: noteIndex,
+    merkleIndex: noteIndex.toString(),
   }
 
   onProgress?.({
@@ -1101,33 +1102,28 @@ export async function generateQuadraticProof(
   })
 
   try {
-    console.log('[ZK-D2] Importing snarkjs...')
-    const snarkjs = await import('snarkjs')
-
     // D2 circuit files
     const wasmUrl = '/circuits/D2_QuadraticVoting.wasm'
     const zkeyUrl = '/circuits/D2_QuadraticVoting_final.zkey'
 
-    onProgress?.({
-      stage: 'generating-proof',
-      progress: 60,
-      message: 'Generating D2 ZK proof...'
-    })
-
-    await new Promise(resolve => setTimeout(resolve, 100))
-
-    console.log('[ZK-D2] Starting proof generation...')
+    console.log('[ZK-D2] Starting proof generation with Web Worker...')
     console.log('[ZK-D2] Circuit inputs:', JSON.stringify(circuitInputs, (_, v) => typeof v === 'bigint' ? v.toString() : v))
 
-    const startTime = Date.now()
-
-    const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-      circuitInputs,
+    // Use Web Worker for proof generation (prevents UI freeze)
+    const { proof, publicSignals, duration } = await generateProofWithFallback(
+      circuitInputs as Record<string, string | string[]>,
       wasmUrl,
-      zkeyUrl
+      zkeyUrl,
+      (progress, message) => {
+        onProgress?.({
+          stage: 'generating-proof',
+          progress: 50 + Math.floor(progress * 0.4),
+          message
+        })
+      }
     )
 
-    console.log('[ZK-D2] Proof generated in', Date.now() - startTime, 'ms')
+    console.log('[ZK-D2] Proof generated in', duration, 'ms')
     console.log('[ZK-D2] Public signals:', publicSignals)
 
     // Verify nullifier

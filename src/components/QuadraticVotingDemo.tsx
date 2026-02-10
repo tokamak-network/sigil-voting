@@ -616,8 +616,15 @@ export function QuadraticVotingDemo() {
       {/* VIEW: Success */}
       {currentView === 'success' && (
         <div className="uv-success-view">
+          {/* Confetti Animation */}
+          <div className="uv-confetti">
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div key={i} className="uv-confetti-piece" />
+            ))}
+          </div>
+
           <div className="uv-card uv-center uv-success">
-            <div className="uv-icon uv-success-icon">✅</div>
+            <div className="uv-icon uv-success-icon">🎉</div>
             <h1>투표 완료!</h1>
             <p className="uv-subtitle">투표가 암호화되어 제출되었습니다</p>
 
