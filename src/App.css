@@ -8095,3 +8095,47 @@ body {
 .uv-proposal-result strong {
   color: #10b981;
 }
+
+/* ============ My Vote Summary ============ */
+.uv-my-vote-summary {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px 0;
+  width: 100%;
+  max-width: 280px;
+}
+
+.uv-my-vote-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.uv-my-vote-row:last-child {
+  border-bottom: none;
+}
+
+.uv-my-vote-row span {
+  color: #9ca3af;
+}
+
+.uv-my-vote-row strong {
+  color: #ffffff;
+}
+
+.uv-my-vote-row .uv-for {
+  color: #10b981;
+}
+
+.uv-my-vote-row .uv-against {
+  color: #ef4444;
+}
+
+.uv-reveal-hint {
+  font-size: 13px;
+  color: #9ca3af;
+  margin-top: 16px;
+  text-align: center;
+}
