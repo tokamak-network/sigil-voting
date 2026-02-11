@@ -1,0 +1,15 @@
+{
+  "zk-private-voting": {
+    "phase": "do",
+    "matchRate": null,
+    "iterationCount": 0,
+    "startedAt": "2026-02-11T00:00:00Z",
+    "documents": {
+      "plan": "docs/01-plan/features/zk-private-voting.plan.md",
+      "design": "docs/02-design/features/zk-private-voting.design.md",
+      "analysis": "docs/03-analysis/zk-private-voting.analysis.md",
+      "report": null
+    },
+    "tasks": []
+  }
+}
