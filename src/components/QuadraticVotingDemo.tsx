@@ -379,10 +379,10 @@ export function QuadraticVotingDemo() {
       const proposalId = BigInt(selectedProposal.id)
 
       // Step 1: Get or create creditNote
-      updateProgress(5, '투표자 정보 확인 중...')
+      updateProgress(5, '준비 중...')
       let creditNote: CreditNote | null = getStoredCreditNote(address)
       if (!creditNote) {
-        updateProgress(8, '투표자 등록 준비 중...')
+        updateProgress(8, '준비 중...')
         creditNote = await createCreditNoteAsync(keyPair, BigInt(totalVotingPower), address)
       }
 
@@ -392,7 +392,7 @@ export function QuadraticVotingDemo() {
 
       // Step 3: Auto-register creditNote if needed
       if (!creditNotes.includes(noteHash)) {
-        updateProgress(10, '투표자 등록 중...')
+        updateProgress(10, '설정 중...')
         const registerNoteHash = await writeContractAsync({
           address: ZK_VOTING_FINAL_ADDRESS,
           abi: ZK_VOTING_FINAL_ABI,
@@ -405,7 +405,7 @@ export function QuadraticVotingDemo() {
       }
 
       // Step 4: Generate creditRoot with all registered notes
-      updateProgress(15, '투표 권한 설정 중...')
+      updateProgress(15, '처리 중...')
       const { root: dynamicCreditRoot } = await generateMerkleProofAsync(creditNotes, creditNotes.indexOf(noteHash))
 
       // Step 5: Register creditRoot if not already registered
@@ -417,7 +417,7 @@ export function QuadraticVotingDemo() {
       })
 
       if (!isCreditRootValid) {
-        updateProgress(18, '투표 권한 등록 중...')
+        updateProgress(18, '처리 중...')
         const registerRootHash = await writeContractAsync({
           address: ZK_VOTING_FINAL_ADDRESS,
           abi: ZK_VOTING_FINAL_ABI,
@@ -428,10 +428,10 @@ export function QuadraticVotingDemo() {
       }
 
       // Step 6: Prepare vote data
-      updateProgress(20, '투표 데이터 준비 중...')
+      updateProgress(20, '투표 암호화 중...')
       const voteData = await prepareD2VoteAsync(keyPair, choice, BigInt(numVotes), proposalId)
 
-      updateProgress(25, 'ZK 증명 준비 중...')
+      updateProgress(25, '보안 처리 중...')
 
       // Step 7: Generate ZK proof using dynamic creditRoot
       const { proof, nullifier, commitment } = await generateQuadraticProof(
@@ -440,7 +440,7 @@ export function QuadraticVotingDemo() {
         voteData,
         dynamicCreditRoot,
         creditNotes,
-        (progress) => updateProgress(30 + Math.floor(progress.progress * 0.25), progress.message)
+        (progress) => updateProgress(30 + Math.floor(progress.progress * 0.25), '보안 처리 중...')
       )
 
       proofComplete() // State: PROOFING -> SIGNING
@@ -462,7 +462,7 @@ export function QuadraticVotingDemo() {
         [proposalId, commitment, BigInt(numVotes), voteData.creditsSpent, nullifier, dynamicCreditRoot, proof.pA, proof.pB, proof.pC]
       )
 
-      updateProgress(55, '투표 트랜잭션 서명 대기...')
+      updateProgress(55, '지갑에서 승인해주세요')
 
       // Single transaction: approveAndCall on TON token
       // This approves TON spending and calls our contract's onApprove callback in one tx
@@ -531,43 +531,19 @@ export function QuadraticVotingDemo() {
 
   const colors = getIntensityColor()
 
-  // Check if current user is a registered voter
-  const isRegisteredVoter = (() => {
-    if (!address) return false
-    const creditNote = getStoredCreditNote(address)
-    if (!creditNote) return false
-    const creditNotes = (registeredCreditNotes as bigint[]) || []
-    return creditNotes.includes(creditNote.creditNoteHash)
-  })()
-
   return (
     <div className="unified-voting">
-      {/* TON Dashboard Header */}
+      {/* Simple Balance Display */}
       {isConnected && (
-        <div className="uv-dashboard">
-          <div className="uv-dashboard-row">
-            <div className="uv-dashboard-item">
-              <div className="uv-dashboard-label">내 잔액</div>
-              <div className="uv-dashboard-value">
-                <TonIcon size={20} /> {totalVotingPower.toLocaleString()} TON
-              </div>
-            </div>
-            <div className="uv-dashboard-item">
-              <div className="uv-dashboard-label">투표자 등록</div>
-              <div className={`uv-dashboard-value ${isRegisteredVoter ? 'uv-status-active' : 'uv-status-inactive'}`}>
-                {isRegisteredVoter ? '✓ 등록됨' : '미등록'}
-              </div>
-            </div>
-            <div className="uv-dashboard-item">
-              <div className="uv-dashboard-label">지갑</div>
-              <div className="uv-dashboard-value uv-dashboard-address">
-                {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ''}
-              </div>
-            </div>
+        <div className="uv-balance-bar">
+          <div className="uv-balance-info">
+            <TonIcon size={18} />
+            <span className="uv-balance-amount">{totalVotingPower.toLocaleString()} TON</span>
+            <span className="uv-balance-hint">최대 {maxVotes}표 가능</span>
           </div>
           {!hasTon && (
-            <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="uv-get-credits-btn">
-              <TonIcon size={14} /> Faucet에서 TON 받기
+            <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="uv-get-ton-link">
+              TON 받기 →
             </a>
           )}
         </div>
@@ -885,7 +861,7 @@ export function QuadraticVotingDemo() {
                 {error && <div className="uv-error">{error}</div>}
 
                 <div className="uv-privacy-notice">
-                  <TonIcon size={14} /> 투표 내용은 공개 전까지 암호화됩니다
+                  🔒 내 선택은 비공개로 안전하게 보호됩니다
                 </div>
               </>
             )}
@@ -906,7 +882,7 @@ export function QuadraticVotingDemo() {
           <div className="uv-card uv-center uv-success">
             <div className="uv-icon uv-success-icon"><TonIcon size={48} /></div>
             <h1>투표 완료!</h1>
-            <p className="uv-subtitle">투표가 암호화되어 제출되었습니다</p>
+            <p className="uv-subtitle">투표가 안전하게 제출되었습니다</p>
 
             <div className="uv-result-summary">
               <div className="uv-result-row">
