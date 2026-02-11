@@ -2,12 +2,12 @@ export function Footer() {
   return (
     <footer className="footer">
       <div className="footer-content">
-        <span>D1 Private Voting - tokamak-network/zk-dex</span>
+        <span>ZK Private Voting</span>
       </div>
       <div className="footer-links">
-        <a href="https://github.com/tokamak-network/zk-dex" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://github.com/tokamak-network/zk-dex-d1-private-voting" target="_blank" rel="noopener noreferrer">GitHub</a>
         <span className="footer-divider">•</span>
-        <a href="https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d1-private-voting.md" target="_blank" rel="noopener noreferrer">Spec</a>
+        <a href="https://github.com/tokamak-network/zk-dex-d1-private-voting#readme" target="_blank" rel="noopener noreferrer">Docs</a>
       </div>
     </footer>
   )
