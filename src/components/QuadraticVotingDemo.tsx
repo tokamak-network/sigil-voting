@@ -129,11 +129,24 @@ export function QuadraticVotingDemo() {
   const [searchQuery, setSearchQuery] = useState('')
 
   // Rule #3: Live countdown timer (1초마다 업데이트)
-  const [, setTick] = useState(0)
+  const [tick, setTick] = useState(0)
   useEffect(() => {
     const interval = setInterval(() => setTick(t => t + 1), 1000)
     return () => clearInterval(interval)
   }, [])
+
+  // 선택된 제안의 phase 자동 업데이트 (투표→공개→종료 자동 전환)
+  useEffect(() => {
+    if (!selectedProposal) return
+
+    const currentPhase = calculatePhase(selectedProposal.endTime, selectedProposal.revealEndTime)
+    if (currentPhase !== selectedProposal.phase) {
+      // Phase가 변경됨 - 제안 데이터 업데이트
+      setSelectedProposal(prev => prev ? { ...prev, phase: currentPhase } : null)
+      // 목록도 새로고침
+      setRefreshTrigger(t => t + 1)
+    }
+  }, [selectedProposal, tick]) // tick 의존성 추가로 매초 체크
 
   // Voting state machine
   const {
