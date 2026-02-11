@@ -8056,3 +8056,42 @@ body {
 .uv-get-ton-link:hover {
   color: #3395ff;
 }
+
+/* ============ Proposal Card Improvements ============ */
+.uv-voted-badge {
+  font-size: 11px;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.uv-proposal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.uv-proposal-participants {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.uv-proposal-time {
+  font-size: 12px;
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+.uv-proposal-result {
+  font-size: 13px;
+  color: #d1d5db;
+}
+
+.uv-proposal-result strong {
+  color: #10b981;
+}
