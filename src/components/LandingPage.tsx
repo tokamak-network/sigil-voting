@@ -1,10 +1,13 @@
 import type { Page } from '../types'
+import { ProposalsCarousel } from './ProposalsCarousel'
 
 interface LandingPageProps {
   setCurrentPage: (page: Page) => void
+  navigateToProposal: (proposalId: number) => void
 }
 
-export function LandingPage({ setCurrentPage }: LandingPageProps) {
+export function LandingPage({ setCurrentPage, navigateToProposal }: LandingPageProps) {
+
   return (
     <div className="landing-page">
       {/* Hero Section */}
@@ -190,6 +193,9 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
           </div>
         </div>
       </section>
+
+      {/* Proposals Carousel */}
+      <ProposalsCarousel onProposalClick={navigateToProposal} />
 
       {/* CTA Section */}
       <section className="cta-section-new">

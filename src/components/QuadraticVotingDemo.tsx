@@ -110,7 +110,12 @@ const TonIcon = ({ size = 16 }: { size?: number }) => (
 )
 
 
-export function QuadraticVotingDemo() {
+interface QuadraticVotingDemoProps {
+  initialProposalId?: number | null
+  onProposalViewed?: () => void
+}
+
+export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: QuadraticVotingDemoProps) {
   const { address, isConnected } = useAccount()
   const { connect } = useConnect()
   const { writeContractAsync } = useWriteContract()
@@ -123,10 +128,19 @@ export function QuadraticVotingDemo() {
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null)
   const [newProposalTitle, setNewProposalTitle] = useState('')
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [pendingInitialProposalId, setPendingInitialProposalId] = useState<number | null>(initialProposalId ?? null)
 
   // 필터 및 검색
   const [filterPhase, setFilterPhase] = useState<'all' | 0 | 1 | 2>('all')
   const [searchQuery, setSearchQuery] = useState('')
+
+  // initialProposalId prop 변경 감지
+  useEffect(() => {
+    if (initialProposalId !== null && initialProposalId !== undefined) {
+      setPendingInitialProposalId(initialProposalId)
+    }
+  }, [initialProposalId])
+
 
   // Rule #3: Live countdown timer (1초마다 업데이트)
   const [tick, setTick] = useState(0)
@@ -245,6 +259,78 @@ export function QuadraticVotingDemo() {
   // 첫 로딩 여부 추적
   const [isFirstLoad, setIsFirstLoad] = useState(true)
 
+  // Helper: 단일 제안 fetch
+  const fetchSingleProposal = useCallback(async (id: number): Promise<Proposal | null> => {
+    try {
+      const response = await fetch('https://ethereum-sepolia-rpc.publicnode.com', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_call',
+          params: [{
+            to: ZK_VOTING_FINAL_ADDRESS,
+            data: `0x${getProposalSelector(id)}`
+          }, 'latest'],
+          id
+        })
+      })
+      const result = await response.json()
+      if (result.result && result.result !== '0x') {
+        const decoded = decodeProposalResult(result.result)
+        if (decoded.title) {
+          const endTime = new Date(Number(decoded.endTime) * 1000)
+          const revealEndTime = new Date(Number(decoded.revealEndTime) * 1000)
+          return {
+            id,
+            title: decoded.title,
+            creator: decoded.creator,
+            endTime,
+            revealEndTime,
+            totalVotes: Number(decoded.totalVotes),
+            totalCreditsSpent: Number(decoded.totalCreditsSpent),
+            creditRoot: decoded.creditRoot,
+            phase: calculatePhase(endTime, revealEndTime),
+            forVotes: Number(decoded.forVotes),
+            againstVotes: Number(decoded.againstVotes),
+            revealedVotes: Number(decoded.revealedVotes),
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch proposal', id, e)
+    }
+    return null
+  }, [])
+
+  // 선택된 제안 우선 로드 (즉시 상세 화면으로 이동)
+  useEffect(() => {
+    const loadInitialProposal = async () => {
+      if (!pendingInitialProposalId || pendingInitialProposalId <= 0) return
+
+      // 이미 proposals에 있으면 바로 선택
+      const existing = proposals.find(p => p.id === pendingInitialProposalId)
+      if (existing) {
+        setSelectedProposal(existing)
+        setCurrentView('vote')
+        setPendingInitialProposalId(null)
+        onProposalViewed?.()
+        return
+      }
+
+      // 없으면 해당 제안만 빠르게 fetch
+      const proposal = await fetchSingleProposal(pendingInitialProposalId)
+      if (proposal) {
+        setSelectedProposal(proposal)
+        setCurrentView('vote')
+        setPendingInitialProposalId(null)
+        onProposalViewed?.()
+      }
+    }
+
+    loadInitialProposal()
+  }, [pendingInitialProposalId, proposals, fetchSingleProposal, onProposalViewed])
+
   useEffect(() => {
     const fetchProposals = async () => {
       // 첫 로딩일 때만 로딩 표시 (새로고침 시 깜빡임 방지)
@@ -259,49 +345,11 @@ export function QuadraticVotingDemo() {
       }
 
       const count = Number(proposalCount)
-      const fetchedProposals: Proposal[] = []
 
-      for (let i = 1; i <= count; i++) {
-        try {
-          const response = await fetch('https://ethereum-sepolia-rpc.publicnode.com', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              jsonrpc: '2.0',
-              method: 'eth_call',
-              params: [{
-                to: ZK_VOTING_FINAL_ADDRESS,
-                data: `0x${getProposalSelector(i)}`
-              }, 'latest'],
-              id: i
-            })
-          })
-          const result = await response.json()
-          if (result.result && result.result !== '0x') {
-            const decoded = decodeProposalResult(result.result)
-            if (decoded.title) {
-              const endTime = new Date(Number(decoded.endTime) * 1000)
-              const revealEndTime = new Date(Number(decoded.revealEndTime) * 1000)
-              fetchedProposals.push({
-                id: i,
-                title: decoded.title,
-                creator: decoded.creator,
-                endTime,
-                revealEndTime,
-                totalVotes: Number(decoded.totalVotes),
-                totalCreditsSpent: Number(decoded.totalCreditsSpent),
-                creditRoot: decoded.creditRoot,
-                phase: calculatePhase(endTime, revealEndTime),
-                forVotes: Number(decoded.forVotes),
-                againstVotes: Number(decoded.againstVotes),
-                revealedVotes: Number(decoded.revealedVotes),
-              })
-            }
-          }
-        } catch (e) {
-          console.error('Failed to fetch proposal', i, e)
-        }
-      }
+      // 병렬로 모든 제안 fetch (더 빠름)
+      const proposalPromises = Array.from({ length: count }, (_, i) => fetchSingleProposal(i + 1))
+      const results = await Promise.all(proposalPromises)
+      const fetchedProposals = results.filter((p): p is Proposal => p !== null)
 
       setProposals(fetchedProposals)
       setIsLoadingProposals(false)
@@ -309,7 +357,7 @@ export function QuadraticVotingDemo() {
     }
 
     fetchProposals()
-  }, [proposalCount, refreshTrigger, address, isFirstLoad])
+  }, [proposalCount, refreshTrigger, address, isFirstLoad, fetchSingleProposal])
 
   const handleConnect = () => connect({ connector: injected() })
 
