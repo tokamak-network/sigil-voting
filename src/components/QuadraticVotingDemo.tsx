@@ -280,6 +280,22 @@ export function QuadraticVotingDemo() {
   const [createStatus, setCreateStatus] = useState<string | null>(null)
   const [isCreatingProposal, setIsCreatingProposal] = useState(false)
 
+  // Helper: wait for transaction with retry
+  const waitForTx = useCallback(async (hash: `0x${string}`, maxRetries = 3) => {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await publicClient?.waitForTransactionReceipt({
+          hash,
+          timeout: 60_000,
+          confirmations: 1,
+        })
+      } catch (err) {
+        if (i === maxRetries - 1) throw err
+        await new Promise(r => setTimeout(r, 2000)) // 2초 대기 후 재시도
+      }
+    }
+  }, [publicClient])
+
   const handleCreateProposal = useCallback(async () => {
     if (!newProposalTitle.trim() || !publicClient || !address || !keyPair) return
     setIsCreatingProposal(true)
@@ -291,7 +307,7 @@ export function QuadraticVotingDemo() {
       let creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
 
       // Register creator's creditNote for creditRoot (but won't auto-vote)
-      setCreateStatus('투표자 등록 확인 중...')
+      setCreateStatus('설정 중...')
       let creditNote: CreditNote | null = getStoredCreditNote(address)
       if (!creditNote) {
         creditNote = await createCreditNoteAsync(keyPair, BigInt(totalVotingPower), address)
@@ -299,20 +315,20 @@ export function QuadraticVotingDemo() {
 
       const noteHash = creditNote.creditNoteHash
       if (!creditNotes.includes(noteHash)) {
-        setCreateStatus('투표자 등록 중...')
+        setCreateStatus('설정 중...')
         const registerNoteHash = await writeContractAsync({
           address: ZK_VOTING_FINAL_ADDRESS,
           abi: ZK_VOTING_FINAL_ABI,
           functionName: 'registerCreditNote',
           args: [noteHash],
         })
-        await publicClient.waitForTransactionReceipt({ hash: registerNoteHash })
+        await waitForTx(registerNoteHash)
         creditNotes.push(noteHash)
         await refetchCreditNotes()
       }
 
       // Build creditRoot from all registered notes
-      setCreateStatus('투표자 목록 설정 중...')
+      setCreateStatus('처리 중...')
       const { root: creditRoot } = await generateMerkleProofAsync(creditNotes, 0)
 
       // Register this creditRoot
@@ -322,7 +338,7 @@ export function QuadraticVotingDemo() {
         functionName: 'registerCreditRoot',
         args: [creditRoot],
       })
-      await publicClient.waitForTransactionReceipt({ hash: registerRootHash })
+      await waitForTx(registerRootHash)
 
       // Create proposal (NO auto-vote, creator votes separately if they want)
       setCreateStatus('제안 생성 중...')
@@ -333,8 +349,8 @@ export function QuadraticVotingDemo() {
         args: [newProposalTitle, '', creditRoot, BigInt(86400), BigInt(86400)],
       })
 
-      setCreateStatus('블록 확인 대기 중...')
-      await publicClient.waitForTransactionReceipt({ hash: createHash })
+      setCreateStatus('확인 중...')
+      await waitForTx(createHash)
 
       await refetchProposalCount()
       setNewProposalTitle('')
@@ -356,7 +372,7 @@ export function QuadraticVotingDemo() {
       setIsCreatingProposal(false)
       setCreateStatus(null)
     }
-  }, [newProposalTitle, publicClient, writeContractAsync, refetchProposalCount, address, keyPair, totalVotingPower, registeredCreditNotes, refetchCreditNotes])
+  }, [newProposalTitle, publicClient, writeContractAsync, refetchProposalCount, address, keyPair, totalVotingPower, registeredCreditNotes, refetchCreditNotes, waitForTx])
 
   const handleVote = useCallback(async (choice: VoteChoice) => {
     if (!keyPair || !selectedProposal || !hasTon || !address || !publicClient) return
@@ -399,7 +415,7 @@ export function QuadraticVotingDemo() {
           functionName: 'registerCreditNote',
           args: [noteHash],
         })
-        await publicClient.waitForTransactionReceipt({ hash: registerNoteHash })
+        await waitForTx(registerNoteHash)
         creditNotes.push(noteHash)
         await refetchCreditNotes()
       }
@@ -424,7 +440,7 @@ export function QuadraticVotingDemo() {
           functionName: 'registerCreditRoot',
           args: [dynamicCreditRoot],
         })
-        await publicClient.waitForTransactionReceipt({ hash: registerRootHash })
+        await waitForTx(registerRootHash)
       }
 
       // Step 6: Prepare vote data
@@ -476,10 +492,8 @@ export function QuadraticVotingDemo() {
 
       signed() // State: SIGNING -> SUBMITTING
 
-      // Wait for confirmation
-      if (publicClient) {
-        await publicClient.waitForTransactionReceipt({ hash })
-      }
+      // Wait for confirmation with retry
+      await waitForTx(hash)
 
       storeD2VoteForReveal(proposalId, voteData, address)
       markProposalAsVoted(address, selectedProposal.id) // Track locally to prevent re-voting
@@ -521,7 +535,7 @@ export function QuadraticVotingDemo() {
       setVotingError(userMessage)
       setError(userMessage)
     }
-  }, [keyPair, selectedProposal, hasTon, address, numVotes, quadraticCost, totalVotingPower, registeredCreditNotes, writeContractAsync, refetchCredits, startVote, updateProgress, proofComplete, signed, txConfirmed, setVotingError, publicClient])
+  }, [keyPair, selectedProposal, hasTon, address, numVotes, quadraticCost, totalVotingPower, registeredCreditNotes, writeContractAsync, refetchCredits, startVote, updateProgress, proofComplete, signed, txConfirmed, setVotingError, publicClient, waitForTx, refetchCreditNotes])
 
   const getIntensityColor = () => {
     if (isDanger) return { bg: 'rgba(239, 68, 68, 0.15)', border: '#ef4444', text: '#fca5a5' }
