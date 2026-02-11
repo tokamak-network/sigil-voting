@@ -282,18 +282,24 @@ export function QuadraticVotingDemo() {
   const [createStatus, setCreateStatus] = useState<string | null>(null)
   const [isCreatingProposal, setIsCreatingProposal] = useState(false)
 
-  // Helper: wait for transaction with retry
-  const waitForTx = useCallback(async (hash: `0x${string}`, maxRetries = 3) => {
+  // Helper: wait for transaction with retry (Sepolia can be slow)
+  const waitForTx = useCallback(async (hash: `0x${string}`, maxRetries = 5) => {
     for (let i = 0; i < maxRetries; i++) {
       try {
         return await publicClient?.waitForTransactionReceipt({
           hash,
-          timeout: 60_000,
+          timeout: 90_000, // 90초 타임아웃
           confirmations: 1,
         })
       } catch (err) {
-        if (i === maxRetries - 1) throw err
-        await new Promise(r => setTimeout(r, 2000)) // 2초 대기 후 재시도
+        const errorMsg = (err as Error).message || ''
+        // TransactionReceiptNotFoundError는 아직 처리 중일 수 있음
+        if (errorMsg.includes('could not be found') || errorMsg.includes('not be processed')) {
+          if (i === maxRetries - 1) throw err
+          await new Promise(r => setTimeout(r, 3000)) // 3초 대기 후 재시도
+          continue
+        }
+        throw err // 다른 에러는 바로 throw
       }
     }
   }, [publicClient])
