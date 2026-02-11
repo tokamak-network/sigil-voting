@@ -5,11 +5,24 @@ import './App.css'
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('landing')
+  const [initialProposalId, setInitialProposalId] = useState<number | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
 
   const showToast = (message: string, type: 'success' | 'error' | 'info') => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 4000)
+  }
+
+  const navigateToProposal = (proposalId: number) => {
+    setInitialProposalId(proposalId)
+    setCurrentPage('proposals')
+  }
+
+  const handleSetCurrentPage = (page: Page) => {
+    if (page !== 'proposals') {
+      setInitialProposalId(null)
+    }
+    setCurrentPage(page)
   }
 
   return (
@@ -18,17 +31,23 @@ function App() {
 
       <Header
         currentPage={currentPage}
-        setCurrentPage={setCurrentPage}
+        setCurrentPage={handleSetCurrentPage}
         showToast={showToast}
       />
 
       <main className="main">
         {currentPage === 'landing' && (
-          <LandingPage setCurrentPage={setCurrentPage} />
+          <LandingPage
+            setCurrentPage={handleSetCurrentPage}
+            navigateToProposal={navigateToProposal}
+          />
         )}
 
         {currentPage === 'proposals' && (
-          <QuadraticVotingDemo />
+          <QuadraticVotingDemo
+            initialProposalId={initialProposalId}
+            onProposalViewed={() => setInitialProposalId(null)}
+          />
         )}
       </main>
 
