@@ -18,6 +18,7 @@ import {
   CHOICE_AGAINST,
 } from '../zkproof'
 import { useVotingMachine } from '../hooks/useVotingMachine'
+import { PhaseIndicator, RevealForm, VoteResult } from './voting'
 import config from '../config.json'
 
 const ZK_VOTING_FINAL_ADDRESS = (config.contracts.zkVotingFinal || '0x0000000000000000000000000000000000000000') as `0x${string}`
@@ -62,6 +63,10 @@ const ZK_VOTING_FINAL_ABI = [
   { type: 'function', name: 'castVoteD2', inputs: [{ name: '_proposalId', type: 'uint256' }, { name: '_commitment', type: 'uint256' }, { name: '_numVotes', type: 'uint256' }, { name: '_creditsSpent', type: 'uint256' }, { name: '_nullifier', type: 'uint256' }, { name: '_pA', type: 'uint256[2]' }, { name: '_pB', type: 'uint256[2][2]' }, { name: '_pC', type: 'uint256[2]' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'creditRootHistory', inputs: [{ name: '', type: 'uint256' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
   { type: 'function', name: 'getAvailableCredits', inputs: [{ name: 'user', type: 'address' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
+  // D2 Phase 관련 함수 (Reveal Phase 지원)
+  { type: 'function', name: 'revealVoteD2', inputs: [{ name: '_proposalId', type: 'uint256' }, { name: '_nullifier', type: 'uint256' }, { name: '_choice', type: 'uint256' }, { name: '_numVotes', type: 'uint256' }, { name: '_voteSalt', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
+  { type: 'function', name: 'getPhaseD2', inputs: [{ name: '_proposalId', type: 'uint256' }], outputs: [{ name: '', type: 'uint8' }], stateMutability: 'view' },
+  { type: 'function', name: 'getProposalResultD2', inputs: [{ name: '_proposalId', type: 'uint256' }], outputs: [{ name: 'forVotes', type: 'uint256' }, { name: 'againstVotes', type: 'uint256' }, { name: 'totalRevealed', type: 'uint256' }], stateMutability: 'view' },
 ] as const
 
 const ERC20_ABI = [
@@ -77,9 +82,15 @@ interface Proposal {
   title: string
   creator: string
   endTime: Date
-  totalVotes: number      // Total commitments (public)
-  totalCreditsSpent: number  // Total TON spent (public)
+  revealEndTime: Date      // 공개 마감 시간
+  totalVotes: number       // Total commitments (public)
+  totalCreditsSpent: number  // Total TON spent (내부 용도)
   creditRoot: bigint
+  // Phase 관련 필드
+  phase: 0 | 1 | 2         // 0=Commit, 1=Reveal, 2=Ended
+  forVotes: number         // 찬성 투표 수 (Reveal 후)
+  againstVotes: number     // 반대 투표 수 (Reveal 후)
+  revealedVotes: number    // 공개된 투표 수
 }
 
 type View = 'list' | 'create' | 'vote' | 'success'
@@ -97,27 +108,6 @@ const TonIcon = ({ size = 16 }: { size?: number }) => (
   />
 )
 
-// Rule #3: Countdown Timer helper
-function formatCountdown(endTime: Date): { text: string; isExpired: boolean } {
-  const now = new Date()
-  const diff = endTime.getTime() - now.getTime()
-
-  if (diff <= 0) {
-    return { text: '투표 종료', isExpired: true }
-  }
-
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-
-  if (days > 0) {
-    return { text: `${days}일 ${hours}시간 ${minutes}분`, isExpired: false }
-  } else if (hours > 0) {
-    return { text: `${hours}시간 ${minutes}분`, isExpired: false }
-  } else {
-    return { text: `${minutes}분`, isExpired: false }
-  }
-}
 
 export function QuadraticVotingDemo() {
   const { address, isConnected } = useAccount()
@@ -255,14 +245,21 @@ export function QuadraticVotingDemo() {
           if (result.result && result.result !== '0x') {
             const decoded = decodeProposalResult(result.result)
             if (decoded.title) {
+              const endTime = new Date(Number(decoded.endTime) * 1000)
+              const revealEndTime = new Date(Number(decoded.revealEndTime) * 1000)
               fetchedProposals.push({
                 id: i,
                 title: decoded.title,
                 creator: decoded.creator,
-                endTime: new Date(Number(decoded.endTime) * 1000),
+                endTime,
+                revealEndTime,
                 totalVotes: Number(decoded.totalVotes),
                 totalCreditsSpent: Number(decoded.totalCreditsSpent),
                 creditRoot: decoded.creditRoot,
+                phase: calculatePhase(endTime, revealEndTime),
+                forVotes: Number(decoded.forVotes),
+                againstVotes: Number(decoded.againstVotes),
+                revealedVotes: Number(decoded.revealedVotes),
               })
             }
           }
@@ -374,46 +371,81 @@ export function QuadraticVotingDemo() {
       return
     }
 
-    // Check if voter is registered (must be registered during proposal creation)
-    const creditNote: CreditNote | null = getStoredCreditNote(address)
-    if (!creditNote) {
-      setError('투표자로 등록되지 않았습니다. 제안 생성 시 등록된 사용자만 투표할 수 있습니다.')
-      return
-    }
-
-    const noteHash = creditNote.creditNoteHash
-    const creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
-    if (!creditNotes.includes(noteHash)) {
-      setError('투표자로 등록되지 않았습니다. 제안 생성 시 등록된 사용자만 투표할 수 있습니다.')
-      return
-    }
-
     setSelectedChoice(choice)
     setError(null)
     startVote() // State: IDLE -> PROOFING
 
     try {
       const proposalId = BigInt(selectedProposal.id)
-      updateProgress(5, '투표 데이터 준비 중...')
+
+      // Step 1: Get or create creditNote
+      updateProgress(5, '투표자 정보 확인 중...')
+      let creditNote: CreditNote | null = getStoredCreditNote(address)
+      if (!creditNote) {
+        updateProgress(8, '투표자 등록 준비 중...')
+        creditNote = await createCreditNoteAsync(keyPair, BigInt(totalVotingPower), address)
+      }
+
+      // Step 2: Get current registered creditNotes
+      let creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
+      const noteHash = creditNote.creditNoteHash
+
+      // Step 3: Auto-register creditNote if needed
+      if (!creditNotes.includes(noteHash)) {
+        updateProgress(10, '투표자 등록 중...')
+        const registerNoteHash = await writeContractAsync({
+          address: ZK_VOTING_FINAL_ADDRESS,
+          abi: ZK_VOTING_FINAL_ABI,
+          functionName: 'registerCreditNote',
+          args: [noteHash],
+        })
+        await publicClient.waitForTransactionReceipt({ hash: registerNoteHash })
+        creditNotes.push(noteHash)
+        await refetchCreditNotes()
+      }
+
+      // Step 4: Generate creditRoot with all registered notes
+      updateProgress(15, '투표 권한 설정 중...')
+      const { root: dynamicCreditRoot } = await generateMerkleProofAsync(creditNotes, creditNotes.indexOf(noteHash))
+
+      // Step 5: Register creditRoot if not already registered
+      const isCreditRootValid = await publicClient.readContract({
+        address: ZK_VOTING_FINAL_ADDRESS,
+        abi: [{ type: 'function', name: 'isCreditRootValid', inputs: [{ name: '_creditRoot', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }], stateMutability: 'view' }] as const,
+        functionName: 'isCreditRootValid',
+        args: [dynamicCreditRoot],
+      })
+
+      if (!isCreditRootValid) {
+        updateProgress(18, '투표 권한 등록 중...')
+        const registerRootHash = await writeContractAsync({
+          address: ZK_VOTING_FINAL_ADDRESS,
+          abi: ZK_VOTING_FINAL_ABI,
+          functionName: 'registerCreditRoot',
+          args: [dynamicCreditRoot],
+        })
+        await publicClient.waitForTransactionReceipt({ hash: registerRootHash })
+      }
+
+      // Step 6: Prepare vote data
+      updateProgress(20, '투표 데이터 준비 중...')
       const voteData = await prepareD2VoteAsync(keyPair, choice, BigInt(numVotes), proposalId)
 
-      // Use proposal's creditRoot (voter must already be registered)
-      const proposalCreditRoot = selectedProposal.creditRoot
-      updateProgress(15, 'ZK 증명 준비 중...')
+      updateProgress(25, 'ZK 증명 준비 중...')
 
-      // Generate ZK proof using proposal's creditRoot
+      // Step 7: Generate ZK proof using dynamic creditRoot
       const { proof, nullifier, commitment } = await generateQuadraticProof(
         keyPair,
         creditNote,
         voteData,
-        proposalCreditRoot,
+        dynamicCreditRoot,
         creditNotes,
-        (progress) => updateProgress(20 + Math.floor(progress.progress * 0.3), progress.message)
+        (progress) => updateProgress(30 + Math.floor(progress.progress * 0.25), progress.message)
       )
 
       proofComplete() // State: PROOFING -> SIGNING
 
-      // Encode vote data for approveAndCall (now includes creditRoot)
+      // Encode vote data for approveAndCall (using dynamic creditRoot)
       const tonAmountNeeded = voteData.creditsSpent * BigInt(1e18) // 1 credit = 1 TON
       const voteCallData = encodeAbiParameters(
         [
@@ -427,7 +459,7 @@ export function QuadraticVotingDemo() {
           { name: 'pB', type: 'uint256[2][2]' },
           { name: 'pC', type: 'uint256[2]' },
         ],
-        [proposalId, commitment, BigInt(numVotes), voteData.creditsSpent, nullifier, proposalCreditRoot, proof.pA, proof.pB, proof.pC]
+        [proposalId, commitment, BigInt(numVotes), voteData.creditsSpent, nullifier, dynamicCreditRoot, proof.pA, proof.pB, proof.pC]
       )
 
       updateProgress(55, '투표 트랜잭션 서명 대기...')
@@ -597,11 +629,12 @@ export function QuadraticVotingDemo() {
           ) : (
             <div className="uv-proposals-grid">
               {proposals.map(proposal => {
-                const countdown = formatCountdown(proposal.endTime)
+                const phaseLabels = ['투표 중', '공개 중', '종료'] as const
+                const phaseColors = ['#007aff', '#f59e0b', '#6b7280'] as const
                 return (
                   <div
                     key={proposal.id}
-                    className={`uv-proposal-card ${countdown.isExpired ? 'uv-proposal-expired' : ''}`}
+                    className={`uv-proposal-card ${proposal.phase === 2 ? 'uv-proposal-expired' : ''}`}
                     onClick={() => {
                       setSelectedProposal(proposal)
                       setCurrentView('vote')
@@ -609,20 +642,25 @@ export function QuadraticVotingDemo() {
                   >
                     <div className="uv-proposal-header">
                       <div className="uv-proposal-id">#{proposal.id}</div>
-                      <div className={`uv-countdown ${countdown.isExpired ? 'expired' : ''}`}>
-                        {countdown.text}
+                      <div
+                        className="uv-phase-badge"
+                        style={{ background: phaseColors[proposal.phase] }}
+                      >
+                        {phaseLabels[proposal.phase]}
                       </div>
                     </div>
                     <h3>{proposal.title}</h3>
                     <div className="uv-proposal-stats">
                       <div className="uv-stat">
                         <span className="uv-stat-value">{proposal.totalVotes}</span>
-                        <span className="uv-stat-label">투표</span>
+                        <span className="uv-stat-label">참여</span>
                       </div>
-                      <div className="uv-stat">
-                        <span className="uv-stat-value"><TonIcon size={14} />{proposal.totalCreditsSpent}</span>
-                        <span className="uv-stat-label">사용 TON</span>
-                      </div>
+                      {proposal.phase === 2 && (
+                        <div className="uv-stat">
+                          <span className="uv-stat-value">{proposal.forVotes > proposal.againstVotes ? '찬성' : proposal.againstVotes > proposal.forVotes ? '반대' : '동률'}</span>
+                          <span className="uv-stat-label">결과</span>
+                        </div>
+                      )}
                     </div>
                     <div className="uv-proposal-meta">
                       <span>{proposal.creator.slice(0, 6)}...{proposal.creator.slice(-4)}</span>
@@ -698,28 +736,62 @@ export function QuadraticVotingDemo() {
           <div className="uv-card uv-vote-card">
             <h1>{selectedProposal.title}</h1>
 
-            {/* Public Stats - Total votes visible, For/Against hidden */}
+            {/* Phase Indicator */}
+            <PhaseIndicator
+              phase={selectedProposal.phase}
+              endTime={selectedProposal.endTime}
+              revealEndTime={selectedProposal.revealEndTime}
+            />
+
+            {/* Public Stats - Total votes visible, For/Against hidden during Commit */}
             <div className="uv-vote-stats">
               <div className="uv-vote-stat">
                 <span className="uv-vote-stat-value">{selectedProposal.totalVotes}</span>
-                <span className="uv-vote-stat-label">총 투표수</span>
+                <span className="uv-vote-stat-label">참여자</span>
               </div>
-              <div className="uv-vote-stat">
-                <span className="uv-vote-stat-value"><TonIcon size={16} />{selectedProposal.totalCreditsSpent}</span>
-                <span className="uv-vote-stat-label">사용된 TON</span>
-              </div>
-              <div className="uv-vote-stat uv-vote-stat-hidden">
-                <span className="uv-vote-stat-value">🔒</span>
-                <span className="uv-vote-stat-label">찬성/반대</span>
-              </div>
+              {selectedProposal.phase === 2 ? (
+                <>
+                  <div className="uv-vote-stat">
+                    <span className="uv-vote-stat-value">{selectedProposal.forVotes}</span>
+                    <span className="uv-vote-stat-label">찬성</span>
+                  </div>
+                  <div className="uv-vote-stat">
+                    <span className="uv-vote-stat-value">{selectedProposal.againstVotes}</span>
+                    <span className="uv-vote-stat-label">반대</span>
+                  </div>
+                </>
+              ) : (
+                <div className="uv-vote-stat uv-vote-stat-hidden">
+                  <span className="uv-vote-stat-value">🔒</span>
+                  <span className="uv-vote-stat-label">찬성/반대</span>
+                </div>
+              )}
             </div>
 
             <div className="uv-proposal-info">
               <span>제안자: {selectedProposal.creator.slice(0, 6)}...{selectedProposal.creator.slice(-4)}</span>
             </div>
 
-            {/* Already Voted State (Rule #5) */}
-            {address && hasVotedOnProposal(address, selectedProposal.id) ? (
+            {/* Phase 2: Ended - Show Results */}
+            {selectedProposal.phase === 2 ? (
+              <VoteResult
+                proposalId={selectedProposal.id}
+                forVotes={selectedProposal.forVotes}
+                againstVotes={selectedProposal.againstVotes}
+                totalCommitments={selectedProposal.totalVotes}
+                revealedVotes={selectedProposal.revealedVotes}
+              />
+            ) : selectedProposal.phase === 1 ? (
+              /* Phase 1: Reveal Phase */
+              <RevealForm
+                proposalId={selectedProposal.id}
+                revealEndTime={selectedProposal.revealEndTime}
+                onRevealSuccess={() => {
+                  // 제안 목록 새로고침
+                  refetchProposalCount()
+                }}
+              />
+            ) : address && hasVotedOnProposal(address, selectedProposal.id) ? (
               <div className="uv-voted-state">
                 <div className="uv-voted-icon"><TonIcon size={32} /></div>
                 <h2>투표 완료</h2>
@@ -944,10 +1016,23 @@ function getProposalSelector(proposalId: number): string {
   return selector + paddedId
 }
 
-function decodeProposalResult(hex: string): { title: string; creator: string; endTime: bigint; totalVotes: bigint; totalCreditsSpent: bigint; creditRoot: bigint } {
+interface DecodedProposal {
+  title: string
+  creator: string
+  endTime: bigint
+  revealEndTime: bigint
+  totalVotes: bigint
+  totalCreditsSpent: bigint
+  creditRoot: bigint
+  forVotes: bigint
+  againstVotes: bigint
+  revealedVotes: bigint
+}
+
+function decodeProposalResult(hex: string): DecodedProposal {
   try {
     if (!hex || hex === '0x' || hex.length < 66) {
-      return { title: '', creator: '', endTime: 0n, totalVotes: 0n, totalCreditsSpent: 0n, creditRoot: 0n }
+      return { title: '', creator: '', endTime: 0n, revealEndTime: 0n, totalVotes: 0n, totalCreditsSpent: 0n, creditRoot: 0n, forVotes: 0n, againstVotes: 0n, revealedVotes: 0n }
     }
 
     // ProposalD2 struct: id, title, description, proposer, startTime, endTime, ...
@@ -976,12 +1061,24 @@ function decodeProposalResult(hex: string): { title: string; creator: string; en
       title: decoded[1] as string,
       creator: decoded[3] as string,
       endTime: decoded[5] as bigint,
-      totalVotes: decoded[12] as bigint,  // totalCommitments (total vote count - public)
-      totalCreditsSpent: decoded[11] as bigint,  // totalCreditsSpent (public)
+      revealEndTime: decoded[6] as bigint,
+      totalVotes: decoded[12] as bigint,  // totalCommitments
+      totalCreditsSpent: decoded[11] as bigint,
       creditRoot: decoded[7] as bigint,
+      forVotes: decoded[8] as bigint,
+      againstVotes: decoded[9] as bigint,
+      revealedVotes: decoded[13] as bigint,
     }
   } catch (e) {
     console.error('Failed to decode proposal:', e)
-    return { title: '', creator: '', endTime: 0n, totalVotes: 0n, totalCreditsSpent: 0n, creditRoot: 0n }
+    return { title: '', creator: '', endTime: 0n, revealEndTime: 0n, totalVotes: 0n, totalCreditsSpent: 0n, creditRoot: 0n, forVotes: 0n, againstVotes: 0n, revealedVotes: 0n }
   }
+}
+
+// Phase 계산 함수 (로컬 시간 기반)
+function calculatePhase(endTime: Date, revealEndTime: Date): 0 | 1 | 2 {
+  const now = new Date()
+  if (now <= endTime) return 0  // Commit Phase
+  if (now <= revealEndTime) return 1  // Reveal Phase
+  return 2  // Ended
 }

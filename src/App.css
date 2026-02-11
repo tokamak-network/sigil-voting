@@ -7690,3 +7690,327 @@ body {
   visibility: visible;
   opacity: 1;
 }
+
+/* ============ Phase Indicator ============ */
+.uv-phase-indicator {
+  margin: 16px 0 24px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+}
+
+.uv-phase-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.uv-phase-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.4;
+  transition: opacity 0.3s;
+}
+
+.uv-phase-step.active {
+  opacity: 1;
+}
+
+.uv-phase-step.current .uv-phase-dot {
+  color: #007aff;
+  animation: pulse 1.5s infinite;
+}
+
+.uv-phase-dot {
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.uv-phase-step.active .uv-phase-dot {
+  color: #10b981;
+}
+
+.uv-phase-label {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.uv-phase-step.active .uv-phase-label {
+  color: #ffffff;
+}
+
+.uv-phase-line {
+  width: 40px;
+  height: 2px;
+  background: #374151;
+}
+
+.uv-phase-time {
+  text-align: center;
+  margin-top: 12px;
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.uv-phase-time.urgent {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ============ Reveal Form ============ */
+.uv-reveal-form {
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  margin-top: 16px;
+}
+
+.uv-reveal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.uv-reveal-icon {
+  font-size: 24px;
+}
+
+.uv-reveal-time {
+  font-size: 14px;
+  color: #9ca3af;
+  margin-bottom: 20px;
+}
+
+.uv-reveal-info {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.uv-reveal-info-title {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.uv-reveal-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.uv-reveal-info-row:last-child {
+  border-bottom: none;
+}
+
+.uv-reveal-info-label {
+  color: #9ca3af;
+}
+
+.uv-reveal-info-value {
+  font-weight: 500;
+}
+
+.uv-reveal-pending {
+  color: #f59e0b;
+}
+
+.uv-reveal-button {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #007aff 0%, #0055cc 100%);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.uv-reveal-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 122, 255, 0.4);
+}
+
+.uv-reveal-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.uv-reveal-warning {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #f59e0b;
+  text-align: center;
+}
+
+.uv-reveal-empty {
+  text-align: center;
+  padding: 24px;
+  color: #6b7280;
+}
+
+.uv-reveal-success-message {
+  text-align: center;
+  padding: 12px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+  font-size: 14px;
+  color: #10b981;
+  margin-top: 16px;
+}
+
+/* ============ Vote Result ============ */
+.uv-result {
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  margin-top: 16px;
+}
+
+.uv-result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.uv-result-icon {
+  font-size: 24px;
+}
+
+.uv-result-summary {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.uv-result-winner {
+  font-size: 20px;
+  color: #ffffff;
+}
+
+.uv-result-winner strong {
+  color: #10b981;
+}
+
+.uv-result-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.uv-result-bar-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.uv-result-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #d1d5db;
+}
+
+.uv-result-bar {
+  height: 8px;
+  background: #374151;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.uv-result-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+.uv-result-bar-for {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.uv-result-bar-against {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+.uv-result-stats {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  padding: 16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.uv-result-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.uv-result-stat-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.uv-result-stat-value {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.uv-result-my-vote {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(0, 122, 255, 0.1);
+  border: 1px solid rgba(0, 122, 255, 0.3);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.uv-result-my-vote-label {
+  color: #9ca3af;
+}
+
+.uv-result-my-vote-value {
+  font-weight: 500;
+  color: #007aff;
+}
+
+/* ============ Phase Badge ============ */
+.uv-phase-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
