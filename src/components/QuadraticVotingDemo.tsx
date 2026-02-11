@@ -288,7 +288,7 @@ export function QuadraticVotingDemo() {
     }
 
     fetchProposals()
-  }, [proposalCount, refreshTrigger])
+  }, [proposalCount, refreshTrigger, address])
 
   const handleConnect = () => connect({ connector: injected() })
 
