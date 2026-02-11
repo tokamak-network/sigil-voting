@@ -307,7 +307,7 @@ export function QuadraticVotingDemo() {
       let creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
 
       // Register creator's creditNote for creditRoot (but won't auto-vote)
-      setCreateStatus('설정 중...')
+      setCreateStatus('잠시만 기다려주세요...')
       let creditNote: CreditNote | null = getStoredCreditNote(address)
       if (!creditNote) {
         creditNote = await createCreditNoteAsync(keyPair, BigInt(totalVotingPower), address)
@@ -315,7 +315,7 @@ export function QuadraticVotingDemo() {
 
       const noteHash = creditNote.creditNoteHash
       if (!creditNotes.includes(noteHash)) {
-        setCreateStatus('설정 중...')
+        setCreateStatus('잠시만 기다려주세요...')
         const registerNoteHash = await writeContractAsync({
           address: ZK_VOTING_FINAL_ADDRESS,
           abi: ZK_VOTING_FINAL_ABI,
@@ -328,7 +328,7 @@ export function QuadraticVotingDemo() {
       }
 
       // Build creditRoot from all registered notes
-      setCreateStatus('처리 중...')
+      setCreateStatus('잠시만 기다려주세요...')
       const { root: creditRoot } = await generateMerkleProofAsync(creditNotes, 0)
 
       // Register this creditRoot
@@ -349,7 +349,7 @@ export function QuadraticVotingDemo() {
         args: [newProposalTitle, '', creditRoot, BigInt(86400), BigInt(86400)],
       })
 
-      setCreateStatus('확인 중...')
+      setCreateStatus('거의 완료...')
       await waitForTx(createHash)
 
       await refetchProposalCount()
@@ -395,10 +395,10 @@ export function QuadraticVotingDemo() {
       const proposalId = BigInt(selectedProposal.id)
 
       // Step 1: Get or create creditNote
-      updateProgress(5, '준비 중...')
+      updateProgress(5, '잠시만 기다려주세요...')
       let creditNote: CreditNote | null = getStoredCreditNote(address)
       if (!creditNote) {
-        updateProgress(8, '준비 중...')
+        updateProgress(8, '잠시만 기다려주세요...')
         creditNote = await createCreditNoteAsync(keyPair, BigInt(totalVotingPower), address)
       }
 
@@ -408,7 +408,7 @@ export function QuadraticVotingDemo() {
 
       // Step 3: Auto-register creditNote if needed
       if (!creditNotes.includes(noteHash)) {
-        updateProgress(10, '설정 중...')
+        updateProgress(10, '잠시만 기다려주세요...')
         const registerNoteHash = await writeContractAsync({
           address: ZK_VOTING_FINAL_ADDRESS,
           abi: ZK_VOTING_FINAL_ABI,
@@ -421,7 +421,7 @@ export function QuadraticVotingDemo() {
       }
 
       // Step 4: Generate creditRoot with all registered notes
-      updateProgress(15, '처리 중...')
+      updateProgress(15, '잠시만 기다려주세요...')
       const { root: dynamicCreditRoot } = await generateMerkleProofAsync(creditNotes, creditNotes.indexOf(noteHash))
 
       // Step 5: Register creditRoot if not already registered
@@ -433,7 +433,7 @@ export function QuadraticVotingDemo() {
       })
 
       if (!isCreditRootValid) {
-        updateProgress(18, '처리 중...')
+        updateProgress(18, '잠시만 기다려주세요...')
         const registerRootHash = await writeContractAsync({
           address: ZK_VOTING_FINAL_ADDRESS,
           abi: ZK_VOTING_FINAL_ABI,
@@ -444,10 +444,10 @@ export function QuadraticVotingDemo() {
       }
 
       // Step 6: Prepare vote data
-      updateProgress(20, '투표 암호화 중...')
+      updateProgress(20, '투표 준비 중...')
       const voteData = await prepareD2VoteAsync(keyPair, choice, BigInt(numVotes), proposalId)
 
-      updateProgress(25, '보안 처리 중...')
+      updateProgress(25, '투표 준비 중...')
 
       // Step 7: Generate ZK proof using dynamic creditRoot
       const { proof, nullifier, commitment } = await generateQuadraticProof(
@@ -456,7 +456,7 @@ export function QuadraticVotingDemo() {
         voteData,
         dynamicCreditRoot,
         creditNotes,
-        (progress) => updateProgress(30 + Math.floor(progress.progress * 0.25), '보안 처리 중...')
+        (progress) => updateProgress(30 + Math.floor(progress.progress * 0.25), '투표 준비 중...')
       )
 
       proofComplete() // State: PROOFING -> SIGNING
@@ -621,6 +621,23 @@ export function QuadraticVotingDemo() {
               {proposals.map(proposal => {
                 const phaseLabels = ['투표 중', '공개 중', '종료'] as const
                 const phaseColors = ['#007aff', '#f59e0b', '#6b7280'] as const
+                const hasVoted = address ? hasVotedOnProposal(address, proposal.id) : false
+
+                // 남은 시간 계산
+                const getTimeRemaining = () => {
+                  const now = new Date()
+                  const target = proposal.phase === 0 ? proposal.endTime : proposal.revealEndTime
+                  const diff = target.getTime() - now.getTime()
+                  if (diff <= 0) return null
+                  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+                  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+                  if (days > 0) return `${days}일 ${hours}시간 남음`
+                  if (hours > 0) return `${hours}시간 남음`
+                  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+                  return `${minutes}분 남음`
+                }
+                const timeRemaining = getTimeRemaining()
+
                 return (
                   <div
                     key={proposal.id}
@@ -631,29 +648,26 @@ export function QuadraticVotingDemo() {
                     }}
                   >
                     <div className="uv-proposal-header">
-                      <div className="uv-proposal-id">#{proposal.id}</div>
                       <div
                         className="uv-phase-badge"
                         style={{ background: phaseColors[proposal.phase] }}
                       >
                         {phaseLabels[proposal.phase]}
                       </div>
+                      {hasVoted && <div className="uv-voted-badge">✓ 참여완료</div>}
                     </div>
                     <h3>{proposal.title}</h3>
-                    <div className="uv-proposal-stats">
-                      <div className="uv-stat">
-                        <span className="uv-stat-value">{proposal.totalVotes}</span>
-                        <span className="uv-stat-label">참여</span>
+                    <div className="uv-proposal-footer">
+                      <div className="uv-proposal-participants">
+                        {proposal.totalVotes}명 참여
                       </div>
-                      {proposal.phase === 2 && (
-                        <div className="uv-stat">
-                          <span className="uv-stat-value">{proposal.forVotes > proposal.againstVotes ? '찬성' : proposal.againstVotes > proposal.forVotes ? '반대' : '동률'}</span>
-                          <span className="uv-stat-label">결과</span>
+                      {proposal.phase === 2 ? (
+                        <div className="uv-proposal-result">
+                          결과: <strong>{proposal.forVotes > proposal.againstVotes ? '찬성' : proposal.againstVotes > proposal.forVotes ? '반대' : '동률'}</strong>
                         </div>
+                      ) : timeRemaining && (
+                        <div className="uv-proposal-time">{timeRemaining}</div>
                       )}
-                    </div>
-                    <div className="uv-proposal-meta">
-                      <span>{proposal.creator.slice(0, 6)}...{proposal.creator.slice(-4)}</span>
                     </div>
                   </div>
                 )
