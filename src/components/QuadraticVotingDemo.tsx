@@ -77,7 +77,8 @@ interface Proposal {
   title: string
   creator: string
   endTime: Date
-  totalVotes: number
+  totalVotes: number      // Total commitments (public)
+  totalCreditsSpent: number  // Total TON spent (public)
   creditRoot: bigint
 }
 
@@ -260,6 +261,7 @@ export function QuadraticVotingDemo() {
                 creator: decoded.creator,
                 endTime: new Date(Number(decoded.endTime) * 1000),
                 totalVotes: Number(decoded.totalVotes),
+                totalCreditsSpent: Number(decoded.totalCreditsSpent),
                 creditRoot: decoded.creditRoot,
               })
             }
@@ -372,6 +374,20 @@ export function QuadraticVotingDemo() {
       return
     }
 
+    // Check if voter is registered (must be registered during proposal creation)
+    const creditNote: CreditNote | null = getStoredCreditNote(address)
+    if (!creditNote) {
+      setError('투표자로 등록되지 않았습니다. 제안 생성 시 등록된 사용자만 투표할 수 있습니다.')
+      return
+    }
+
+    const noteHash = creditNote.creditNoteHash
+    const creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
+    if (!creditNotes.includes(noteHash)) {
+      setError('투표자로 등록되지 않았습니다. 제안 생성 시 등록된 사용자만 투표할 수 있습니다.')
+      return
+    }
+
     setSelectedChoice(choice)
     setError(null)
     startVote() // State: IDLE -> PROOFING
@@ -381,54 +397,16 @@ export function QuadraticVotingDemo() {
       updateProgress(5, '투표 데이터 준비 중...')
       const voteData = await prepareD2VoteAsync(keyPair, choice, BigInt(numVotes), proposalId)
 
-      // Get or create credit note with proper Poseidon hash
-      let creditNote: CreditNote | null = getStoredCreditNote(address)
-      if (!creditNote) {
-        creditNote = await createCreditNoteAsync(keyPair, BigInt(totalVotingPower), address)
-      }
-
-      const noteHash = creditNote.creditNoteHash
-      let creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
-
-      // Register voter's creditNote if not already registered (on-demand registration)
-      if (!creditNotes.includes(noteHash)) {
-        updateProgress(10, '투표자 등록 중...')
-        const registerHash = await writeContractAsync({
-          address: ZK_VOTING_FINAL_ADDRESS,
-          abi: ZK_VOTING_FINAL_ABI,
-          functionName: 'registerCreditNote',
-          args: [noteHash],
-        })
-        await publicClient.waitForTransactionReceipt({ hash: registerHash })
-        creditNotes.push(noteHash)
-        await refetchCreditNotes()
-      }
-
-      // Build new merkle tree with all current creditNotes (including newly registered voter)
-      updateProgress(12, '투표자 목록 갱신 중...')
-      const voterIndex = creditNotes.findIndex(n => n === noteHash)
-      const { root: newCreditRoot } = await generateMerkleProofAsync(creditNotes, voterIndex)
-
-      // Register this new creditRoot if different from proposal's
-      if (newCreditRoot !== selectedProposal.creditRoot) {
-        updateProgress(14, '투표자 목록 등록 중...')
-        const registerRootHash = await writeContractAsync({
-          address: ZK_VOTING_FINAL_ADDRESS,
-          abi: ZK_VOTING_FINAL_ABI,
-          functionName: 'registerCreditRoot',
-          args: [newCreditRoot],
-        })
-        await publicClient.waitForTransactionReceipt({ hash: registerRootHash })
-      }
-
+      // Use proposal's creditRoot (voter must already be registered)
+      const proposalCreditRoot = selectedProposal.creditRoot
       updateProgress(15, 'ZK 증명 준비 중...')
 
-      // Generate ZK proof using the creditRoot that includes this voter
+      // Generate ZK proof using proposal's creditRoot
       const { proof, nullifier, commitment } = await generateQuadraticProof(
         keyPair,
         creditNote,
         voteData,
-        newCreditRoot,  // Use the new creditRoot that includes this voter
+        proposalCreditRoot,
         creditNotes,
         (progress) => updateProgress(20 + Math.floor(progress.progress * 0.3), progress.message)
       )
@@ -449,7 +427,7 @@ export function QuadraticVotingDemo() {
           { name: 'pB', type: 'uint256[2][2]' },
           { name: 'pC', type: 'uint256[2]' },
         ],
-        [proposalId, commitment, BigInt(numVotes), voteData.creditsSpent, nullifier, newCreditRoot, proof.pA, proof.pB, proof.pC]
+        [proposalId, commitment, BigInt(numVotes), voteData.creditsSpent, nullifier, proposalCreditRoot, proof.pA, proof.pB, proof.pC]
       )
 
       updateProgress(55, '투표 트랜잭션 서명 대기...')
@@ -511,7 +489,7 @@ export function QuadraticVotingDemo() {
       setVotingError(userMessage)
       setError(userMessage)
     }
-  }, [keyPair, selectedProposal, hasTon, address, numVotes, quadraticCost, totalVotingPower, registeredCreditNotes, writeContractAsync, refetchCreditNotes, refetchCredits, startVote, updateProgress, proofComplete, signed, txConfirmed, setVotingError, publicClient])
+  }, [keyPair, selectedProposal, hasTon, address, numVotes, quadraticCost, totalVotingPower, registeredCreditNotes, writeContractAsync, refetchCredits, startVote, updateProgress, proofComplete, signed, txConfirmed, setVotingError, publicClient])
 
   const getIntensityColor = () => {
     if (isDanger) return { bg: 'rgba(239, 68, 68, 0.15)', border: '#ef4444', text: '#fca5a5' }
@@ -521,18 +499,43 @@ export function QuadraticVotingDemo() {
 
   const colors = getIntensityColor()
 
+  // Check if current user is a registered voter
+  const isRegisteredVoter = (() => {
+    if (!address) return false
+    const creditNote = getStoredCreditNote(address)
+    if (!creditNote) return false
+    const creditNotes = (registeredCreditNotes as bigint[]) || []
+    return creditNotes.includes(creditNote.creditNoteHash)
+  })()
+
   return (
     <div className="unified-voting">
-      {/* Header with Credits balance */}
+      {/* TON Dashboard Header */}
       {isConnected && (
-        <div className="uv-header-bar">
-          {hasTon ? (
-            <div className="uv-credits-badge">
-              <TonIcon size={18} /> {totalVotingPower.toLocaleString()} TON
+        <div className="uv-dashboard">
+          <div className="uv-dashboard-row">
+            <div className="uv-dashboard-item">
+              <div className="uv-dashboard-label">내 잔액</div>
+              <div className="uv-dashboard-value">
+                <TonIcon size={20} /> {totalVotingPower.toLocaleString()} TON
+              </div>
             </div>
-          ) : (
+            <div className="uv-dashboard-item">
+              <div className="uv-dashboard-label">투표자 등록</div>
+              <div className={`uv-dashboard-value ${isRegisteredVoter ? 'uv-status-active' : 'uv-status-inactive'}`}>
+                {isRegisteredVoter ? '✓ 등록됨' : '미등록'}
+              </div>
+            </div>
+            <div className="uv-dashboard-item">
+              <div className="uv-dashboard-label">지갑</div>
+              <div className="uv-dashboard-value uv-dashboard-address">
+                {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ''}
+              </div>
+            </div>
+          </div>
+          {!hasTon && (
             <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="uv-get-credits-btn">
-              <TonIcon size={14} /> TON 받으러 가기
+              <TonIcon size={14} /> Faucet에서 TON 받기
             </a>
           )}
         </div>
@@ -611,9 +614,18 @@ export function QuadraticVotingDemo() {
                       </div>
                     </div>
                     <h3>{proposal.title}</h3>
+                    <div className="uv-proposal-stats">
+                      <div className="uv-stat">
+                        <span className="uv-stat-value">{proposal.totalVotes}</span>
+                        <span className="uv-stat-label">투표</span>
+                      </div>
+                      <div className="uv-stat">
+                        <span className="uv-stat-value"><TonIcon size={14} />{proposal.totalCreditsSpent}</span>
+                        <span className="uv-stat-label">사용 TON</span>
+                      </div>
+                    </div>
                     <div className="uv-proposal-meta">
-                      <span><TonIcon size={12} /> {proposal.creator.slice(0, 6)}...{proposal.creator.slice(-4)}</span>
-                      <span><TonIcon size={12} /> {proposal.totalVotes}표</span>
+                      <span>{proposal.creator.slice(0, 6)}...{proposal.creator.slice(-4)}</span>
                     </div>
                   </div>
                 )
@@ -686,9 +698,24 @@ export function QuadraticVotingDemo() {
           <div className="uv-card uv-vote-card">
             <h1>{selectedProposal.title}</h1>
 
+            {/* Public Stats - Total votes visible, For/Against hidden */}
+            <div className="uv-vote-stats">
+              <div className="uv-vote-stat">
+                <span className="uv-vote-stat-value">{selectedProposal.totalVotes}</span>
+                <span className="uv-vote-stat-label">총 투표수</span>
+              </div>
+              <div className="uv-vote-stat">
+                <span className="uv-vote-stat-value"><TonIcon size={16} />{selectedProposal.totalCreditsSpent}</span>
+                <span className="uv-vote-stat-label">사용된 TON</span>
+              </div>
+              <div className="uv-vote-stat uv-vote-stat-hidden">
+                <span className="uv-vote-stat-value">🔒</span>
+                <span className="uv-vote-stat-label">찬성/반대</span>
+              </div>
+            </div>
+
             <div className="uv-proposal-info">
-              <span><TonIcon size={14} /> {selectedProposal.creator.slice(0, 6)}...{selectedProposal.creator.slice(-4)}</span>
-              <span><TonIcon size={14} /> {selectedProposal.totalVotes}표</span>
+              <span>제안자: {selectedProposal.creator.slice(0, 6)}...{selectedProposal.creator.slice(-4)}</span>
             </div>
 
             {/* Already Voted State (Rule #5) */}
@@ -917,10 +944,10 @@ function getProposalSelector(proposalId: number): string {
   return selector + paddedId
 }
 
-function decodeProposalResult(hex: string): { title: string; creator: string; endTime: bigint; totalVotes: bigint; creditRoot: bigint } {
+function decodeProposalResult(hex: string): { title: string; creator: string; endTime: bigint; totalVotes: bigint; totalCreditsSpent: bigint; creditRoot: bigint } {
   try {
     if (!hex || hex === '0x' || hex.length < 66) {
-      return { title: '', creator: '', endTime: 0n, totalVotes: 0n, creditRoot: 0n }
+      return { title: '', creator: '', endTime: 0n, totalVotes: 0n, totalCreditsSpent: 0n, creditRoot: 0n }
     }
 
     // ProposalD2 struct: id, title, description, proposer, startTime, endTime, ...
@@ -949,11 +976,12 @@ function decodeProposalResult(hex: string): { title: string; creator: string; en
       title: decoded[1] as string,
       creator: decoded[3] as string,
       endTime: decoded[5] as bigint,
-      totalVotes: (decoded[8] as bigint) + (decoded[9] as bigint),
+      totalVotes: decoded[12] as bigint,  // totalCommitments (total vote count - public)
+      totalCreditsSpent: decoded[11] as bigint,  // totalCreditsSpent (public)
       creditRoot: decoded[7] as bigint,
     }
   } catch (e) {
     console.error('Failed to decode proposal:', e)
-    return { title: '', creator: '', endTime: 0n, totalVotes: 0n, creditRoot: 0n }
+    return { title: '', creator: '', endTime: 0n, totalVotes: 0n, totalCreditsSpent: 0n, creditRoot: 0n }
   }
 }

@@ -6912,41 +6912,154 @@ body {
   }
 }
 
-/* Header Bar with Credits */
-.uv-header-bar {
-  display: flex;
-  justify-content: flex-end;
+/* TON Dashboard Header */
+.uv-dashboard {
+  background: linear-gradient(135deg, rgba(42, 114, 229, 0.15) 0%, rgba(99, 102, 241, 0.1) 100%);
+  border: 1px solid rgba(42, 114, 229, 0.3);
+  border-radius: 16px;
+  padding: 20px 24px;
   margin-bottom: 24px;
 }
 
-.uv-credits-badge {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  padding: 8px 16px;
-  border-radius: 20px;
+.uv-dashboard-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+
+.uv-dashboard-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.uv-dashboard-label {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.uv-dashboard-value {
+  font-size: 1.1rem;
   font-weight: 600;
-  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.uv-dashboard-address {
+  font-family: monospace;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.uv-status-active {
+  color: #22c55e;
+}
+
+.uv-status-inactive {
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .uv-get-credits-btn {
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #2a72e5 0%, #6366f1 100%);
   color: #fff;
   border: none;
-  padding: 8px 16px;
-  border-radius: 20px;
+  padding: 10px 20px;
+  border-radius: 12px;
   font-weight: 600;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin-top: 16px;
+  text-decoration: none;
 }
 
-.uv-get-credits-btn:hover:not(:disabled) {
-  transform: scale(1.05);
+.uv-get-credits-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(42, 114, 229, 0.4);
 }
 
-.uv-get-credits-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+/* Proposal Stats */
+.uv-proposal-stats {
+  display: flex;
+  gap: 16px;
+  margin: 12px 0;
+}
+
+.uv-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 8px 16px;
+  border-radius: 8px;
+  flex: 1;
+}
+
+.uv-stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.uv-stat-label {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* Vote Stats in Vote View */
+.uv-vote-stats {
+  display: flex;
+  gap: 16px;
+  margin: 16px 0;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.uv-vote-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  padding: 12px;
+}
+
+.uv-vote-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.uv-vote-stat-label {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.uv-vote-stat-hidden {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+}
+
+.uv-vote-stat-hidden .uv-vote-stat-value {
+  color: rgba(255, 255, 255, 0.3);
 }
 
 /* List View */
