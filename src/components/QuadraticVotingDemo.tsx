@@ -124,10 +124,10 @@ export function QuadraticVotingDemo() {
   const [newProposalTitle, setNewProposalTitle] = useState('')
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
-  // Rule #3: Live countdown timer
+  // Rule #3: Live countdown timer (1초마다 업데이트)
   const [, setTick] = useState(0)
   useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 60000) // Update every minute
+    const interval = setInterval(() => setTick(t => t + 1), 1000)
     return () => clearInterval(interval)
   }, [])
 
@@ -354,7 +354,7 @@ export function QuadraticVotingDemo() {
         address: ZK_VOTING_FINAL_ADDRESS,
         abi: ZK_VOTING_FINAL_ABI,
         functionName: 'createProposalD2',
-        args: [newProposalTitle, '', creditRoot, BigInt(86400), BigInt(86400)],
+        args: [newProposalTitle, '', creditRoot, BigInt(60), BigInt(60)], // 테스트: 1분 투표, 1분 공개
       })
 
       setCreateStatus('거의 완료...')
@@ -631,7 +631,7 @@ export function QuadraticVotingDemo() {
                 const phaseColors = ['#007aff', '#f59e0b', '#6b7280'] as const
                 const hasVoted = address ? hasVotedOnProposal(address, proposal.id) : false
 
-                // 남은 시간 계산
+                // 남은 시간 계산 (초 단위까지)
                 const getTimeRemaining = () => {
                   const now = new Date()
                   const target = proposal.phase === 0 ? proposal.endTime : proposal.revealEndTime
@@ -639,10 +639,12 @@ export function QuadraticVotingDemo() {
                   if (diff <= 0) return null
                   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
                   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-                  if (days > 0) return `${days}일 ${hours}시간 남음`
-                  if (hours > 0) return `${hours}시간 남음`
                   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-                  return `${minutes}분 남음`
+                  const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+                  if (days > 0) return `${days}일 ${hours}시간 남음`
+                  if (hours > 0) return `${hours}시간 ${minutes}분 남음`
+                  if (minutes > 0) return `${minutes}분 ${seconds}초 남음`
+                  return `${seconds}초 남음`
                 }
                 const timeRemaining = getTimeRemaining()
 
