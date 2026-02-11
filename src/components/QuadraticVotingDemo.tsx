@@ -8,6 +8,7 @@ import {
   prepareD2VoteAsync,
   generateQuadraticProof,
   storeD2VoteForReveal,
+  getD2VoteForReveal,
   generateMerkleProofAsync,
   createCreditNoteAsync,
   getStoredCreditNote,
@@ -495,7 +496,7 @@ export function QuadraticVotingDemo() {
       // Wait for confirmation with retry
       await waitForTx(hash)
 
-      storeD2VoteForReveal(proposalId, voteData, address)
+      storeD2VoteForReveal(proposalId, voteData, address, hash)
       markProposalAsVoted(address, selectedProposal.id) // Track locally to prevent re-voting
       await refetchCredits() // Refresh available credits after voting
       txConfirmed(hash) // State: SUBMITTING -> SUCCESS
@@ -796,12 +797,46 @@ export function QuadraticVotingDemo() {
                 }}
               />
             ) : address && hasVotedOnProposal(address, selectedProposal.id) ? (
-              <div className="uv-voted-state">
-                <div className="uv-voted-icon"><TonIcon size={32} /></div>
-                <h2>투표 완료</h2>
-                <p className="uv-encrypted-notice">투표 내용이 암호화되었습니다</p>
-                <p className="uv-reveal-notice">공개 단계까지 비밀이 유지됩니다</p>
-              </div>
+              (() => {
+                const myVote = getD2VoteForReveal(BigInt(selectedProposal.id), address)
+                return (
+                  <div className="uv-voted-state">
+                    <div className="uv-voted-icon">✓</div>
+                    <h2>투표 완료</h2>
+                    {myVote && (
+                      <>
+                        <div className="uv-my-vote-summary">
+                          <div className="uv-my-vote-row">
+                            <span>내 선택</span>
+                            <strong className={myVote.choice === CHOICE_FOR ? 'uv-for' : 'uv-against'}>
+                              {myVote.choice === CHOICE_FOR ? '찬성' : '반대'}
+                            </strong>
+                          </div>
+                          <div className="uv-my-vote-row">
+                            <span>투표 수</span>
+                            <strong>{Number(myVote.numVotes)}표</strong>
+                          </div>
+                          <div className="uv-my-vote-row">
+                            <span>사용 TON</span>
+                            <strong>{Number(myVote.creditsSpent)} TON</strong>
+                          </div>
+                        </div>
+                        {myVote.txHash && (
+                          <a
+                            href={`https://sepolia.etherscan.io/tx/${myVote.txHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="uv-tx-link"
+                          >
+                            거래 영수증 보기 ↗
+                          </a>
+                        )}
+                      </>
+                    )}
+                    <p className="uv-reveal-notice">공개 기간이 되면 투표를 공개해야 집계에 반영됩니다</p>
+                  </div>
+                )
+              })()
             ) : !hasTon ? (
               /* No TON State */
               <div className="uv-no-token-notice">
@@ -918,6 +953,12 @@ export function QuadraticVotingDemo() {
                 <strong>{selectedProposal?.title}</strong>
               </div>
               <div className="uv-result-row">
+                <span>내 선택</span>
+                <strong className={selectedChoice === CHOICE_FOR ? 'uv-for' : 'uv-against'}>
+                  {selectedChoice === CHOICE_FOR ? '찬성' : '반대'}
+                </strong>
+              </div>
+              <div className="uv-result-row">
                 <span>투표 수</span>
                 <strong>{numVotes}표</strong>
               </div>
@@ -925,17 +966,17 @@ export function QuadraticVotingDemo() {
                 <span>사용 TON</span>
                 <strong><TonIcon size={16} /> {quadraticCost} TON</strong>
               </div>
-              <div className="uv-result-row uv-hidden">
-                <span>선택</span>
-                <strong><TonIcon size={14} /> 공개 대기 중</strong>
-              </div>
             </div>
 
             {txHash && (
               <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="uv-tx-link">
-                Etherscan에서 확인 ↗
+                거래 영수증 보기 ↗
               </a>
             )}
+
+            <p className="uv-reveal-hint">
+              공개 기간이 시작되면 내 투표를 공개해야 집계에 반영됩니다
+            </p>
 
             <button
               className="uv-btn uv-btn-secondary"

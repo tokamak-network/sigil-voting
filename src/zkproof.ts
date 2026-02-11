@@ -890,6 +890,7 @@ export interface D2VoteData {
   proposalId: bigint
   commitment: bigint
   nullifier: bigint
+  txHash?: string       // 트랜잭션 해시 (Etherscan 링크용)
 }
 
 /**
@@ -1174,7 +1175,7 @@ export async function generateQuadraticProof(
 /**
  * Store D2 vote data for reveal phase
  */
-export function storeD2VoteForReveal(proposalId: bigint, voteData: D2VoteData, walletAddress?: string): void {
+export function storeD2VoteForReveal(proposalId: bigint, voteData: D2VoteData, walletAddress?: string, txHash?: string): void {
   const walletPart = walletAddress ? `-${walletAddress.toLowerCase()}` : ''
   const key = `zk-d2-vote-reveal${walletPart}-${proposalId.toString()}`
   localStorage.setItem(key, JSON.stringify({
@@ -1184,6 +1185,7 @@ export function storeD2VoteForReveal(proposalId: bigint, voteData: D2VoteData, w
     voteSalt: voteData.voteSalt.toString(),
     nullifier: voteData.nullifier.toString(),
     commitment: voteData.commitment.toString(),
+    txHash: txHash || voteData.txHash,
   }))
 }
 
@@ -1206,6 +1208,7 @@ export function getD2VoteForReveal(proposalId: bigint, walletAddress?: string): 
       proposalId,
       nullifier: BigInt(parsed.nullifier),
       commitment: BigInt(parsed.commitment),
+      txHash: parsed.txHash,
     }
   } catch {
     return null
