@@ -242,12 +242,19 @@ export function QuadraticVotingDemo() {
   }, [isConnected])
 
   // Fetch proposals
+  // 첫 로딩 여부 추적
+  const [isFirstLoad, setIsFirstLoad] = useState(true)
+
   useEffect(() => {
     const fetchProposals = async () => {
-      setIsLoadingProposals(true)
+      // 첫 로딩일 때만 로딩 표시 (새로고침 시 깜빡임 방지)
+      if (isFirstLoad) {
+        setIsLoadingProposals(true)
+      }
 
       if (!proposalCount || proposalCount === 0n) {
         setIsLoadingProposals(false)
+        setIsFirstLoad(false)
         return
       }
 
@@ -298,10 +305,11 @@ export function QuadraticVotingDemo() {
 
       setProposals(fetchedProposals)
       setIsLoadingProposals(false)
+      setIsFirstLoad(false)
     }
 
     fetchProposals()
-  }, [proposalCount, refreshTrigger, address])
+  }, [proposalCount, refreshTrigger, address, isFirstLoad])
 
   const handleConnect = () => connect({ connector: injected() })
 
@@ -380,7 +388,7 @@ export function QuadraticVotingDemo() {
         address: ZK_VOTING_FINAL_ADDRESS,
         abi: ZK_VOTING_FINAL_ABI,
         functionName: 'createProposalD2',
-        args: [newProposalTitle, '', creditRoot, BigInt(300), BigInt(300)], // 테스트: 5분 투표, 5분 공개
+        args: [newProposalTitle, '', creditRoot, BigInt(240), BigInt(240)], // 테스트: 4분 투표, 4분 공개
       })
 
       setCreateStatus('거의 완료...')
