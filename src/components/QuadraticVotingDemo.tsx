@@ -124,6 +124,10 @@ export function QuadraticVotingDemo() {
   const [newProposalTitle, setNewProposalTitle] = useState('')
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
+  // 필터 및 검색
+  const [filterPhase, setFilterPhase] = useState<'all' | 0 | 1 | 2>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+
   // Rule #3: Live countdown timer (1초마다 업데이트)
   const [, setTick] = useState(0)
   useEffect(() => {
@@ -354,7 +358,7 @@ export function QuadraticVotingDemo() {
         address: ZK_VOTING_FINAL_ADDRESS,
         abi: ZK_VOTING_FINAL_ABI,
         functionName: 'createProposalD2',
-        args: [newProposalTitle, '', creditRoot, BigInt(60), BigInt(60)], // 테스트: 1분 투표, 1분 공개
+        args: [newProposalTitle, '', creditRoot, BigInt(300), BigInt(300)], // 테스트: 5분 투표, 5분 공개
       })
 
       setCreateStatus('거의 완료...')
@@ -625,8 +629,71 @@ export function QuadraticVotingDemo() {
               )}
             </div>
           ) : (
-            <div className="uv-proposals-grid">
-              {proposals.map(proposal => {
+            <>
+              {/* 필터 및 검색 */}
+              <div className="uv-filter-bar">
+                <div className="uv-filter-tabs">
+                  <button
+                    className={`uv-filter-tab ${filterPhase === 'all' ? 'active' : ''}`}
+                    onClick={() => setFilterPhase('all')}
+                  >
+                    전체 ({proposals.length})
+                  </button>
+                  <button
+                    className={`uv-filter-tab ${filterPhase === 0 ? 'active' : ''}`}
+                    onClick={() => setFilterPhase(0)}
+                  >
+                    투표 중 ({proposals.filter(p => p.phase === 0).length})
+                  </button>
+                  <button
+                    className={`uv-filter-tab ${filterPhase === 1 ? 'active' : ''}`}
+                    onClick={() => setFilterPhase(1)}
+                  >
+                    공개 중 ({proposals.filter(p => p.phase === 1).length})
+                  </button>
+                  <button
+                    className={`uv-filter-tab ${filterPhase === 2 ? 'active' : ''}`}
+                    onClick={() => setFilterPhase(2)}
+                  >
+                    종료 ({proposals.filter(p => p.phase === 2).length})
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  className="uv-search-input"
+                  placeholder="제안 검색..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              <div className="uv-proposals-grid">
+              {(() => {
+                // 필터링
+                let filtered = proposals.filter(p => {
+                  if (filterPhase !== 'all' && p.phase !== filterPhase) return false
+                  if (searchQuery && !p.title.toLowerCase().includes(searchQuery.toLowerCase())) return false
+                  return true
+                })
+
+                // 정렬: 진행중(투표/공개) 우선, 그 다음 최신순
+                filtered.sort((a, b) => {
+                  // 진행중(0, 1) vs 종료(2)
+                  if (a.phase < 2 && b.phase === 2) return -1
+                  if (a.phase === 2 && b.phase < 2) return 1
+                  // 같은 상태면 ID 내림차순 (최신순)
+                  return b.id - a.id
+                })
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="uv-empty-filter">
+                      {searchQuery ? `"${searchQuery}" 검색 결과가 없습니다` : '해당하는 제안이 없습니다'}
+                    </div>
+                  )
+                }
+
+                return filtered.map(proposal => {
                 const phaseLabels = ['투표 중', '공개 중', '종료'] as const
                 const phaseColors = ['#007aff', '#f59e0b', '#6b7280'] as const
                 const hasVoted = address ? hasVotedOnProposal(address, proposal.id) : false
@@ -681,8 +748,10 @@ export function QuadraticVotingDemo() {
                     </div>
                   </div>
                 )
-              })}
+              })
+              })()}
             </div>
+            </>
           )}
 
           {error && <div className="uv-error">{error}</div>}

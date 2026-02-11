@@ -7127,6 +7127,72 @@ body {
   font-size: 13px;
 }
 
+/* Filter Bar */
+.uv-filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.uv-filter-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.uv-filter-tab {
+  padding: 8px 16px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.uv-filter-tab:hover {
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+}
+
+.uv-filter-tab.active {
+  background: #007aff;
+  border-color: #007aff;
+  color: #fff;
+}
+
+.uv-search-input {
+  padding: 10px 16px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.03);
+  color: #fff;
+  font-size: 14px;
+  min-width: 200px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.uv-search-input:focus {
+  border-color: #007aff;
+  background: rgba(255,255,255,0.05);
+}
+
+.uv-search-input::placeholder {
+  color: #6b7280;
+}
+
+.uv-empty-filter {
+  text-align: center;
+  padding: 40px;
+  color: #6b7280;
+  font-size: 15px;
+}
+
 /* Proposals Grid */
 .uv-proposals-grid {
   display: grid;
