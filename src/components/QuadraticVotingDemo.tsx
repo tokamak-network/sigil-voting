@@ -122,6 +122,7 @@ export function QuadraticVotingDemo() {
   const [isLoadingProposals, setIsLoadingProposals] = useState(true)
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null)
   const [newProposalTitle, setNewProposalTitle] = useState('')
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   // Rule #3: Live countdown timer
   const [, setTick] = useState(0)
@@ -274,7 +275,7 @@ export function QuadraticVotingDemo() {
     }
 
     fetchProposals()
-  }, [proposalCount])
+  }, [proposalCount, refreshTrigger])
 
   const handleConnect = () => connect({ connector: injected() })
 
@@ -981,6 +982,7 @@ export function QuadraticVotingDemo() {
             <button
               className="uv-btn uv-btn-secondary"
               onClick={() => {
+                setRefreshTrigger(prev => prev + 1)
                 setCurrentView('list')
                 setSelectedProposal(null)
                 setSelectedChoice(null)
