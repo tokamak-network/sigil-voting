@@ -219,6 +219,15 @@ export function QuadraticVotingDemo() {
     }
   }, [isConnected, address])
 
+  // 지갑 연결 해제 시 리스트로 돌아가기
+  useEffect(() => {
+    if (!isConnected) {
+      setCurrentView('list')
+      setSelectedProposal(null)
+      setSelectedChoice(null)
+    }
+  }, [isConnected])
+
   // Fetch proposals
   useEffect(() => {
     const fetchProposals = async () => {

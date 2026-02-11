@@ -32,7 +32,7 @@ function formatTimeRemaining(targetTime: Date): string {
   return `${seconds}초`
 }
 
-type RevealStatus = 'idle' | 'revealing' | 'success' | 'error'
+type RevealStatus = 'idle' | 'confirming' | 'processing' | 'success' | 'error'
 
 export function RevealForm({ proposalId, revealEndTime, onRevealSuccess }: RevealFormProps) {
   const { address } = useAccount()
@@ -42,7 +42,11 @@ export function RevealForm({ proposalId, revealEndTime, onRevealSuccess }: Revea
   const [isRevealed, setIsRevealed] = useState(false)
 
   const { writeContractAsync, data: txHash } = useWriteContract()
-  const { isSuccess: txConfirmed } = useWaitForTransactionReceipt({ hash: txHash })
+  const { isSuccess: txConfirmed } = useWaitForTransactionReceipt({
+    hash: txHash,
+    confirmations: 1,
+    pollingInterval: 1000, // 1초마다 확인
+  })
 
   // 저장된 투표 데이터 로드
   useEffect(() => {
@@ -58,7 +62,7 @@ export function RevealForm({ proposalId, revealEndTime, onRevealSuccess }: Revea
 
   // TX 확인 후 처리
   useEffect(() => {
-    if (txConfirmed && status === 'revealing') {
+    if (txConfirmed && (status === 'confirming' || status === 'processing')) {
       setStatus('success')
       // 공개 완료 마킹
       if (address) {
@@ -73,11 +77,11 @@ export function RevealForm({ proposalId, revealEndTime, onRevealSuccess }: Revea
   const handleReveal = useCallback(async () => {
     if (!voteData || !address) return
 
-    setStatus('revealing')
+    setStatus('confirming')
     setError(null)
 
     try {
-      await writeContractAsync({
+      const hash = await writeContractAsync({
         address: ZK_VOTING_FINAL_ADDRESS,
         abi: ZK_VOTING_REVEAL_ABI,
         functionName: 'revealVoteD2',
@@ -90,6 +94,10 @@ export function RevealForm({ proposalId, revealEndTime, onRevealSuccess }: Revea
         ],
         gas: BigInt(500000),
       })
+
+      setStatus('processing')
+      // txHash가 있으면 useWaitForTransactionReceipt가 처리
+      console.log('Reveal tx:', hash)
     } catch (err) {
       setStatus('error')
       const message = (err as Error).message
@@ -173,13 +181,21 @@ export function RevealForm({ proposalId, revealEndTime, onRevealSuccess }: Revea
 
       {error && <div className="uv-error">{error}</div>}
 
-      <button
-        className="uv-reveal-button"
-        onClick={handleReveal}
-        disabled={status === 'revealing'}
-      >
-        {status === 'revealing' ? '공개 중...' : '투표 공개하기'}
-      </button>
+      {(status === 'confirming' || status === 'processing') ? (
+        <div className="uv-reveal-loading">
+          <div className="uv-spinner"></div>
+          <span>
+            {status === 'confirming' ? '지갑에서 승인해주세요...' : '트랜잭션 처리 중...'}
+          </span>
+        </div>
+      ) : (
+        <button
+          className="uv-reveal-button"
+          onClick={handleReveal}
+        >
+          투표 공개하기
+        </button>
+      )}
 
       <div className="uv-reveal-warning">
         ⚠️ 공개하지 않으면 집계에서 제외됩니다

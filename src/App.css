@@ -7132,26 +7132,27 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
 }
 
 .uv-filter-tabs {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .uv-filter-tab {
-  padding: 8px 16px;
+  padding: 6px 12px;
   border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 20px;
+  border-radius: 16px;
   background: transparent;
   color: #9ca3af;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .uv-filter-tab:hover {
@@ -7166,13 +7167,13 @@ body {
 }
 
 .uv-search-input {
-  padding: 10px 16px;
+  padding: 8px 14px;
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 8px;
   background: rgba(255,255,255,0.03);
   color: #fff;
-  font-size: 14px;
-  min-width: 200px;
+  font-size: 13px;
+  width: 180px;
   outline: none;
   transition: all 0.2s;
 }
@@ -7180,6 +7181,7 @@ body {
 .uv-search-input:focus {
   border-color: #007aff;
   background: rgba(255,255,255,0.05);
+  width: 220px;
 }
 
 .uv-search-input::placeholder {
@@ -7188,22 +7190,23 @@ body {
 
 .uv-empty-filter {
   text-align: center;
-  padding: 40px;
+  padding: 60px 20px;
   color: #6b7280;
-  font-size: 15px;
+  font-size: 14px;
+  grid-column: 1 / -1;
 }
 
 /* Proposals Grid */
 .uv-proposals-grid {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .uv-proposal-card {
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 16px;
-  padding: 20px;
+  border-radius: 12px;
+  padding: 16px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -7211,14 +7214,15 @@ body {
 .uv-proposal-card:hover {
   background: rgba(255,255,255,0.06);
   border-color: rgba(99, 102, 241, 0.4);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .uv-proposal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  gap: 8px;
 }
 
 .uv-proposal-id {
@@ -7245,9 +7249,12 @@ body {
 }
 
 .uv-proposal-card h3 {
-  font-size: 1.1rem;
+  font-size: 15px;
   font-weight: 600;
-  margin-bottom: 12px;
+  margin: 0;
+  line-height: 1.4;
+  letter-spacing: -0.3px;
+  word-break: keep-all;
 }
 
 .uv-proposal-meta {
@@ -7920,6 +7927,20 @@ body {
   cursor: not-allowed;
 }
 
+.uv-reveal-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(0, 122, 255, 0.1);
+  border: 1px solid rgba(0, 122, 255, 0.3);
+  border-radius: 12px;
+  color: #60a5fa;
+  font-size: 14px;
+  font-weight: 500;
+}
+
 .uv-reveal-warning {
   margin-top: 16px;
   padding: 12px;
@@ -8073,10 +8094,11 @@ body {
 /* ============ Phase Badge ============ */
 .uv-phase-badge {
   padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 11px;
+  border-radius: 10px;
+  font-size: 12px;
   font-weight: 600;
   color: white;
+  letter-spacing: -0.2px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -8129,37 +8151,45 @@ body {
   color: #10b981;
   background: rgba(16, 185, 129, 0.15);
   padding: 4px 8px;
-  border-radius: 8px;
+  border-radius: 10px;
   font-weight: 500;
+  letter-spacing: -0.2px;
+  flex-shrink: 0;
 }
 
 .uv-proposal-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .uv-proposal-participants {
-  font-size: 13px;
+  font-size: 12px;
   color: #9ca3af;
+  letter-spacing: -0.2px;
 }
 
 .uv-proposal-time {
   font-size: 12px;
   color: #f59e0b;
   font-weight: 500;
+  letter-spacing: -0.2px;
+  text-align: right;
 }
 
 .uv-proposal-result {
-  font-size: 13px;
+  font-size: 12px;
   color: #d1d5db;
+  letter-spacing: -0.2px;
+  text-align: right;
 }
 
 .uv-proposal-result strong {
   color: #10b981;
+  font-weight: 600;
 }
 
 /* ============ My Vote Summary ============ */
