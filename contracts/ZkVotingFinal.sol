@@ -46,12 +46,7 @@ interface IERC20 {
  * @dev Interface for ERC20OnApprove callback (used by TON/SeigToken)
  */
 interface IERC20OnApprove {
-    function onApprove(
-        address owner,
-        address spender,
-        uint256 amount,
-        bytes calldata data
-    ) external returns (bool);
+    function onApprove(address owner, address spender, uint256 amount, bytes calldata data) external returns (bool);
 }
 
 /**
@@ -166,21 +161,45 @@ contract ZkVotingFinal is IERC165 {
 
     // ============ Events ============
     // D1 Events
-    event ProposalCreatedD1(uint256 indexed proposalId, string title, address indexed proposer, uint256 merkleRoot, uint256 endTime, uint256 revealEndTime);
+    event ProposalCreatedD1(
+        uint256 indexed proposalId,
+        string title,
+        address indexed proposer,
+        uint256 merkleRoot,
+        uint256 endTime,
+        uint256 revealEndTime
+    );
     event MerkleRootRegistered(uint256 indexed merkleRoot, uint256 timestamp);
     event VoterRegistered(uint256 indexed noteHash, uint256 timestamp);
-    event VoteCommittedD1(uint256 indexed proposalId, uint256 indexed nullifier, uint256 commitment, uint256 votingPower);
+    event VoteCommittedD1(
+        uint256 indexed proposalId, uint256 indexed nullifier, uint256 commitment, uint256 votingPower
+    );
     event VoteRevealedD1(uint256 indexed proposalId, uint256 indexed nullifier, uint256 choice, uint256 votingPower);
 
     // D2 Events
-    event ProposalCreatedD2(uint256 indexed proposalId, string title, address indexed proposer, uint256 creditRoot, uint256 endTime, uint256 revealEndTime);
+    event ProposalCreatedD2(
+        uint256 indexed proposalId,
+        string title,
+        address indexed proposer,
+        uint256 creditRoot,
+        uint256 endTime,
+        uint256 revealEndTime
+    );
     event CreditRootRegistered(uint256 indexed creditRoot, uint256 timestamp);
     event CreditNoteRegistered(uint256 indexed creditNoteHash, uint256 timestamp);
     event CreditsInitialized(address indexed user, uint256 credits);
     event CreditsBurned(address indexed user, uint256 amount, uint256 remaining);
     event CreditsMinted(address indexed user, uint256 amount, uint256 total);
-    event VoteCommittedD2(uint256 indexed proposalId, uint256 indexed nullifier, uint256 commitment, uint256 numVotes, uint256 creditsSpent);
-    event VoteRevealedD2(uint256 indexed proposalId, uint256 indexed nullifier, uint256 choice, uint256 numVotes, uint256 creditsSpent);
+    event VoteCommittedD2(
+        uint256 indexed proposalId,
+        uint256 indexed nullifier,
+        uint256 commitment,
+        uint256 numVotes,
+        uint256 creditsSpent
+    );
+    event VoteRevealedD2(
+        uint256 indexed proposalId, uint256 indexed nullifier, uint256 choice, uint256 numVotes, uint256 creditsSpent
+    );
 
     // ============ Errors ============
     error ProposalNotFound();
@@ -240,11 +259,7 @@ contract ZkVotingFinal is IERC165 {
      */
     function initializeCredits() external {
         if (!userCredits[msg.sender].initialized) {
-            userCredits[msg.sender] = UserCredits({
-                totalCredits: INITIAL_CREDITS,
-                usedCredits: 0,
-                initialized: true
-            });
+            userCredits[msg.sender] = UserCredits({totalCredits: INITIAL_CREDITS, usedCredits: 0, initialized: true});
             emit CreditsInitialized(msg.sender, INITIAL_CREDITS);
         }
     }
@@ -338,7 +353,14 @@ contract ZkVotingFinal is IERC165 {
             proposalVoterSnapshots[proposalId].push(registeredVoters[i]);
         }
 
-        emit ProposalCreatedD1(proposalId, _title, msg.sender, _merkleRoot, block.timestamp + _votingDuration, block.timestamp + _votingDuration + _revealDuration);
+        emit ProposalCreatedD1(
+            proposalId,
+            _title,
+            msg.sender,
+            _merkleRoot,
+            block.timestamp + _votingDuration,
+            block.timestamp + _votingDuration + _revealDuration
+        );
         return proposalId;
     }
 
@@ -436,7 +458,21 @@ contract ZkVotingFinal is IERC165 {
         else if (block.timestamp <= p.revealEndTime) currentPhase = 1;
         else currentPhase = 2;
 
-        return (p.id, p.title, p.description, p.proposer, p.merkleRoot, p.endTime, p.revealEndTime, p.forVotes, p.againstVotes, p.abstainVotes, p.totalCommitments, p.revealedVotes, currentPhase);
+        return (
+            p.id,
+            p.title,
+            p.description,
+            p.proposer,
+            p.merkleRoot,
+            p.endTime,
+            p.revealEndTime,
+            p.forVotes,
+            p.againstVotes,
+            p.abstainVotes,
+            p.totalCommitments,
+            p.revealedVotes,
+            currentPhase
+        );
     }
 
     // ============================================================
@@ -490,7 +526,14 @@ contract ZkVotingFinal is IERC165 {
             exists: true
         });
 
-        emit ProposalCreatedD2(proposalId, _title, msg.sender, _creditRoot, block.timestamp + _votingDuration, block.timestamp + _votingDuration + _revealDuration);
+        emit ProposalCreatedD2(
+            proposalId,
+            _title,
+            msg.sender,
+            _creditRoot,
+            block.timestamp + _votingDuration,
+            block.timestamp + _votingDuration + _revealDuration
+        );
         return proposalId;
     }
 
@@ -560,12 +603,7 @@ contract ZkVotingFinal is IERC165 {
      * @param amount The amount of TON approved (in wei)
      * @param data Encoded vote parameters: (proposalId, commitment, numVotes, creditsSpent, nullifier, creditRoot, pA, pB, pC)
      */
-    function onApprove(
-        address owner,
-        address spender,
-        uint256 amount,
-        bytes calldata data
-    ) external returns (bool) {
+    function onApprove(address owner, address spender, uint256 amount, bytes calldata data) external returns (bool) {
         // Only TON token can call this
         require(msg.sender == address(tonToken), "Only TON token can call");
         require(spender == address(this), "Invalid spender");
@@ -581,7 +619,9 @@ contract ZkVotingFinal is IERC165 {
             uint256[2] memory _pA,
             uint256[2][2] memory _pB,
             uint256[2] memory _pC
-        ) = abi.decode(data, (uint256, uint256, uint256, uint256, uint256, uint256, uint256[2], uint256[2][2], uint256[2]));
+        ) = abi.decode(
+            data, (uint256, uint256, uint256, uint256, uint256, uint256, uint256[2], uint256[2][2], uint256[2])
+        );
 
         ProposalD2 storage proposal = proposalsD2[_proposalId];
 
@@ -703,7 +743,22 @@ contract ZkVotingFinal is IERC165 {
         else if (block.timestamp <= p.revealEndTime) currentPhase = 1;
         else currentPhase = 2;
 
-        return (p.id, p.title, p.description, p.proposer, p.creditRoot, p.endTime, p.revealEndTime, p.forVotes, p.againstVotes, p.abstainVotes, p.totalCreditsSpent, p.totalCommitments, p.revealedVotes, currentPhase);
+        return (
+            p.id,
+            p.title,
+            p.description,
+            p.proposer,
+            p.creditRoot,
+            p.endTime,
+            p.revealEndTime,
+            p.forVotes,
+            p.againstVotes,
+            p.abstainVotes,
+            p.totalCreditsSpent,
+            p.totalCommitments,
+            p.revealedVotes,
+            currentPhase
+        );
     }
 
     function getPhaseD2(uint256 _proposalId) external view returns (uint8) {
