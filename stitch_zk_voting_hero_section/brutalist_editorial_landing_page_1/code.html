@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ko"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ZK-VOTING | Proposal List</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&amp;family=Inter:wght@300;400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'stark-white': '#FFFFFF',
+                        'bold-blue': '#0052FF',
+                        'pure-black': '#000000',
+                        'accent-amber': '#FFBF00',
+                    },
+                    fontFamily: {
+                        display: ['Space Grotesk', 'sans-serif'],
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            },
+        };
+    </script>
+<style type="text/tailwindcss">
+        @layer base {
+            body {
+                @apply bg-stark-white text-pure-black font-sans overflow-x-hidden;
+            }
+            h1, h2, h3, h4, h5, h6 {
+                @apply font-display font-bold uppercase tracking-tighter;
+            }
+        }
+        .brutalist-border {
+            @apply border-2 border-pure-black;
+        }
+        .brutalist-shadow {
+            @apply shadow-[8px_8px_0px_0px_rgba(0,0,0,1)];
+        }
+        .brutalist-shadow-blue {
+            @apply shadow-[8px_8px_0px_0px_rgba(0,82,255,1)];
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .filter-tab-active {
+            @apply bg-pure-black text-stark-white;
+        }
+    </style>
+</head>
+<body class="antialiased">
+<nav class="border-b-2 border-pure-black sticky top-0 bg-stark-white z-50">
+<div class="max-w-[1440px] mx-auto flex justify-between items-center h-20 px-6 lg:px-10">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 bg-bold-blue flex items-center justify-center border-2 border-pure-black">
+<span class="material-symbols-outlined text-stark-white text-3xl">fingerprint</span>
+</div>
+<span class="text-2xl font-display font-black tracking-tighter">ZK-VOTING</span>
+</div>
+<div class="hidden lg:flex gap-10 text-sm font-bold uppercase tracking-widest">
+<a class="text-bold-blue" href="#">Proposals</a>
+<a class="hover:text-bold-blue" href="#">How it works</a>
+<a class="hover:text-bold-blue" href="#">Stats</a>
+</div>
+<div class="flex items-center gap-6">
+<div class="hidden md:flex flex-col items-end">
+<span class="text-[10px] font-bold opacity-40 uppercase tracking-tighter">Connected Wallet</span>
+<span class="text-sm font-mono font-bold">UQd3...9xK2</span>
+</div>
+<button class="w-10 h-10 brutalist-border flex items-center justify-center hover:bg-slate-50">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+</button>
+</div>
+</div>
+</nav>
+<main class="max-w-[1440px] mx-auto min-h-screen border-x-2 border-pure-black">
+<header class="p-6 lg:p-10 border-b-2 border-pure-black bg-stark-white">
+<div class="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
+<div class="space-y-2">
+<div class="flex items-center gap-4">
+<h1 class="text-5xl lg:text-7xl italic leading-none">제안 목록</h1>
+<span class="px-3 py-1 bg-bold-blue text-stark-white text-xs font-bold uppercase tracking-tighter">DAO Governance</span>
+</div>
+<p class="text-lg font-medium opacity-60">ZK-Proof 기반의 익명 투표 시스템에 참여하세요.</p>
+</div>
+<div class="flex flex-col md:flex-row gap-4 items-stretch md:items-center">
+<div class="brutalist-border p-4 bg-slate-50 flex flex-col gap-1 min-w-[240px]">
+<div class="flex justify-between items-center">
+<span class="text-[10px] font-bold uppercase opacity-50">Available Balance</span>
+<a class="text-[10px] font-bold text-bold-blue hover:underline" href="#">TON 받기 →</a>
+</div>
+<div class="flex justify-between items-baseline">
+<span class="text-xl font-display font-black tracking-tight">0.00 TON</span>
+<span class="text-xs font-bold text-slate-400">최대 0표 가능</span>
+</div>
+</div>
+<button class="h-[74px] px-8 bg-pure-black/10 text-pure-black/40 brutalist-border font-black text-xl italic uppercase cursor-not-allowed flex items-center gap-3">
+<span class="material-symbols-outlined">add</span>
+                        새 제안
+                    </button>
+</div>
+</div>
+</header>
+<section class="border-b-2 border-pure-black bg-stark-white sticky top-20 z-40">
+<div class="flex flex-col md:flex-row">
+<div class="flex border-b-2 md:border-b-0 md:border-r-2 border-pure-black overflow-x-auto hide-scrollbar">
+<button class="px-8 py-5 font-black uppercase text-sm filter-tab-active border-r-2 border-pure-black">All</button>
+<button class="px-8 py-5 font-black uppercase text-sm hover:bg-slate-50 border-r-2 border-pure-black flex items-center gap-2">
+                        Voting <span class="w-2 h-2 rounded-full bg-bold-blue"></span>
+</button>
+<button class="px-8 py-5 font-black uppercase text-sm hover:bg-slate-50 border-r-2 border-pure-black flex items-center gap-2">
+                        Reveal <span class="w-2 h-2 rounded-full bg-accent-amber"></span>
+</button>
+<button class="px-8 py-5 font-black uppercase text-sm hover:bg-slate-50 border-r-2 border-pure-black">Ended</button>
+</div>
+<div class="flex-1 flex items-center px-6 gap-3">
+<span class="material-symbols-outlined opacity-30">search</span>
+<input class="w-full border-none focus:ring-0 font-bold text-lg placeholder:opacity-30 p-0" placeholder="제안 검색..." type="text"/>
+</div>
+</div>
+</section>
+<section class="p-6 lg:p-10 bg-slate-50 min-h-[600px]">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+<article class="bg-stark-white brutalist-border brutalist-shadow-blue p-8 flex flex-col justify-between hover:-translate-x-1 hover:-translate-y-1 transition-all">
+<div class="space-y-6">
+<div class="flex justify-between items-start">
+<span class="px-3 py-1 brutalist-border bg-bold-blue text-stark-white text-[10px] font-black uppercase tracking-widest">Voting</span>
+<div class="flex items-center gap-1 text-[10px] font-black text-bold-blue">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+                                참여완료
+                            </div>
+</div>
+<h3 class="text-3xl leading-[1.1] min-h-[4.4rem]">Allocate 15% Treasury to Liquidity Mining v3</h3>
+<div class="flex items-center gap-4 py-4 border-y border-pure-black/10">
+<div>
+<p class="text-[10px] font-bold uppercase opacity-40">참여자</p>
+<p class="text-xl font-display font-black">1,429명</p>
+</div>
+<div class="ml-auto text-right">
+<p class="text-[10px] font-bold uppercase opacity-40">남은 시간</p>
+<p class="text-xl font-display font-black text-bold-blue">02:14:45</p>
+</div>
+</div>
+</div>
+<div class="mt-8 flex justify-between items-center">
+<span class="text-xs font-mono font-bold opacity-40">#PROPOSAL-042</span>
+<button class="w-12 h-12 brutalist-border bg-pure-black text-stark-white flex items-center justify-center hover:bg-bold-blue transition-colors">
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</article>
+<article class="bg-stark-white brutalist-border brutalist-shadow p-8 flex flex-col justify-between hover:-translate-x-1 hover:-translate-y-1 transition-all">
+<div class="space-y-6">
+<div class="flex justify-between items-start">
+<span class="px-3 py-1 brutalist-border bg-accent-amber text-pure-black text-[10px] font-black uppercase tracking-widest">Reveal</span>
+</div>
+<h3 class="text-3xl leading-[1.1] min-h-[4.4rem]">Implement EIP-4844 Dynamic Pricing Model</h3>
+<div class="flex items-center gap-4 py-4 border-y border-pure-black/10">
+<div>
+<p class="text-[10px] font-bold uppercase opacity-40">참여자</p>
+<p class="text-xl font-display font-black">3,812명</p>
+</div>
+<div class="ml-auto text-right">
+<p class="text-[10px] font-bold uppercase opacity-40">남은 시간</p>
+<p class="text-xl font-display font-black text-accent-amber">05:42:10</p>
+</div>
+</div>
+</div>
+<div class="mt-8 flex justify-between items-center">
+<span class="text-xs font-mono font-bold opacity-40">#PROPOSAL-041</span>
+<button class="w-12 h-12 brutalist-border bg-pure-black text-stark-white flex items-center justify-center hover:bg-bold-blue transition-colors">
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</article>
+<article class="bg-stark-white brutalist-border brutalist-shadow p-8 flex flex-col justify-between opacity-70 hover:opacity-100 transition-all">
+<div class="space-y-6">
+<div class="flex justify-between items-start">
+<span class="px-3 py-1 brutalist-border bg-slate-200 text-pure-black text-[10px] font-black uppercase tracking-widest">Ended</span>
+<span class="text-[10px] font-black text-green-600 border border-green-600 px-2 py-0.5">PASSED</span>
+</div>
+<h3 class="text-3xl leading-[1.1] min-h-[4.4rem]">Protocol Upgrade: ZK-Snarks V3 Implementation</h3>
+<div class="flex items-center gap-4 py-4 border-y border-pure-black/10">
+<div>
+<p class="text-[10px] font-bold uppercase opacity-40">참여자</p>
+<p class="text-xl font-display font-black">5,200명</p>
+</div>
+<div class="ml-auto text-right">
+<p class="text-[10px] font-bold uppercase opacity-40">Status</p>
+<p class="text-xl font-display font-black">Finished</p>
+</div>
+</div>
+</div>
+<div class="mt-8 flex justify-between items-center">
+<span class="text-xs font-mono font-bold opacity-40">#PROPOSAL-040</span>
+<button class="w-12 h-12 brutalist-border bg-pure-black text-stark-white flex items-center justify-center hover:bg-bold-blue transition-colors">
+<span class="material-symbols-outlined">analytics</span>
+</button>
+</div>
+</article>
+<article class="bg-stark-white brutalist-border brutalist-shadow-blue p-8 flex flex-col justify-between hover:-translate-x-1 hover:-translate-y-1 transition-all">
+<div class="space-y-6">
+<div class="flex justify-between items-start">
+<span class="px-3 py-1 brutalist-border bg-bold-blue text-stark-white text-[10px] font-black uppercase tracking-widest">Voting</span>
+</div>
+<h3 class="text-3xl leading-[1.1] min-h-[4.4rem]">Community Grant: Rust Developer SDK</h3>
+<div class="flex items-center gap-4 py-4 border-y border-pure-black/10">
+<div>
+<p class="text-[10px] font-bold uppercase opacity-40">참여자</p>
+<p class="text-xl font-display font-black">892명</p>
+</div>
+<div class="ml-auto text-right">
+<p class="text-[10px] font-bold uppercase opacity-40">남은 시간</p>
+<p class="text-xl font-display font-black text-bold-blue">12:05:33</p>
+</div>
+</div>
+</div>
+<div class="mt-8 flex justify-between items-center">
+<span class="text-xs font-mono font-bold opacity-40">#PROPOSAL-039</span>
+<button class="w-12 h-12 brutalist-border bg-pure-black text-stark-white flex items-center justify-center hover:bg-bold-blue transition-colors">
+<span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</article>
+<article class="bg-stark-white brutalist-border brutalist-shadow p-8 flex flex-col justify-between opacity-70 hover:opacity-100 transition-all">
+<div class="space-y-6">
+<div class="flex justify-between items-start">
+<span class="px-3 py-1 brutalist-border bg-slate-200 text-pure-black text-[10px] font-black uppercase tracking-widest">Ended</span>
+<span class="text-[10px] font-black text-red-600 border border-red-600 px-2 py-0.5">REJECTED</span>
+</div>
+<h3 class="text-3xl leading-[1.1] min-h-[4.4rem]">Reduce Block Reward by 5% Permanently</h3>
+<div class="flex items-center gap-4 py-4 border-y border-pure-black/10">
+<div>
+<p class="text-[10px] font-bold uppercase opacity-40">참여자</p>
+<p class="text-xl font-display font-black">2,115명</p>
+</div>
+<div class="ml-auto text-right">
+<p class="text-[10px] font-bold uppercase opacity-40">Status</p>
+<p class="text-xl font-display font-black">Finished</p>
+</div>
+</div>
+</div>
+<div class="mt-8 flex justify-between items-center">
+<span class="text-xs font-mono font-bold opacity-40">#PROPOSAL-038</span>
+<button class="w-12 h-12 brutalist-border bg-pure-black text-stark-white flex items-center justify-center hover:bg-bold-blue transition-colors">
+<span class="material-symbols-outlined">analytics</span>
+</button>
+</div>
+</article>
+<div class="brutalist-border border-dashed border-pure-black/20 flex flex-col items-center justify-center p-8 bg-slate-50/50">
+<span class="material-symbols-outlined text-4xl opacity-10 mb-4">post_add</span>
+<p class="text-sm font-bold uppercase opacity-20 text-center leading-tight">Insufficient TON to<br/>create a new proposal</p>
+</div>
+</div>
+<div class="mt-16 flex justify-center items-center gap-4">
+<button class="w-12 h-12 brutalist-border flex items-center justify-center opacity-30 cursor-not-allowed">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<div class="flex gap-2 font-display font-bold">
+<button class="w-12 h-12 brutalist-border bg-pure-black text-stark-white">1</button>
+<button class="w-12 h-12 brutalist-border hover:bg-slate-50">2</button>
+<button class="w-12 h-12 brutalist-border hover:bg-slate-50">3</button>
+</div>
+<button class="w-12 h-12 brutalist-border flex items-center justify-center hover:bg-slate-50">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</section>
+<footer class="border-t-2 border-pure-black bg-stark-white">
+<div class="grid grid-cols-1 md:grid-cols-4">
+<div class="p-10 border-r-2 border-pure-black md:col-span-2 space-y-4">
+<h2 class="text-2xl">ZK-VOTING</h2>
+<p class="text-sm opacity-60 max-w-sm">High-end tech for decentralized governance. Privacy-first, Math-guaranteed, Community-led.</p>
+</div>
+<div class="p-10 border-r-2 border-pure-black">
+<h5 class="text-xs font-mono uppercase tracking-widest mb-6 opacity-40">Protocol</h5>
+<ul class="space-y-3 font-bold uppercase text-xs italic">
+<li><a class="hover:text-bold-blue" href="#">Documentation</a></li>
+<li><a class="hover:text-bold-blue" href="#">Security</a></li>
+<li><a class="hover:text-bold-blue" href="#">Governance</a></li>
+</ul>
+</div>
+<div class="p-10">
+<h5 class="text-xs font-mono uppercase tracking-widest mb-6 opacity-40">Network</h5>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+<span class="text-xs font-bold uppercase italic">Mainnet Live</span>
+</div>
+</div>
+</div>
+<div class="p-6 border-t border-pure-black/10 flex flex-col md:flex-row justify-between items-center text-[10px] uppercase font-bold tracking-[0.3em] opacity-40">
+<span>© 2024 ZK-VOTING PROTOCOL</span>
+<span>Powered by TON + Zero Knowledge</span>
+</div>
+</footer>
+</main>
+
+</body></html>

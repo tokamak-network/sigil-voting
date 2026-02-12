@@ -91,8 +91,12 @@ export async function generateProofInWorker(
   })
 }
 
+// 캐시된 snarkjs 인스턴스
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let snarkjsInstance: any = null
+
 /**
- * Fallback: Generate proof on main thread
+ * Generate proof on main thread (optimized)
  */
 export async function generateProofOnMainThread(
   circuitInputs: Record<string, string | string[]>,
@@ -100,26 +104,51 @@ export async function generateProofOnMainThread(
   zkeyUrl: string,
   onProgress?: ProofProgressCallback
 ): Promise<ProofResult> {
-  onProgress?.(10, 'snarkjs 로딩 중...')
+  try {
+    onProgress?.(10, 'snarkjs 로딩 중...')
 
-  const snarkjs = await import('snarkjs')
+    // snarkjs 캐싱으로 재사용
+    if (!snarkjsInstance) {
+      snarkjsInstance = await import('snarkjs')
+    }
+    const snarkjs = snarkjsInstance
 
-  onProgress?.(30, '회로 파일 로딩 중...')
-  onProgress?.(50, 'ZK 증명 생성 중... (잠시 대기)')
+    // UI 업데이트를 위한 yield
+    await new Promise(resolve => setTimeout(resolve, 50))
 
-  const startTime = Date.now()
+    onProgress?.(30, '회로 파일 로딩 중...')
 
-  const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-    circuitInputs,
-    wasmUrl,
-    zkeyUrl
-  )
+    // UI 업데이트를 위한 yield
+    await new Promise(resolve => setTimeout(resolve, 50))
 
-  const duration = Date.now() - startTime
+    onProgress?.(50, 'ZK 증명 생성 중...')
 
-  onProgress?.(90, `증명 완료 (${(duration / 1000).toFixed(1)}초)`)
+    const startTime = Date.now()
 
-  return { proof, publicSignals, duration }
+    const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+      circuitInputs,
+      wasmUrl,
+      zkeyUrl
+    )
+
+    const duration = Date.now() - startTime
+
+    onProgress?.(95, `증명 완료 (${(duration / 1000).toFixed(1)}초)`)
+
+    return { proof, publicSignals, duration }
+  } catch (error) {
+    console.error('[ZK] Proof generation failed:', error)
+    const message = error instanceof Error ? error.message : String(error)
+
+    // 일반적인 에러 메시지를 사용자 친화적으로 변환
+    if (message.includes('fetch')) {
+      throw new Error('회로 파일을 로드할 수 없습니다. 페이지를 새로고침해주세요.')
+    }
+    if (message.includes('memory') || message.includes('Memory')) {
+      throw new Error('메모리 부족. 다른 탭을 닫고 다시 시도해주세요.')
+    }
+    throw new Error('ZK 증명 생성 실패: ' + message)
+  }
 }
 
 /**
@@ -131,14 +160,8 @@ export async function generateProofWithFallback(
   zkeyUrl: string,
   onProgress?: ProofProgressCallback
 ): Promise<ProofResult> {
-  try {
-    // Try worker first
-    return await generateProofInWorker(circuitInputs, wasmUrl, zkeyUrl, onProgress)
-  } catch (workerError) {
-    console.warn('[ZK] Worker failed, falling back to main thread:', workerError)
-    onProgress?.(5, 'Worker 실패, 메인 스레드로 전환...')
-
-    // Fallback to main thread
-    return await generateProofOnMainThread(circuitInputs, wasmUrl, zkeyUrl, onProgress)
-  }
+  // 바로 메인 스레드에서 실행 (Worker 이슈 방지)
+  // Worker는 snarkjs 동적 import 문제가 있어서 안정성을 위해 메인 스레드 사용
+  console.log('[ZK] Generating proof on main thread for stability')
+  return await generateProofOnMainThread(circuitInputs, wasmUrl, zkeyUrl, onProgress)
 }

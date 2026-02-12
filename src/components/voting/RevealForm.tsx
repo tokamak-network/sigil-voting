@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useAccount, useWriteContract, usePublicClient } from 'wagmi'
 import { getD2VoteForReveal, type D2VoteData, CHOICE_FOR } from '../../zkproof'
+import { FingerprintLoader } from '../FingerprintLoader'
 import config from '../../config.json'
 
 const ZK_VOTING_FINAL_ADDRESS = (config.contracts.zkVotingFinal || '0x0000000000000000000000000000000000000000') as `0x${string}`
@@ -36,17 +37,15 @@ type RevealStatus = 'idle' | 'confirming' | 'processing' | 'success' | 'error'
 
 export function RevealForm({ proposalId, revealEndTime, onRevealSuccess }: RevealFormProps) {
   const { address } = useAccount()
+  const publicClient = usePublicClient()
   const [voteData, setVoteData] = useState<D2VoteData | null>(null)
   const [status, setStatus] = useState<RevealStatus>('idle')
   const [error, setError] = useState<string | null>(null)
   const [isRevealed, setIsRevealed] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [progressMessage, setProgressMessage] = useState('')
 
-  const { writeContractAsync, data: txHash } = useWriteContract()
-  const { isSuccess: txConfirmed } = useWaitForTransactionReceipt({
-    hash: txHash,
-    confirmations: 1,
-    pollingInterval: 1000, // 1초마다 확인
-  })
+  const { writeContractAsync } = useWriteContract()
 
   // 저장된 투표 데이터 로드
   useEffect(() => {
@@ -60,25 +59,13 @@ export function RevealForm({ proposalId, revealEndTime, onRevealSuccess }: Revea
     }
   }, [address, proposalId])
 
-  // TX 확인 후 처리
-  useEffect(() => {
-    if (txConfirmed && (status === 'confirming' || status === 'processing')) {
-      setStatus('success')
-      // 공개 완료 마킹
-      if (address) {
-        const revealedKey = `zk-d2-revealed-${address.toLowerCase()}-${proposalId}`
-        localStorage.setItem(revealedKey, 'true')
-        setIsRevealed(true)
-      }
-      onRevealSuccess()
-    }
-  }, [txConfirmed, status, address, proposalId, onRevealSuccess])
-
   const handleReveal = useCallback(async () => {
-    if (!voteData || !address) return
+    if (!voteData || !address || !publicClient) return
 
     setStatus('confirming')
     setError(null)
+    setProgress(20)
+    setProgressMessage('지갑에서 승인해주세요...')
 
     try {
       const hash = await writeContractAsync({
@@ -92,16 +79,41 @@ export function RevealForm({ proposalId, revealEndTime, onRevealSuccess }: Revea
           voteData.numVotes,
           voteData.voteSalt,
         ],
-        gas: BigInt(500000),
+        gas: BigInt(300000),
       })
 
       setStatus('processing')
-      // txHash가 있으면 useWaitForTransactionReceipt가 처리
+      setProgress(50)
+      setProgressMessage('트랜잭션 전송 완료, 블록 처리 중...')
       console.log('Reveal tx:', hash)
+
+      // 진행 상태 업데이트를 위한 인터벌
+      const progressInterval = setInterval(() => {
+        setProgress(prev => Math.min(prev + 5, 90))
+      }, 1000)
+
+      // 직접 트랜잭션 대기
+      await publicClient.waitForTransactionReceipt({
+        hash,
+        confirmations: 1,
+        pollingInterval: 500,
+      })
+
+      clearInterval(progressInterval)
+      setProgress(100)
+      setProgressMessage('공개 완료!')
+      setStatus('success')
+
+      // 공개 완료 마킹
+      const revealedKey = `zk-d2-revealed-${address.toLowerCase()}-${proposalId}`
+      localStorage.setItem(revealedKey, 'true')
+      setIsRevealed(true)
+      onRevealSuccess()
     } catch (err) {
       setStatus('error')
+      setProgress(0)
       const message = (err as Error).message
-      if (message.includes('User rejected')) {
+      if (message.includes('User rejected') || message.includes('denied')) {
         setError('트랜잭션이 취소되었습니다')
       } else if (message.includes('AlreadyRevealed')) {
         setError('이미 공개되었습니다')
@@ -116,7 +128,7 @@ export function RevealForm({ proposalId, revealEndTime, onRevealSuccess }: Revea
         setError('공개 실패: ' + message)
       }
     }
-  }, [voteData, address, proposalId, writeContractAsync])
+  }, [voteData, address, proposalId, writeContractAsync, publicClient, onRevealSuccess])
 
   // 투표하지 않은 경우
   if (!voteData) {
@@ -183,9 +195,8 @@ export function RevealForm({ proposalId, revealEndTime, onRevealSuccess }: Revea
 
       {(status === 'confirming' || status === 'processing') ? (
         <div className="uv-reveal-loading">
-          <div className="uv-spinner"></div>
-          <span>
-            {status === 'confirming' ? '지갑에서 승인해주세요...' : '트랜잭션 처리 중...'}
+          <FingerprintLoader progress={progress} />
+          <span>{progressMessage}
           </span>
         </div>
       ) : (
