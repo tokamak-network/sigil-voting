@@ -166,6 +166,19 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
     }
   }, [selectedProposal, tick]) // tick dependency for checking every second
 
+  // Sync selectedProposal with updated proposals data (after reveal, vote counts change)
+  useEffect(() => {
+    if (!selectedProposal) return
+    const updated = proposals.find(p => p.id === selectedProposal.id)
+    if (updated && (
+      updated.forVotes !== selectedProposal.forVotes ||
+      updated.againstVotes !== selectedProposal.againstVotes ||
+      updated.revealedVotes !== selectedProposal.revealedVotes
+    )) {
+      setSelectedProposal(updated)
+    }
+  }, [proposals, selectedProposal])
+
   // Voting state machine
   const {
     context: votingContext,
@@ -1113,7 +1126,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                   proposalId={selectedProposal.id}
                   revealEndTime={selectedProposal.revealEndTime}
                   onRevealSuccess={() => {
-                    refetchProposalCount()
+                    setRefreshTrigger(prev => prev + 1)
                   }}
                 />
               </div>
