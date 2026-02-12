@@ -53,21 +53,17 @@ export function Header({
   const handleConnect = () => connect({ connector: injected() })
 
   return (
-    <header className="header">
-      <div className="header-left">
-        <div className="logo" onClick={() => setCurrentPage('landing')}>
-          <span className="logo-icon">🗳️</span>
-          <span className="logo-text">ZK Vote</span>
+    <header className="brutalist-header">
+      <div className="brutalist-header-left">
+        <div className="brutalist-logo" onClick={() => setCurrentPage('landing')}>
+          <div className="brutalist-logo-icon">
+            <span className="material-symbols-outlined">fingerprint</span>
+          </div>
+          <span className="brutalist-logo-text">ZK-VOTING</span>
         </div>
-        <nav className="nav">
+        <nav className="brutalist-nav">
           <button
-            className={`nav-item ${currentPage === 'landing' ? 'active' : ''}`}
-            onClick={() => setCurrentPage('landing')}
-          >
-            Home
-          </button>
-          <button
-            className={`nav-item ${currentPage === 'proposals' ? 'active' : ''}`}
+            className={`brutalist-nav-item ${currentPage === 'proposals' ? 'active' : ''}`}
             onClick={() => setCurrentPage('proposals')}
           >
             Proposals
@@ -75,23 +71,22 @@ export function Header({
         </nav>
       </div>
 
-      <div className="header-right">
+      <div className="brutalist-header-right">
         {isConnected ? (
-          <div className="wallet-connected">
-            <span className={`chain-badge ${isCorrectChain ? 'correct' : 'wrong'}`}>
-              {isCorrectChain ? 'Sepolia' : 'Wrong Network'}
-            </span>
-            {!isCorrectChain && (
-              <button className="switch-btn" onClick={handleSwitchNetwork} disabled={isSwitching}>
-                {isSwitching ? 'Switching...' : 'Switch'}
+          <>
+            {!isCorrectChain ? (
+              <button className="brutalist-switch-btn" onClick={handleSwitchNetwork} disabled={isSwitching}>
+                {isSwitching ? 'Switching...' : 'Wrong Network'}
               </button>
+            ) : (
+              <div className="brutalist-wallet-info" onClick={() => disconnect()}>
+                <span>{shortenAddress(address!)}</span>
+              </div>
             )}
-            <span className="wallet-address">{shortenAddress(address!)}</span>
-            <button className="disconnect-btn" onClick={() => disconnect()}>×</button>
-          </div>
+          </>
         ) : (
-          <button className="connect-btn" onClick={handleConnect} disabled={isConnecting}>
-            {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+          <button className="brutalist-connect-btn" onClick={handleConnect} disabled={isConnecting}>
+            {isConnecting ? '...' : 'Connect'}
           </button>
         )}
       </div>

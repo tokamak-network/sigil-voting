@@ -19,11 +19,15 @@ import {
   CHOICE_AGAINST,
 } from '../zkproof'
 import { useVotingMachine } from '../hooks/useVotingMachine'
-import { PhaseIndicator, RevealForm, VoteResult } from './voting'
+import { RevealForm, VoteResult } from './voting'
+import { FingerprintLoader } from './FingerprintLoader'
 import config from '../config.json'
 
 const ZK_VOTING_FINAL_ADDRESS = (config.contracts.zkVotingFinal || '0x0000000000000000000000000000000000000000') as `0x${string}`
 const TON_TOKEN_ADDRESS = (config.contracts.tonToken || '0xa30fe40285B8f5c0457DbC3B7C8A280373c40044') as `0x${string}`
+
+// 제안 생성에 필요한 최소 TON 잔액 (수수료 아님, 잔액 요구사항)
+const MIN_TON_FOR_PROPOSAL = 100
 
 // Local storage helpers for tracking voted proposals
 const VOTED_PROPOSALS_KEY = 'zk-voted-proposals'
@@ -225,10 +229,6 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
   const tonBalanceFormatted = tonBalance ? Number(formatUnits(tonBalance, 18)) : 0
   const hasTon = tonBalanceFormatted > 0
 
-  // Rule #1: Gatekeeping - 100 TON required for proposal creation
-  const MIN_TON_FOR_PROPOSAL = 100
-  const canCreateProposal = tonBalanceFormatted >= MIN_TON_FOR_PROPOSAL
-
   // Use contract credits for voting power (default 10000 if not initialized)
   const totalVotingPower = availableCredits ? Number(availableCredits) : 10000
 
@@ -237,7 +237,6 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
 
   const costLevel = totalVotingPower > 0 ? Math.min((quadraticCost / totalVotingPower) * 100, 100) : 0
   const isHighCost = costLevel > 30
-  const isDanger = costLevel > 70
 
   // Initialize key pair on connect
   useEffect(() => {
@@ -362,6 +361,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
   const handleConnect = () => connect({ connector: injected() })
 
   const [createStatus, setCreateStatus] = useState<string | null>(null)
+  const [createProgress, setCreateProgress] = useState(0)
   const [isCreatingProposal, setIsCreatingProposal] = useState(false)
 
   // Helper: wait for transaction (optimized for faster UX)
@@ -370,22 +370,31 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
       hash,
       timeout: 60_000, // 60초 타임아웃
       confirmations: 1,
-      pollingInterval: 2_000, // 2초마다 확인
+      pollingInterval: 500, // 500ms로 빠르게 폴링
     })
   }, [publicClient])
 
+  // 제안 생성 가능 여부
+  const canCreateProposal = totalVotingPower >= MIN_TON_FOR_PROPOSAL
+
   const handleCreateProposal = useCallback(async () => {
     if (!newProposalTitle.trim() || !publicClient || !address || !keyPair) return
+    if (!canCreateProposal) {
+      setError(`제안 생성에는 최소 ${MIN_TON_FOR_PROPOSAL} TON 잔액이 필요합니다`)
+      return
+    }
     setIsCreatingProposal(true)
     setError(null)
     setCreateStatus('준비 중...')
+    setCreateProgress(10)
 
     try {
       // Get existing registered credit notes
       const creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
 
       // Register creator's creditNote for creditRoot (but won't auto-vote)
-      setCreateStatus('잠시만 기다려주세요...')
+      setCreateStatus('크레딧 노트 생성 중...')
+      setCreateProgress(20)
       let creditNote: CreditNote | null = getStoredCreditNote(address)
       if (!creditNote) {
         creditNote = await createCreditNoteAsync(keyPair, BigInt(totalVotingPower), address)
@@ -393,7 +402,8 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
 
       const noteHash = creditNote.creditNoteHash
       if (!creditNotes.includes(noteHash)) {
-        setCreateStatus('잠시만 기다려주세요...')
+        setCreateStatus('크레딧 노트 등록 중...')
+        setCreateProgress(30)
         const registerNoteHash = await writeContractAsync({
           address: ZK_VOTING_FINAL_ADDRESS,
           abi: ZK_VOTING_FINAL_ABI,
@@ -406,20 +416,26 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
       }
 
       // Build creditRoot from all registered notes
-      setCreateStatus('잠시만 기다려주세요...')
+      setCreateStatus('머클 루트 생성 중...')
+      setCreateProgress(50)
       const { root: creditRoot } = await generateMerkleProofAsync(creditNotes, 0)
 
       // Register this creditRoot
+      setCreateStatus('루트 등록 중, 지갑 승인 필요...')
+      setCreateProgress(60)
       const registerRootHash = await writeContractAsync({
         address: ZK_VOTING_FINAL_ADDRESS,
         abi: ZK_VOTING_FINAL_ABI,
         functionName: 'registerCreditRoot',
         args: [creditRoot],
       })
+      setCreateStatus('블록 처리 중...')
+      setCreateProgress(70)
       await waitForTx(registerRootHash)
 
       // Create proposal (NO auto-vote, creator votes separately if they want)
-      setCreateStatus('제안 생성 중...')
+      setCreateStatus('제안 생성 중, 지갑 승인 필요...')
+      setCreateProgress(80)
       const createHash = await writeContractAsync({
         address: ZK_VOTING_FINAL_ADDRESS,
         abi: ZK_VOTING_FINAL_ABI,
@@ -427,13 +443,21 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
         args: [newProposalTitle, '', creditRoot, BigInt(240), BigInt(240)], // 테스트: 4분 투표, 4분 공개
       })
 
-      setCreateStatus('거의 완료...')
+      setCreateStatus('블록 처리 중...')
+      setCreateProgress(90)
       await waitForTx(createHash)
 
+      setCreateProgress(100)
+      setCreateStatus('완료!')
       await refetchProposalCount()
       setNewProposalTitle('')
-      setCreateStatus(null)
-      setCurrentView('list')
+
+      // 잠시 후 목록으로 이동
+      setTimeout(() => {
+        setCreateStatus(null)
+        setCreateProgress(0)
+        setCurrentView('list')
+      }, 500)
     } catch (err) {
       console.error('[DEBUG] Create proposal error:', err)
       const errorMsg = (err as Error).message || ''
@@ -446,11 +470,15 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
       } else {
         setError('제안 생성에 실패했습니다. 다시 시도해주세요.')
       }
+      setCreateProgress(0)
     } finally {
       setIsCreatingProposal(false)
-      setCreateStatus(null)
+      if (!createStatus?.includes('완료')) {
+        setCreateStatus(null)
+        setCreateProgress(0)
+      }
     }
-  }, [newProposalTitle, publicClient, writeContractAsync, refetchProposalCount, address, keyPair, totalVotingPower, registeredCreditNotes, refetchCreditNotes, waitForTx])
+  }, [newProposalTitle, publicClient, writeContractAsync, refetchProposalCount, address, keyPair, totalVotingPower, registeredCreditNotes, refetchCreditNotes, waitForTx, createStatus])
 
   const handleVote = useCallback(async (choice: VoteChoice) => {
     if (!keyPair || !selectedProposal || !hasTon || !address || !publicClient) return
@@ -594,6 +622,10 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
         userMessage = '제안을 찾을 수 없습니다.'
       } else if (errorMsg.includes('InvalidProof')) {
         userMessage = 'ZK 증명 검증에 실패했습니다. 다시 시도해주세요.'
+      } else if (errorMsg.includes('fetch') || errorMsg.includes('Failed to fetch') || errorMsg.includes('로드할 수 없')) {
+        userMessage = '회로 파일을 로드할 수 없습니다. 페이지를 새로고침 후 다시 시도해주세요.'
+      } else if (errorMsg.includes('memory') || errorMsg.includes('Memory')) {
+        userMessage = '메모리 부족. 다른 탭을 닫고 다시 시도해주세요.'
       } else if (errorMsg.includes('InsufficientCredits')) {
         userMessage = 'TON이 부족합니다.'
       } else if (errorMsg.includes('InvalidQuadraticCost')) {
@@ -615,88 +647,82 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
     }
   }, [keyPair, selectedProposal, hasTon, address, numVotes, quadraticCost, totalVotingPower, registeredCreditNotes, writeContractAsync, refetchCredits, startVote, updateProgress, proofComplete, signed, txConfirmed, setVotingError, publicClient, waitForTx, refetchCreditNotes])
 
-  const getIntensityColor = () => {
-    if (isDanger) return { bg: 'rgba(239, 68, 68, 0.15)', border: '#ef4444', text: '#fca5a5' }
-    if (isHighCost) return { bg: 'rgba(251, 191, 36, 0.15)', border: '#f59e0b', text: '#fcd34d' }
-    return { bg: 'rgba(34, 197, 94, 0.1)', border: '#22c55e', text: '#86efac' }
-  }
-
-  const colors = getIntensityColor()
-
   return (
     <div className="unified-voting">
-      {/* Simple Balance Display */}
-      {isConnected && (
-        <div className="uv-balance-bar">
-          <div className="uv-balance-info">
-            <TonIcon size={18} />
-            <span className="uv-balance-amount">{totalVotingPower.toLocaleString()} TON</span>
-            <span className="uv-balance-hint">최대 {maxVotes}표 가능</span>
-          </div>
-          {!hasTon && (
-            <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="uv-get-ton-link">
-              TON 받기 →
-            </a>
-          )}
-        </div>
-      )}
-
       {/* VIEW: Proposal List */}
       {currentView === 'list' && (
         <div className="uv-list-view">
+          {/* Header Section - Matching proposal-list.html */}
           <div className="uv-list-header">
-            <h1>제안 목록</h1>
+            <div className="uv-list-header-content">
+              <div className="uv-list-header-title-row">
+                <h1>제안 목록</h1>
+                <span className="uv-list-header-badge">DAO Governance</span>
+              </div>
+              <p className="uv-list-header-subtitle">ZK-Proof 기반의 익명 투표 시스템에 참여하세요.</p>
+            </div>
             {isConnected && (
-              <div className="uv-create-btn-wrapper">
+              <div className="uv-header-actions">
+                <div className="uv-balance-card">
+                  <div className="uv-balance-card-header">
+                    <span className="uv-balance-card-label">Available Balance</span>
+                    {!hasTon && (
+                      <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="uv-balance-card-link">
+                        TON 받기 →
+                      </a>
+                    )}
+                  </div>
+                  <div className="uv-balance-card-content">
+                    <span className="uv-balance-amount">{totalVotingPower.toLocaleString()} TON</span>
+                    <span className="uv-balance-hint">최대 {maxVotes}표 가능</span>
+                  </div>
+                </div>
                 <button
-                  className={`uv-create-btn ${!canCreateProposal ? 'uv-btn-disabled' : ''}`}
-                  onClick={() => canCreateProposal && setCurrentView('create')}
-                  disabled={!canCreateProposal}
+                  className="uv-create-btn"
+                  onClick={() => setCurrentView('create')}
                 >
-                  + 새 제안
+                  <span className="material-symbols-outlined">add</span>
+                  새 제안
                 </button>
-                {!canCreateProposal && (
-                  <span className="uv-tooltip">100 TON 이상 필요</span>
-                )}
               </div>
             )}
           </div>
 
           {!isConnected ? (
-            <div className="uv-card uv-center">
-              <div className="uv-icon"><TonIcon size={48} /></div>
+            <div className="uv-empty-state">
+              <div className="uv-empty-icon">
+                <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'white' }}>fingerprint</span>
+              </div>
               <h2>ZK Private Voting</h2>
-              <p className="uv-subtitle">지갑을 연결하고 투표에 참여하세요</p>
-              <button className="uv-btn uv-btn-primary" onClick={handleConnect}>
+              <p>지갑을 연결하고 투표에 참여하세요</p>
+              <button className="uv-create-btn" onClick={handleConnect}>
+                <span className="material-symbols-outlined">account_balance_wallet</span>
                 지갑 연결
               </button>
             </div>
           ) : isLoadingProposals ? (
-            <div className="uv-card uv-center">
-              <div className="uv-loading">
-                <div className="uv-spinner"></div>
-                <span>제안 목록 불러오는 중...</span>
+            <div className="uv-empty-state">
+              <div className="uv-empty-icon">
+                <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'white' }}>sync</span>
               </div>
+              <FingerprintLoader progress={votingContext.progress} />
+              <p>제안 목록 불러오는 중...</p>
             </div>
           ) : proposals.length === 0 ? (
-            <div className="uv-card uv-center">
-              <div className="uv-icon"><TonIcon size={48} /></div>
+            <div className="uv-empty-state">
+              <div className="uv-empty-icon">
+                <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'white' }}>inbox</span>
+              </div>
               <h2>아직 제안이 없습니다</h2>
-              <p className="uv-subtitle">첫 번째 제안을 만들어보세요</p>
-              {canCreateProposal ? (
-                <button className="uv-btn uv-btn-primary" onClick={() => setCurrentView('create')}>
-                  제안 만들기
-                </button>
-              ) : (
-                <div className="uv-ineligible-notice">
-                  <p><TonIcon size={14} /> 제안 생성에는 {MIN_TON_FOR_PROPOSAL} TON 이상이 필요합니다</p>
-                  <p className="uv-balance-info">현재 잔액: {tonBalanceFormatted.toFixed(2)} TON</p>
-                </div>
-              )}
+              <p>첫 번째 제안을 만들어보세요</p>
+              <button className="uv-create-btn" onClick={() => setCurrentView('create')}>
+                <span className="material-symbols-outlined">add</span>
+                제안 만들기
+              </button>
             </div>
           ) : (
             <>
-              {/* 필터 및 검색 */}
+              {/* Filter Bar - Matching proposal-list.html */}
               <div className="uv-filter-bar">
                 <div className="uv-filter-tabs">
                   <button
@@ -709,12 +735,14 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                     className={`uv-filter-tab ${filterPhase === 0 ? 'active' : ''}`}
                     onClick={() => setFilterPhase(0)}
                   >
+                    <span className="uv-filter-dot voting"></span>
                     투표 중 ({proposals.filter(p => p.phase === 0).length})
                   </button>
                   <button
                     className={`uv-filter-tab ${filterPhase === 1 ? 'active' : ''}`}
                     onClick={() => setFilterPhase(1)}
                   >
+                    <span className="uv-filter-dot reveal"></span>
                     공개 중 ({proposals.filter(p => p.phase === 1).length})
                   </button>
                   <button
@@ -724,93 +752,98 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                     종료 ({proposals.filter(p => p.phase === 2).length})
                   </button>
                 </div>
-                <input
-                  type="text"
-                  className="uv-search-input"
-                  placeholder="제안 검색..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+                <div className="uv-search-wrapper">
+                  <span className="material-symbols-outlined">search</span>
+                  <input
+                    type="text"
+                    className="uv-search-input"
+                    placeholder="제안 검색..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
               </div>
 
+              {/* Proposals Grid */}
               <div className="uv-proposals-grid">
               {(() => {
-                // 필터링
                 const filtered = proposals.filter(p => {
                   if (filterPhase !== 'all' && p.phase !== filterPhase) return false
                   if (searchQuery && !p.title.toLowerCase().includes(searchQuery.toLowerCase())) return false
                   return true
                 })
 
-                // 정렬: 진행중(투표/공개) 우선, 그 다음 최신순
                 filtered.sort((a, b) => {
-                  // 진행중(0, 1) vs 종료(2)
                   if (a.phase < 2 && b.phase === 2) return -1
                   if (a.phase === 2 && b.phase < 2) return 1
-                  // 같은 상태면 ID 내림차순 (최신순)
                   return b.id - a.id
                 })
 
                 if (filtered.length === 0) {
                   return (
-                    <div className="uv-empty-filter">
-                      {searchQuery ? `"${searchQuery}" 검색 결과가 없습니다` : '해당하는 제안이 없습니다'}
+                    <div className="uv-empty-state" style={{ gridColumn: '1 / -1' }}>
+                      <p>{searchQuery ? `"${searchQuery}" 검색 결과가 없습니다` : '해당하는 제안이 없습니다'}</p>
                     </div>
                   )
                 }
 
                 return filtered.map(proposal => {
                 const phaseLabels = ['투표 중', '공개 중', '종료'] as const
-                const phaseColors = ['#007aff', '#f59e0b', '#6b7280'] as const
+                const phaseClasses = ['voting', 'reveal', 'ended'] as const
                 const hasVoted = address ? hasVotedOnProposal(address, proposal.id) : false
 
-                // 남은 시간 계산 (초 단위까지)
                 const getTimeRemaining = () => {
                   const now = new Date()
                   const target = proposal.phase === 0 ? proposal.endTime : proposal.revealEndTime
                   const diff = target.getTime() - now.getTime()
                   if (diff <= 0) return null
-                  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-                  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+                  const hours = Math.floor(diff / (1000 * 60 * 60))
                   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
                   const seconds = Math.floor((diff % (1000 * 60)) / 1000)
-                  if (days > 0) return `${days}일 ${hours}시간 남음`
-                  if (hours > 0) return `${hours}시간 ${minutes}분 남음`
-                  if (minutes > 0) return `${minutes}분 ${seconds}초 남음`
-                  return `${seconds}초 남음`
+                  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
                 }
                 const timeRemaining = getTimeRemaining()
 
                 return (
                   <div
                     key={proposal.id}
-                    className={`uv-proposal-card ${proposal.phase === 2 ? 'uv-proposal-expired' : ''}`}
+                    className={`uv-proposal-card ${proposal.phase === 2 ? 'ended' : ''} ${proposal.phase === 0 ? 'voting-active' : ''}`}
                     onClick={() => {
                       setSelectedProposal(proposal)
                       setCurrentView('vote')
                     }}
                   >
                     <div className="uv-proposal-header">
-                      <div
-                        className="uv-phase-badge"
-                        style={{ background: phaseColors[proposal.phase] }}
-                      >
+                      <span className={`uv-phase-badge ${phaseClasses[proposal.phase]}`}>
                         {phaseLabels[proposal.phase]}
-                      </div>
-                      {hasVoted && <div className="uv-voted-badge">✓ 참여완료</div>}
+                      </span>
+                      {hasVoted && <span className="uv-voted-badge">✓ 참여완료</span>}
                     </div>
                     <h3>{proposal.title}</h3>
-                    <div className="uv-proposal-footer">
-                      <div className="uv-proposal-participants">
-                        {proposal.totalVotes}명 참여
+                    <div className="uv-proposal-meta">
+                      <div className="uv-proposal-meta-item">
+                        <span className="uv-proposal-meta-label">참여자</span>
+                        <span className="uv-proposal-meta-value">{proposal.totalVotes}</span>
                       </div>
                       {proposal.phase === 2 ? (
-                        <div className="uv-proposal-result">
-                          결과: <strong>{proposal.forVotes > proposal.againstVotes ? '찬성' : proposal.againstVotes > proposal.forVotes ? '반대' : '동률'}</strong>
+                        <div className="uv-proposal-meta-item time-item">
+                          <span className="uv-proposal-meta-label">결과</span>
+                          <span className={`uv-result-badge ${proposal.forVotes > proposal.againstVotes ? 'passed' : 'rejected'}`}>
+                            {proposal.forVotes > proposal.againstVotes ? '가결' : proposal.againstVotes > proposal.forVotes ? '부결' : '동률'}
+                          </span>
                         </div>
                       ) : timeRemaining && (
-                        <div className="uv-proposal-time">{timeRemaining}</div>
+                        <div className="uv-proposal-meta-item time-item">
+                          <span className="uv-proposal-meta-label">남은 시간</span>
+                          <span className={`uv-proposal-meta-value ${phaseClasses[proposal.phase]}`}>{timeRemaining}</span>
+                        </div>
                       )}
+                    </div>
+                    <div className="uv-proposal-footer">
+                      <span className="uv-proposal-id">PROPOSAL #{proposal.id}</span>
+                      <div className="uv-proposal-arrow">
+                        <span className="material-symbols-outlined">arrow_forward</span>
+                      </div>
                     </div>
                   </div>
                 )
@@ -824,306 +857,558 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
         </div>
       )}
 
-      {/* VIEW: Create Proposal */}
+      {/* VIEW: Create Proposal - Matching create-proposal.html */}
       {currentView === 'create' && (
         <div className="uv-create-view">
-          <button className="uv-back" onClick={() => setCurrentView('list')} disabled={isCreatingProposal}>← 목록으로</button>
-
-          <div className="uv-card">
-            <h1>새 제안</h1>
-            <p className="uv-subtitle">커뮤니티에 의견을 물어보세요</p>
-
-            <input
-              type="text"
-              className="uv-input"
-              placeholder="제안 제목을 입력하세요"
-              value={newProposalTitle}
-              onChange={(e) => setNewProposalTitle(e.target.value)}
-              disabled={isCreatingProposal}
-            />
-
-            {createStatus && (
-              <div className="uv-loading">
-                <div className="uv-spinner"></div>
-                <span>{createStatus}</span>
+          {/* Sidebar - Desktop Only */}
+          <div className="uv-create-sidebar">
+            <div className="uv-create-sidebar-top">
+              <button className="uv-back-button" onClick={() => setCurrentView('list')} disabled={isCreatingProposal}>
+                <span className="material-symbols-outlined">arrow_back</span>
+                목록으로
+              </button>
+              <div className="uv-create-steps">
+                <div className="uv-create-step active">
+                  <p className="uv-create-step-label">Step 01</p>
+                  <h3>제안 작성</h3>
+                </div>
+                <div className="uv-create-step">
+                  <p className="uv-create-step-label">Step 02</p>
+                  <h3>검토 및 게시</h3>
+                </div>
               </div>
-            )}
+            </div>
+            <div className="uv-create-balance">
+              <p className="uv-create-balance-label">Account Balance</p>
+              <p className="uv-create-balance-value">{totalVotingPower.toLocaleString()} TON</p>
+            </div>
+          </div>
 
-            {error && <div className="uv-error">{error}</div>}
-
-            <button
-              className="uv-btn uv-btn-primary"
-              onClick={handleCreateProposal}
-              disabled={!newProposalTitle.trim() || isCreatingProposal}
-            >
-              {isCreatingProposal ? '처리 중...' : '제안 생성'}
+          {/* Main Content */}
+          <div className="uv-create-content">
+            <button className="uv-create-back-mobile" onClick={() => setCurrentView('list')} disabled={isCreatingProposal}>
+              <span className="material-symbols-outlined">arrow_back</span>
+              목록으로
             </button>
+
+            <div className="uv-create-header">
+              <h1>새 제안</h1>
+              <p>커뮤니티에 의견을 물어보세요</p>
+            </div>
+
+            <div className="uv-create-form">
+              <div className="uv-create-input-group">
+                <label className="uv-create-input-label">Proposal Title / 제안 제목</label>
+                <input
+                  type="text"
+                  className="uv-create-input"
+                  placeholder="제안 제목을 입력하세요"
+                  value={newProposalTitle}
+                  onChange={(e) => setNewProposalTitle(e.target.value)}
+                  disabled={isCreatingProposal}
+                />
+              </div>
+
+              <div className="uv-create-cards">
+                <div className="uv-create-security-card">
+                  <div className="uv-create-security-header">
+                    <span className="material-symbols-outlined">security</span>
+                    <span className="uv-create-security-badge">ZK-PROOF READY</span>
+                  </div>
+                  <p>모든 제안은 암호학적으로 보호되며, 생성 후 수정이 불가능합니다. 신중하게 작성해 주세요.</p>
+                </div>
+              </div>
+
+              {createStatus && (
+                <div className="uv-loading-overlay" style={{ position: 'fixed', inset: 0 }}>
+                  <div className="uv-loading-content">
+                    <FingerprintLoader progress={createProgress} />
+                    <p className="uv-loading-text">{createStatus}</p>
+                    <div className="uv-loading-progress">
+                      <div className="uv-loading-progress-fill" style={{ width: `${createProgress}%` }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {error && <div className="uv-error">{error}</div>}
+
+              {!canCreateProposal && (
+                <div className="uv-create-requirement">
+                  <span className="material-symbols-outlined">info</span>
+                  제안 생성에는 최소 {MIN_TON_FOR_PROPOSAL} TON 잔액이 필요합니다 (현재: {totalVotingPower} TON)
+                </div>
+              )}
+
+              <button
+                className="uv-create-submit"
+                onClick={handleCreateProposal}
+                disabled={!newProposalTitle.trim() || isCreatingProposal || !canCreateProposal}
+              >
+                제안 생성
+                <span className="material-symbols-outlined">arrow_forward</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* VIEW: Vote - New CEO-approved flow */}
+      {/* VIEW: Vote - Matching proposal-detail.html */}
       {currentView === 'vote' && selectedProposal && (
         <div className="uv-vote-view">
-          {/* Loading Overlay (Rule #6) */}
+          {/* Loading Overlay */}
           {isProcessing && (
             <div className="uv-loading-overlay">
               <div className="uv-loading-content">
-                <div className="uv-spinner-large"></div>
+                <FingerprintLoader progress={votingContext.progress} />
                 <p className="uv-loading-text">{votingContext.message}</p>
-                <div className="uv-progress-bar">
-                  <div className="uv-progress-fill" style={{ width: `${votingContext.progress}%` }} />
+                <div className="uv-loading-progress">
+                  <div className="uv-loading-progress-fill" style={{ width: `${votingContext.progress}%` }} />
                 </div>
               </div>
             </div>
           )}
 
-          <button className="uv-back" onClick={() => { setCurrentView('list'); setSelectedProposal(null); setSelectedChoice(null); setError(null); resetVoting(); setVotes(1); }} disabled={isProcessing}>
-            ← 목록으로
+          {/* Back Button */}
+          <button className="uv-back-button" onClick={() => { setCurrentView('list'); setSelectedProposal(null); setSelectedChoice(null); setError(null); resetVoting(); setVotes(1); }} disabled={isProcessing}>
+            <span className="material-symbols-outlined">arrow_back</span>
+            목록으로
           </button>
 
-          <div className="uv-card uv-vote-card">
-            <h1>{selectedProposal.title}</h1>
-
-            {/* Phase Indicator */}
-            <PhaseIndicator
-              phase={selectedProposal.phase}
-              endTime={selectedProposal.endTime}
-              revealEndTime={selectedProposal.revealEndTime}
-            />
-
-            {/* Public Stats - Total votes visible, For/Against hidden during Commit */}
-            <div className="uv-vote-stats">
-              <div className="uv-vote-stat">
-                <span className="uv-vote-stat-value">{selectedProposal.totalVotes}</span>
-                <span className="uv-vote-stat-label">참여자</span>
+          {/* Header Section */}
+          <div className="uv-vote-header">
+            <div className="uv-vote-header-content">
+              <div className="uv-vote-header-left">
+                <span className="uv-proposal-number">PROPOSAL #{selectedProposal.id}</span>
+                <h1>{selectedProposal.title}</h1>
               </div>
+              <div className="uv-vote-header-right">
+                <p className="uv-status-label">Status</p>
+                <span className={`uv-status-badge ${selectedProposal.phase === 0 ? 'commit' : selectedProposal.phase === 1 ? 'reveal' : 'ended'}`}>
+                  {selectedProposal.phase === 0 ? 'Commit Phase' : selectedProposal.phase === 1 ? 'Reveal Phase' : 'Ended'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Progress Section */}
+          <div className="uv-progress-section">
+            <div className="uv-progress-left">
+              <div className="uv-progress-header">
+                <h3>{selectedProposal.phase === 0 ? '투표 진행 중' : selectedProposal.phase === 1 ? '공개 진행 중' : '투표 종료'}</h3>
+                <span className="uv-progress-time">
+                  {(() => {
+                    const now = new Date()
+                    const target = selectedProposal.phase === 0 ? selectedProposal.endTime : selectedProposal.revealEndTime
+                    const diff = target.getTime() - now.getTime()
+                    if (diff <= 0) return '종료됨'
+                    const hours = Math.floor(diff / (1000 * 60 * 60))
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+                    const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+                    return `남은 시간: ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+                  })()}
+                </span>
+              </div>
+              <div className="uv-progress-bar">
+                <div className="uv-progress-fill" style={{
+                  width: `${Math.max(0, Math.min(100,
+                    selectedProposal.phase === 2 ? 100 :
+                    (() => {
+                      const now = new Date().getTime()
+                      const start = selectedProposal.endTime.getTime() - 240000 // 4분 전
+                      const end = selectedProposal.phase === 0 ? selectedProposal.endTime.getTime() : selectedProposal.revealEndTime.getTime()
+                      return ((now - start) / (end - start)) * 100
+                    })()
+                  ))}%`
+                }} />
+              </div>
+              <div className="uv-progress-labels">
+                <span>Phase: {selectedProposal.phase === 0 ? 'Commit' : selectedProposal.phase === 1 ? 'Reveal' : 'Ended'}</span>
+                <span>{selectedProposal.phase === 0 ? 'Next: Reveal' : selectedProposal.phase === 1 ? 'Next: Ended' : 'Completed'}</span>
+              </div>
+            </div>
+            <div className="uv-progress-right">
+              <p>
+                {selectedProposal.phase === 0
+                  ? '현재 커밋 단계입니다. 당신의 선택은 암호화되어 블록체인에 기록되며, 리빌 단계 전까지는 누구도 확인할 수 없습니다.'
+                  : selectedProposal.phase === 1
+                  ? '공개 단계입니다. 투표를 공개해야 최종 집계에 반영됩니다.'
+                  : '투표가 종료되었습니다.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Vote Counts (Hidden during commit phase) */}
+          <div className="uv-vote-counts">
+            <div className="uv-vote-count-item">
+              <h3>찬성</h3>
               {selectedProposal.phase === 2 ? (
-                <>
-                  <div className="uv-vote-stat">
-                    <span className="uv-vote-stat-value">{selectedProposal.forVotes}</span>
-                    <span className="uv-vote-stat-label">찬성</span>
-                  </div>
-                  <div className="uv-vote-stat">
-                    <span className="uv-vote-stat-value">{selectedProposal.againstVotes}</span>
-                    <span className="uv-vote-stat-label">반대</span>
-                  </div>
-                </>
+                <span className="uv-proposal-meta-value">{selectedProposal.forVotes}표</span>
               ) : (
-                <div className="uv-vote-stat uv-vote-stat-hidden">
-                  <span className="uv-vote-stat-value">🔒</span>
-                  <span className="uv-vote-stat-label">찬성/반대</span>
+                <div className="uv-vote-count-hidden">
+                  <span className="material-symbols-outlined">lock</span>
+                  <div className="uv-vote-count-bar"></div>
+                  <span className="uv-vote-count-label">Hidden</span>
                 </div>
               )}
             </div>
-
-            <div className="uv-proposal-info">
-              <span>제안자: {selectedProposal.creator.slice(0, 6)}...{selectedProposal.creator.slice(-4)}</span>
+            <div className="uv-vote-count-item">
+              <h3>반대</h3>
+              {selectedProposal.phase === 2 ? (
+                <span className="uv-proposal-meta-value">{selectedProposal.againstVotes}표</span>
+              ) : (
+                <div className="uv-vote-count-hidden">
+                  <span className="material-symbols-outlined">lock</span>
+                  <div className="uv-vote-count-bar"></div>
+                  <span className="uv-vote-count-label">Hidden</span>
+                </div>
+              )}
             </div>
+          </div>
 
-            {/* Phase 2: Ended - Show Results */}
-            {selectedProposal.phase === 2 ? (
-              <VoteResult
-                proposalId={selectedProposal.id}
-                forVotes={selectedProposal.forVotes}
-                againstVotes={selectedProposal.againstVotes}
-                totalCommitments={selectedProposal.totalVotes}
-                revealedVotes={selectedProposal.revealedVotes}
-              />
-            ) : selectedProposal.phase === 1 ? (
-              /* Phase 1: Reveal Phase */
-              <RevealForm
-                proposalId={selectedProposal.id}
-                revealEndTime={selectedProposal.revealEndTime}
-                onRevealSuccess={() => {
-                  // 제안 목록 새로고침
-                  refetchProposalCount()
-                }}
-              />
-            ) : address && hasVotedOnProposal(address, selectedProposal.id) ? (
-              (() => {
-                const myVote = getD2VoteForReveal(BigInt(selectedProposal.id), address)
-                return (
-                  <div className="uv-voted-state">
-                    <div className="uv-voted-icon">✓</div>
+          {/* Phase 2: Ended - Show Results */}
+          {selectedProposal.phase === 2 ? (
+            <div className="uv-voting-form">
+              <div className="uv-voting-form-left">
+                <VoteResult
+                  proposalId={selectedProposal.id}
+                  forVotes={selectedProposal.forVotes}
+                  againstVotes={selectedProposal.againstVotes}
+                  totalCommitments={selectedProposal.totalVotes}
+                  revealedVotes={selectedProposal.revealedVotes}
+                />
+              </div>
+              <div className="uv-voting-form-right">
+                <div className="uv-proposal-details">
+                  <h4>Proposal Details</h4>
+                  <div className="uv-proposal-meta-list">
+                    <div className="uv-proposal-meta-row">
+                      <span className="label">Author</span>
+                      <span className="value">{selectedProposal.creator.slice(0, 6)}...{selectedProposal.creator.slice(-4)}</span>
+                    </div>
+                    <div className="uv-proposal-meta-row">
+                      <span className="label">Total Votes</span>
+                      <span className="value">{selectedProposal.totalVotes}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="uv-zk-badge">
+                  <span className="material-symbols-outlined">verified_user</span>
+                  <p>Zero Knowledge Verification Active</p>
+                </div>
+              </div>
+            </div>
+          ) : selectedProposal.phase === 1 ? (
+            /* Phase 1: Reveal Phase */
+            <div className="uv-voting-form">
+              <div className="uv-voting-form-left">
+                <RevealForm
+                  proposalId={selectedProposal.id}
+                  revealEndTime={selectedProposal.revealEndTime}
+                  onRevealSuccess={() => {
+                    refetchProposalCount()
+                  }}
+                />
+              </div>
+              <div className="uv-voting-form-right">
+                <div className="uv-proposal-details">
+                  <h4>Proposal Details</h4>
+                  <div className="uv-proposal-meta-list">
+                    <div className="uv-proposal-meta-row">
+                      <span className="label">Author</span>
+                      <span className="value">{selectedProposal.creator.slice(0, 6)}...{selectedProposal.creator.slice(-4)}</span>
+                    </div>
+                    <div className="uv-proposal-meta-row">
+                      <span className="label">Total Votes</span>
+                      <span className="value">{selectedProposal.totalVotes}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="uv-zk-badge">
+                  <span className="material-symbols-outlined">verified_user</span>
+                  <p>Zero Knowledge Verification Active</p>
+                </div>
+              </div>
+            </div>
+          ) : address && hasVotedOnProposal(address, selectedProposal.id) ? (
+            (() => {
+              const myVote = getD2VoteForReveal(BigInt(selectedProposal.id), address)
+              return (
+                <div className="uv-voting-form">
+                  <div className="uv-voting-form-left">
                     <h2>투표 완료</h2>
                     {myVote && (
-                      <>
-                        <div className="uv-my-vote-summary">
-                          <div className="uv-my-vote-row">
-                            <span>내 선택</span>
-                            <strong className={myVote.choice === CHOICE_FOR ? 'uv-for' : 'uv-against'}>
-                              {myVote.choice === CHOICE_FOR ? '찬성' : '반대'}
-                            </strong>
-                          </div>
-                          <div className="uv-my-vote-row">
-                            <span>투표 수</span>
-                            <strong>{Number(myVote.numVotes)}표</strong>
-                          </div>
-                          <div className="uv-my-vote-row">
-                            <span>사용 TON</span>
-                            <strong>{Number(myVote.creditsSpent)} TON</strong>
-                          </div>
+                      <div className="uv-success-stats" style={{ marginTop: '32px' }}>
+                        <div className={`uv-success-stat ${myVote.choice === CHOICE_FOR ? 'primary' : ''}`}>
+                          <p className="label">내 선택</p>
+                          <p className="value">{myVote.choice === CHOICE_FOR ? '찬성 (FOR)' : '반대 (AGAINST)'}</p>
                         </div>
-                        {myVote.txHash && (
-                          <a
-                            href={`https://sepolia.etherscan.io/tx/${myVote.txHash}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="uv-tx-link"
-                          >
-                            거래 영수증 보기 ↗
-                          </a>
-                        )}
-                      </>
+                        <div className="uv-success-stat">
+                          <p className="label">투표 수</p>
+                          <p className="value">{Number(myVote.numVotes)}표</p>
+                        </div>
+                        <div className="uv-success-stat">
+                          <p className="label">사용 TON</p>
+                          <p className="value">{Number(myVote.creditsSpent)} TON</p>
+                        </div>
+                      </div>
                     )}
-                    <p className="uv-reveal-notice">공개 기간이 되면 투표를 공개해야 집계에 반영됩니다</p>
+                    {myVote?.txHash && (
+                      <a
+                        href={`https://sepolia.etherscan.io/tx/${myVote.txHash}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="uv-tx-link"
+                        style={{ marginTop: '32px', display: 'inline-flex' }}
+                      >
+                        거래 영수증 보기
+                        <span className="material-symbols-outlined">north_east</span>
+                      </a>
+                    )}
+                    <div className="uv-reveal-hint" style={{ marginTop: '48px' }}>
+                      <span className="material-symbols-outlined">info</span>
+                      <div className="uv-reveal-hint-content">
+                        <p className="label">Reveal Hint</p>
+                        <p>투표 결과는 공개 단계(Reveal Phase)가 시작된 후 24시간 이내에 블록체인에서 최종 확인이 가능합니다.</p>
+                      </div>
+                    </div>
                   </div>
-                )
-              })()
-            ) : !hasTon ? (
-              /* No TON State */
-              <div className="uv-no-token-notice">
-                <p>투표하려면 TON이 필요합니다</p>
-                <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="uv-btn uv-btn-primary">
-                  <TonIcon size={14} /> Faucet에서 TON 받기
+                  <div className="uv-voting-form-right">
+                    <div className="uv-proposal-details">
+                      <h4>Proposal Details</h4>
+                      <div className="uv-proposal-meta-list">
+                        <div className="uv-proposal-meta-row">
+                          <span className="label">Author</span>
+                          <span className="value">{selectedProposal.creator.slice(0, 6)}...{selectedProposal.creator.slice(-4)}</span>
+                        </div>
+                        <div className="uv-proposal-meta-row">
+                          <span className="label">Total Votes</span>
+                          <span className="value">{selectedProposal.totalVotes}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="uv-zk-badge">
+                      <span className="material-symbols-outlined">verified_user</span>
+                      <p>Zero Knowledge Verification Active</p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()
+          ) : !hasTon ? (
+            <div className="uv-voting-form">
+              <div className="uv-voting-form-left">
+                <h2>Cast Your Vote</h2>
+                <p style={{ marginTop: '24px', opacity: 0.7 }}>투표하려면 TON이 필요합니다</p>
+                <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="uv-submit-btn" style={{ marginTop: '24px', display: 'inline-flex', textDecoration: 'none' }}>
+                  <TonIcon size={24} /> Faucet에서 TON 받기
                 </a>
               </div>
-            ) : (
-              /* Voting Flow (Rule #3, #4) */
-              <>
-                {/* Section A: Direction Toggle */}
-                <div className="uv-section">
-                  <label className="uv-section-label">1. 투표 방향 선택</label>
+              <div className="uv-voting-form-right">
+                <div className="uv-proposal-details">
+                  <h4>Proposal Details</h4>
+                  <div className="uv-proposal-meta-list">
+                    <div className="uv-proposal-meta-row">
+                      <span className="label">Author</span>
+                      <span className="value">{selectedProposal.creator.slice(0, 6)}...{selectedProposal.creator.slice(-4)}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="uv-zk-badge">
+                  <span className="material-symbols-outlined">verified_user</span>
+                  <p>Zero Knowledge Verification Active</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Voting Flow - Matching proposal-detail.html */
+            <div className="uv-voting-form">
+              <div className="uv-voting-form-left">
+                <h2>Cast Your Vote</h2>
+
+                {/* Step 1: Direction */}
+                <div className="uv-step">
+                  <label className="uv-step-label">Step 1: Select Direction</label>
                   <div className="uv-direction-toggle">
                     <button
-                      className={`uv-toggle-btn uv-toggle-for ${selectedChoice === CHOICE_FOR ? 'active' : ''}`}
+                      className={`uv-direction-btn for-btn ${selectedChoice === CHOICE_FOR ? 'active' : ''}`}
                       onClick={() => setSelectedChoice(CHOICE_FOR)}
                       disabled={isProcessing}
                     >
-                      <TonIcon size={18} /> 찬성
+                      <span className="material-symbols-outlined">thumb_up</span>
+                      <span>찬성 (For)</span>
+                      <span className="uv-direction-btn-label">TON</span>
                     </button>
                     <button
-                      className={`uv-toggle-btn uv-toggle-against ${selectedChoice === CHOICE_AGAINST ? 'active' : ''}`}
+                      className={`uv-direction-btn against-btn ${selectedChoice === CHOICE_AGAINST ? 'active' : ''}`}
                       onClick={() => setSelectedChoice(CHOICE_AGAINST)}
                       disabled={isProcessing}
                     >
-                      <TonIcon size={18} /> 반대
+                      <span className="material-symbols-outlined">thumb_down</span>
+                      <span>반대 (Against)</span>
+                      <span className="uv-direction-btn-label">TON</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Section B: Intensity Slider (only enabled after direction selected) */}
-                <div className={`uv-section ${selectedChoice === null ? 'disabled' : ''}`}>
-                  <label className="uv-section-label">2. 투표 강도</label>
-                  <div className="uv-intensity-section">
-                    <div className="uv-slider-container">
-                      <input
-                        type="range"
-                        min="1"
-                        max={maxVotes}
-                        value={numVotes}
-                        onChange={(e) => setVotes(Number(e.target.value))}
-                        className="uv-slider"
-                        disabled={selectedChoice === null || isProcessing}
-                        style={{
-                          background: `linear-gradient(to right, ${colors.border} 0%, ${colors.border} ${(numVotes / maxVotes) * 100}%, #374151 ${(numVotes / maxVotes) * 100}%, #374151 100%)`
-                        }}
-                      />
+                {/* Step 2: Intensity */}
+                <div className="uv-step">
+                  <div className="uv-intensity-header">
+                    <label className="uv-step-label">Step 2: Intensity (Quadratic)</label>
+                    <span className="uv-intensity-value">{numVotes} <span>표</span></span>
+                  </div>
+                  <div className="uv-slider-container">
+                    <div
+                      className="uv-slider-value-tooltip"
+                      style={{ left: `${((numVotes - 1) / Math.max(maxVotes - 1, 1)) * 100}%` }}
+                    >
+                      {numVotes}표
                     </div>
-                    <div className="uv-intensity-display">
-                      <div className="uv-votes-display">
-                        <span className="uv-votes-number">{numVotes}</span>
-                        <span className="uv-votes-label">표</span>
-                      </div>
-                      <div className="uv-cost-display">
-                        <TonIcon size={20} />
-                        <span className="uv-cost-number">{quadraticCost}</span>
-                        <span className="uv-cost-label">TON</span>
-                      </div>
-                    </div>
-                    <div className="uv-cost-formula">
-                      비용 = {numVotes} × {numVotes} = {quadraticCost} TON
-                    </div>
-                    {isDanger && <div className="uv-warning-text">잔액의 {costLevel.toFixed(0)}%를 사용합니다</div>}
+                    <input
+                      type="range"
+                      min="1"
+                      max={maxVotes}
+                      value={numVotes}
+                      onChange={(e) => setVotes(Number(e.target.value))}
+                      className="uv-slider"
+                      disabled={selectedChoice === null || isProcessing}
+                    />
+                  </div>
+                  <div className="uv-slider-labels">
+                    <span>1 표</span>
+                    <span>MAX {maxVotes} 표</span>
                   </div>
                 </div>
 
-                {/* Section C: Single Cast Vote Button */}
-                <div className="uv-section">
-                  <button
-                    className="uv-cast-vote-btn"
-                    onClick={() => {
-                      if (selectedChoice !== null) {
-                        setPendingVoteChoice(selectedChoice)
-                        setShowConfirmModal(true)
-                      }
-                    }}
-                    disabled={selectedChoice === null || isProcessing || quadraticCost > totalVotingPower}
-                  >
-                    {selectedChoice === null ? '방향을 먼저 선택하세요' : '투표하기'}
-                  </button>
+                {/* Cost Display */}
+                <div className="uv-cost-box">
+                  <div className="uv-cost-content">
+                    <div>
+                      <p className="uv-cost-formula-label">Cost Formula</p>
+                      <p className="uv-cost-formula">
+                        비용 = {numVotes} × {numVotes} = <span className="highlight">{quadraticCost} TON</span>
+                      </p>
+                    </div>
+                    {isHighCost && (
+                      <div className="uv-cost-warning">
+                        <span className="material-symbols-outlined">warning</span>
+                        <p>High Cost Warning:<br />잔액의 {costLevel.toFixed(0)}%를 사용합니다</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Submit Button */}
+                <button
+                  className="uv-submit-btn"
+                  onClick={() => {
+                    if (selectedChoice !== null) {
+                      setPendingVoteChoice(selectedChoice)
+                      setShowConfirmModal(true)
+                    }
+                  }}
+                  disabled={selectedChoice === null || isProcessing || quadraticCost > totalVotingPower}
+                >
+                  투표하기 (Submit Vote)
+                </button>
 
                 {error && <div className="uv-error">{error}</div>}
+              </div>
 
-                <div className="uv-privacy-notice">
-                  🔒 내 선택은 비공개로 안전하게 보호됩니다
+              {/* Right Sidebar */}
+              <div className="uv-voting-form-right">
+                <div className="uv-proposal-details">
+                  <h4>Proposal Details</h4>
+                  <div className="uv-proposal-meta-list">
+                    <div className="uv-proposal-meta-row">
+                      <span className="label">Author</span>
+                      <span className="value">{selectedProposal.creator.slice(0, 6)}...{selectedProposal.creator.slice(-4)}</span>
+                    </div>
+                    <div className="uv-proposal-meta-row">
+                      <span className="label">Total Votes</span>
+                      <span className="value">{selectedProposal.totalVotes}</span>
+                    </div>
+                  </div>
                 </div>
-              </>
-            )}
-          </div>
+                <div className="uv-zk-badge">
+                  <span className="material-symbols-outlined">verified_user</span>
+                  <p>Zero Knowledge Verification Active</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Privacy Notice Footer */}
+          {selectedProposal.phase === 0 && !hasVotedOnProposal(address || '', selectedProposal.id) && hasTon && (
+            <div className="uv-privacy-notice">
+              <span className="material-symbols-outlined">lock</span>
+              내 선택은 비공개로 안전하게 보호됩니다
+            </div>
+          )}
         </div>
       )}
 
-      {/* VIEW: Success */}
+      {/* VIEW: Success - Matching vote-complete.html */}
       {currentView === 'success' && (
         <div className="uv-success-view">
-          {/* Confetti Animation */}
-          <div className="uv-confetti">
-            {Array.from({ length: 20 }).map((_, i) => (
-              <div key={i} className="uv-confetti-piece" />
-            ))}
-          </div>
+          {/* Confetti Overlay */}
+          <div className="uv-confetti-overlay"></div>
 
-          <div className="uv-card uv-center uv-success">
-            <div className="uv-icon uv-success-icon"><TonIcon size={48} /></div>
+          {/* Decorative corner squares */}
+          <div className="uv-deco-square uv-deco-top-left"></div>
+          <div className="uv-deco-square uv-deco-bottom-right"></div>
+
+          <div className="uv-success-card">
+            {/* Diamond Icon */}
+            <div className="uv-success-icon">
+              <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'white' }}>diamond</span>
+            </div>
+
             <h1>투표 완료!</h1>
-            <p className="uv-subtitle">투표가 안전하게 제출되었습니다</p>
+            <p>투표가 안전하게 제출되었습니다</p>
 
-            <div className="uv-result-summary">
-              <div className="uv-result-row">
-                <span>제안</span>
-                <strong>{selectedProposal?.title}</strong>
+            {/* Vote Summary */}
+            <div className="uv-success-summary">
+              <div className="uv-success-proposal">
+                <span className="label">안건</span>
+                <span className="value">{selectedProposal?.title}</span>
               </div>
-              <div className="uv-result-row">
-                <span>내 선택</span>
-                <strong className={selectedChoice === CHOICE_FOR ? 'uv-for' : 'uv-against'}>
-                  {selectedChoice === CHOICE_FOR ? '찬성' : '반대'}
-                </strong>
-              </div>
-              <div className="uv-result-row">
-                <span>투표 수</span>
-                <strong>{numVotes}표</strong>
-              </div>
-              <div className="uv-result-row">
-                <span>사용 TON</span>
-                <strong><TonIcon size={16} /> {quadraticCost} TON</strong>
+              <div className="uv-success-stats">
+                <div className="uv-success-stat primary">
+                  <p className="label">내 선택</p>
+                  <p className="value">{selectedChoice === CHOICE_FOR ? '찬성 (FOR)' : '반대 (AGAINST)'}</p>
+                </div>
+                <div className="uv-success-stat">
+                  <p className="label">투표 수</p>
+                  <p className="value">{numVotes}표</p>
+                </div>
+                <div className="uv-success-stat">
+                  <p className="label">사용 TON</p>
+                  <p className="value">{quadraticCost} TON</p>
+                </div>
               </div>
             </div>
 
+            {/* Transaction Link */}
             {txHash && (
               <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="uv-tx-link">
-                거래 영수증 보기 ↗
+                거래 영수증 보기
+                <span className="material-symbols-outlined">north_east</span>
               </a>
             )}
 
-            <p className="uv-reveal-hint">
-              공개 기간이 시작되면 내 투표를 공개해야 집계에 반영됩니다
-            </p>
+            {/* Reveal Hint Box */}
+            <div className="uv-reveal-hint">
+              <span className="material-symbols-outlined">info</span>
+              <div className="uv-reveal-hint-content">
+                <p className="label">Reveal Hint</p>
+                <p>투표 결과는 공개 단계(Reveal Phase)가 시작된 후 24시간 이내에 블록체인에서 최종 확인이 가능합니다.</p>
+              </div>
+            </div>
 
+            {/* Back Button */}
             <button
-              className="uv-btn uv-btn-secondary"
+              className="uv-success-button"
               onClick={() => {
                 setRefreshTrigger(prev => prev + 1)
                 setCurrentView('list')
@@ -1138,18 +1423,20 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
         </div>
       )}
 
-      {/* Rule #7 & #8: Pre-Flight Confirmation Modal */}
+      {/* Pre-Flight Confirmation Modal - Brutalist Style */}
       {showConfirmModal && pendingVoteChoice !== null && (
         <div className="uv-modal-overlay" onClick={() => setShowConfirmModal(false)}>
           <div className="uv-modal" onClick={(e) => e.stopPropagation()}>
-            <h2>투표 확인</h2>
+            <div className="uv-modal-header">
+              <h2>투표 확인</h2>
+            </div>
 
             <div className="uv-modal-content">
               <div className="uv-modal-vote-info">
                 <div className="uv-modal-row">
                   <span>선택</span>
                   <strong className={pendingVoteChoice === CHOICE_FOR ? 'uv-for' : 'uv-against'}>
-                    {pendingVoteChoice === CHOICE_FOR ? '찬성' : '반대'}
+                    {pendingVoteChoice === CHOICE_FOR ? '찬성 (FOR)' : '반대 (AGAINST)'}
                   </strong>
                 </div>
                 <div className="uv-modal-row">
@@ -1158,14 +1445,13 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                 </div>
                 <div className="uv-modal-row">
                   <span>사용 TON</span>
-                  <strong><TonIcon size={16} /> {quadraticCost} TON</strong>
+                  <strong>{quadraticCost} TON</strong>
                 </div>
               </div>
 
-              {/* Rule #7: One-Shot Warning (Red) */}
               <div className="uv-modal-warning">
-                <span className="uv-warning-icon">⚠️</span>
-                <div className="uv-warning-text">
+                <span className="material-symbols-outlined">warning</span>
+                <div className="uv-modal-warning-text">
                   <strong>최종 결정입니다</strong>
                   <p>제안당 1번만 투표할 수 있습니다. 이 결정은 나중에 변경하거나 취소할 수 없습니다.</p>
                 </div>
@@ -1174,7 +1460,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
 
             <div className="uv-modal-buttons">
               <button
-                className="uv-btn uv-btn-secondary"
+                className="uv-modal-btn uv-modal-btn-secondary"
                 onClick={() => {
                   setShowConfirmModal(false)
                   setPendingVoteChoice(null)
@@ -1183,7 +1469,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                 취소
               </button>
               <button
-                className="uv-btn uv-btn-primary"
+                className="uv-modal-btn uv-modal-btn-primary"
                 onClick={() => {
                   setShowConfirmModal(false)
                   handleVote(pendingVoteChoice)

@@ -17,14 +17,12 @@ interface Proposal {
   participants: number
 }
 
-// proposalsD2(uint256) selector = 0xb4e0d6af (QuadraticVotingDemo와 동일)
 function getProposalSelector(proposalId: number): string {
   const selector = 'b4e0d6af'
   const paddedId = proposalId.toString(16).padStart(64, '0')
   return selector + paddedId
 }
 
-// viem의 decodeAbiParameters 사용 (QuadraticVotingDemo와 동일)
 function decodeProposalResult(hex: string): { title: string; endTime: bigint; revealEndTime: bigint; totalVotes: bigint } {
   try {
     if (!hex || hex === '0x' || hex.length < 66) {
@@ -56,7 +54,7 @@ function decodeProposalResult(hex: string): { title: string; endTime: bigint; re
       title: decoded[1] as string,
       endTime: decoded[5] as bigint,
       revealEndTime: decoded[6] as bigint,
-      totalVotes: decoded[12] as bigint, // totalCommitments
+      totalVotes: decoded[12] as bigint,
     }
   } catch (e) {
     console.error('Decode error:', e)
@@ -66,73 +64,40 @@ function decodeProposalResult(hex: string): { title: string; endTime: bigint; re
 
 interface ProposalCardProps {
   proposal: Proposal
-  translateX: number
-  translateY: number
-  zIndex: number
-  opacity: number
   onClick: () => void
 }
 
-function ProposalCard({ proposal, translateX, translateY, zIndex, opacity, onClick }: ProposalCardProps) {
-  const phaseColors = {
-    voting: { bg: '#3b82f6', label: '투표중', icon: '🗳️' },
-    reveal: { bg: '#f59e0b', label: '공개중', icon: '📢' },
-    ended: { bg: '#6b7280', label: '종료', icon: '✓' },
+function ProposalCard({ proposal, onClick }: ProposalCardProps) {
+  const phaseStyles = {
+    voting: { bg: '#dcfce7', color: '#166534', border: '#166534', label: 'Voting' },
+    reveal: { bg: '#fef3c7', color: '#92400e', border: '#92400e', label: 'Reveal' },
+    ended: { bg: '#f1f5f9', color: '#475569', border: '#475569', label: 'Ended' },
   }
 
-  const { bg, label, icon } = phaseColors[proposal.phase]
+  const { bg, color, border, label } = phaseStyles[proposal.phase]
 
   return (
-    <div
-      className="proposal-carousel-card-wrapper"
-      style={{
-        transform: `translateX(${translateX}px) translateY(${translateY}px)`,
-        opacity,
-        zIndex,
-      }}
-      onClick={onClick}
-    >
-      <div className="proposal-carousel-card" style={{ backgroundColor: bg }}>
-        <div className="proposal-carousel-number">
-          <span className="proposal-carousel-no">No</span>
-          <span>{proposal.id}</span>
+    <div className="brutalist-carousel-card" onClick={onClick}>
+      <div className="brutalist-carousel-card-header">
+        <span className="brutalist-carousel-proposal-id">PROPOSAL #{proposal.id}</span>
+        <span
+          className="brutalist-carousel-phase"
+          style={{ background: bg, color: color, borderColor: border }}
+        >
+          {label}
+        </span>
+      </div>
+      <h4 className="brutalist-carousel-title">{proposal.title}</h4>
+      <div className="brutalist-carousel-footer">
+        <div className="brutalist-carousel-participants">
+          <span className="brutalist-carousel-label">Participants</span>
+          <span className="brutalist-carousel-value">{proposal.participants.toLocaleString()}</span>
         </div>
-        <div className="proposal-carousel-content">
-          <span className="proposal-carousel-title">{proposal.title}</span>
-          <span className="proposal-carousel-meta">
-            {icon} {label} · {proposal.participants}명 참여
-          </span>
-        </div>
-        {/* 호버시 보이는 상세 정보 */}
-        <div className="proposal-carousel-hover-info">
-          <div className="hover-info-title">{proposal.title}</div>
-          <div className="hover-info-status">
-            <span className="hover-info-phase">{icon} {label}</span>
-            <span className="hover-info-participants">{proposal.participants}명 참여</span>
-          </div>
-          <div className="hover-info-action">클릭하여 상세보기 →</div>
-        </div>
+        <span className="material-symbols-outlined brutalist-carousel-arrow">north_east</span>
       </div>
     </div>
   )
 }
-
-function ScrollProgress({ progress }: { progress: number }) {
-  return (
-    <div className="proposal-carousel-progress">
-      <div className="proposal-carousel-progress-track">
-        <div
-          className="proposal-carousel-progress-fill"
-          style={{ width: `${Math.max(8, progress)}%` }}
-        />
-      </div>
-    </div>
-  )
-}
-
-const CARD_WIDTH = 280
-const CARD_GAP = 40
-const CARD_STEP = CARD_WIDTH + CARD_GAP
 
 interface ProposalsCarouselProps {
   onProposalClick: (id: number) => void
@@ -140,32 +105,15 @@ interface ProposalsCarouselProps {
 
 export function ProposalsCarousel({ onProposalClick }: ProposalsCarouselProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [containerWidth, setContainerWidth] = useState(0)
-  const [offset, setOffset] = useState(0)
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [initialized, setInitialized] = useState(false)
 
-  // Drag state
-  const isDragging = useRef(false)
-  const hasDragged = useRef(false) // 드래그 여부 (클릭 구분용)
-  const dragStartX = useRef(0)
-  const dragStartOffset = useRef(0)
-
-  // Momentum
-  const velocityRef = useRef(0)
-  const lastPointerX = useRef(0)
-  const lastPointerTime = useRef(0)
-  const rafRef = useRef<number>(0)
-
-  // wagmi로 제안 개수 가져오기 (QuadraticVotingDemo와 동일)
   const { data: proposalCount } = useReadContract({
     address: ZK_VOTING_FINAL_ADDRESS,
     abi: ZK_VOTING_ABI,
     functionName: 'proposalCountD2',
   })
 
-  // 제안 데이터 가져오기
   useEffect(() => {
     const fetchProposals = async () => {
       if (proposalCount === undefined) return
@@ -217,12 +165,11 @@ export function ProposalsCarousel({ onProposalClick }: ProposalsCarouselProps) {
         }
       }
 
-      // 활성화 순서: 투표중 > 공개중 > 종료, 같은 상태면 최신순
       const phaseOrder = { voting: 0, reveal: 1, ended: 2 }
       setProposals(fetched.sort((a, b) => {
         const phaseDiff = phaseOrder[a.phase] - phaseOrder[b.phase]
         if (phaseDiff !== 0) return phaseDiff
-        return b.id - a.id // 같은 상태면 최신순
+        return b.id - a.id
       }))
       setIsLoading(false)
     }
@@ -230,185 +177,52 @@ export function ProposalsCarousel({ onProposalClick }: ProposalsCarouselProps) {
     fetchProposals()
   }, [proposalCount])
 
-  // Container width & 초기 offset 설정
-  useEffect(() => {
-    const updateWidth = () => {
-      if (containerRef.current) {
-        const width = containerRef.current.offsetWidth
-        setContainerWidth(width)
-        // 초기 offset: 첫 카드가 왼쪽 여백을 두고 시작하도록
-        if (!initialized && proposals.length > 0) {
-          setOffset(40) // 왼쪽에서 40px 여백
-          setInitialized(true)
-        }
-      }
+  const scroll = useCallback((direction: 'left' | 'right') => {
+    if (containerRef.current) {
+      const scrollAmount = 420
+      containerRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      })
     }
-    updateWidth()
-    window.addEventListener('resize', updateWidth)
-    return () => window.removeEventListener('resize', updateWidth)
-  }, [proposals.length, initialized])
+  }, [])
 
-  const totalWidth = proposals.length * CARD_STEP
-  // 스크롤 범위: 왼쪽 끝 ~ 오른쪽 끝
-  const minOffset = Math.min(0, -(totalWidth - containerWidth + 60)) // 오른쪽 여백 60px
-  const maxOffset = 60 // 왼쪽 여백 60px
-
-  const clamp = useCallback(
-    (val: number) => {
-      if (proposals.length === 0) return 0
-      return Math.max(minOffset, Math.min(maxOffset, val))
-    },
-    [minOffset, maxOffset, proposals.length]
-  )
-
-  const startMomentum = useCallback(() => {
-    cancelAnimationFrame(rafRef.current)
-    const decay = () => {
-      velocityRef.current *= 0.94
-      if (Math.abs(velocityRef.current) < 0.3) {
-        velocityRef.current = 0
-        return
-      }
-      setOffset((prev) => clamp(prev + velocityRef.current))
-      rafRef.current = requestAnimationFrame(decay)
-    }
-    rafRef.current = requestAnimationFrame(decay)
-  }, [clamp])
-
-  const handlePointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      // 카드 클릭은 별도 처리하므로 카드 위에서는 드래그 시작 안함
-      if ((e.target as HTMLElement).closest('.proposal-carousel-card-wrapper')) {
-        return
-      }
-      cancelAnimationFrame(rafRef.current)
-      velocityRef.current = 0
-      isDragging.current = true
-      hasDragged.current = false
-      dragStartX.current = e.clientX
-      dragStartOffset.current = offset
-      lastPointerX.current = e.clientX
-      lastPointerTime.current = Date.now()
-      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-    },
-    [offset]
-  )
-
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (!isDragging.current) return
-      const dx = e.clientX - dragStartX.current
-      if (Math.abs(dx) > 5) {
-        hasDragged.current = true
-      }
-      const now = Date.now()
-      const dt = now - lastPointerTime.current
-      if (dt > 0) {
-        velocityRef.current = ((e.clientX - lastPointerX.current) / dt) * 16
-      }
-      lastPointerX.current = e.clientX
-      lastPointerTime.current = now
-      setOffset(clamp(dragStartOffset.current + dx))
-    },
-    [clamp]
-  )
-
-  const handlePointerUp = useCallback(() => {
-    if (!isDragging.current) return
-    isDragging.current = false
-    startMomentum()
-  }, [startMomentum])
-
-  // 카드 클릭 핸들러
-  const handleCardClick = useCallback((proposalId: number) => {
-    console.log('Card clicked, navigating to proposal:', proposalId)
-    onProposalClick(proposalId)
-  }, [onProposalClick])
-
-  // Wheel event handler - needs to be added via useEffect to avoid passive listener issue
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault()
-      const delta = e.deltaX !== 0 ? -e.deltaX : -e.deltaY
-      setOffset((prev) => clamp(prev + delta * 0.8))
-    }
-
-    container.addEventListener('wheel', handleWheel, { passive: false })
-    return () => container.removeEventListener('wheel', handleWheel)
-  }, [clamp])
-
-  const getCardTransforms = useCallback(
-    (index: number) => {
-      const cardX = index * CARD_STEP + offset
-      const staggerPattern = [10, 4, -2, -6, -2, 4, 8, 12, 6, 2, 8, 0]
-      const translateY = staggerPattern[index % staggerPattern.length]
-
-      const leftEdge = cardX
-      const rightEdge = cardX + CARD_WIDTH
-      let opacity = 1
-      if (rightEdge < -40) opacity = 0
-      else if (leftEdge < 0) opacity = Math.max(0.2, leftEdge / 40 + 1)
-      if (leftEdge > containerWidth + 40) opacity = 0
-      else if (rightEdge > containerWidth)
-        opacity = Math.min(opacity, Math.max(0.2, (containerWidth + 40 - rightEdge) / 80))
-
-      const zIndex = proposals.length - index
-
-      return { translateX: cardX, translateY, zIndex, opacity }
-    },
-    [containerWidth, offset, proposals.length]
-  )
-
-  const progress = containerWidth
-    ? Math.max(0, Math.min(100, ((maxOffset - offset) / (maxOffset - minOffset)) * 100))
-    : 0
-
-  // 로딩 중이거나 제안이 없으면 표시 안함
   if (isLoading || proposals.length === 0) {
     return null
   }
 
   return (
-    <section className="proposal-carousel-section">
-      <div className="proposal-carousel-header">
-        <h2>
-          <span className="proposal-carousel-count">{proposals.length}</span>
-          <span>개의 제안이 진행 중</span>
-        </h2>
-        <p>드래그하거나 스크롤해서 제안을 둘러보세요</p>
+    <section className="brutalist-carousel-section" id="proposals">
+      <div className="brutalist-carousel-header">
+        <div className="brutalist-carousel-header-left">
+          <div className="brutalist-live-badge">
+            <span className="brutalist-live-dot"></span>
+            LIVE
+          </div>
+          <div>
+            <h2>Proposals</h2>
+            <p>Active Governance Cycles</p>
+          </div>
+        </div>
+        <div className="brutalist-carousel-nav">
+          <button onClick={() => scroll('left')}>
+            <span className="material-symbols-outlined">chevron_left</span>
+          </button>
+          <button onClick={() => scroll('right')}>
+            <span className="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
       </div>
 
-      <div
-        ref={containerRef}
-        className="proposal-carousel-container"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-      >
-        <div className="proposal-carousel-fade-left" />
-        <div className="proposal-carousel-fade-right" />
-
-        {proposals.map((proposal, index) => {
-          const t = getCardTransforms(index)
-          return (
-            <ProposalCard
-              key={proposal.id}
-              proposal={proposal}
-              translateX={t.translateX}
-              translateY={t.translateY}
-              zIndex={t.zIndex}
-              opacity={t.opacity}
-              onClick={() => handleCardClick(proposal.id)}
-            />
-          )
-        })}
+      <div className="brutalist-carousel-container" ref={containerRef}>
+        {proposals.map((proposal) => (
+          <ProposalCard
+            key={proposal.id}
+            proposal={proposal}
+            onClick={() => onProposalClick(proposal.id)}
+          />
+        ))}
       </div>
-
-      <ScrollProgress progress={progress} />
     </section>
   )
 }
