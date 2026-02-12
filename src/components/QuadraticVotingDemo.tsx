@@ -453,7 +453,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
         address: ZK_VOTING_FINAL_ADDRESS,
         abi: ZK_VOTING_FINAL_ABI,
         functionName: 'createProposalD2',
-        args: [newProposalTitle, '', creditRoot, BigInt(150), BigInt(150)], // Test: 2min 30s voting, 2min 30s reveal
+        args: [newProposalTitle, '', creditRoot, BigInt(150), BigInt(90)], // Test: 2min 30s voting, 1min 30s reveal
       })
 
       setCreateStatus('Processing block...')
