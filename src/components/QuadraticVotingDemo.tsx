@@ -478,7 +478,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
         setCreateProgress(0)
       }
     }
-  }, [newProposalTitle, publicClient, writeContractAsync, refetchProposalCount, address, keyPair, totalVotingPower, registeredCreditNotes, refetchCreditNotes, waitForTx, createStatus])
+  }, [newProposalTitle, publicClient, writeContractAsync, refetchProposalCount, address, keyPair, totalVotingPower, registeredCreditNotes, refetchCreditNotes, waitForTx, createStatus, canCreateProposal])
 
   const handleVote = useCallback(async (choice: VoteChoice) => {
     if (!keyPair || !selectedProposal || !hasTon || !address || !publicClient) return
