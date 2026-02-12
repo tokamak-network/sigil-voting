@@ -739,8 +739,6 @@ export async function generateVoteProof(
     // Yield to allow UI to update before heavy computation
     await new Promise(resolve => setTimeout(resolve, 100))
 
-    const startTime = Date.now()
-
     // Generate proof with timeout
     const proofPromise = snarkjs.groth16.fullProve(
       circuitInputs,
@@ -1079,7 +1077,7 @@ export async function generateQuadraticProof(
     const zkeyUrl = '/circuits/D2_QuadraticVoting_final.zkey'
 
     // Use Web Worker for proof generation (prevents UI freeze)
-    const { proof, publicSignals, duration } = await generateProofWithFallback(
+    const { proof, publicSignals } = await generateProofWithFallback(
       circuitInputs as Record<string, string | string[]>,
       wasmUrl,
       zkeyUrl,
