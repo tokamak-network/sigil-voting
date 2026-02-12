@@ -91,7 +91,7 @@ export async function generateProofInWorker(
   })
 }
 
-// 캐시된 snarkjs 인스턴스
+// Cached snarkjs instance
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let snarkjsInstance: any = null
 
@@ -105,23 +105,23 @@ export async function generateProofOnMainThread(
   onProgress?: ProofProgressCallback
 ): Promise<ProofResult> {
   try {
-    onProgress?.(10, 'snarkjs 로딩 중...')
+    onProgress?.(10, 'Loading snarkjs...')
 
-    // snarkjs 캐싱으로 재사용
+    // Reuse cached snarkjs
     if (!snarkjsInstance) {
       snarkjsInstance = await import('snarkjs')
     }
     const snarkjs = snarkjsInstance
 
-    // UI 업데이트를 위한 yield
+    // Yield for UI update
     await new Promise(resolve => setTimeout(resolve, 50))
 
-    onProgress?.(30, '회로 파일 로딩 중...')
+    onProgress?.(30, 'Loading circuit files...')
 
-    // UI 업데이트를 위한 yield
+    // Yield for UI update
     await new Promise(resolve => setTimeout(resolve, 50))
 
-    onProgress?.(50, 'ZK 증명 생성 중...')
+    onProgress?.(50, 'Generating ZK proof...')
 
     const startTime = Date.now()
 
@@ -133,21 +133,21 @@ export async function generateProofOnMainThread(
 
     const duration = Date.now() - startTime
 
-    onProgress?.(95, `증명 완료 (${(duration / 1000).toFixed(1)}초)`)
+    onProgress?.(95, `Proof complete (${(duration / 1000).toFixed(1)}s)`)
 
     return { proof, publicSignals, duration }
   } catch (error) {
     console.error('[ZK] Proof generation failed:', error)
     const message = error instanceof Error ? error.message : String(error)
 
-    // 일반적인 에러 메시지를 사용자 친화적으로 변환
+    // Convert error messages to user-friendly format
     if (message.includes('fetch')) {
-      throw new Error('회로 파일을 로드할 수 없습니다. 페이지를 새로고침해주세요.')
+      throw new Error('Failed to load circuit files. Please refresh the page.')
     }
     if (message.includes('memory') || message.includes('Memory')) {
-      throw new Error('메모리 부족. 다른 탭을 닫고 다시 시도해주세요.')
+      throw new Error('Out of memory. Please close other tabs and try again.')
     }
-    throw new Error('ZK 증명 생성 실패: ' + message)
+    throw new Error('ZK proof generation failed: ' + message)
   }
 }
 
@@ -160,8 +160,8 @@ export async function generateProofWithFallback(
   zkeyUrl: string,
   onProgress?: ProofProgressCallback
 ): Promise<ProofResult> {
-  // 바로 메인 스레드에서 실행 (Worker 이슈 방지)
-  // Worker는 snarkjs 동적 import 문제가 있어서 안정성을 위해 메인 스레드 사용
+  // Run on main thread directly (avoiding Worker issues)
+  // Worker has snarkjs dynamic import issues, using main thread for stability
   console.log('[ZK] Generating proof on main thread for stability')
   return await generateProofOnMainThread(circuitInputs, wasmUrl, zkeyUrl, onProgress)
 }

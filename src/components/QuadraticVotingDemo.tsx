@@ -26,7 +26,7 @@ import config from '../config.json'
 const ZK_VOTING_FINAL_ADDRESS = (config.contracts.zkVotingFinal || '0x0000000000000000000000000000000000000000') as `0x${string}`
 const TON_TOKEN_ADDRESS = (config.contracts.tonToken || '0xa30fe40285B8f5c0457DbC3B7C8A280373c40044') as `0x${string}`
 
-// 제안 생성에 필요한 최소 TON 잔액 (수수료 아님, 잔액 요구사항)
+// Minimum TON balance required for proposal creation (not a fee, balance requirement)
 const MIN_TON_FOR_PROPOSAL = 100
 
 // Local storage helpers for tracking voted proposals
@@ -68,7 +68,7 @@ const ZK_VOTING_FINAL_ABI = [
   { type: 'function', name: 'castVoteD2', inputs: [{ name: '_proposalId', type: 'uint256' }, { name: '_commitment', type: 'uint256' }, { name: '_numVotes', type: 'uint256' }, { name: '_creditsSpent', type: 'uint256' }, { name: '_nullifier', type: 'uint256' }, { name: '_pA', type: 'uint256[2]' }, { name: '_pB', type: 'uint256[2][2]' }, { name: '_pC', type: 'uint256[2]' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'creditRootHistory', inputs: [{ name: '', type: 'uint256' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
   { type: 'function', name: 'getAvailableCredits', inputs: [{ name: 'user', type: 'address' }], outputs: [{ name: '', type: 'uint256' }], stateMutability: 'view' },
-  // D2 Phase 관련 함수 (Reveal Phase 지원)
+  // D2 Phase functions (Reveal Phase support)
   { type: 'function', name: 'revealVoteD2', inputs: [{ name: '_proposalId', type: 'uint256' }, { name: '_nullifier', type: 'uint256' }, { name: '_choice', type: 'uint256' }, { name: '_numVotes', type: 'uint256' }, { name: '_voteSalt', type: 'uint256' }], outputs: [], stateMutability: 'nonpayable' },
   { type: 'function', name: 'getPhaseD2', inputs: [{ name: '_proposalId', type: 'uint256' }], outputs: [{ name: '', type: 'uint8' }], stateMutability: 'view' },
   { type: 'function', name: 'getProposalResultD2', inputs: [{ name: '_proposalId', type: 'uint256' }], outputs: [{ name: 'forVotes', type: 'uint256' }, { name: 'againstVotes', type: 'uint256' }, { name: 'totalRevealed', type: 'uint256' }], stateMutability: 'view' },
@@ -87,15 +87,15 @@ interface Proposal {
   title: string
   creator: string
   endTime: Date
-  revealEndTime: Date      // 공개 마감 시간
+  revealEndTime: Date      // Reveal end time
   totalVotes: number       // Total commitments (public)
-  totalCreditsSpent: number  // Total TON spent (내부 용도)
+  totalCreditsSpent: number  // Total TON spent (internal use)
   creditRoot: bigint
-  // Phase 관련 필드
+  // Phase fields
   phase: 0 | 1 | 2         // 0=Commit, 1=Reveal, 2=Ended
-  forVotes: number         // 찬성 투표 수 (Reveal 후)
-  againstVotes: number     // 반대 투표 수 (Reveal 후)
-  revealedVotes: number    // 공개된 투표 수
+  forVotes: number         // For votes (after reveal)
+  againstVotes: number     // Against votes (after reveal)
+  revealedVotes: number    // Revealed vote count
 }
 
 type View = 'list' | 'create' | 'vote' | 'success'
@@ -134,11 +134,11 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [pendingInitialProposalId, setPendingInitialProposalId] = useState<number | null>(initialProposalId ?? null)
 
-  // 필터 및 검색
+  // Filter and search
   const [filterPhase, setFilterPhase] = useState<'all' | 0 | 1 | 2>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
-  // initialProposalId prop 변경 감지
+  // Detect initialProposalId prop changes
   useEffect(() => {
     if (initialProposalId !== null && initialProposalId !== undefined) {
       setPendingInitialProposalId(initialProposalId)
@@ -146,25 +146,25 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
   }, [initialProposalId])
 
 
-  // Rule #3: Live countdown timer (1초마다 업데이트)
+  // Rule #3: Live countdown timer (update every second)
   const [tick, setTick] = useState(0)
   useEffect(() => {
     const interval = setInterval(() => setTick(t => t + 1), 1000)
     return () => clearInterval(interval)
   }, [])
 
-  // 선택된 제안의 phase 자동 업데이트 (투표→공개→종료 자동 전환)
+  // Auto-update phase of selected proposal (vote→reveal→ended auto-transition)
   useEffect(() => {
     if (!selectedProposal) return
 
     const currentPhase = calculatePhase(selectedProposal.endTime, selectedProposal.revealEndTime)
     if (currentPhase !== selectedProposal.phase) {
-      // Phase가 변경됨 - 제안 데이터 업데이트
+      // Phase changed - update proposal data
       setSelectedProposal(prev => prev ? { ...prev, phase: currentPhase } : null)
-      // 목록도 새로고침
+      // Also refresh the list
       setRefreshTrigger(t => t + 1)
     }
-  }, [selectedProposal, tick]) // tick 의존성 추가로 매초 체크
+  }, [selectedProposal, tick]) // tick dependency for checking every second
 
   // Voting state machine
   const {
@@ -245,7 +245,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
     }
   }, [isConnected, address])
 
-  // 지갑 연결 해제 시 리스트로 돌아가기
+  // Return to list when wallet disconnected
   useEffect(() => {
     if (!isConnected) {
       setCurrentView('list')
@@ -255,10 +255,10 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
   }, [isConnected])
 
   // Fetch proposals
-  // 첫 로딩 여부 추적
+  // Track first load
   const [isFirstLoad, setIsFirstLoad] = useState(true)
 
-  // Helper: 단일 제안 fetch
+  // Helper: fetch single proposal
   const fetchSingleProposal = useCallback(async (id: number): Promise<Proposal | null> => {
     try {
       const response = await fetch('https://ethereum-sepolia-rpc.publicnode.com', {
@@ -302,12 +302,12 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
     return null
   }, [])
 
-  // 선택된 제안 우선 로드 (즉시 상세 화면으로 이동)
+  // Load selected proposal first (navigate to detail view immediately)
   useEffect(() => {
     const loadInitialProposal = async () => {
       if (!pendingInitialProposalId || pendingInitialProposalId <= 0) return
 
-      // 이미 proposals에 있으면 바로 선택
+      // If already in proposals, select it directly
       const existing = proposals.find(p => p.id === pendingInitialProposalId)
       if (existing) {
         setSelectedProposal(existing)
@@ -317,7 +317,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
         return
       }
 
-      // 없으면 해당 제안만 빠르게 fetch
+      // If not found, quickly fetch the proposal
       const proposal = await fetchSingleProposal(pendingInitialProposalId)
       if (proposal) {
         setSelectedProposal(proposal)
@@ -332,7 +332,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
 
   useEffect(() => {
     const fetchProposals = async () => {
-      // 첫 로딩일 때만 로딩 표시 (새로고침 시 깜빡임 방지)
+      // Show loading only on first load (prevent flicker on refresh)
       if (isFirstLoad) {
         setIsLoadingProposals(true)
       }
@@ -345,7 +345,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
 
       const count = Number(proposalCount)
 
-      // 병렬로 모든 제안 fetch (더 빠름)
+      // Fetch all proposals in parallel (faster)
       const proposalPromises = Array.from({ length: count }, (_, i) => fetchSingleProposal(i + 1))
       const results = await Promise.all(proposalPromises)
       const fetchedProposals = results.filter((p): p is Proposal => p !== null)
@@ -368,24 +368,24 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
   const waitForTx = useCallback(async (hash: `0x${string}`) => {
     return await publicClient?.waitForTransactionReceipt({
       hash,
-      timeout: 60_000, // 60초 타임아웃
+      timeout: 60_000, // 60 second timeout
       confirmations: 1,
-      pollingInterval: 500, // 500ms로 빠르게 폴링
+      pollingInterval: 500, // Fast polling at 500ms
     })
   }, [publicClient])
 
-  // 제안 생성 가능 여부
+  // Check if proposal creation is allowed
   const canCreateProposal = totalVotingPower >= MIN_TON_FOR_PROPOSAL
 
   const handleCreateProposal = useCallback(async () => {
     if (!newProposalTitle.trim() || !publicClient || !address || !keyPair) return
     if (!canCreateProposal) {
-      setError(`제안 생성에는 최소 ${MIN_TON_FOR_PROPOSAL} TON 잔액이 필요합니다`)
+      setError(`Minimum ${MIN_TON_FOR_PROPOSAL} TON balance required to create proposal`)
       return
     }
     setIsCreatingProposal(true)
     setError(null)
-    setCreateStatus('준비 중...')
+    setCreateStatus('Preparing...')
     setCreateProgress(10)
 
     try {
@@ -393,7 +393,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
       const creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
 
       // Register creator's creditNote for creditRoot (but won't auto-vote)
-      setCreateStatus('크레딧 노트 생성 중...')
+      setCreateStatus('Creating credit note...')
       setCreateProgress(20)
       let creditNote: CreditNote | null = getStoredCreditNote(address)
       if (!creditNote) {
@@ -402,7 +402,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
 
       const noteHash = creditNote.creditNoteHash
       if (!creditNotes.includes(noteHash)) {
-        setCreateStatus('크레딧 노트 등록 중...')
+        setCreateStatus('Registering credit note...')
         setCreateProgress(30)
         const registerNoteHash = await writeContractAsync({
           address: ZK_VOTING_FINAL_ADDRESS,
@@ -416,12 +416,12 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
       }
 
       // Build creditRoot from all registered notes
-      setCreateStatus('머클 루트 생성 중...')
+      setCreateStatus('Generating merkle root...')
       setCreateProgress(50)
       const { root: creditRoot } = await generateMerkleProofAsync(creditNotes, 0)
 
       // Register this creditRoot
-      setCreateStatus('루트 등록 중, 지갑 승인 필요...')
+      setCreateStatus('Registering root, wallet approval needed...')
       setCreateProgress(60)
       const registerRootHash = await writeContractAsync({
         address: ZK_VOTING_FINAL_ADDRESS,
@@ -429,30 +429,30 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
         functionName: 'registerCreditRoot',
         args: [creditRoot],
       })
-      setCreateStatus('블록 처리 중...')
+      setCreateStatus('Processing block...')
       setCreateProgress(70)
       await waitForTx(registerRootHash)
 
       // Create proposal (NO auto-vote, creator votes separately if they want)
-      setCreateStatus('제안 생성 중, 지갑 승인 필요...')
+      setCreateStatus('Creating proposal, wallet approval needed...')
       setCreateProgress(80)
       const createHash = await writeContractAsync({
         address: ZK_VOTING_FINAL_ADDRESS,
         abi: ZK_VOTING_FINAL_ABI,
         functionName: 'createProposalD2',
-        args: [newProposalTitle, '', creditRoot, BigInt(240), BigInt(240)], // 테스트: 4분 투표, 4분 공개
+        args: [newProposalTitle, '', creditRoot, BigInt(240), BigInt(240)], // Test: 4min voting, 4min reveal
       })
 
-      setCreateStatus('블록 처리 중...')
+      setCreateStatus('Processing block...')
       setCreateProgress(90)
       await waitForTx(createHash)
 
       setCreateProgress(100)
-      setCreateStatus('완료!')
+      setCreateStatus('Complete!')
       await refetchProposalCount()
       setNewProposalTitle('')
 
-      // 잠시 후 목록으로 이동
+      // Navigate to list after a short delay
       setTimeout(() => {
         setCreateStatus(null)
         setCreateProgress(0)
@@ -462,18 +462,18 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
       console.error('[DEBUG] Create proposal error:', err)
       const errorMsg = (err as Error).message || ''
       if (errorMsg.includes('User rejected') || errorMsg.includes('user rejected') || errorMsg.includes('denied')) {
-        setError('트랜잭션이 취소되었습니다')
+        setError('Transaction cancelled')
       } else if (errorMsg.includes('insufficient funds')) {
-        setError('Sepolia ETH가 부족합니다. Faucet에서 받아주세요.')
+        setError('Insufficient Sepolia ETH. Please get some from faucet.')
       } else if (errorMsg.includes('gas')) {
-        setError('가스 오류가 발생했습니다. 다시 시도해주세요.')
+        setError('Gas error occurred. Please try again.')
       } else {
-        setError('제안 생성에 실패했습니다. 다시 시도해주세요.')
+        setError('Failed to create proposal. Please try again.')
       }
       setCreateProgress(0)
     } finally {
       setIsCreatingProposal(false)
-      if (!createStatus?.includes('완료')) {
+      if (!createStatus?.includes('Complete')) {
         setCreateStatus(null)
         setCreateProgress(0)
       }
@@ -483,13 +483,13 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
   const handleVote = useCallback(async (choice: VoteChoice) => {
     if (!keyPair || !selectedProposal || !hasTon || !address || !publicClient) return
     if (quadraticCost > totalVotingPower) {
-      setError('TON이 부족합니다')
+      setError('Insufficient TON')
       return
     }
 
     // Check if already voted (local check to save gas)
     if (hasVotedOnProposal(address, selectedProposal.id)) {
-      setError('이미 이 제안에 투표하셨습니다. 제안당 1번만 투표할 수 있습니다.')
+      setError('You have already voted on this proposal. Only one vote per proposal.')
       return
     }
 
@@ -501,10 +501,10 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
       const proposalId = BigInt(selectedProposal.id)
 
       // Step 1: Get or create creditNote
-      updateProgress(5, '잠시만 기다려주세요...')
+      updateProgress(5, 'Please wait...')
       let creditNote: CreditNote | null = getStoredCreditNote(address)
       if (!creditNote) {
-        updateProgress(8, '잠시만 기다려주세요...')
+        updateProgress(8, 'Please wait...')
         creditNote = await createCreditNoteAsync(keyPair, BigInt(totalVotingPower), address)
       }
 
@@ -514,7 +514,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
 
       // Step 3: Auto-register creditNote if needed
       if (!creditNotes.includes(noteHash)) {
-        updateProgress(10, '잠시만 기다려주세요...')
+        updateProgress(10, 'Please wait...')
         const registerNoteHash = await writeContractAsync({
           address: ZK_VOTING_FINAL_ADDRESS,
           abi: ZK_VOTING_FINAL_ABI,
@@ -527,7 +527,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
       }
 
       // Step 4: Generate creditRoot with all registered notes
-      updateProgress(15, '잠시만 기다려주세요...')
+      updateProgress(15, 'Please wait...')
       const { root: dynamicCreditRoot } = await generateMerkleProofAsync(creditNotes, creditNotes.indexOf(noteHash))
 
       // Step 5: Register creditRoot if not already registered
@@ -539,7 +539,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
       })
 
       if (!isCreditRootValid) {
-        updateProgress(18, '잠시만 기다려주세요...')
+        updateProgress(18, 'Please wait...')
         const registerRootHash = await writeContractAsync({
           address: ZK_VOTING_FINAL_ADDRESS,
           abi: ZK_VOTING_FINAL_ABI,
@@ -550,10 +550,10 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
       }
 
       // Step 6: Prepare vote data
-      updateProgress(20, '투표 준비 중...')
+      updateProgress(20, 'Preparing vote...')
       const voteData = await prepareD2VoteAsync(keyPair, choice, BigInt(numVotes), proposalId)
 
-      updateProgress(25, '투표 준비 중...')
+      updateProgress(25, 'Preparing vote...')
 
       // Step 7: Generate ZK proof using dynamic creditRoot
       const { proof, nullifier, commitment } = await generateQuadraticProof(
@@ -562,7 +562,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
         voteData,
         dynamicCreditRoot,
         creditNotes,
-        (progress) => updateProgress(30 + Math.floor(progress.progress * 0.25), '투표 준비 중...')
+        (progress) => updateProgress(30 + Math.floor(progress.progress * 0.25), 'Preparing vote...')
       )
 
       proofComplete() // State: PROOFING -> SIGNING
@@ -584,7 +584,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
         [proposalId, commitment, BigInt(numVotes), voteData.creditsSpent, nullifier, dynamicCreditRoot, proof.pA, proof.pB, proof.pC]
       )
 
-      updateProgress(55, '지갑에서 승인해주세요')
+      updateProgress(55, 'Please approve in wallet')
 
       // Single transaction: approveAndCall on TON token
       // This approves TON spending and calls our contract's onApprove callback in one tx
@@ -613,33 +613,33 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
       // User-friendly error messages
       let userMessage = errorMsg
       if (errorMsg.includes('User rejected') || errorMsg.includes('user rejected') || errorMsg.includes('denied')) {
-        userMessage = '트랜잭션이 취소되었습니다'
+        userMessage = 'Transaction cancelled'
       } else if (errorMsg.includes('NullifierAlreadyUsed') || errorMsg.includes('already used') || errorMsg.includes('0x3c712b18')) {
-        userMessage = '이미 이 제안에 투표하셨습니다. 제안당 1번만 투표할 수 있습니다.'
+        userMessage = 'You have already voted on this proposal. Only one vote per proposal.'
       } else if (errorMsg.includes('NotInCommitPhase') || errorMsg.includes('commit phase')) {
-        userMessage = '투표 기간이 종료되었습니다.'
+        userMessage = 'Voting period has ended.'
       } else if (errorMsg.includes('ProposalNotFound')) {
-        userMessage = '제안을 찾을 수 없습니다.'
+        userMessage = 'Proposal not found.'
       } else if (errorMsg.includes('InvalidProof')) {
-        userMessage = 'ZK 증명 검증에 실패했습니다. 다시 시도해주세요.'
-      } else if (errorMsg.includes('fetch') || errorMsg.includes('Failed to fetch') || errorMsg.includes('로드할 수 없')) {
-        userMessage = '회로 파일을 로드할 수 없습니다. 페이지를 새로고침 후 다시 시도해주세요.'
+        userMessage = 'ZK proof verification failed. Please try again.'
+      } else if (errorMsg.includes('fetch') || errorMsg.includes('Failed to fetch') || errorMsg.includes('load')) {
+        userMessage = 'Failed to load circuit files. Please refresh and try again.'
       } else if (errorMsg.includes('memory') || errorMsg.includes('Memory')) {
-        userMessage = '메모리 부족. 다른 탭을 닫고 다시 시도해주세요.'
+        userMessage = 'Out of memory. Please close other tabs and try again.'
       } else if (errorMsg.includes('InsufficientCredits')) {
-        userMessage = 'TON이 부족합니다.'
+        userMessage = 'Insufficient TON.'
       } else if (errorMsg.includes('InvalidQuadraticCost')) {
-        userMessage = '투표 비용 계산 오류입니다.'
+        userMessage = 'Vote cost calculation error.'
       } else if (errorMsg.includes('insufficient funds')) {
-        userMessage = 'Sepolia ETH가 부족합니다. Faucet에서 받아주세요.'
-      } else if (errorMsg.includes('이전 버전') || errorMsg.includes('새 제안을 생성')) {
+        userMessage = 'Insufficient Sepolia ETH. Please get some from faucet.'
+      } else if (errorMsg.includes('old version') || errorMsg.includes('create new proposal')) {
         userMessage = errorMsg // Already user-friendly from zkproof.ts
       } else if (errorMsg.includes('TON transfer failed') || errorMsg.includes('transfer failed')) {
-        userMessage = 'TON 전송에 실패했습니다. 잔액을 확인해주세요.'
+        userMessage = 'TON transfer failed. Please check your balance.'
       } else if (errorMsg.includes('Only TON token can call')) {
-        userMessage = '잘못된 컨트랙트 호출입니다.'
+        userMessage = 'Invalid contract call.'
       } else if (errorMsg.includes('Insufficient approved amount')) {
-        userMessage = 'TON 승인 금액이 부족합니다.'
+        userMessage = 'Insufficient TON approval amount.'
       }
 
       setVotingError(userMessage)
@@ -656,10 +656,10 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
           <div className="uv-list-header">
             <div className="uv-list-header-content">
               <div className="uv-list-header-title-row">
-                <h1>제안 목록</h1>
+                <h1>Proposals</h1>
                 <span className="uv-list-header-badge">DAO Governance</span>
               </div>
-              <p className="uv-list-header-subtitle">ZK-Proof 기반의 익명 투표 시스템에 참여하세요.</p>
+              <p className="uv-list-header-subtitle">Participate in a ZK-Proof based anonymous voting system.</p>
             </div>
             {isConnected && (
               <div className="uv-header-actions">
@@ -668,13 +668,13 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                     <span className="uv-balance-card-label">Available Balance</span>
                     {!hasTon && (
                       <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="uv-balance-card-link">
-                        TON 받기 →
+                        Get TON →
                       </a>
                     )}
                   </div>
                   <div className="uv-balance-card-content">
                     <span className="uv-balance-amount">{totalVotingPower.toLocaleString()} TON</span>
-                    <span className="uv-balance-hint">최대 {maxVotes}표 가능</span>
+                    <span className="uv-balance-hint">Max {maxVotes} votes</span>
                   </div>
                 </div>
                 <button
@@ -682,7 +682,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                   onClick={() => setCurrentView('create')}
                 >
                   <span className="material-symbols-outlined">add</span>
-                  새 제안
+                  New Proposal
                 </button>
               </div>
             )}
@@ -694,10 +694,10 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                 <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'white' }}>fingerprint</span>
               </div>
               <h2>ZK Private Voting</h2>
-              <p>지갑을 연결하고 투표에 참여하세요</p>
+              <p>Connect your wallet to participate</p>
               <button className="uv-create-btn" onClick={handleConnect}>
                 <span className="material-symbols-outlined">account_balance_wallet</span>
-                지갑 연결
+                Connect Wallet
               </button>
             </div>
           ) : isLoadingProposals ? (
@@ -706,18 +706,18 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                 <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'white' }}>sync</span>
               </div>
               <FingerprintLoader progress={votingContext.progress} />
-              <p>제안 목록 불러오는 중...</p>
+              <p>Loading proposals...</p>
             </div>
           ) : proposals.length === 0 ? (
             <div className="uv-empty-state">
               <div className="uv-empty-icon">
                 <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'white' }}>inbox</span>
               </div>
-              <h2>아직 제안이 없습니다</h2>
-              <p>첫 번째 제안을 만들어보세요</p>
+              <h2>No proposals yet</h2>
+              <p>Create the first proposal</p>
               <button className="uv-create-btn" onClick={() => setCurrentView('create')}>
                 <span className="material-symbols-outlined">add</span>
-                제안 만들기
+                Create Proposal
               </button>
             </div>
           ) : (
@@ -729,27 +729,27 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                     className={`uv-filter-tab ${filterPhase === 'all' ? 'active' : ''}`}
                     onClick={() => setFilterPhase('all')}
                   >
-                    전체 ({proposals.length})
+                    All ({proposals.length})
                   </button>
                   <button
                     className={`uv-filter-tab ${filterPhase === 0 ? 'active' : ''}`}
                     onClick={() => setFilterPhase(0)}
                   >
                     <span className="uv-filter-dot voting"></span>
-                    투표 중 ({proposals.filter(p => p.phase === 0).length})
+                    Voting ({proposals.filter(p => p.phase === 0).length})
                   </button>
                   <button
                     className={`uv-filter-tab ${filterPhase === 1 ? 'active' : ''}`}
                     onClick={() => setFilterPhase(1)}
                   >
                     <span className="uv-filter-dot reveal"></span>
-                    공개 중 ({proposals.filter(p => p.phase === 1).length})
+                    Revealing ({proposals.filter(p => p.phase === 1).length})
                   </button>
                   <button
                     className={`uv-filter-tab ${filterPhase === 2 ? 'active' : ''}`}
                     onClick={() => setFilterPhase(2)}
                   >
-                    종료 ({proposals.filter(p => p.phase === 2).length})
+                    Ended ({proposals.filter(p => p.phase === 2).length})
                   </button>
                 </div>
                 <div className="uv-search-wrapper">
@@ -757,7 +757,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                   <input
                     type="text"
                     className="uv-search-input"
-                    placeholder="제안 검색..."
+                    placeholder="Search proposals..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -782,13 +782,13 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                 if (filtered.length === 0) {
                   return (
                     <div className="uv-empty-state" style={{ gridColumn: '1 / -1' }}>
-                      <p>{searchQuery ? `"${searchQuery}" 검색 결과가 없습니다` : '해당하는 제안이 없습니다'}</p>
+                      <p>{searchQuery ? `No results for "${searchQuery}"` : 'No matching proposals'}</p>
                     </div>
                   )
                 }
 
                 return filtered.map(proposal => {
-                const phaseLabels = ['투표 중', '공개 중', '종료'] as const
+                const phaseLabels = ['Voting', 'Revealing', 'Ended'] as const
                 const phaseClasses = ['voting', 'reveal', 'ended'] as const
                 const hasVoted = address ? hasVotedOnProposal(address, proposal.id) : false
 
@@ -817,24 +817,24 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                       <span className={`uv-phase-badge ${phaseClasses[proposal.phase]}`}>
                         {phaseLabels[proposal.phase]}
                       </span>
-                      {hasVoted && <span className="uv-voted-badge">✓ 참여완료</span>}
+                      {hasVoted && <span className="uv-voted-badge">✓ Voted</span>}
                     </div>
                     <h3>{proposal.title}</h3>
                     <div className="uv-proposal-meta">
                       <div className="uv-proposal-meta-item">
-                        <span className="uv-proposal-meta-label">참여자</span>
+                        <span className="uv-proposal-meta-label">Participants</span>
                         <span className="uv-proposal-meta-value">{proposal.totalVotes}</span>
                       </div>
                       {proposal.phase === 2 ? (
                         <div className="uv-proposal-meta-item time-item">
-                          <span className="uv-proposal-meta-label">결과</span>
+                          <span className="uv-proposal-meta-label">Result</span>
                           <span className={`uv-result-badge ${proposal.forVotes > proposal.againstVotes ? 'passed' : 'rejected'}`}>
-                            {proposal.forVotes > proposal.againstVotes ? '가결' : proposal.againstVotes > proposal.forVotes ? '부결' : '동률'}
+                            {proposal.forVotes > proposal.againstVotes ? 'Passed' : proposal.againstVotes > proposal.forVotes ? 'Rejected' : 'Tie'}
                           </span>
                         </div>
                       ) : timeRemaining && (
                         <div className="uv-proposal-meta-item time-item">
-                          <span className="uv-proposal-meta-label">남은 시간</span>
+                          <span className="uv-proposal-meta-label">Time left</span>
                           <span className={`uv-proposal-meta-value ${phaseClasses[proposal.phase]}`}>{timeRemaining}</span>
                         </div>
                       )}
@@ -865,16 +865,16 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
             <div className="uv-create-sidebar-top">
               <button className="uv-back-button" onClick={() => setCurrentView('list')} disabled={isCreatingProposal}>
                 <span className="material-symbols-outlined">arrow_back</span>
-                목록으로
+                Back to List
               </button>
               <div className="uv-create-steps">
                 <div className="uv-create-step active">
                   <p className="uv-create-step-label">Step 01</p>
-                  <h3>제안 작성</h3>
+                  <h3>Write Proposal</h3>
                 </div>
                 <div className="uv-create-step">
                   <p className="uv-create-step-label">Step 02</p>
-                  <h3>검토 및 게시</h3>
+                  <h3>Review & Publish</h3>
                 </div>
               </div>
             </div>
@@ -888,21 +888,21 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
           <div className="uv-create-content">
             <button className="uv-create-back-mobile" onClick={() => setCurrentView('list')} disabled={isCreatingProposal}>
               <span className="material-symbols-outlined">arrow_back</span>
-              목록으로
+              Back to List
             </button>
 
             <div className="uv-create-header">
-              <h1>새 제안</h1>
-              <p>커뮤니티에 의견을 물어보세요</p>
+              <h1>New Proposal</h1>
+              <p>Ask the community for opinions</p>
             </div>
 
             <div className="uv-create-form">
               <div className="uv-create-input-group">
-                <label className="uv-create-input-label">Proposal Title / 제안 제목</label>
+                <label className="uv-create-input-label">Proposal Title</label>
                 <input
                   type="text"
                   className="uv-create-input"
-                  placeholder="제안 제목을 입력하세요"
+                  placeholder="Enter proposal title"
                   value={newProposalTitle}
                   onChange={(e) => setNewProposalTitle(e.target.value)}
                   disabled={isCreatingProposal}
@@ -915,7 +915,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                     <span className="material-symbols-outlined">security</span>
                     <span className="uv-create-security-badge">ZK-PROOF READY</span>
                   </div>
-                  <p>모든 제안은 암호학적으로 보호되며, 생성 후 수정이 불가능합니다. 신중하게 작성해 주세요.</p>
+                  <p>All proposals are cryptographically protected and cannot be modified after creation. Please write carefully.</p>
                 </div>
               </div>
 
@@ -936,7 +936,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
               {!canCreateProposal && (
                 <div className="uv-create-requirement">
                   <span className="material-symbols-outlined">info</span>
-                  제안 생성에는 최소 {MIN_TON_FOR_PROPOSAL} TON 잔액이 필요합니다 (현재: {totalVotingPower} TON)
+                  Minimum {MIN_TON_FOR_PROPOSAL} TON balance required to create proposal (Current: {totalVotingPower} TON)
                 </div>
               )}
 
@@ -945,7 +945,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                 onClick={handleCreateProposal}
                 disabled={!newProposalTitle.trim() || isCreatingProposal || !canCreateProposal}
               >
-                제안 생성
+                Create Proposal
                 <span className="material-symbols-outlined">arrow_forward</span>
               </button>
             </div>
@@ -972,7 +972,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
           {/* Back Button */}
           <button className="uv-back-button" onClick={() => { setCurrentView('list'); setSelectedProposal(null); setSelectedChoice(null); setError(null); resetVoting(); setVotes(1); }} disabled={isProcessing}>
             <span className="material-symbols-outlined">arrow_back</span>
-            목록으로
+            Back to List
           </button>
 
           {/* Header Section */}
@@ -995,17 +995,17 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
           <div className="uv-progress-section">
             <div className="uv-progress-left">
               <div className="uv-progress-header">
-                <h3>{selectedProposal.phase === 0 ? '투표 진행 중' : selectedProposal.phase === 1 ? '공개 진행 중' : '투표 종료'}</h3>
+                <h3>{selectedProposal.phase === 0 ? 'Voting in Progress' : selectedProposal.phase === 1 ? 'Reveal in Progress' : 'Vote Ended'}</h3>
                 <span className="uv-progress-time">
                   {(() => {
                     const now = new Date()
                     const target = selectedProposal.phase === 0 ? selectedProposal.endTime : selectedProposal.revealEndTime
                     const diff = target.getTime() - now.getTime()
-                    if (diff <= 0) return '종료됨'
+                    if (diff <= 0) return 'Ended'
                     const hours = Math.floor(diff / (1000 * 60 * 60))
                     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
                     const seconds = Math.floor((diff % (1000 * 60)) / 1000)
-                    return `남은 시간: ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+                    return `Time left: ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
                   })()}
                 </span>
               </div>
@@ -1015,7 +1015,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                     selectedProposal.phase === 2 ? 100 :
                     (() => {
                       const now = new Date().getTime()
-                      const start = selectedProposal.endTime.getTime() - 240000 // 4분 전
+                      const start = selectedProposal.endTime.getTime() - 240000 // 4 minutes ago
                       const end = selectedProposal.phase === 0 ? selectedProposal.endTime.getTime() : selectedProposal.revealEndTime.getTime()
                       return ((now - start) / (end - start)) * 100
                     })()
@@ -1030,10 +1030,10 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
             <div className="uv-progress-right">
               <p>
                 {selectedProposal.phase === 0
-                  ? '현재 커밋 단계입니다. 당신의 선택은 암호화되어 블록체인에 기록되며, 리빌 단계 전까지는 누구도 확인할 수 없습니다.'
+                  ? 'Currently in commit phase. Your choice is encrypted and recorded on the blockchain. No one can verify it until the reveal phase.'
                   : selectedProposal.phase === 1
-                  ? '공개 단계입니다. 투표를 공개해야 최종 집계에 반영됩니다.'
-                  : '투표가 종료되었습니다.'}
+                  ? 'Currently in reveal phase. You must reveal your vote to be counted in the final tally.'
+                  : 'Voting has ended.'}
               </p>
             </div>
           </div>
@@ -1041,9 +1041,9 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
           {/* Vote Counts (Hidden during commit phase) */}
           <div className="uv-vote-counts">
             <div className="uv-vote-count-item">
-              <h3>찬성</h3>
+              <h3>For</h3>
               {selectedProposal.phase === 2 ? (
-                <span className="uv-proposal-meta-value">{selectedProposal.forVotes}표</span>
+                <span className="uv-proposal-meta-value">{selectedProposal.forVotes} votes</span>
               ) : (
                 <div className="uv-vote-count-hidden">
                   <span className="material-symbols-outlined">lock</span>
@@ -1053,9 +1053,9 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
               )}
             </div>
             <div className="uv-vote-count-item">
-              <h3>반대</h3>
+              <h3>Against</h3>
               {selectedProposal.phase === 2 ? (
-                <span className="uv-proposal-meta-value">{selectedProposal.againstVotes}표</span>
+                <span className="uv-proposal-meta-value">{selectedProposal.againstVotes} votes</span>
               ) : (
                 <div className="uv-vote-count-hidden">
                   <span className="material-symbols-outlined">lock</span>
@@ -1136,19 +1136,19 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
               return (
                 <div className="uv-voting-form">
                   <div className="uv-voting-form-left">
-                    <h2>투표 완료</h2>
+                    <h2>Vote Complete</h2>
                     {myVote && (
                       <div className="uv-success-stats" style={{ marginTop: '32px' }}>
                         <div className={`uv-success-stat ${myVote.choice === CHOICE_FOR ? 'primary' : ''}`}>
-                          <p className="label">내 선택</p>
-                          <p className="value">{myVote.choice === CHOICE_FOR ? '찬성 (FOR)' : '반대 (AGAINST)'}</p>
+                          <p className="label">My Choice</p>
+                          <p className="value">{myVote.choice === CHOICE_FOR ? 'For' : 'Against'}</p>
                         </div>
                         <div className="uv-success-stat">
-                          <p className="label">투표 수</p>
-                          <p className="value">{Number(myVote.numVotes)}표</p>
+                          <p className="label">Votes</p>
+                          <p className="value">{Number(myVote.numVotes)} votes</p>
                         </div>
                         <div className="uv-success-stat">
-                          <p className="label">사용 TON</p>
+                          <p className="label">TON Used</p>
                           <p className="value">{Number(myVote.creditsSpent)} TON</p>
                         </div>
                       </div>
@@ -1161,7 +1161,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                         className="uv-tx-link"
                         style={{ marginTop: '32px', display: 'inline-flex' }}
                       >
-                        거래 영수증 보기
+                        View Transaction
                         <span className="material-symbols-outlined">north_east</span>
                       </a>
                     )}
@@ -1169,7 +1169,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                       <span className="material-symbols-outlined">info</span>
                       <div className="uv-reveal-hint-content">
                         <p className="label">Reveal Hint</p>
-                        <p>투표 결과는 공개 단계(Reveal Phase)가 시작된 후 24시간 이내에 블록체인에서 최종 확인이 가능합니다.</p>
+                        <p>Vote results can be finalized on the blockchain within 24 hours after the reveal phase begins.</p>
                       </div>
                     </div>
                   </div>
@@ -1199,9 +1199,9 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
             <div className="uv-voting-form">
               <div className="uv-voting-form-left">
                 <h2>Cast Your Vote</h2>
-                <p style={{ marginTop: '24px', opacity: 0.7 }}>투표하려면 TON이 필요합니다</p>
+                <p style={{ marginTop: '24px', opacity: 0.7 }}>You need TON to vote</p>
                 <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer" className="uv-submit-btn" style={{ marginTop: '24px', display: 'inline-flex', textDecoration: 'none' }}>
-                  <TonIcon size={24} /> Faucet에서 TON 받기
+                  <TonIcon size={24} /> Get TON from Faucet
                 </a>
               </div>
               <div className="uv-voting-form-right">
@@ -1236,7 +1236,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                       disabled={isProcessing}
                     >
                       <span className="material-symbols-outlined">thumb_up</span>
-                      <span>찬성 (For)</span>
+                      <span>For</span>
                       <span className="uv-direction-btn-label">TON</span>
                     </button>
                     <button
@@ -1245,7 +1245,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                       disabled={isProcessing}
                     >
                       <span className="material-symbols-outlined">thumb_down</span>
-                      <span>반대 (Against)</span>
+                      <span>Against</span>
                       <span className="uv-direction-btn-label">TON</span>
                     </button>
                   </div>
@@ -1255,14 +1255,14 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                 <div className="uv-step">
                   <div className="uv-intensity-header">
                     <label className="uv-step-label">Step 2: Intensity (Quadratic)</label>
-                    <span className="uv-intensity-value">{numVotes} <span>표</span></span>
+                    <span className="uv-intensity-value">{numVotes} <span>votes</span></span>
                   </div>
                   <div className="uv-slider-container">
                     <div
                       className="uv-slider-value-tooltip"
                       style={{ left: `${((numVotes - 1) / Math.max(maxVotes - 1, 1)) * 100}%` }}
                     >
-                      {numVotes}표
+                      {numVotes} votes
                     </div>
                     <input
                       type="range"
@@ -1275,8 +1275,8 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                     />
                   </div>
                   <div className="uv-slider-labels">
-                    <span>1 표</span>
-                    <span>MAX {maxVotes} 표</span>
+                    <span>1 vote</span>
+                    <span>MAX {maxVotes} votes</span>
                   </div>
                 </div>
 
@@ -1286,13 +1286,13 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                     <div>
                       <p className="uv-cost-formula-label">Cost Formula</p>
                       <p className="uv-cost-formula">
-                        비용 = {numVotes} × {numVotes} = <span className="highlight">{quadraticCost} TON</span>
+                        Cost = {numVotes} × {numVotes} = <span className="highlight">{quadraticCost} TON</span>
                       </p>
                     </div>
                     {isHighCost && (
                       <div className="uv-cost-warning">
                         <span className="material-symbols-outlined">warning</span>
-                        <p>High Cost Warning:<br />잔액의 {costLevel.toFixed(0)}%를 사용합니다</p>
+                        <p>High Cost Warning:<br />Using {costLevel.toFixed(0)}% of your balance</p>
                       </div>
                     )}
                   </div>
@@ -1309,7 +1309,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                   }}
                   disabled={selectedChoice === null || isProcessing || quadraticCost > totalVotingPower}
                 >
-                  투표하기 (Submit Vote)
+                  Submit Vote
                 </button>
 
                 {error && <div className="uv-error">{error}</div>}
@@ -1342,7 +1342,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
           {selectedProposal.phase === 0 && !hasVotedOnProposal(address || '', selectedProposal.id) && hasTon && (
             <div className="uv-privacy-notice">
               <span className="material-symbols-outlined">lock</span>
-              내 선택은 비공개로 안전하게 보호됩니다
+              Your choice is kept private and secure
             </div>
           )}
         </div>
@@ -1364,26 +1364,26 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
               <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'white' }}>diamond</span>
             </div>
 
-            <h1>투표 완료!</h1>
-            <p>투표가 안전하게 제출되었습니다</p>
+            <h1>Vote Complete!</h1>
+            <p>Your vote has been securely submitted</p>
 
             {/* Vote Summary */}
             <div className="uv-success-summary">
               <div className="uv-success-proposal">
-                <span className="label">안건</span>
+                <span className="label">Proposal</span>
                 <span className="value">{selectedProposal?.title}</span>
               </div>
               <div className="uv-success-stats">
                 <div className="uv-success-stat primary">
-                  <p className="label">내 선택</p>
-                  <p className="value">{selectedChoice === CHOICE_FOR ? '찬성 (FOR)' : '반대 (AGAINST)'}</p>
+                  <p className="label">My Choice</p>
+                  <p className="value">{selectedChoice === CHOICE_FOR ? 'For' : 'Against'}</p>
                 </div>
                 <div className="uv-success-stat">
-                  <p className="label">투표 수</p>
-                  <p className="value">{numVotes}표</p>
+                  <p className="label">Votes</p>
+                  <p className="value">{numVotes} votes</p>
                 </div>
                 <div className="uv-success-stat">
-                  <p className="label">사용 TON</p>
+                  <p className="label">TON Used</p>
                   <p className="value">{quadraticCost} TON</p>
                 </div>
               </div>
@@ -1392,7 +1392,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
             {/* Transaction Link */}
             {txHash && (
               <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="uv-tx-link">
-                거래 영수증 보기
+                View Transaction
                 <span className="material-symbols-outlined">north_east</span>
               </a>
             )}
@@ -1402,7 +1402,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
               <span className="material-symbols-outlined">info</span>
               <div className="uv-reveal-hint-content">
                 <p className="label">Reveal Hint</p>
-                <p>투표 결과는 공개 단계(Reveal Phase)가 시작된 후 24시간 이내에 블록체인에서 최종 확인이 가능합니다.</p>
+                <p>Vote results can be finalized on the blockchain within 24 hours after the reveal phase begins.</p>
               </div>
             </div>
 
@@ -1417,7 +1417,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                 resetVoting()
               }}
             >
-              목록으로 돌아가기
+              Back to List
             </button>
           </div>
         </div>
@@ -1428,23 +1428,23 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
         <div className="uv-modal-overlay" onClick={() => setShowConfirmModal(false)}>
           <div className="uv-modal" onClick={(e) => e.stopPropagation()}>
             <div className="uv-modal-header">
-              <h2>투표 확인</h2>
+              <h2>Confirm Vote</h2>
             </div>
 
             <div className="uv-modal-content">
               <div className="uv-modal-vote-info">
                 <div className="uv-modal-row">
-                  <span>선택</span>
+                  <span>Choice</span>
                   <strong className={pendingVoteChoice === CHOICE_FOR ? 'uv-for' : 'uv-against'}>
-                    {pendingVoteChoice === CHOICE_FOR ? '찬성 (FOR)' : '반대 (AGAINST)'}
+                    {pendingVoteChoice === CHOICE_FOR ? 'For' : 'Against'}
                   </strong>
                 </div>
                 <div className="uv-modal-row">
-                  <span>투표 수</span>
-                  <strong>{numVotes}표</strong>
+                  <span>Votes</span>
+                  <strong>{numVotes} votes</strong>
                 </div>
                 <div className="uv-modal-row">
-                  <span>사용 TON</span>
+                  <span>TON Used</span>
                   <strong>{quadraticCost} TON</strong>
                 </div>
               </div>
@@ -1452,8 +1452,8 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
               <div className="uv-modal-warning">
                 <span className="material-symbols-outlined">warning</span>
                 <div className="uv-modal-warning-text">
-                  <strong>최종 결정입니다</strong>
-                  <p>제안당 1번만 투표할 수 있습니다. 이 결정은 나중에 변경하거나 취소할 수 없습니다.</p>
+                  <strong>This is final</strong>
+                  <p>You can only vote once per proposal. This decision cannot be changed or cancelled later.</p>
                 </div>
               </div>
             </div>
@@ -1466,7 +1466,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                   setPendingVoteChoice(null)
                 }}
               >
-                취소
+                Cancel
               </button>
               <button
                 className="uv-modal-btn uv-modal-btn-primary"
@@ -1475,7 +1475,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                   handleVote(pendingVoteChoice)
                 }}
               >
-                확인 및 서명
+                Confirm & Sign
               </button>
             </div>
           </div>
@@ -1551,7 +1551,7 @@ function decodeProposalResult(hex: string): DecodedProposal {
   }
 }
 
-// Phase 계산 함수 (로컬 시간 기반)
+// Phase calculation function (based on local time)
 function calculatePhase(endTime: Date, revealEndTime: Date): 0 | 1 | 2 {
   const now = new Date()
   if (now <= endTime) return 0  // Commit Phase

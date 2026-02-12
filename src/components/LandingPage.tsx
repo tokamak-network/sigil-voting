@@ -90,7 +90,7 @@ export function LandingPage({ setCurrentPage, navigateToProposal }: LandingPageP
               <span className="step-number">1</span>
               Commit
             </h3>
-            <p>투표 선택을 암호화하고 ZK 증명을 생성합니다. 당신의 선택은 블록체인에 기록되기 전 완전히 암호화됩니다.</p>
+            <p>Encrypt your vote choice and generate a ZK proof. Your selection is fully encrypted before being recorded on the blockchain.</p>
           </div>
           <div className="brutalist-step">
             <span className="step-bg-number">2</span>
@@ -98,7 +98,7 @@ export function LandingPage({ setCurrentPage, navigateToProposal }: LandingPageP
               <span className="step-number">2</span>
               Reveal
             </h3>
-            <p>커밋 기간 종료 후 투표를 공개합니다. 공개하지 않으면 집계에서 제외됩니다.</p>
+            <p>Reveal your vote after the commit period ends. Unrevealed votes are excluded from the final tally.</p>
           </div>
           <div className="brutalist-step">
             <span className="step-bg-number">3</span>
@@ -106,7 +106,7 @@ export function LandingPage({ setCurrentPage, navigateToProposal }: LandingPageP
               <span className="step-number">3</span>
               Result
             </h3>
-            <p>모든 투표가 공개되면 Quadratic 가중치가 적용되어 최종 결과가 암호학적으로 검증됩니다.</p>
+            <p>Once all votes are revealed, quadratic weighting is applied and final results are cryptographically verified.</p>
           </div>
         </div>
       </section>

@@ -52,7 +52,7 @@ ctx.onmessage = async (event: MessageEvent<ProofRequest>) => {
     ctx.postMessage({
       type: 'progress',
       progress: 10,
-      message: 'snarkjs 로딩 중...'
+      message: 'Loading snarkjs...'
     } as ProgressUpdate)
 
     // Dynamic import snarkjs
@@ -62,14 +62,14 @@ ctx.onmessage = async (event: MessageEvent<ProofRequest>) => {
     ctx.postMessage({
       type: 'progress',
       progress: 30,
-      message: '회로 파일 로딩 중...'
+      message: 'Loading circuit files...'
     } as ProgressUpdate)
 
     // Progress: Generating proof
     ctx.postMessage({
       type: 'progress',
       progress: 50,
-      message: 'ZK 증명 생성 중... (잠시 대기)'
+      message: 'Generating ZK proof... (please wait)'
     } as ProgressUpdate)
 
     const startTime = Date.now()
@@ -87,7 +87,7 @@ ctx.onmessage = async (event: MessageEvent<ProofRequest>) => {
     ctx.postMessage({
       type: 'progress',
       progress: 90,
-      message: `증명 완료 (${(duration / 1000).toFixed(1)}초)`
+      message: `Proof complete (${(duration / 1000).toFixed(1)}s)`
     } as ProgressUpdate)
 
     // Send result
