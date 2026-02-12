@@ -832,6 +832,13 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                             {proposal.forVotes > proposal.againstVotes ? 'Passed' : proposal.againstVotes > proposal.forVotes ? 'Rejected' : 'Tie'}
                           </span>
                         </div>
+                      ) : proposal.phase === 1 ? (
+                        <div className="uv-proposal-meta-item time-item">
+                          <span className="uv-proposal-meta-label">Current</span>
+                          <span className="uv-proposal-meta-value">
+                            {proposal.forVotes} For / {proposal.againstVotes} Against
+                          </span>
+                        </div>
                       ) : timeRemaining && (
                         <div className="uv-proposal-meta-item time-item">
                           <span className="uv-proposal-meta-label">Time left</span>
@@ -1038,11 +1045,11 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
             </div>
           </div>
 
-          {/* Vote Counts (Hidden during commit phase) */}
+          {/* Vote Counts (Hidden only during commit phase) */}
           <div className="uv-vote-counts">
             <div className="uv-vote-count-item">
               <h3>For</h3>
-              {selectedProposal.phase === 2 ? (
+              {selectedProposal.phase >= 1 ? (
                 <span className="uv-proposal-meta-value">{selectedProposal.forVotes} votes</span>
               ) : (
                 <div className="uv-vote-count-hidden">
@@ -1054,7 +1061,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
             </div>
             <div className="uv-vote-count-item">
               <h3>Against</h3>
-              {selectedProposal.phase === 2 ? (
+              {selectedProposal.phase >= 1 ? (
                 <span className="uv-proposal-meta-value">{selectedProposal.againstVotes} votes</span>
               ) : (
                 <div className="uv-vote-count-hidden">
