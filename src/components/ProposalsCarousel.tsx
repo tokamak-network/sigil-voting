@@ -325,14 +325,20 @@ export function ProposalsCarousel({ onProposalClick }: ProposalsCarouselProps) {
     onProposalClick(proposalId)
   }, [onProposalClick])
 
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
+  // Wheel event handler - needs to be added via useEffect to avoid passive listener issue
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const handleWheel = (e: WheelEvent) => {
       e.preventDefault()
       const delta = e.deltaX !== 0 ? -e.deltaX : -e.deltaY
       setOffset((prev) => clamp(prev + delta * 0.8))
-    },
-    [clamp]
-  )
+    }
+
+    container.addEventListener('wheel', handleWheel, { passive: false })
+    return () => container.removeEventListener('wheel', handleWheel)
+  }, [clamp])
 
   const getCardTransforms = useCallback(
     (index: number) => {
@@ -382,7 +388,6 @@ export function ProposalsCarousel({ onProposalClick }: ProposalsCarouselProps) {
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        onWheel={handleWheel}
       >
         <div className="proposal-carousel-fade-left" />
         <div className="proposal-carousel-fade-right" />
