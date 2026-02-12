@@ -6,7 +6,16 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores([
+    'dist',
+    'react-component-with-scroll',
+    'scripts',
+    'node_modules',
+    'artifacts',
+    'cache',
+    'cache_hardhat',
+    'out',
+  ]),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -18,6 +27,10 @@ export default defineConfig([
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
+    },
+    rules: {
+      // Allow setState in useEffect for data loading patterns
+      'react-hooks/set-state-in-effect': 'off',
     },
   },
 ])

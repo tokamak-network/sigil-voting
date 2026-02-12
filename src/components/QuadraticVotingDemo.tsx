@@ -394,7 +394,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
 
     try {
       // Get existing registered credit notes
-      let creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
+      const creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
 
       // Register creator's creditNote for creditRoot (but won't auto-vote)
       setCreateStatus('잠시만 기다려주세요...')
@@ -493,7 +493,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
       }
 
       // Step 2: Get current registered creditNotes
-      let creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
+      const creditNotes = [...((registeredCreditNotes as bigint[]) || [])]
       const noteHash = creditNote.creditNoteHash
 
       // Step 3: Auto-register creditNote if needed
@@ -748,7 +748,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
               <div className="uv-proposals-grid">
               {(() => {
                 // 필터링
-                let filtered = proposals.filter(p => {
+                const filtered = proposals.filter(p => {
                   if (filterPhase !== 'all' && p.phase !== filterPhase) return false
                   if (searchQuery && !p.title.toLowerCase().includes(searchQuery.toLowerCase())) return false
                   return true

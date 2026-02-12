@@ -11,7 +11,7 @@
  * Based on: https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d1-private-voting.md
  */
 
-// @ts-ignore - circomlibjs doesn't have types
+// @ts-expect-error - circomlibjs doesn't have types
 import { buildPoseidon, buildBabyjub } from 'circomlibjs'
 import { generateProofWithFallback } from './workers/proofWorkerHelper'
 
@@ -102,7 +102,9 @@ export interface ProofGenerationProgress {
 
 // ============ Cryptographic Primitives (Eager Initialization) ============
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let poseidonInstance: any = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let babyjubInstance: any = null
 let initPromise: Promise<void> | null = null
 
@@ -152,6 +154,7 @@ async function poseidonHash(inputs: bigint[]): Promise<bigint> {
 /**
  * Synchronous Poseidon hash (for when we already have instance)
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function poseidonHashSync(poseidon: any, inputs: bigint[]): bigint {
   const hash = poseidon(inputs.map(x => poseidon.F.e(x)))
   return poseidon.F.toObject(hash)
@@ -216,7 +219,7 @@ export function getOrCreateKeyPair(walletAddress?: string): KeyPair {
           pkY: BigInt(data.pkY)
         }
       }
-    } catch (e) {
+    } catch {
       console.warn('Failed to restore key, creating new one')
       localStorage.removeItem(storageKey)
       localStorage.removeItem(noteKey)
@@ -262,7 +265,7 @@ export async function getOrCreateKeyPairAsync(walletAddress?: string): Promise<K
         pkX: BigInt(data.pkX),
         pkY: BigInt(data.pkY)
       }
-    } catch (e) {
+    } catch {
       console.warn('Failed to restore key, creating new one')
     }
   }
@@ -434,7 +437,9 @@ export async function buildMerkleTreeAsync(noteHashes: bigint[]): Promise<{ root
 
 /**
  * Sync version for backwards compatibility
+ * @deprecated Use buildMerkleTreeAsync instead
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function buildMerkleTree(_noteHashes: bigint[]): { root: bigint; depth: number } {
   // Return placeholder, actual computation is async
   return { root: 0n, depth: TREE_DEPTH }
@@ -561,11 +566,17 @@ export async function computeNullifierAsync(sk: bigint, proposalId: bigint): Pro
 
 /**
  * Sync versions for backwards compatibility
+ * @deprecated Use computeCommitmentAsync instead
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function computeCommitment(_choice: VoteChoice, _votingPower: bigint, _proposalId: bigint, _voteSalt: bigint): bigint {
   return 0n // Placeholder
 }
 
+/**
+ * @deprecated Use computeNullifierAsync instead
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function computeNullifier(_sk: bigint, _proposalId: bigint): bigint {
   return 0n // Placeholder
 }
@@ -763,6 +774,7 @@ export async function generateVoteProof(
       setTimeout(() => reject(new Error('Proof generation timed out after 120 seconds')), 120000)
     })
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { proof, publicSignals } = await Promise.race([proofPromise, timeoutPromise]) as { proof: any; publicSignals: string[] }
 
     console.log('[ZK] Proof generated in', Date.now() - startTime, 'ms')
