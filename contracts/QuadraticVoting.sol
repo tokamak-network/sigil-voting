@@ -47,7 +47,7 @@ contract QuadraticVoting {
         uint256 endTime;
         uint256 revealEndTime;
         uint256 creditRoot;
-        uint256 forVotes;      // Total vote COUNT (not credits)
+        uint256 forVotes; // Total vote COUNT (not credits)
         uint256 againstVotes;
         uint256 abstainVotes;
         uint256 totalCreditsSpent;
@@ -58,8 +58,8 @@ contract QuadraticVoting {
 
     struct VoteCommitment {
         uint256 commitment;
-        uint256 creditsSpent;   // Quadratic cost
-        uint256 numVotes;       // Actual vote count
+        uint256 creditsSpent; // Quadratic cost
+        uint256 numVotes; // Actual vote count
         uint256 nullifier;
         uint256 timestamp;
         bool revealed;
@@ -117,11 +117,7 @@ contract QuadraticVoting {
     );
 
     event VoteRevealed(
-        uint256 indexed proposalId,
-        uint256 indexed nullifier,
-        uint256 choice,
-        uint256 numVotes,
-        uint256 creditsSpent
+        uint256 indexed proposalId, uint256 indexed nullifier, uint256 choice, uint256 numVotes, uint256 creditsSpent
     );
 
     // ============ Errors ============
@@ -150,11 +146,7 @@ contract QuadraticVoting {
      */
     function initializeCredits() external {
         if (!userCredits[msg.sender].initialized) {
-            userCredits[msg.sender] = UserCredits({
-                totalCredits: INITIAL_CREDITS,
-                usedCredits: 0,
-                initialized: true
-            });
+            userCredits[msg.sender] = UserCredits({totalCredits: INITIAL_CREDITS, usedCredits: 0, initialized: true});
             emit CreditsInitialized(msg.sender, INITIAL_CREDITS);
         }
     }
@@ -323,11 +315,7 @@ contract QuadraticVoting {
 
         // Initialize user credits if needed
         if (!userCredits[msg.sender].initialized) {
-            userCredits[msg.sender] = UserCredits({
-                totalCredits: INITIAL_CREDITS,
-                usedCredits: 0,
-                initialized: true
-            });
+            userCredits[msg.sender] = UserCredits({totalCredits: INITIAL_CREDITS, usedCredits: 0, initialized: true});
         }
 
         // Check and burn credits
@@ -364,13 +352,9 @@ contract QuadraticVoting {
      *
      * commitment = hash(choice, numVotes, creditsSpent, proposalId, voteSalt)
      */
-    function revealVote(
-        uint256 _proposalId,
-        uint256 _nullifier,
-        uint256 _choice,
-        uint256 _numVotes,
-        uint256 _voteSalt
-    ) external {
+    function revealVote(uint256 _proposalId, uint256 _nullifier, uint256 _choice, uint256 _numVotes, uint256 _voteSalt)
+        external
+    {
         Proposal storage proposal = proposals[_proposalId];
         VoteCommitment storage vc = commitments[_proposalId][_nullifier];
 
@@ -465,13 +449,7 @@ contract QuadraticVoting {
     function getCommitment(uint256 _proposalId, uint256 _nullifier)
         external
         view
-        returns (
-            uint256 commitment,
-            uint256 creditsSpent,
-            uint256 numVotes,
-            bool revealed,
-            uint256 revealedChoice
-        )
+        returns (uint256 commitment, uint256 creditsSpent, uint256 numVotes, bool revealed, uint256 revealedChoice)
     {
         VoteCommitment storage vc = commitments[_proposalId][_nullifier];
         return (vc.commitment, vc.creditsSpent, vc.numVotes, vc.revealed, vc.revealedChoice);
