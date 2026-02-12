@@ -15,6 +15,9 @@
 import { buildPoseidon, buildBabyjub } from 'circomlibjs'
 import { generateProofWithFallback } from './workers/proofWorkerHelper'
 
+// Debug mode - set to false for production
+const DEBUG = false
+
 // Storage keys (base - wallet address appended at runtime)
 const SK_STORAGE_KEY_BASE = 'zk-vote-secret-key'
 const NOTE_STORAGE_KEY_BASE = 'zk-vote-note'
@@ -118,7 +121,7 @@ async function initCrypto() {
       ])
       poseidonInstance = poseidon
       babyjubInstance = babyjub
-      console.log('[ZK] Crypto primitives loaded')
+      if (DEBUG) console.log('[ZK] Crypto primitives loaded')
     })()
   }
   return initPromise
@@ -648,16 +651,12 @@ export async function generateVoteProof(
   // Yield to allow UI to update
   await new Promise(resolve => setTimeout(resolve, 100))
 
-  console.log('[ZK] Loading Poseidon...')
   const poseidon = await getPoseidon()
 
   // Yield again
   await new Promise(resolve => setTimeout(resolve, 50))
 
-  console.log('[ZK] Loading BabyJubjub...')
   const babyjub = await getBabyjub()
-
-  console.log('[ZK] Crypto libraries loaded')
 
   // Derive actual public key
   const pubKey = babyjub.mulPointEscalar(babyjub.Base8, keyPair.sk)
@@ -668,30 +667,16 @@ export async function generateVoteProof(
   const noteHash = poseidonHashSync(poseidon, [pkX, pkY, note.noteValue, note.tokenType, note.noteSalt])
 
   // Find voter's index in registered voters list
-  console.log('[ZK] NoteHash:', noteHash.toString())
-  console.log('[ZK] Merkle root (from proposal):', merkleRoot.toString())
-  console.log('[ZK] Registered voters count:', registeredVoters.length)
-
   const voterIndex = findVoterIndex(registeredVoters, noteHash)
   if (voterIndex === -1) {
-    console.error('[ZK] Voter not found in registered voters list!')
-    console.error('[ZK] Your noteHash:', noteHash.toString())
-    console.error('[ZK] Registered voters:', registeredVoters.map(v => v.toString().slice(0, 20) + '...'))
     throw new Error('You are not registered as a voter. Please register first.')
   }
-
-  console.log('[ZK] Voter index:', voterIndex)
 
   // Generate merkle proof for this voter
   const { path: actualPath, root: actualMerkleRoot } = await generateMerkleProofAsync(registeredVoters, voterIndex)
 
-  console.log('[ZK] Computed merkle root:', actualMerkleRoot.toString())
-
   // Verify merkle root matches proposal
   if (actualMerkleRoot !== merkleRoot) {
-    console.error('[ZK] Merkle root mismatch!')
-    console.error('[ZK] Expected:', merkleRoot.toString())
-    console.error('[ZK] Got:', actualMerkleRoot.toString())
     throw new Error('Merkle root mismatch - voter registry has changed since proposal creation')
   }
 
@@ -708,8 +693,6 @@ export async function generateVoteProof(
     progress: 30,
     message: 'Computing merkle tree...'
   })
-
-  console.log('[ZK] Computing merkle tree...')
 
   // Prepare circuit inputs
   const circuitInputs = {
@@ -741,9 +724,7 @@ export async function generateVoteProof(
 
   try {
     // Dynamic import snarkjs
-    console.log('[ZK] Importing snarkjs...')
     const snarkjs = await import('snarkjs')
-    console.log('[ZK] snarkjs imported successfully')
 
     // Load circuit files from public directory
     const wasmUrl = '/circuits/PrivateVoting.wasm'
@@ -757,9 +738,6 @@ export async function generateVoteProof(
 
     // Yield to allow UI to update before heavy computation
     await new Promise(resolve => setTimeout(resolve, 100))
-
-    console.log('[ZK] Starting proof generation (this may take 30-60 seconds)...')
-    console.log('[ZK] Circuit inputs:', JSON.stringify(circuitInputs, (_, v) => typeof v === 'bigint' ? v.toString() : v))
 
     const startTime = Date.now()
 
@@ -777,18 +755,13 @@ export async function generateVoteProof(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { proof, publicSignals } = await Promise.race([proofPromise, timeoutPromise]) as { proof: any; publicSignals: string[] }
 
-    console.log('[ZK] Proof generated in', Date.now() - startTime, 'ms')
-    console.log('[ZK] Public signals (5):', publicSignals)
-
     // Verify nullifier from proof matches our computed nullifier
     // Public signals order (snarkjs): outputs first, then inputs
     // [nullifier, voteCommitment, proposalId, votingPower, merkleRoot]
     const proofNullifier = BigInt(publicSignals[0])
     if (proofNullifier !== nullifier) {
-      console.error('[ZK] Nullifier mismatch! Computed:', nullifier.toString(), 'Proof:', proofNullifier.toString())
       throw new Error('Nullifier mismatch between local computation and circuit')
     }
-    console.log('[ZK] Nullifier verified:', nullifier.toString().slice(0, 20) + '...')
 
     onProgress?.({
       stage: 'finalizing',
@@ -819,16 +792,15 @@ export async function generateVoteProof(
       commitment
     }
   } catch (error) {
-    console.error('Proof generation failed:', error)
-
+    const message = error instanceof Error ? error.message : String(error)
     onProgress?.({
       stage: 'finalizing',
       progress: 0,
-      message: 'Proof generation failed: ' + (error as Error).message
+      message: 'Proof generation failed: ' + message
     })
 
     // Re-throw the error so the UI can handle it properly
-    throw new Error('ZK proof generation failed: ' + (error as Error).message)
+    throw new Error('ZK proof generation failed: ' + message)
   }
 }
 
@@ -1029,7 +1001,6 @@ export async function generateQuadraticProof(
 
   await new Promise(resolve => setTimeout(resolve, 100))
 
-  console.log('[ZK-D2] Loading crypto libraries...')
   const poseidon = await getPoseidon()
   const babyjub = await getBabyjub()
 
@@ -1041,28 +1012,16 @@ export async function generateQuadraticProof(
   // Compute actual credit note hash
   const creditNoteHash = poseidonHashSync(poseidon, [pkX, pkY, creditNote.totalCredits, creditNote.creditSalt])
 
-  console.log('[ZK-D2] CreditNoteHash:', creditNoteHash.toString())
-  console.log('[ZK-D2] Credit root:', creditRoot.toString())
-  console.log('[ZK-D2] Registered credit notes:', registeredCreditNotes.length)
-
   // Find index in registered credit notes
   const noteIndex = findVoterIndex(registeredCreditNotes, creditNoteHash)
   if (noteIndex === -1) {
-    console.error('[ZK-D2] Credit note not found!')
     throw new Error('Your credit note is not registered. Please register first.')
   }
-
-  console.log('[ZK-D2] Note index:', noteIndex)
 
   // Generate merkle proof
   const { path: merklePath, root: actualCreditRoot } = await generateMerkleProofAsync(registeredCreditNotes, noteIndex)
 
-  console.log('[ZK-D2] Computed credit root:', actualCreditRoot.toString())
-
   if (actualCreditRoot !== creditRoot) {
-    console.error('[ZK-D2] Credit root mismatch!')
-    console.error('[ZK-D2] Proposal creditRoot:', creditRoot.toString())
-    console.error('[ZK-D2] Computed merkle root:', actualCreditRoot.toString())
     // Check if the proposal's creditRoot looks like a timestamp (old bug)
     if (creditRoot < BigInt(10000000000000)) {
       throw new Error('This proposal was created with an old version and cannot be voted on. Please create a new proposal.')
@@ -1119,9 +1078,6 @@ export async function generateQuadraticProof(
     const wasmUrl = '/circuits/D2_QuadraticVoting.wasm'
     const zkeyUrl = '/circuits/D2_QuadraticVoting_final.zkey'
 
-    console.log('[ZK-D2] Starting proof generation with Web Worker...')
-    console.log('[ZK-D2] Circuit inputs:', JSON.stringify(circuitInputs, (_, v) => typeof v === 'bigint' ? v.toString() : v))
-
     // Use Web Worker for proof generation (prevents UI freeze)
     const { proof, publicSignals, duration } = await generateProofWithFallback(
       circuitInputs as Record<string, string | string[]>,
@@ -1135,9 +1091,6 @@ export async function generateQuadraticProof(
         })
       }
     )
-
-    console.log('[ZK-D2] Proof generated in', duration, 'ms')
-    console.log('[ZK-D2] Public signals:', publicSignals)
 
     // Verify nullifier
     const proofNullifier = BigInt(publicSignals[0])
@@ -1174,13 +1127,13 @@ export async function generateQuadraticProof(
       commitment
     }
   } catch (error) {
-    console.error('[ZK-D2] Proof generation failed:', error)
+    const message = error instanceof Error ? error.message : String(error)
     onProgress?.({
       stage: 'finalizing',
       progress: 0,
-      message: 'D2 proof generation failed: ' + (error as Error).message
+      message: 'D2 proof generation failed: ' + message
     })
-    throw new Error('D2 ZK proof generation failed: ' + (error as Error).message)
+    throw new Error('D2 ZK proof generation failed: ' + message)
   }
 }
 
