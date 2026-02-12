@@ -34,26 +34,26 @@ export function VoteResult({
   const totalVotes = forVotes + againstVotes
   const forPercent = totalVotes > 0 ? Math.round((forVotes / totalVotes) * 100) : 0
   const againstPercent = totalVotes > 0 ? Math.round((againstVotes / totalVotes) * 100) : 0
-  const winner = forVotes > againstVotes ? '찬성' : againstVotes > forVotes ? '반대' : '동률'
+  const winner = forVotes > againstVotes ? 'For' : againstVotes > forVotes ? 'Against' : 'Tie'
 
   return (
     <div className="uv-result">
       <div className="uv-result-header">
         <span className="uv-result-icon">📊</span>
-        <span>투표 종료</span>
+        <span>Vote Ended</span>
       </div>
 
       <div className="uv-result-summary">
         <div className="uv-result-winner">
-          결과: <strong>{winner}</strong>
+          Result: <strong>{winner}</strong>
         </div>
       </div>
 
       <div className="uv-result-bars">
         <div className="uv-result-bar-container">
           <div className="uv-result-bar-label">
-            <span>찬성</span>
-            <span>{forVotes}표 ({forPercent}%)</span>
+            <span>For</span>
+            <span>{forVotes} votes ({forPercent}%)</span>
           </div>
           <div className="uv-result-bar">
             <div
@@ -65,8 +65,8 @@ export function VoteResult({
 
         <div className="uv-result-bar-container">
           <div className="uv-result-bar-label">
-            <span>반대</span>
-            <span>{againstVotes}표 ({againstPercent}%)</span>
+            <span>Against</span>
+            <span>{againstVotes} votes ({againstPercent}%)</span>
           </div>
           <div className="uv-result-bar">
             <div
@@ -79,21 +79,21 @@ export function VoteResult({
 
       <div className="uv-result-stats">
         <div className="uv-result-stat">
-          <span className="uv-result-stat-label">참여</span>
-          <span className="uv-result-stat-value">{totalCommitments}명</span>
+          <span className="uv-result-stat-label">Voted</span>
+          <span className="uv-result-stat-value">{totalCommitments}</span>
         </div>
         <div className="uv-result-stat">
-          <span className="uv-result-stat-label">공개</span>
-          <span className="uv-result-stat-value">{revealedVotes}명</span>
+          <span className="uv-result-stat-label">Revealed</span>
+          <span className="uv-result-stat-value">{revealedVotes}</span>
         </div>
       </div>
 
       {myVote && (
         <div className="uv-result-my-vote">
-          <span className="uv-result-my-vote-label">내 투표:</span>
+          <span className="uv-result-my-vote-label">My vote:</span>
           <span className="uv-result-my-vote-value">
-            {myVote.choice === CHOICE_FOR ? '찬성' : '반대'} {Number(myVote.numVotes)}표
-            {isRevealed ? ' (공개 완료)' : ' (미공개)'}
+            {myVote.choice === CHOICE_FOR ? 'For' : 'Against'} {Number(myVote.numVotes)} votes
+            {isRevealed ? ' (Revealed)' : ' (Not revealed)'}
           </span>
         </div>
       )}

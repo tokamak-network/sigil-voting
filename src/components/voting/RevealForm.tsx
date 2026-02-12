@@ -20,17 +20,17 @@ function formatTimeRemaining(targetTime: Date): string {
   const now = new Date()
   const diff = targetTime.getTime() - now.getTime()
 
-  if (diff <= 0) return '종료'
+  if (diff <= 0) return 'Ended'
 
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
   const seconds = Math.floor((diff % (1000 * 60)) / 1000)
 
-  if (days > 0) return `${days}일 ${hours}시간 ${minutes}분`
-  if (hours > 0) return `${hours}시간 ${minutes}분`
-  if (minutes > 0) return `${minutes}분 ${seconds}초`
-  return `${seconds}초`
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`
+  if (hours > 0) return `${hours}h ${minutes}m`
+  if (minutes > 0) return `${minutes}m ${seconds}s`
+  return `${seconds}s`
 }
 
 type RevealStatus = 'idle' | 'confirming' | 'processing' | 'success' | 'error'
@@ -47,13 +47,13 @@ export function RevealForm({ proposalId, revealEndTime, onRevealSuccess }: Revea
 
   const { writeContractAsync } = useWriteContract()
 
-  // 저장된 투표 데이터 로드
+  // Load stored vote data
   useEffect(() => {
     if (address) {
       const stored = getD2VoteForReveal(BigInt(proposalId), address)
       setVoteData(stored)
 
-      // 이미 공개했는지 확인 (localStorage)
+      // Check if already revealed (localStorage)
       const revealedKey = `zk-d2-revealed-${address.toLowerCase()}-${proposalId}`
       setIsRevealed(localStorage.getItem(revealedKey) === 'true')
     }
@@ -65,7 +65,7 @@ export function RevealForm({ proposalId, revealEndTime, onRevealSuccess }: Revea
     setStatus('confirming')
     setError(null)
     setProgress(20)
-    setProgressMessage('지갑에서 승인해주세요...')
+    setProgressMessage('Please approve in wallet...')
 
     try {
       const hash = await writeContractAsync({
@@ -84,15 +84,15 @@ export function RevealForm({ proposalId, revealEndTime, onRevealSuccess }: Revea
 
       setStatus('processing')
       setProgress(50)
-      setProgressMessage('트랜잭션 전송 완료, 블록 처리 중...')
+      setProgressMessage('Transaction sent, processing block...')
       console.log('Reveal tx:', hash)
 
-      // 진행 상태 업데이트를 위한 인터벌
+      // Progress update interval
       const progressInterval = setInterval(() => {
         setProgress(prev => Math.min(prev + 5, 90))
       }, 1000)
 
-      // 직접 트랜잭션 대기
+      // Wait for transaction directly
       await publicClient.waitForTransactionReceipt({
         hash,
         confirmations: 1,
@@ -101,10 +101,10 @@ export function RevealForm({ proposalId, revealEndTime, onRevealSuccess }: Revea
 
       clearInterval(progressInterval)
       setProgress(100)
-      setProgressMessage('공개 완료!')
+      setProgressMessage('Reveal complete!')
       setStatus('success')
 
-      // 공개 완료 마킹
+      // Mark as revealed
       const revealedKey = `zk-d2-revealed-${address.toLowerCase()}-${proposalId}`
       localStorage.setItem(revealedKey, 'true')
       setIsRevealed(true)
@@ -114,56 +114,56 @@ export function RevealForm({ proposalId, revealEndTime, onRevealSuccess }: Revea
       setProgress(0)
       const message = (err as Error).message
       if (message.includes('User rejected') || message.includes('denied')) {
-        setError('트랜잭션이 취소되었습니다')
+        setError('Transaction cancelled')
       } else if (message.includes('AlreadyRevealed')) {
-        setError('이미 공개되었습니다')
+        setError('Already revealed')
         setIsRevealed(true)
       } else if (message.includes('NotInRevealPhase')) {
-        setError('아직 공개 기간이 아닙니다')
+        setError('Not in reveal phase yet')
       } else if (message.includes('CommitmentNotFound')) {
-        setError('이 제안에 투표하지 않았습니다')
+        setError('You did not vote on this proposal')
       } else if (message.includes('InvalidReveal')) {
-        setError('투표 데이터가 일치하지 않습니다')
+        setError('Vote data mismatch')
       } else {
-        setError('공개 실패: ' + message)
+        setError('Reveal failed: ' + message)
       }
     }
   }, [voteData, address, proposalId, writeContractAsync, publicClient, onRevealSuccess])
 
-  // 투표하지 않은 경우
+  // Not voted
   if (!voteData) {
     return (
       <div className="uv-reveal-form">
         <div className="uv-reveal-header">
           <span className="uv-reveal-icon">📢</span>
-          <span>공개 기간</span>
+          <span>Reveal Phase</span>
         </div>
-        <div className="uv-reveal-time">남은 시간: {formatTimeRemaining(revealEndTime)}</div>
+        <div className="uv-reveal-time">Time left: {formatTimeRemaining(revealEndTime)}</div>
         <div className="uv-reveal-empty">
-          이 제안에 투표하지 않았습니다
+          You did not vote on this proposal
         </div>
       </div>
     )
   }
 
-  // 이미 공개한 경우
+  // Already revealed
   if (isRevealed || status === 'success') {
     return (
       <div className="uv-reveal-form">
         <div className="uv-reveal-header">
           <span className="uv-reveal-icon">✅</span>
-          <span>공개 완료</span>
+          <span>Revealed</span>
         </div>
         <div className="uv-reveal-info">
           <div className="uv-reveal-info-row">
-            <span className="uv-reveal-info-label">투표:</span>
+            <span className="uv-reveal-info-label">Vote:</span>
             <span className="uv-reveal-info-value">
-              {voteData.choice === CHOICE_FOR ? '찬성' : '반대'} {Number(voteData.numVotes)}표
+              {voteData.choice === CHOICE_FOR ? 'For' : 'Against'} {Number(voteData.numVotes)} votes
             </span>
           </div>
         </div>
         <div className="uv-reveal-success-message">
-          투표가 집계에 반영되었습니다
+          Your vote has been counted
         </div>
       </div>
     )
@@ -173,21 +173,21 @@ export function RevealForm({ proposalId, revealEndTime, onRevealSuccess }: Revea
     <div className="uv-reveal-form">
       <div className="uv-reveal-header">
         <span className="uv-reveal-icon">📢</span>
-        <span>공개 기간</span>
+        <span>Reveal Phase</span>
       </div>
-      <div className="uv-reveal-time">남은 시간: {formatTimeRemaining(revealEndTime)}</div>
+      <div className="uv-reveal-time">Time left: {formatTimeRemaining(revealEndTime)}</div>
 
       <div className="uv-reveal-info">
-        <div className="uv-reveal-info-title">내 투표 정보</div>
+        <div className="uv-reveal-info-title">My Vote</div>
         <div className="uv-reveal-info-row">
-          <span className="uv-reveal-info-label">투표:</span>
+          <span className="uv-reveal-info-label">Vote:</span>
           <span className="uv-reveal-info-value">
-            {voteData.choice === CHOICE_FOR ? '찬성' : '반대'} {Number(voteData.numVotes)}표
+            {voteData.choice === CHOICE_FOR ? 'For' : 'Against'} {Number(voteData.numVotes)} votes
           </span>
         </div>
         <div className="uv-reveal-info-row">
-          <span className="uv-reveal-info-label">상태:</span>
-          <span className="uv-reveal-info-value uv-reveal-pending">공개 대기 중</span>
+          <span className="uv-reveal-info-label">Status:</span>
+          <span className="uv-reveal-info-value uv-reveal-pending">Pending reveal</span>
         </div>
       </div>
 
@@ -204,12 +204,12 @@ export function RevealForm({ proposalId, revealEndTime, onRevealSuccess }: Revea
           className="uv-reveal-button"
           onClick={handleReveal}
         >
-          투표 공개하기
+          Reveal Vote
         </button>
       )}
 
       <div className="uv-reveal-warning">
-        ⚠️ 공개하지 않으면 집계에서 제외됩니다
+        ⚠️ Unrevealed votes are excluded from the tally
       </div>
     </div>
   )

@@ -61,7 +61,7 @@ export function votingReducer(
         ...context,
         state: 'PROOFING',
         progress: 0,
-        message: 'ZK 증명 생성 중...',
+        message: 'Generating ZK proof...',
         error: null,
       }
 
@@ -77,7 +77,7 @@ export function votingReducer(
         ...context,
         state: 'SIGNING',
         progress: 50,
-        message: '지갑 서명 대기 중...',
+        message: 'Waiting for wallet signature...',
       }
 
     case 'SIGNED':
@@ -85,7 +85,7 @@ export function votingReducer(
         ...context,
         state: 'SUBMITTING',
         progress: 75,
-        message: '블록체인에 제출 중...',
+        message: 'Submitting to blockchain...',
       }
 
     case 'TX_CONFIRMED':
@@ -93,7 +93,7 @@ export function votingReducer(
         ...context,
         state: 'SUCCESS',
         progress: 100,
-        message: '투표 완료!',
+        message: 'Vote complete!',
         txHash: action.payload,
       }
 

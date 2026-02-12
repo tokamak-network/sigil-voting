@@ -902,7 +902,7 @@ export interface D2VoteData {
   proposalId: bigint
   commitment: bigint
   nullifier: bigint
-  txHash?: string       // 트랜잭션 해시 (Etherscan 링크용)
+  txHash?: string       // Transaction hash (for Etherscan link)
 }
 
 /**
@@ -1065,9 +1065,9 @@ export async function generateQuadraticProof(
     console.error('[ZK-D2] Computed merkle root:', actualCreditRoot.toString())
     // Check if the proposal's creditRoot looks like a timestamp (old bug)
     if (creditRoot < BigInt(10000000000000)) {
-      throw new Error('이 제안은 이전 버전에서 생성되어 투표할 수 없습니다. 새 제안을 생성해주세요.')
+      throw new Error('This proposal was created with an old version and cannot be voted on. Please create a new proposal.')
     }
-    throw new Error('투표자 목록이 변경되어 투표할 수 없습니다. 새 제안을 생성해주세요.')
+    throw new Error('Voter list has changed. Please create a new proposal.')
   }
 
   // Compute commitment and nullifier (two-stage hash to match contract)
