@@ -440,7 +440,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
         address: ZK_VOTING_FINAL_ADDRESS,
         abi: ZK_VOTING_FINAL_ABI,
         functionName: 'createProposalD2',
-        args: [newProposalTitle, '', creditRoot, BigInt(240), BigInt(240)], // Test: 4min voting, 4min reveal
+        args: [newProposalTitle, '', creditRoot, BigInt(180), BigInt(180)], // Test: 3min voting, 3min reveal
       })
 
       setCreateStatus('Processing block...')
@@ -1015,7 +1015,7 @@ export function QuadraticVotingDemo({ initialProposalId, onProposalViewed }: Qua
                     selectedProposal.phase === 2 ? 100 :
                     (() => {
                       const now = new Date().getTime()
-                      const start = selectedProposal.endTime.getTime() - 240000 // 4 minutes ago
+                      const start = selectedProposal.endTime.getTime() - 180000 // 3 minutes ago
                       const end = selectedProposal.phase === 0 ? selectedProposal.endTime.getTime() : selectedProposal.revealEndTime.getTime()
                       return ((now - start) / (end - start)) * 100
                     })()
