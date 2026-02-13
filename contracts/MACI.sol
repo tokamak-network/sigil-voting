@@ -46,14 +46,15 @@ contract MACI is DomainObjs {
     constructor(
         address _signUpGatekeeper,
         address _voiceCreditProxy,
-        uint8 _stateTreeDepth
+        uint8 _stateTreeDepth,
+        address _stateAq
     ) {
         signUpGatekeeper = ISignUpGatekeeper(_signUpGatekeeper);
         voiceCreditProxy = IVoiceCreditProxy(_voiceCreditProxy);
         stateTreeDepth = _stateTreeDepth;
 
-        // Quinary AccQueue (arity=5, subDepth=2)
-        stateAq = new AccQueue(5, 2);
+        // Use pre-deployed AccQueue
+        stateAq = AccQueue(_stateAq);
 
         // Index 0: blank state leaf (for invalid message routing)
         stateAq.enqueue(BLANK_STATE_LEAF_HASH);

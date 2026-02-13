@@ -5,11 +5,18 @@
  * No reveal functions. Encrypted messages only.
  */
 
-// V2 Contract addresses (to be updated after deployment)
-export const MACI_V2_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
-export const POLL_V2_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
-export const MESSAGE_PROCESSOR_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
-export const TALLY_V2_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
+import config from './config.json';
+
+// V2 Contract addresses (loaded from config.json)
+const v2 = (config as any).v2 || {};
+export const MACI_V2_ADDRESS = (v2.maci || '0x0000000000000000000000000000000000000000') as `0x${string}`;
+export const MOCK_VERIFIER_ADDRESS = (v2.mockVerifier || '0x0000000000000000000000000000000000000000') as `0x${string}`;
+export const VK_REGISTRY_ADDRESS = (v2.vkRegistry || '0x0000000000000000000000000000000000000000') as `0x${string}`;
+
+// Poll/MP/Tally are deployed dynamically via MACI.deployPoll()
+export const POLL_V2_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`;
+export const MESSAGE_PROCESSOR_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`;
+export const TALLY_V2_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`;
 
 // V2 Phases (4-phase, no Reveal)
 export enum V2Phase {

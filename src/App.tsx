@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Header, Footer, Toast, LandingPage, QuadraticVotingDemo } from './components'
+import { Header, Footer, Toast, LandingPage, QuadraticVotingDemo, MACIVotingDemo } from './components'
 import type { Page } from './types'
 import './App.css'
 
@@ -48,6 +48,10 @@ function App() {
             initialProposalId={initialProposalId}
             onProposalViewed={() => setInitialProposalId(null)}
           />
+        )}
+
+        {currentPage === 'maci-voting' && (
+          <MACIVotingDemo />
         )}
       </main>
 

@@ -68,6 +68,12 @@ export function Header({
           >
             Proposals
           </button>
+          <button
+            className={`brutalist-nav-item ${currentPage === 'maci-voting' ? 'active' : ''}`}
+            onClick={() => setCurrentPage('maci-voting')}
+          >
+            MACI V2
+          </button>
         </nav>
       </div>
 

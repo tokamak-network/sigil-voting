@@ -59,7 +59,8 @@ contract MACITest is Test {
         verifier = new MockVerifier();
         vkRegistry = new VkRegistry();
 
-        maci = new MACI(address(gatekeeper), address(voiceCreditProxy), STATE_TREE_DEPTH);
+        AccQueue stateAq = new AccQueue(5, 2);
+        maci = new MACI(address(gatekeeper), address(voiceCreditProxy), STATE_TREE_DEPTH, address(stateAq));
     }
 
     // ============ 1. test_MACI_SignUp ============
@@ -88,7 +89,8 @@ contract MACITest is Test {
 
     function test_MACI_SignUp_Gatekeeper_Revert() public {
         RejectAllGatekeeper rejectGk = new RejectAllGatekeeper();
-        MACI restrictedMaci = new MACI(address(rejectGk), address(voiceCreditProxy), STATE_TREE_DEPTH);
+        AccQueue restrictedAq = new AccQueue(5, 2);
+        MACI restrictedMaci = new MACI(address(rejectGk), address(voiceCreditProxy), STATE_TREE_DEPTH, address(restrictedAq));
 
         vm.expectRevert("Rejected");
         restrictedMaci.signUp(100, 200, "", "");
