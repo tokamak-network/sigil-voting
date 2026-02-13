@@ -1,0 +1,301 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+import {PoseidonT3} from "poseidon-solidity/PoseidonT3.sol";
+import {PoseidonT6} from "poseidon-solidity/PoseidonT6.sol";
+
+/// @title AccQueue - Accumulator Queue for Quinary (5-ary) Merkle Trees
+/// @notice On-chain tree management: enqueue leaves into subtrees, then merge subtrees into a main tree.
+///         Based on MACI's AccQueue pattern optimized for Poseidon(5) hashing.
+/// @dev The tree is built incrementally:
+///      1. enqueue() - adds leaves into fixed-depth subtrees (arity=5)
+///      2. mergeSubRoots() - merges subtree roots into a mid-level tree
+///      3. merge() - produces the final main root
+contract AccQueue {
+    // ============ Constants ============
+
+    uint256 internal constant SNARK_SCALAR_FIELD =
+        21888242871839275222246405745257275088548364400416034343698204186575808495617;
+
+    /// @notice Tree arity (5 for quinary)
+    uint256 public immutable ARITY;
+
+    /// @notice Subtree depth (each subtree has ARITY^depth leaves)
+    uint256 public immutable SUB_DEPTH;
+
+    /// @notice Hash domain separator depth
+    uint256 public immutable HASH_LENGTH;
+
+    // ============ State ============
+
+    /// @notice All enqueued leaf values
+    uint256[] public leaves;
+
+    /// @notice Subtree roots (each subtree has ARITY^SUB_DEPTH leaves)
+    uint256[] public subRoots;
+
+    /// @notice Current subtree leaf count (resets when subtree is full)
+    uint256 public currentSubtreeLeafCount;
+
+    /// @notice Running levels for the current subtree being built
+    mapping(uint256 => mapping(uint256 => uint256)) internal currentSubtree;
+    mapping(uint256 => uint256) internal currentSubtreeLevelCount;
+
+    /// @notice The main root after merge()
+    uint256 public mainRoot;
+
+    /// @notice Whether subRoots have been merged into the main tree
+    bool public subRootsMerged;
+
+    /// @notice Whether the main root has been computed
+    bool public merged;
+
+    /// @notice Total number of leaves enqueued
+    uint256 public numLeaves;
+
+    /// @notice Number of leaves per subtree
+    uint256 public immutable LEAVES_PER_SUBTREE;
+
+    /// @notice Zero values for each level (precomputed)
+    mapping(uint256 => uint256) public zeros;
+
+    // ============ Events ============
+
+    event Enqueued(uint256 indexed index, uint256 leaf);
+    event SubTreeMerged(uint256 indexed subTreeIndex, uint256 subTreeRoot);
+    event Merged(uint256 mainRoot);
+
+    // ============ Constructor ============
+
+    /// @param _arity Tree arity (must be 5 for quinary)
+    /// @param _subDepth Depth of each subtree
+    constructor(uint256 _arity, uint256 _subDepth) {
+        require(_arity == 5, "Only quinary (arity=5) supported");
+        require(_subDepth > 0 && _subDepth <= 4, "SubDepth must be 1-4");
+
+        ARITY = _arity;
+        SUB_DEPTH = _subDepth;
+        HASH_LENGTH = _arity;
+
+        // Compute leaves per subtree: 5^subDepth
+        uint256 lps = 1;
+        for (uint256 i = 0; i < _subDepth; i++) {
+            lps *= _arity;
+        }
+        LEAVES_PER_SUBTREE = lps;
+
+        // Precompute zero values for each level
+        // zeros[0] = 0 (empty leaf)
+        zeros[0] = 0;
+        for (uint256 i = 1; i <= _subDepth + 10; i++) {
+            // zero[level] = hash(zero[level-1], zero[level-1], zero[level-1], zero[level-1], zero[level-1])
+            uint256 z = zeros[i - 1];
+            zeros[i] = PoseidonT6.hash([z, z, z, z, z]);
+        }
+    }
+
+    // ============ Enqueue ============
+
+    /// @notice Add a leaf to the accumulator queue
+    /// @param _leaf The leaf value to enqueue
+    /// @return leafIndex The global index of the enqueued leaf
+    function enqueue(uint256 _leaf) external returns (uint256 leafIndex) {
+        require(_leaf < SNARK_SCALAR_FIELD, "Leaf too large");
+        require(!merged, "Already merged");
+
+        leafIndex = numLeaves;
+        leaves.push(_leaf);
+
+        // Add to current subtree
+        uint256 posInSubtree = currentSubtreeLeafCount;
+        _insertIntoSubtree(_leaf, posInSubtree);
+        currentSubtreeLeafCount++;
+
+        // If subtree is full, compute its root and reset
+        if (currentSubtreeLeafCount == LEAVES_PER_SUBTREE) {
+            uint256 subRoot = _computeSubtreeRoot();
+            subRoots.push(subRoot);
+            emit SubTreeMerged(subRoots.length - 1, subRoot);
+            _resetCurrentSubtree();
+        }
+
+        numLeaves++;
+        emit Enqueued(leafIndex, _leaf);
+    }
+
+    /// @notice Insert a leaf into the running subtree computation
+    function _insertIntoSubtree(uint256 _leaf, uint256 _index) internal {
+        // Level 0: store the leaf
+        currentSubtree[0][_index] = _leaf;
+        currentSubtreeLevelCount[0] = _index + 1;
+    }
+
+    /// @notice Compute the current subtree root from stored leaves
+    function _computeSubtreeRoot() internal view returns (uint256) {
+        uint256 levelSize = LEAVES_PER_SUBTREE;
+
+        // Copy level 0 leaves
+        uint256[] memory currentLevel = new uint256[](levelSize);
+        for (uint256 i = 0; i < levelSize; i++) {
+            currentLevel[i] = currentSubtree[0][i];
+        }
+
+        // Hash up the tree
+        for (uint256 level = 0; level < SUB_DEPTH; level++) {
+            uint256 nextLevelSize = levelSize / ARITY;
+            uint256[] memory nextLevel = new uint256[](nextLevelSize);
+
+            for (uint256 i = 0; i < nextLevelSize; i++) {
+                uint256 baseIdx = i * ARITY;
+                nextLevel[i] = PoseidonT6.hash(
+                    [
+                        currentLevel[baseIdx],
+                        currentLevel[baseIdx + 1],
+                        currentLevel[baseIdx + 2],
+                        currentLevel[baseIdx + 3],
+                        currentLevel[baseIdx + 4]
+                    ]
+                );
+            }
+
+            currentLevel = nextLevel;
+            levelSize = nextLevelSize;
+        }
+
+        return currentLevel[0];
+    }
+
+    /// @notice Reset current subtree state for the next subtree
+    function _resetCurrentSubtree() internal {
+        for (uint256 i = 0; i < LEAVES_PER_SUBTREE; i++) {
+            delete currentSubtree[0][i];
+        }
+        currentSubtreeLeafCount = 0;
+        delete currentSubtreeLevelCount[0];
+    }
+
+    // ============ Merge ============
+
+    /// @notice Merge sub-tree roots into the main tree
+    /// @param _numSrQueueOps Number of operations (0 = all at once)
+    function mergeSubRoots(uint256 _numSrQueueOps) external {
+        require(!merged, "Already merged");
+        // If there are remaining leaves in an incomplete subtree, finalize it
+        if (currentSubtreeLeafCount > 0) {
+            _padAndFinalizeCurrentSubtree();
+        }
+        // For simplicity, process all at once (ignore _numSrQueueOps)
+        // In production, this would be incremental
+        if (_numSrQueueOps > 0) {
+            // Placeholder for incremental merge
+        }
+        subRootsMerged = true;
+    }
+
+    /// @notice Pad remaining slots with zeros and finalize the current subtree
+    function _padAndFinalizeCurrentSubtree() internal {
+        // Pad remaining positions with zero
+        uint256 remaining = LEAVES_PER_SUBTREE - currentSubtreeLeafCount;
+        for (uint256 i = 0; i < remaining; i++) {
+            currentSubtree[0][currentSubtreeLeafCount + i] = zeros[0];
+        }
+        currentSubtreeLeafCount = LEAVES_PER_SUBTREE;
+
+        uint256 subRoot = _computeSubtreeRoot();
+        subRoots.push(subRoot);
+        emit SubTreeMerged(subRoots.length - 1, subRoot);
+        _resetCurrentSubtree();
+    }
+
+    /// @notice Compute the final main root from all subtree roots
+    function merge() external {
+        require(subRootsMerged, "SubRoots not merged yet");
+        require(!merged, "Already merged");
+
+        uint256 numSubRoots = subRoots.length;
+        require(numSubRoots > 0, "No subtrees to merge");
+
+        // Build a tree from subtree roots using quinary hashing
+        mainRoot = _buildTreeFromRoots();
+        merged = true;
+        emit Merged(mainRoot);
+    }
+
+    /// @notice Build a quinary tree from subtree roots
+    function _buildTreeFromRoots() internal view returns (uint256) {
+        uint256[] memory currentLevel = new uint256[](subRoots.length);
+        for (uint256 i = 0; i < subRoots.length; i++) {
+            currentLevel[i] = subRoots[i];
+        }
+
+        // Pad to multiple of ARITY
+        uint256 levelSize = currentLevel.length;
+        while (levelSize > 1) {
+            // Pad with zero roots if not multiple of ARITY
+            uint256 remainder = levelSize % ARITY;
+            uint256 paddedSize = levelSize;
+            if (remainder != 0) {
+                paddedSize = levelSize + (ARITY - remainder);
+            }
+
+            uint256[] memory padded = new uint256[](paddedSize);
+            for (uint256 i = 0; i < levelSize; i++) {
+                padded[i] = currentLevel[i];
+            }
+            // Fill rest with appropriate zero values
+            uint256 zeroVal = zeros[SUB_DEPTH];
+            for (uint256 i = levelSize; i < paddedSize; i++) {
+                padded[i] = zeroVal;
+            }
+
+            uint256 nextSize = paddedSize / ARITY;
+            uint256[] memory nextLevel = new uint256[](nextSize);
+            for (uint256 i = 0; i < nextSize; i++) {
+                uint256 baseIdx = i * ARITY;
+                nextLevel[i] = PoseidonT6.hash(
+                    [
+                        padded[baseIdx],
+                        padded[baseIdx + 1],
+                        padded[baseIdx + 2],
+                        padded[baseIdx + 3],
+                        padded[baseIdx + 4]
+                    ]
+                );
+            }
+
+            currentLevel = nextLevel;
+            levelSize = nextSize;
+        }
+
+        return currentLevel[0];
+    }
+
+    // ============ View Functions ============
+
+    /// @notice Get the main root (only valid after merge)
+    function getMainRoot() external view returns (uint256) {
+        require(merged, "Not merged yet");
+        return mainRoot;
+    }
+
+    /// @notice Get number of subtrees
+    function getNumSubRoots() external view returns (uint256) {
+        return subRoots.length;
+    }
+
+    /// @notice Get a subtree root by index
+    function getSubRoot(uint256 _index) external view returns (uint256) {
+        require(_index < subRoots.length, "Index out of bounds");
+        return subRoots[_index];
+    }
+
+    /// @notice Get total number of leaves
+    function getNumLeaves() external view returns (uint256) {
+        return numLeaves;
+    }
+
+    /// @notice Check if the queue has been merged
+    function isMerged() external view returns (bool) {
+        return merged;
+    }
+}
