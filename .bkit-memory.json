@@ -1,7 +1,7 @@
 {
-  "currentFeature": "zk-private-voting",
-  "phase": "do",
+  "currentFeature": "maci-anti-collusion",
+  "phase": "design",
   "level": "dynamic",
   "createdAt": "2026-02-11T00:00:00Z",
-  "updatedAt": "2026-02-11T00:00:00Z"
+  "updatedAt": "2026-02-13T00:00:00Z"
 }
