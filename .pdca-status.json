@@ -13,13 +13,14 @@
     "tasks": []
   },
   "maci-anti-collusion": {
-    "phase": "design",
+    "phase": "do",
     "matchRate": null,
     "iterationCount": 0,
     "startedAt": "2026-02-13T00:00:00Z",
     "documents": {
       "plan": "docs/01-plan/features/maci-anti-collusion.plan.md",
       "design": "docs/02-design/features/maci-anti-collusion.design.md",
+      "do": "docs/03-do/features/maci-anti-collusion.do.md",
       "analysis": null,
       "report": null
     },
