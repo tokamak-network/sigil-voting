@@ -29,10 +29,7 @@ contract Poll is DomainObjs {
 
     // ============ Events ============
     event MessagePublished(
-        uint256 indexed messageIndex,
-        uint256[10] encMessage,
-        uint256 encPubKeyX,
-        uint256 encPubKeyY
+        uint256 indexed messageIndex, uint256[10] encMessage, uint256 encPubKeyX, uint256 encPubKeyY
     );
 
     // ============ Constructor ============
@@ -61,11 +58,7 @@ contract Poll is DomainObjs {
     /// @param _encMessage DuplexSponge encrypted message (10 field elements)
     /// @param _encPubKeyX Ephemeral public key X (for ECDH)
     /// @param _encPubKeyY Ephemeral public key Y
-    function publishMessage(
-        uint256[10] calldata _encMessage,
-        uint256 _encPubKeyX,
-        uint256 _encPubKeyY
-    ) external {
+    function publishMessage(uint256[10] calldata _encMessage, uint256 _encPubKeyX, uint256 _encPubKeyY) external {
         require(block.timestamp <= deployTime + duration, "Voting ended");
 
         // Hash message + pubkey into a single leaf
@@ -118,11 +111,11 @@ contract Poll is DomainObjs {
 
     /// @notice Hash a message and its ephemeral public key into a single leaf
     /// @dev 12 inputs → 3-stage Poseidon: hash5(msg[0..4]), hash5(msg[5..9]), hash4(h1, h2, pkX, pkY)
-    function hashMessageAndEncPubKey(
-        uint256[10] calldata _msg,
-        uint256 _encPubKeyX,
-        uint256 _encPubKeyY
-    ) public pure returns (uint256) {
+    function hashMessageAndEncPubKey(uint256[10] calldata _msg, uint256 _encPubKeyX, uint256 _encPubKeyY)
+        public
+        pure
+        returns (uint256)
+    {
         uint256 h1 = PoseidonT6.hash([_msg[0], _msg[1], _msg[2], _msg[3], _msg[4]]);
         uint256 h2 = PoseidonT6.hash([_msg[5], _msg[6], _msg[7], _msg[8], _msg[9]]);
         return PoseidonT5.hash([h1, h2, _encPubKeyX, _encPubKeyY]);

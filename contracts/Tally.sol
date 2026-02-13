@@ -27,11 +27,7 @@ contract Tally is DomainObjs {
 
     event Tallied(uint256 indexed batchIndex, uint256 newTallyCommitment);
     event TallyPublished(
-        uint256 forVotes,
-        uint256 againstVotes,
-        uint256 abstainVotes,
-        uint256 totalVoters,
-        uint256 tallyCommitment
+        uint256 forVotes, uint256 againstVotes, uint256 abstainVotes, uint256 totalVoters, uint256 tallyCommitment
     );
 
     constructor(address _poll, address _mp, address _verifier, address _vkRegistry) {
@@ -53,18 +49,13 @@ contract Tally is DomainObjs {
         uint256[2] calldata _pC
     ) external {
         // 1. Processing must be complete
-        require(
-            MessageProcessor(messageProcessor).processingComplete(),
-            "Processing not done"
-        );
+        require(MessageProcessor(messageProcessor).processingComplete(), "Processing not done");
 
         // 2. SHA256 public input hash
         uint256 publicInputHash = uint256(
             sha256(
                 abi.encodePacked(
-                    MessageProcessor(messageProcessor).currentStateCommitment(),
-                    tallyCommitment,
-                    _newTallyCommitment
+                    MessageProcessor(messageProcessor).currentStateCommitment(), tallyCommitment, _newTallyCommitment
                 )
             )
         ) % SNARK_SCALAR_FIELD;

@@ -35,20 +35,10 @@ contract MACI is DomainObjs {
         uint256 timestamp
     );
 
-    event DeployPoll(
-        uint256 indexed pollId,
-        address pollAddr,
-        address messageProcessorAddr,
-        address tallyAddr
-    );
+    event DeployPoll(uint256 indexed pollId, address pollAddr, address messageProcessorAddr, address tallyAddr);
 
     // ============ Constructor ============
-    constructor(
-        address _signUpGatekeeper,
-        address _voiceCreditProxy,
-        uint8 _stateTreeDepth,
-        address _stateAq
-    ) {
+    constructor(address _signUpGatekeeper, address _voiceCreditProxy, uint8 _stateTreeDepth, address _stateAq) {
         signUpGatekeeper = ISignUpGatekeeper(_signUpGatekeeper);
         voiceCreditProxy = IVoiceCreditProxy(_voiceCreditProxy);
         stateTreeDepth = _stateTreeDepth;
@@ -76,15 +66,10 @@ contract MACI is DomainObjs {
         signUpGatekeeper.register(msg.sender, _signUpGatekeeperData);
 
         // 2. Get voice credits
-        uint256 voiceCreditBalance = voiceCreditProxy.getVoiceCredits(
-            msg.sender,
-            _initialVoiceCreditProxyData
-        );
+        uint256 voiceCreditBalance = voiceCreditProxy.getVoiceCredits(msg.sender, _initialVoiceCreditProxyData);
 
         // 3. State leaf: poseidon_4([pubKeyX, pubKeyY, voiceCreditBalance, timestamp])
-        uint256 stateLeaf = PoseidonT5.hash(
-            [_pubKeyX, _pubKeyY, voiceCreditBalance, block.timestamp]
-        );
+        uint256 stateLeaf = PoseidonT5.hash([_pubKeyX, _pubKeyY, voiceCreditBalance, block.timestamp]);
 
         // 4. Enqueue into State AccQueue
         stateAq.enqueue(stateLeaf);
@@ -107,13 +92,7 @@ contract MACI is DomainObjs {
         pollId = nextPollId++;
 
         Poll poll = new Poll(
-            _title,
-            _duration,
-            _coordinatorPubKeyX,
-            _coordinatorPubKeyY,
-            address(stateAq),
-            numSignUps,
-            _messageTreeDepth
+            _title, _duration, _coordinatorPubKeyX, _coordinatorPubKeyY, address(stateAq), numSignUps, _messageTreeDepth
         );
 
         MessageProcessor mp = new MessageProcessor(address(poll), _verifier, _vkRegistry);

@@ -51,14 +51,7 @@ contract MessageProcessor is DomainObjs {
         // 4. SHA256 public input hash
         uint256 messageRoot = AccQueue(address(Poll(poll).messageAq())).mainRoot();
         uint256 publicInputHash = uint256(
-            sha256(
-                abi.encodePacked(
-                    currentStateCommitment,
-                    _newStateCommitment,
-                    messageRoot,
-                    Poll(poll).numMessages()
-                )
-            )
+            sha256(abi.encodePacked(currentStateCommitment, _newStateCommitment, messageRoot, Poll(poll).numMessages()))
         ) % SNARK_SCALAR_FIELD;
 
         // 5. Groth16 verification

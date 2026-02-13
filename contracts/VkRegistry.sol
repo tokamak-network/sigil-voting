@@ -51,20 +51,14 @@ contract VkRegistry {
     }
 
     /// @notice Get the process verification key
-    function getProcessVk(
-        uint256 _stateTreeDepth,
-        uint256 _messageTreeDepth
-    ) external view returns (uint256[] memory) {
+    function getProcessVk(uint256 _stateTreeDepth, uint256 _messageTreeDepth) external view returns (uint256[] memory) {
         bytes32 key = keccak256(abi.encodePacked(_stateTreeDepth, _messageTreeDepth));
         require(isProcessVkSet[key], "Process VK not set");
         return processVks[key];
     }
 
     /// @notice Get the tally verification key
-    function getTallyVk(
-        uint256 _stateTreeDepth,
-        uint256 _messageTreeDepth
-    ) external view returns (uint256[] memory) {
+    function getTallyVk(uint256 _stateTreeDepth, uint256 _messageTreeDepth) external view returns (uint256[] memory) {
         bytes32 key = keccak256(abi.encodePacked(_stateTreeDepth, _messageTreeDepth));
         require(isTallyVkSet[key], "Tally VK not set");
         return tallyVks[key];

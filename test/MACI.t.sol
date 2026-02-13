@@ -90,7 +90,8 @@ contract MACITest is Test {
     function test_MACI_SignUp_Gatekeeper_Revert() public {
         RejectAllGatekeeper rejectGk = new RejectAllGatekeeper();
         AccQueue restrictedAq = new AccQueue(5, 2);
-        MACI restrictedMaci = new MACI(address(rejectGk), address(voiceCreditProxy), STATE_TREE_DEPTH, address(restrictedAq));
+        MACI restrictedMaci =
+            new MACI(address(rejectGk), address(voiceCreditProxy), STATE_TREE_DEPTH, address(restrictedAq));
 
         vm.expectRevert("Rejected");
         restrictedMaci.signUp(100, 200, "", "");
@@ -101,7 +102,15 @@ contract MACITest is Test {
     function test_Poll_PublishMessage() public {
         // Setup: signUp + deployPoll
         maci.signUp(100, 200, "", "");
-        maci.deployPoll("Test Poll", POLL_DURATION, COORD_PUB_KEY_X, COORD_PUB_KEY_Y, address(verifier), address(vkRegistry), MSG_TREE_DEPTH);
+        maci.deployPoll(
+            "Test Poll",
+            POLL_DURATION,
+            COORD_PUB_KEY_X,
+            COORD_PUB_KEY_Y,
+            address(verifier),
+            address(vkRegistry),
+            MSG_TREE_DEPTH
+        );
 
         Poll poll = Poll(maci.polls(0));
 
@@ -118,7 +127,15 @@ contract MACITest is Test {
 
     function test_Poll_PublishMessage_AfterVoting_Reverts() public {
         maci.signUp(100, 200, "", "");
-        maci.deployPoll("Test Poll", POLL_DURATION, COORD_PUB_KEY_X, COORD_PUB_KEY_Y, address(verifier), address(vkRegistry), MSG_TREE_DEPTH);
+        maci.deployPoll(
+            "Test Poll",
+            POLL_DURATION,
+            COORD_PUB_KEY_X,
+            COORD_PUB_KEY_Y,
+            address(verifier),
+            address(vkRegistry),
+            MSG_TREE_DEPTH
+        );
 
         Poll poll = Poll(maci.polls(0));
 
@@ -134,7 +151,15 @@ contract MACITest is Test {
 
     function test_Poll_MergeAccQueues() public {
         maci.signUp(100, 200, "", "");
-        maci.deployPoll("Test Poll", POLL_DURATION, COORD_PUB_KEY_X, COORD_PUB_KEY_Y, address(verifier), address(vkRegistry), MSG_TREE_DEPTH);
+        maci.deployPoll(
+            "Test Poll",
+            POLL_DURATION,
+            COORD_PUB_KEY_X,
+            COORD_PUB_KEY_Y,
+            address(verifier),
+            address(vkRegistry),
+            MSG_TREE_DEPTH
+        );
 
         Poll poll = Poll(maci.polls(0));
 
@@ -161,7 +186,15 @@ contract MACITest is Test {
     function test_MessageProcessor_Process() public {
         // Full setup: signUp → deployPoll → publish → warp → merge
         maci.signUp(100, 200, "", "");
-        maci.deployPoll("Test Poll", POLL_DURATION, COORD_PUB_KEY_X, COORD_PUB_KEY_Y, address(verifier), address(vkRegistry), MSG_TREE_DEPTH);
+        maci.deployPoll(
+            "Test Poll",
+            POLL_DURATION,
+            COORD_PUB_KEY_X,
+            COORD_PUB_KEY_Y,
+            address(verifier),
+            address(vkRegistry),
+            MSG_TREE_DEPTH
+        );
 
         Poll poll = Poll(maci.polls(0));
 
@@ -193,7 +226,15 @@ contract MACITest is Test {
 
     function test_MessageProcessor_InvalidProof_Reverts() public {
         maci.signUp(100, 200, "", "");
-        maci.deployPoll("Test Poll", POLL_DURATION, COORD_PUB_KEY_X, COORD_PUB_KEY_Y, address(verifier), address(vkRegistry), MSG_TREE_DEPTH);
+        maci.deployPoll(
+            "Test Poll",
+            POLL_DURATION,
+            COORD_PUB_KEY_X,
+            COORD_PUB_KEY_Y,
+            address(verifier),
+            address(vkRegistry),
+            MSG_TREE_DEPTH
+        );
 
         Poll poll = Poll(maci.polls(0));
 
@@ -222,7 +263,15 @@ contract MACITest is Test {
 
     function test_MessageProcessor_NotMerged_Reverts() public {
         maci.signUp(100, 200, "", "");
-        maci.deployPoll("Test Poll", POLL_DURATION, COORD_PUB_KEY_X, COORD_PUB_KEY_Y, address(verifier), address(vkRegistry), MSG_TREE_DEPTH);
+        maci.deployPoll(
+            "Test Poll",
+            POLL_DURATION,
+            COORD_PUB_KEY_X,
+            COORD_PUB_KEY_Y,
+            address(verifier),
+            address(vkRegistry),
+            MSG_TREE_DEPTH
+        );
 
         Poll poll = Poll(maci.polls(0));
         vm.warp(block.timestamp + POLL_DURATION + 1);
@@ -242,7 +291,15 @@ contract MACITest is Test {
     function test_Tally_TallyVotes() public {
         // Setup full pipeline
         maci.signUp(100, 200, "", "");
-        maci.deployPoll("Test Poll", POLL_DURATION, COORD_PUB_KEY_X, COORD_PUB_KEY_Y, address(verifier), address(vkRegistry), MSG_TREE_DEPTH);
+        maci.deployPoll(
+            "Test Poll",
+            POLL_DURATION,
+            COORD_PUB_KEY_X,
+            COORD_PUB_KEY_Y,
+            address(verifier),
+            address(vkRegistry),
+            MSG_TREE_DEPTH
+        );
 
         Poll poll = Poll(maci.polls(0));
 
@@ -271,7 +328,15 @@ contract MACITest is Test {
 
     function test_Tally_InvalidProof_Reverts() public {
         maci.signUp(100, 200, "", "");
-        maci.deployPoll("Test Poll", POLL_DURATION, COORD_PUB_KEY_X, COORD_PUB_KEY_Y, address(verifier), address(vkRegistry), MSG_TREE_DEPTH);
+        maci.deployPoll(
+            "Test Poll",
+            POLL_DURATION,
+            COORD_PUB_KEY_X,
+            COORD_PUB_KEY_Y,
+            address(verifier),
+            address(vkRegistry),
+            MSG_TREE_DEPTH
+        );
 
         Poll poll = Poll(maci.polls(0));
         uint256[10] memory encMsg;
@@ -301,7 +366,15 @@ contract MACITest is Test {
 
     function test_Tally_PublishResults() public {
         maci.signUp(100, 200, "", "");
-        maci.deployPoll("Test Poll", POLL_DURATION, COORD_PUB_KEY_X, COORD_PUB_KEY_Y, address(verifier), address(vkRegistry), MSG_TREE_DEPTH);
+        maci.deployPoll(
+            "Test Poll",
+            POLL_DURATION,
+            COORD_PUB_KEY_X,
+            COORD_PUB_KEY_Y,
+            address(verifier),
+            address(vkRegistry),
+            MSG_TREE_DEPTH
+        );
 
         Poll poll = Poll(maci.polls(0));
         uint256[10] memory encMsg;
@@ -352,7 +425,15 @@ contract MACITest is Test {
         assertEq(maci.numSignUps(), 2);
 
         // 2. DeployPoll
-        maci.deployPoll("Integration Test", POLL_DURATION, COORD_PUB_KEY_X, COORD_PUB_KEY_Y, address(verifier), address(vkRegistry), MSG_TREE_DEPTH);
+        maci.deployPoll(
+            "Integration Test",
+            POLL_DURATION,
+            COORD_PUB_KEY_X,
+            COORD_PUB_KEY_Y,
+            address(verifier),
+            address(vkRegistry),
+            MSG_TREE_DEPTH
+        );
         address pollAddr = maci.polls(0);
         assertTrue(pollAddr != address(0));
 
