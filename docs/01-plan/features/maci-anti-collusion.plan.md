@@ -50,14 +50,52 @@
 - **영향**: 강압당해 투표하면 영구 확정
 - **MACI 해법**: 마지막 유효 메시지 = 최종 투표. Nonce 기반으로 언제든 갱신 가능
 
-### 0.2 MACI의 핵심 해법 요약
+### 0.2 MACI의 7대 보안 속성
+
+MACI 공식 문서(https://maci.pse.dev/docs/introduction)에서 정의하는 보안 보장:
+
+| # | 속성 | 설명 | 현재 시스템 충족 |
+|:-:|------|------|:---------------:|
+| 1 | **Collusion Resistance** | Coordinator만 투표 유효성 검증 가능, 매수자는 불가 | ❌ (Reveal로 검증 가능) |
+| 2 | **Receipt-freeness** | 투표자가 제3자에게 투표를 증명 불가 (Coordinator 제외) | ❌ (Reveal이 영수증) |
+| 3 | **Privacy** | Coordinator만 개별 투표 복호화 가능, 공개되는 것은 집계 결과만 | ❌ (Reveal 후 전체 공개) |
+| 4 | **Uncensorability** | Coordinator도 유효 투표를 검열/삭제 불가 — 불변 온체인 큐 | ⚠️ (Nullifier 기반, 부분 충족) |
+| 5 | **Unforgeability** | 개인키 보유자만 유효 투표 가능 (EdDSA 서명) | ✅ (ZKP로 충족) |
+| 6 | **Non-repudiation** | 투표 삭제 불가, 새 투표로 덮어쓰기만 가능 | ❌ (1회성 nullifier) |
+| 7 | **Correct Execution** | Coordinator의 잘못된 집계를 zk-SNARK가 방지 | ❌ (온체인 직접 집계) |
+
+### 0.3 MACI의 핵심 메커니즘 요약
 
 | 메커니즘 | 설명 | 해결하는 취약점 |
 |----------|------|----------------|
 | **암호화 투표** | ECDH로 Coordinator 공개키에 암호화. 평문 공개 없음 | 취약점 1 |
 | **Key Change** | 투표 기간 중 EdDSA 키쌍 변경 가능. 이전 투표 무효화 | 취약점 2 |
+| **역순 메시지 처리** | 메시지를 **마지막→처음 역순**으로 처리. Key Change 방어의 핵심 | 취약점 2 |
 | **메시지 갱신** | Nonce 기반, 마지막 유효 메시지가 최종 투표 | 취약점 3 |
+| **무효 메시지 → index 0** | 무효 command를 blank leaf(index 0)로 라우팅 (DoS 방지, 회로 내 증명) | 취약점 2 |
 | **Coordinator + ZKP** | 오프체인 집계 + 온체인 정확성 검증 | 취약점 1, 2 |
+
+#### 역순 메시지 처리가 핵심인 이유
+
+```
+MACI 원본 동작 (역순 = 마지막 메시지부터 처리):
+
+메시지 순서: [msg1: Alice 찬성] → [msg2: Key Change pk1→pk2] → [msg3: Alice 반대(pk2)]
+
+역순 처리:
+  1. msg3 처리 (Alice, pk2로 반대) → State 반영 ✅
+  2. msg2 처리 (Key Change) → pk1→pk2 변경, 이전 pk1 투표 무효화
+  3. msg1 처리 (Alice, pk1로 찬성) → 이미 pk2로 변경됨, pk1 서명 무효 → index 0으로 라우팅
+
+결과: Alice의 최종 투표 = 반대 (msg3)
+Bob이 pk1 알아도 msg3은 복호화 불가 → 매수 실패
+
+정순 처리 시 문제:
+  1. msg1 처리 (Alice 찬성) → State 반영
+  2. msg2 처리 (Key Change) → pk1→pk2
+  3. msg3 처리 (Alice 반대) → 덮어쓰기
+  → 정순이면 Bob이 msg1 시점의 state를 확인 가능 → 방어 약화
+```
 
 ---
 
@@ -135,24 +173,46 @@ Voting Phase      Processing       Result
 | Phase | Commit → Reveal → Ended | Voting → Processing → Finalized |
 | 검증 | Groth16Verifier (투표 자격) | + MessageProcessor Verifier + Tally Verifier |
 
-**신규 컨트랙트 구조**:
+**신규 컨트랙트 구조 (MACI 분리 패턴 적용)**:
 
 ```
 contracts/
-├── PrivateVotingV2.sol          # 메인 컨트랙트 (V2)
+├── MACI.sol                     # 등록 전용 (signUp + SignUpGatekeeper)
 │   ├── signUp()                 # 유권자 등록 (EdDSA pubkey)
-│   ├── publishMessage()         # 암호화 투표 제출
-│   ├── processMessages()        # Coordinator: state transition 증명 검증
-│   ├── tallyVotes()             # Coordinator: tally 증명 검증
-│   └── verifyTally()            # 결과 조회
+│   ├── deployPoll()             # 투표 인스턴스 생성
+│   └── stateAq                  # State AccQueue
 │
-├── MessageTree.sol              # 메시지 머클 트리
-├── StateTree.sol                # 유저 상태 머클 트리
-├── MessageProcessorVerifier.sol # State transition ZK 검증기
-├── TallyVerifier.sol            # Tally ZK 검증기
+├── Poll.sol                     # 투표 전용 (publishMessage)
+│   ├── publishMessage()         # 암호화 투표 제출
+│   ├── mergeMaciStateAq*()      # AccQueue merge 함수들
+│   └── messageAq                # Message AccQueue
+│
+├── MessageProcessor.sol         # State transition 검증
+│   └── processMessages()        # Coordinator: batch proof 검증
+│
+├── Tally.sol                    # 집계 검증
+│   └── tallyVotes()             # Coordinator: tally proof 검증
+│
+├── AccQueue.sol                 # Quinary AccQueue (enqueue/merge)
+├── VkRegistry.sol               # 검증키 레지스트리
+│
+├── gatekeepers/
+│   ├── ISignUpGatekeeper.sol    # 등록 제한 인터페이스
+│   └── FreeForAllGatekeeper.sol # 제한 없는 기본 구현
+│
+├── voiceCreditProxy/
+│   ├── IVoiceCreditProxy.sol    # Voice credit 할당 인터페이스
+│   └── ConstantVoiceCreditProxy.sol # 고정 할당
+│
+├── Verifier.sol                 # Groth16 검증기 (자동 생성)
+├── PoseidonT3.sol               # 2-input Poseidon (머클 트리)
+├── PoseidonT5.sol               # 4-input Poseidon (기존 유지)
+├── PoseidonT6.sol               # 5-input Poseidon (State leaf)
 ├── Groth16Verifier.sol          # 기존 투표 자격 검증기 (유지)
-└── PoseidonT5.sol               # 해시 함수 (유지)
+└── DomainObjs.sol               # 공유 도메인 객체 정의
 ```
+
+**MACI 원본 대비 간소화**: PollFactory, MessageProcessorFactory, TallyFactory, SubsidyFactory는 단일 배포 환경이므로 생략. TopupCredit도 초기 버전에서 제외.
 
 #### 3.1.2 ZK 회로 신규/변경
 
@@ -162,12 +222,17 @@ contracts/
 | `TallyVotes.circom` | 집계 정확성 증명 | 중간 |
 | `PrivateVoting.circom` | 기존 투표 자격 회로 (유지, 일부 수정) | 낮음 |
 
-**MessageProcessor 회로의 핵심 검증**:
-1. 메시지 복호화 정확성 (ECDH shared key)
-2. 서명 유효성 (EdDSA)
+**MessageProcessor 회로의 핵심 검증** (MACI 완전 반영):
+1. 메시지 복호화 정확성 (ECDH shared key → Poseidon DuplexSponge)
+2. 서명 유효성 (EdDSA-Poseidon)
 3. Nonce 순서 검증
 4. State leaf 업데이트 정확성
 5. Key change 시 이전 state 무효화
+6. **역순 처리 (Reverse Processing)** — 마지막 메시지부터 처리 (Key Change 방어 핵심)
+7. **무효 메시지 → index 0 라우팅** — 무효 command를 blank leaf로 전달 (DoS 방지)
+8. Voice credit 충분성: `balance + (기존 weight)² - (새 weight)² >= 0`
+9. Vote weight < sqrt(p) 범위 검증
+10. State index, Timestamp, Vote option 유효성 검증
 
 #### 3.1.3 Coordinator 서비스
 
@@ -184,17 +249,21 @@ coordinator/
 └── tsconfig.json
 ```
 
-**Coordinator 워크플로우**:
+**Coordinator 워크플로우** (MACI 정렬):
 ```
 1. 투표 종료 감지 (블록 타임스탬프)
-2. Message Tree에서 모든 메시지 읽기
-3. 각 메시지 ECDH 복호화
-4. State transition 순차 처리 (키 변경 포함)
-5. processMessages proof 생성 (배치)
-6. 온체인 processMessages() 호출
-7. Tally 계산
-8. tallyVotes proof 생성
-9. 온체인 tallyVotes() 호출
+2. AccQueue merge 실행 (mergeSubRoots → merge)
+3. Message Tree에서 모든 메시지 읽기
+4. ★ 역순(마지막→처음)으로 배치 처리:
+   a. ECDH 복호화 (Poseidon DuplexSponge)
+   b. EdDSA 서명 검증
+   c. 유효: State transition 적용
+   d. 무효: blank leaf (index 0)로 라우팅 (회로 증명)
+5. 배치별 processMessages ZKP 생성
+6. 온체인 processMessages() 호출 (배치 반복)
+7. 최종 State Tree에서 Tally 계산 (배치)
+8. 배치별 tallyVotes ZKP 생성
+9. 온체인 tallyVotes() 호출 (배치 반복)
 10. 결과 공개
 ```
 
@@ -225,34 +294,49 @@ coordinator/
 8. Bob: 암호화되어 있어 5~6번 과정 확인 불가
 ```
 
-#### 3.2.2 State Tree 구조
+#### 3.2.2 State Leaf 구조 (MACI 정렬)
 
 ```
-State Tree Leaf:
+MACI 원본 State Leaf:
+  poseidon_4([pubKeyX, pubKeyY, voiceCreditBalance, timestamp])
+
+우리 적용 State Leaf:
+  poseidon_4([pubKeyX, pubKeyY, voiceCreditBalance, timestamp])
+  ※ MACI와 동일한 4-input 구조 적용
+
+Ballot (별도 도메인 객체, MACI 원본 반영):
+  blt_v[i] = 각 vote option에 할당한 weight
+  blt_n = nonce (0부터 시작, 첫 유효 command nonce = 1)
+  blt_r = Merkle root of vote weights (quinary tree)
+  hash = poseidon_2([blt_n, blt_r])
+  ※ State Leaf에 voteOptionRoot를 넣지 않고 Ballot로 분리
+
+Blank State Leaf (index 0):
+  MACI에서 정의한 고정값 (Pedersen generator 기반)
+  → 무효 메시지가 라우팅되는 대상
+```
+
+#### 3.2.3 Command & Message 구조 (MACI 정렬)
+
+```
+Command (binary-packed, MACI 원본):
 {
-  pubKeyX: uint256,      // 현재 공개키 X
-  pubKeyY: uint256,      // 현재 공개키 Y
-  voteOptionRoot: uint256, // 투표 옵션 트리 루트
-  voiceCreditBalance: uint256, // 남은 voice credit
-  nonce: uint256          // 메시지 순서 (replay 방지)
-}
-```
-
-#### 3.2.3 메시지 구조
-
-```
-Message (암호화 전):
-{
-  stateIndex: uint256,    // State Tree에서의 위치
-  newPubKeyX: uint256,    // 새 공개키 (키 변경 시)
-  newPubKeyY: uint256,
-  voteOptionIndex: uint256, // 투표 대상 (proposalId)
-  voteWeight: uint256,    // 투표 가중치
-  nonce: uint256,         // 순서 번호
-  salt: uint256           // 랜덤값
+  stateIndex: 50 bits,        // State Tree 위치
+  newPubKeyX: 253 bits,       // 새 공개키 X (키 변경 시)
+  newPubKeyY: 253 bits,       // 새 공개키 Y
+  voteOptionIndex: 50 bits,   // 투표 대상
+  newVoteWeight: 50 bits,     // 투표 가중치
+  nonce: 50 bits,             // 순서 번호 (currentNonce + 1)
+  pollId: 50 bits,            // Poll 식별자
+  salt: 253 bits              // 랜덤값
 }
 
-→ EdDSA 서명 → ECDH 암호화(Coordinator pubkey) → 온체인 제출
+Command Hash = poseidon_4([packedValue, pubKeyX, pubKeyY, salt])
+
+Message (암호화된 Command + Signature):
+  plaintext = packed command + EdDSA signature (R8[0], R8[1], S)
+  → Poseidon DuplexSponge 암호화(ECDH shared key)
+  → [encMessage[], encPubKey] 온체인 제출
 ```
 
 ### Phase 3: D2 Quadratic Voting 통합
@@ -269,16 +353,28 @@ Message (암호화 전):
 
 ## 4. 기술 스펙
 
-### 4.1 암호화 스택
+### 4.1 암호화 스택 (MACI 완전 매핑)
 
-| 구성요소 | 현재 | 목표 |
-|----------|------|------|
-| 해시 | Poseidon (PoseidonT5) | Poseidon (유지) |
-| 서명 | 없음 (ZKP로 대체) | EdDSA (EdDSA-MiMCSponge 또는 EdDSA-Poseidon) |
-| 암호화 | 없음 | ECDH + Poseidon 암호화 |
-| 키 | Baby Jubjub | Baby Jubjub (유지, EdDSA와 동일 곡선) |
-| ZKP | Groth16 (snarkjs) | Groth16 (유지) |
-| Merkle Tree | 20-level (투표 자격) | 20-level State Tree + Message Tree |
+| 구성요소 | MACI 원본 | 우리 적용 | 차이 사유 |
+|----------|-----------|----------|----------|
+| 곡선 | Baby Jubjub | Baby Jubjub (동일) | — |
+| 해시 | Poseidon (T3/T4/T5/T6) | Poseidon (T3 추가, T5 유지) | T6는 불필요 |
+| 서명 | EdDSA-Poseidon | EdDSA-Poseidon (동일) | — |
+| 대칭 암호화 | **Poseidon DuplexSponge** | **Poseidon DuplexSponge** (MACI 동일) | CTR→Sponge 변경 |
+| 키 교환 | ECDH (Baby Jubjub) | ECDH (동일) | — |
+| 키 파생 | **BLAKE512 → prune → scalar** | **BLAKE512** (MACI 동일) | 추가 필요 |
+| Public input 압축 | **SHA256** | **SHA256** (MACI 동일) | 가스 최적화 |
+| ZKP | Groth16 (rapidsnark) | Groth16 (snarkjs) | 프로버만 다름 |
+| Merkle Tree | **Quinary (arity 5)** | **Quinary (arity 5)** (MACI 동일) | Binary→Quinary 변경 |
+| 트리 관리 | **AccQueue** (enqueue/merge) | **AccQueue** (MACI 동일) | IMT→AccQueue 변경 |
+| 키 직렬화 | `macisk.`/`macipk.` 접두사 | 자체 포맷 | 호환 불필요 |
+
+**기존 Plan 대비 변경점**:
+1. 암호화: CTR 모드 → **Poseidon DuplexSponge** (MACI의 zk-kit 패키지 사용)
+2. 키 파생: 단순 random → **BLAKE512 해싱 + pruning** (RFC 8032 스타일)
+3. Merkle Tree: Binary → **Quinary (5-ary)** (Poseidon(5)에 최적화, 깊이 감소)
+4. 트리 관리: IncrementalMerkleTree → **AccQueue** (온체인 누적 큐 패턴)
+5. SHA256: 회로 public input을 SHA256으로 압축하여 온체인 검증 가스 절감
 
 ### 4.2 컨트랙트 인터페이스 (V2)
 
@@ -325,23 +421,103 @@ interface IPrivateVotingV2 {
 }
 ```
 
-### 4.3 Coordinator Trust Model
+### 4.3 Coordinator Trust Model (MACI 완전 반영)
 
 ```
 Coordinator CAN:
   ✅ 개별 투표 내용 확인 (복호화 가능)
   ✅ 집계 수행
+  ✅ 투표 라운드 지연/중단
 
 Coordinator CANNOT:
-  ❌ 투표 위조 (EdDSA 서명 필요)
-  ❌ 투표 검열 (Message Tree에 이미 기록)
-  ❌ 잘못된 집계 (ZKP가 온체인에서 검증)
-  ❌ 투표 삭제 (블록체인 불변성)
+  ❌ 투표 위조 (EdDSA 서명 필요 — Unforgeability)
+  ❌ 투표 검열 (불변 온체인 AccQueue — Uncensorability)
+  ❌ 잘못된 집계 (zk-SNARK 온체인 검증 — Correct Execution)
+  ❌ 투표 삭제 (새 투표로만 덮어쓰기 — Non-repudiation)
 
 Trust Assumption:
   - Coordinator가 개별 투표를 유출하지 않을 것을 신뢰
-  - 단, 유출해도 Key Change로 인해 최종 투표 확인 불가
+  - 단, 유출해도 Key Change + 역순 처리로 최종 투표 확인 불가
 ```
+
+### 4.4 MACI 기능 전수 채택 매트릭스
+
+모든 MACI 공식 기능에 대한 채택/제외 결정:
+
+#### 암호화 & 키 관리
+
+| MACI 기능 | 채택 | 사유 |
+|-----------|:----:|------|
+| Baby Jubjub 곡선 | ✅ 채택 | 기존 동일 |
+| Poseidon 해시 (T3/T4/T5/T6) | ✅ 채택 | T3, T6 추가 필요 |
+| EdDSA-Poseidon 서명 | ✅ 채택 | 신규 |
+| Poseidon DuplexSponge 암호화 | ✅ 채택 | zk-kit 패키지 사용 |
+| ECDH 키 교환 | ✅ 채택 | 신규 |
+| BLAKE512 키 파생 | ✅ 채택 | RFC 8032 스타일 |
+| SHA256 public input 압축 | ✅ 채택 | 가스 최적화 |
+| Key Change 메커니즘 | ✅ 채택 | Anti-Coercion 핵심 |
+| Key 직렬화 (`macisk.`/`macipk.`) | ❌ 제외 | MACI 호환 불필요, 자체 포맷 |
+
+#### 데이터 구조
+
+| MACI 기능 | 채택 | 사유 |
+|-----------|:----:|------|
+| Quinary Merkle Tree (5-ary) | ✅ 채택 | Poseidon(5)에 최적 |
+| AccQueue (누적 큐) | ✅ 채택 | 온체인 트리 관리 |
+| State Leaf (4-input) | ✅ 채택 | MACI 정렬 |
+| Ballot (별도 도메인 객체) | ✅ 채택 | MACI 정렬 |
+| Command binary packing | ✅ 채택 | 회로 효율성 |
+| Blank State Leaf (index 0) | ✅ 채택 | 무효 메시지 처리 필수 |
+| LazyIMT | ⚠️ 검토 | AccQueue가 우선, 필요 시 추가 |
+| LeanIMT | ❌ 제외 | AccQueue로 대체 |
+
+#### 스마트 컨트랙트
+
+| MACI 기능 | 채택 | 사유 |
+|-----------|:----:|------|
+| MACI.sol + Poll.sol 분리 | ✅ 채택 | 관심사 분리 |
+| MessageProcessor.sol | ✅ 채택 | 핵심 |
+| Tally.sol | ✅ 채택 | 핵심 |
+| TallyNonQv.sol | ✅ 채택 | D1 = Non-QV 모드 |
+| VkRegistry | ✅ 채택 | 검증키 관리 |
+| SignUpGatekeeper (인터페이스) | ✅ 채택 | 모듈형 등록 |
+| FreeForAllGatekeeper | ✅ 채택 | 기본 구현 |
+| IVoiceCreditProxy | ✅ 채택 | 모듈형 credit 할당 |
+| ConstantVoiceCreditProxy | ✅ 채택 | 기본 구현 |
+| PollFactory 등 Factory 패턴 | ❌ 제외 | 단일 배포, 불필요 |
+| TopupCredit | ❌ 제외 | 초기 버전 불필요 |
+| Subsidy/SubsidyFactory | ❌ 제외 | 범위 외 |
+| SignUpToken (ERC721) | ❌ 제외 | TON 토큰으로 대체 |
+| EASGatekeeper, HatsGatekeeper | ❌ 제외 | 범위 외, 향후 확장 |
+
+#### ZK 회로
+
+| MACI 기능 | 채택 | 사유 |
+|-----------|:----:|------|
+| MessageProcessor circuit | ✅ 채택 | 핵심 |
+| 역순 메시지 처리 | ✅ 채택 | Key Change 방어 핵심 |
+| 무효 메시지 → index 0 | ✅ 채택 | 회로 내 DoS 방지 |
+| TallyVotes circuit (QV) | ✅ 채택 | D2 모드 |
+| TallyNonQv circuit | ✅ 채택 | D1 모드 |
+| Poll Joining circuit | ⚠️ Phase 3 | 초기에는 signUp으로 대체 |
+| Tally commitment (3-input) | ✅ 채택 | `poseidon_3([votes_root, total_spent, per_option_spent])` |
+
+#### Coordinator & 인프라
+
+| MACI 기능 | 채택 | 사유 |
+|-----------|:----:|------|
+| Coordinator 오프체인 처리 | ✅ 채택 | 핵심 |
+| Coordinator REST Service | ⚠️ Phase 2 | 초기에는 CLI/스크립트 |
+| Offchain Relayer (Gasless) | ❌ 제외 | 범위 외, 향후 확장 |
+| SubGraph 통합 | ❌ 제외 | 이벤트 직접 수신으로 대체 |
+
+#### 투표 모드
+
+| MACI 기능 | 채택 | 사유 |
+|-----------|:----:|------|
+| Quadratic Voting (QV) | ✅ 채택 | D2 모드 |
+| Non-Quadratic Voting | ✅ 채택 | D1 모드 |
+| Full Credits Voting | ❌ 제외 | 범위 외 |
 
 ---
 
@@ -434,15 +610,17 @@ QuadraticVotingDemo.tsx  →    대폭 수정 (Reveal 제거, Phase 변경)
 
 ## 8. 성공 기준
 
-### 8.1 보안 기준 (MACI Parity)
+### 8.1 보안 기준 (MACI 7대 속성 전체 충족)
 
-| 속성 | 기준 | 검증 방법 |
-|------|------|----------|
-| **개별 투표 비공개** | Reveal phase 없음. 온체인에 choice 평문 없음 | 컨트랙트 ABI에 reveal 함수 부재 확인 |
-| **Receipt-freeness** | 투표자가 투표 증명 불가 | Key Change 후 이전 투표 무효 시나리오 테스트 |
-| **집계 정확성** | ZKP가 온체인에서 tally 검증 | Forge 테스트: 잘못된 tally proof revert |
-| **검열 저항** | Coordinator가 투표 누락 불가 | Message Tree 포함 후 미처리 시 proof 실패 |
-| **위조 방지** | 유효한 EdDSA 서명만 처리 | 잘못된 서명 메시지 무시 검증 |
+| # | MACI 속성 | 기준 | 검증 방법 |
+|:-:|----------|------|----------|
+| 1 | **Collusion Resistance** | Coordinator만 투표 검증 가능, 매수자 불가 | Key Change 시나리오 테스트 |
+| 2 | **Receipt-freeness** | 투표자가 투표 증명 불가 | Key Change 후 이전 투표 무효 + 역순 처리 테스트 |
+| 3 | **Privacy** | 온체인에 choice 평문 없음, Coordinator만 복호화 | ABI에 reveal 함수 부재 + 이벤트 검사 |
+| 4 | **Uncensorability** | Coordinator가 투표 누락 불가 | AccQueue 포함 후 미처리 시 proof 실패 테스트 |
+| 5 | **Unforgeability** | 유효한 EdDSA 서명만 처리 | 잘못된 서명 → index 0 라우팅 검증 |
+| 6 | **Non-repudiation** | 투표 삭제 불가, 새 투표로만 덮어쓰기 | 동일 stateIndex 재투표 시 이전 투표 대체 검증 |
+| 7 | **Correct Execution** | ZKP가 온체인에서 tally 검증 | 잘못된 tally proof → revert 테스트 |
 
 ### 8.2 기능 기준
 
