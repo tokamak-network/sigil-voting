@@ -11,7 +11,7 @@
 
 ### 0.1 D1/D2 스펙 준수 (절대)
 - **D1 스펙**: https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d1-private-voting.md
-- **D2 스펙**: https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d2-quadratic-voting.md
+- **D2 스펙**: https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d2-quadratic.md
 - **스펙에서 벗어나면 안됨**
 
 #### D1 Private Voting 스펙
