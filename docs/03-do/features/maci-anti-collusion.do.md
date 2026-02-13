@@ -3,6 +3,7 @@
 > **Feature**: maci-anti-collusion
 > **Phase**: Do (Implementation)
 > **Created**: 2026-02-13
+> **Updated**: 2026-02-13
 > **Status**: IN PROGRESS
 > **Plan**: `docs/01-plan/features/maci-anti-collusion.plan.md`
 > **Design**: `docs/02-design/features/maci-anti-collusion.design.md`
@@ -13,11 +14,12 @@
 
 ### 1.1 사전 조건
 
-- [x] Plan 문서 완료 (`docs/01-plan/features/maci-anti-collusion.plan.md`)
-- [x] Design 문서 완료 (`docs/02-design/features/maci-anti-collusion.design.md`)
+- [x] Plan 문서 완료 (MACI 100% 반영)
+- [x] Design 문서 완료 (MACI 분리 패턴, 역순 처리, DuplexSponge, Quinary+AccQueue)
 - [x] D1/D2 Authoritative Spec 확보 (`docs/specs/d1-private-voting.spec.md`, `docs/specs/d2-quadratic.spec.md`)
 - [ ] circomlibjs 0.1.7 설치 확인 (`package.json`에 존재)
 - [ ] snarkjs 0.7.6 설치 확인 (`package.json`에 존재)
+- [ ] @noble/hashes 설치 (BLAKE512용)
 - [ ] Foundry (forge) 설치 확인
 - [ ] Circom 2.1.6 설치 확인
 
@@ -32,6 +34,9 @@ forge --version
 
 # Node 패키지 확인
 npm ls circomlibjs snarkjs
+
+# BLAKE512 패키지 (신규 필요)
+npm install @noble/hashes
 ```
 
 ---
@@ -40,40 +45,47 @@ npm ls circomlibjs snarkjs
 
 ```
                  ┌─ Step 1: Crypto 모듈 ──────────────────────────────┐
-                 │  (ECDH, Encrypt, EdDSA)                           │
+                 │  (ECDH, DuplexSponge, EdDSA, BLAKE512)             │
                  │  의존성: 없음                                       │
                  └────────────────────┬──────────────────────────────┘
                                       │
-    ┌─ Step 2: Merkle Tree ──────────┐│
-    │  (IncrementalMerkleTree.sol)   ││
-    │  의존성: 없음                   ││
-    └──────────────┬─────────────────┘│
-                   │                   │
-    ┌──────────────▼───────────────────▼─────────────────────────────┐
-    │  Step 3: PrivateVotingV2.sol                                   │
-    │  (메인 컨트랙트)                                                │
-    │  의존성: Step 2 (Merkle Tree)                                   │
+    ┌─ Step 2: AccQueue + Quinary ──┐│
+    │  (AccQueue.sol, PoseidonT3/T6)││
+    │  의존성: 없음                  ││
+    └──────────────┬────────────────┘│
+                   │                  │
+    ┌──────────────▼──────────────────▼─────────────────────────────┐
+    │  Step 3: MACI 분리 컨트랙트                                    │
+    │  (MACI.sol, Poll.sol, MessageProcessor.sol, Tally.sol,        │
+    │   VkRegistry, Gatekeepers, VoiceCreditProxy, DomainObjs)      │
+    │  의존성: Step 2                                                │
     └──────────────┬──────────────────┬──────────────────────────────┘
                    │                   │
     ┌──────────────▼───────┐  ┌───────▼──────────────────────────────┐
     │  Step 4:             │  │  Step 5:                             │
     │  MessageProcessor    │  │  TallyVotes                          │
     │  .circom             │  │  .circom                             │
-    │  의존성: Step 1, 3   │  │  의존성: Step 4                       │
+    │  (역순, index 0,     │  │  (tally commitment 3-input)          │
+    │   DuplexSponge,      │  │  의존성: Step 4                       │
+    │   SHA256, Quinary)   │  │                                      │
+    │  의존성: Step 1, 3   │  │                                      │
     └──────────┬───────────┘  └───────┬──────────────────────────────┘
                │                       │
     ┌──────────▼───────────────────────▼─────────────────────────────┐
     │  Step 6: Coordinator 서비스                                     │
+    │  (역순 처리, AccQueue merge, DuplexSponge 복호화)               │
     │  의존성: Step 3, 4, 5                                           │
     └──────────────┬─────────────────────────────────────────────────┘
                    │
     ┌──────────────▼─────────────────────────────────────────────────┐
     │  Step 7: 프론트엔드 V2                                          │
+    │  (VoteFormV2, MergingStatus, ProcessingStatus, KeyManager)     │
     │  의존성: Step 3, 6                                              │
     └──────────────┬─────────────────────────────────────────────────┘
                    │
     ┌──────────────▼─────────────────────────────────────────────────┐
     │  Step 8: Key Change 확장                                        │
+    │  (Anti-Coercion 완성)                                           │
     │  의존성: Step 4                                                 │
     └────────────────────────────────────────────────────────────────┘
 ```
@@ -84,252 +96,325 @@ npm ls circomlibjs snarkjs
 
 ## 3. Step별 구현 상세
 
-### Step 1: 암호화 인프라 모듈
+### Step 1: 암호화 인프라 모듈 (MACI 100% 매핑)
 
-**목표**: ECDH 키 교환, Poseidon 암호화, EdDSA 서명 — 프론트엔드와 Coordinator 공용
+**목표**: ECDH, Poseidon DuplexSponge, EdDSA, BLAKE512 — 프론트엔드와 Coordinator 공용
 
 **신규 파일**:
 
 | 파일 | LOC | 설명 |
 |------|:---:|------|
 | `src/crypto/ecdh.ts` | ~60 | ECDH 공유 비밀키 생성 (Baby Jubjub) |
-| `src/crypto/encrypt.ts` | ~80 | Poseidon 기반 대칭 암호화/복호화 |
-| `src/crypto/eddsa.ts` | ~60 | EdDSA 서명 생성/검증 |
+| `src/crypto/duplexSponge.ts` | ~80 | Poseidon DuplexSponge 암호화/복호화 |
+| `src/crypto/eddsa.ts` | ~60 | EdDSA-Poseidon 서명 생성/검증 |
+| `src/crypto/blake512.ts` | ~40 | BLAKE512 키 파생 (RFC 8032 스타일) |
 | `src/crypto/index.ts` | ~10 | 모듈 re-export |
 
 **구현 체크리스트**:
 
 - [ ] **`src/crypto/ecdh.ts`**
   - [ ] `generateECDHSharedKey(sk, otherPubKey)` — Baby Jubjub 스칼라 곱셈
-  - [ ] `generateEphemeralKeyPair()` — 임시 키쌍 생성
+  - [ ] `generateEphemeralKeyPair()` — 임시 키쌍 생성 (BLAKE512 파생)
   - [ ] 기존 `zkproof.ts`의 `buildBabyjub` 패턴 재사용
   - [ ] 단위 테스트: 양쪽에서 같은 shared key 도출 확인
 
-- [ ] **`src/crypto/encrypt.ts`**
-  - [ ] `poseidonEncrypt(plaintext[], sharedKey)` → `bigint[]`
-  - [ ] `poseidonDecrypt(ciphertext[], sharedKey)` → `bigint[]`
-  - [ ] CTR 모드: `ciphertext[i] = plaintext[i] + Poseidon(sharedKey, i)`
+- [ ] **`src/crypto/duplexSponge.ts`** (★ CTR 모드가 아닌 DuplexSponge)
+  - [ ] `poseidonDuplexSpongeEncrypt(plaintext[], sharedKey, nonce)` → `bigint[]`
+  - [ ] `poseidonDuplexSpongeDecrypt(ciphertext[], sharedKey, nonce)` → `bigint[]`
+  - [ ] Sponge 구조: state 초기화 → permutation → squeeze/absorb
+  - [ ] **참조**: MACI 원본 `@pse/zk-kit` 패키지 또는 `maci-crypto`
   - [ ] 단위 테스트: encrypt → decrypt 라운드트립
 
 - [ ] **`src/crypto/eddsa.ts`**
   - [ ] `eddsaSign(message, sk)` — EdDSA-Poseidon 서명
   - [ ] `eddsaVerify(message, signature, pubKey)` — 서명 검증
-  - [ ] `circomlibjs`의 `buildEddsa` 사용
+  - [ ] `circomlibjs`의 `buildEddsa` + `signPoseidon` 사용
   - [ ] 단위 테스트: sign → verify 성공/실패
+
+- [ ] **`src/crypto/blake512.ts`** (★ 신규 — MACI 키 파생)
+  - [ ] `derivePrivateKey(seed: Uint8Array)` → `bigint`
+  - [ ] BLAKE2b-512 해시 → pruning (RFC 8032) → Baby Jubjub suborder modular
+  - [ ] `@noble/hashes` 패키지 사용
+  - [ ] 단위 테스트: 동일 seed → 동일 sk, 유효한 Baby Jubjub 스칼라
 
 **핵심 참조 코드**:
 ```typescript
 // 기존 zkproof.ts에서 babyjub 사용 패턴 참고
-import { buildBabyjub, buildPoseidon } from 'circomlibjs'
+import { buildBabyjub, buildPoseidon, buildEddsa } from 'circomlibjs'
 // buildBabyjub().mulPointEscalar() → ECDH에 재사용
+// buildEddsa().signPoseidon() → EdDSA에 사용
 ```
 
-**완료 기준**: 모든 crypto 함수에 대해 단위 테스트 통과
+**완료 기준**: 모든 crypto 함수에 대해 단위 테스트 통과 (ECDH, DuplexSponge, EdDSA, BLAKE512)
 
 ---
 
-### Step 2: Incremental Merkle Tree 컨트랙트
+### Step 2: AccQueue + Quinary Tree 컨트랙트
 
-**목표**: State Tree, Message Tree 용 온체인 Incremental Merkle Tree
+**목표**: MACI의 Quinary AccQueue 패턴으로 온체인 트리 관리
 
 **신규 파일**:
 
 | 파일 | LOC | 설명 |
 |------|:---:|------|
-| `contracts/IncrementalMerkleTree.sol` | ~150 | Poseidon 기반 증분 머클 트리 |
-| `test/IncrementalMerkleTree.t.sol` | ~100 | Forge 테스트 |
+| `contracts/AccQueue.sol` | ~300 | Quinary (5-ary) 누적 큐 |
+| `contracts/PoseidonT3.sol` | ~700 | 2-input Poseidon (머클 내부 노드) |
+| `contracts/PoseidonT6.sol` | ~700 | 5-input Poseidon (Quinary 트리 해싱) |
+| `contracts/DomainObjs.sol` | ~20 | 공유 상수 (SNARK_SCALAR_FIELD 등) |
+| `test/AccQueue.t.sol` | ~200 | Forge 테스트 |
 
 **구현 체크리스트**:
 
-- [ ] **`contracts/IncrementalMerkleTree.sol`**
-  - [ ] `TREE_DEPTH = 20` 상수
-  - [ ] `zeros[20]` — 각 레벨의 zero 값 (Poseidon(0,0) 체인)
-  - [ ] `filledSubtrees[20]` — 현재 채워진 subtree 해시
-  - [ ] `nextIndex` — 다음 삽입 위치
-  - [ ] `root` — 현재 루트
-  - [ ] `insertLeaf(uint256 leaf)` → 루트 업데이트
-  - [ ] `_hashLeftRight(uint256 left, uint256 right)` → PoseidonT5 활용 (2-input은 별도 구현 필요)
-  - [ ] 기존 `PoseidonT5.sol` 재사용 (4-input), 2-input Poseidon 추가 필요
+- [ ] **`contracts/AccQueue.sol`** (★ Binary IMT 대신 Quinary AccQueue)
+  - [ ] `arity = 5` (quinary)
+  - [ ] `depth` — 구성 가능 (State: 10, Message: 10)
+  - [ ] `enqueue(uint256 leaf)` — leaf 추가, subtree 자동 빌드
+  - [ ] `mergeSubRoots(uint256 numOps)` — subtree roots 점진적 merge
+  - [ ] `merge()` — 최종 root 확정
+  - [ ] `getMainRoot()` — merge 후 root 조회
+  - [ ] 내부 해싱: PoseidonT6 (5-input) 사용
 
-- [ ] **Poseidon 2-input 해시**
-  - [ ] `PoseidonT3.sol` 추가 또는 `poseidon-solidity` npm 패키지에서 생성
-  - [ ] 머클 트리 내부 노드 해시에 사용
+- [ ] **`contracts/PoseidonT3.sol`** (2-input Poseidon)
+  - [ ] `poseidon-solidity` 패키지로 생성 또는 직접 구현
+  - [ ] 2-input 해시: Ballot 해싱, 내부 노드 해싱에 사용
+
+- [ ] **`contracts/PoseidonT6.sol`** (5-input Poseidon)
+  - [ ] Quinary 트리 노드 해싱에 필수
+  - [ ] State leaf 해싱: `poseidon_4` → PoseidonT5 (4-input) 사용
+  - [ ] AccQueue 노드: `poseidon_5` → PoseidonT6 (5-input) 사용
+
+- [ ] **`contracts/DomainObjs.sol`**
+  - [ ] `SNARK_SCALAR_FIELD` 상수
+  - [ ] `BLANK_STATE_LEAF_HASH` — Pedersen generator 기반 고정값
 
 - [ ] **테스트**
-  - [ ] 빈 트리 root 계산 일치
-  - [ ] leaf 삽입 후 root 변경 확인
-  - [ ] 20개 leaf 삽입 후 올바른 root
-  - [ ] TypeScript 측 동일 연산 결과와 일치 (cross-verification)
+  - [ ] 빈 AccQueue root 일치
+  - [ ] leaf enqueue 후 subtree 생성 확인
+  - [ ] mergeSubRoots + merge 후 올바른 root
+  - [ ] TypeScript 오프체인 Quinary tree와 root 일치 (cross-verification)
+  - [ ] 가스 사용량 프로파일링 (enqueue, merge)
 
 **핵심 참조**:
 ```solidity
 // 기존 PoseidonT5.sol (4-input) 패턴 참고
-// 2-input Poseidon은 poseidon-solidity 패키지로 생성 가능
-// npm: poseidon-solidity (이미 dependencies에 존재)
+// PoseidonT3/T6는 poseidon-solidity 패키지 또는 MACI 컨트랙트에서 참조
+// MACI GitHub: contracts/contracts/trees/AccQueue.sol
 ```
 
-**완료 기준**: 온체인/오프체인 Merkle root 일치 테스트 통과
+**완료 기준**: 온체인 AccQueue root == 오프체인 Quinary tree root (cross-verification)
 
 ---
 
-### Step 3: PrivateVotingV2.sol 메인 컨트랙트
+### Step 3: MACI 분리 컨트랙트
 
-**목표**: signUp → publishMessage → processMessages → tallyVotes 전체 흐름
+**목표**: MACI.sol + Poll.sol + MessageProcessor.sol + Tally.sol 분리 패턴
 
 **신규 파일**:
 
 | 파일 | LOC | 설명 |
 |------|:---:|------|
-| `contracts/PrivateVotingV2.sol` | ~400 | V2 메인 컨트랙트 |
-| `test/PrivateVotingV2.t.sol` | ~400 | Forge 테스트 |
+| `contracts/MACI.sol` | ~200 | signUp + deployPoll |
+| `contracts/Poll.sol` | ~250 | publishMessage + AccQueue merge |
+| `contracts/MessageProcessor.sol` | ~150 | processMessages (SHA256 공개입력) |
+| `contracts/Tally.sol` | ~200 | tallyVotes + publishResults |
+| `contracts/VkRegistry.sol` | ~80 | 검증키 레지스트리 |
+| `contracts/gatekeepers/ISignUpGatekeeper.sol` | ~10 | 인터페이스 |
+| `contracts/gatekeepers/FreeForAllGatekeeper.sol` | ~15 | 기본 구현 |
+| `contracts/voiceCreditProxy/IVoiceCreditProxy.sol` | ~10 | 인터페이스 |
+| `contracts/voiceCreditProxy/ConstantVoiceCreditProxy.sol` | ~15 | 기본 구현 |
+| `test/MACI.t.sol` | ~300 | MACI + Poll 테스트 |
+| `test/MessageProcessor.t.sol` | ~200 | MessageProcessor 테스트 |
+| `test/Tally.t.sol` | ~200 | Tally 테스트 |
 
 **구현 체크리스트**:
 
-- [ ] **Constants & State**
-  - [ ] `PHASE_VOTING = 0`, `PHASE_PROCESSING = 1`, `PHASE_FINALIZED = 2`
-  - [ ] `coordinator` address + `coordinatorPubKeyX/Y`
-  - [ ] `stateTree` (IncrementalMerkleTree)
-  - [ ] `messageTree` (IncrementalMerkleTree)
-  - [ ] `ProposalV2` struct (Design 4.1 참조)
+- [ ] **`contracts/MACI.sol`** (★ 기존 단일 컨트랙트에서 분리)
+  - [ ] `stateAq` — State AccQueue (quinary, depth 10)
+  - [ ] `signUpGatekeeper` — ISignUpGatekeeper
+  - [ ] `voiceCreditProxy` — IVoiceCreditProxy
+  - [ ] constructor: blank state leaf (index 0) enqueue
+  - [ ] `signUp(pubKeyX, pubKeyY, gatekeeperData, voiceCreditData)`
+    - [ ] Gatekeeper 검증
+    - [ ] VoiceCreditProxy 조회
+    - [ ] State leaf = `poseidon_4([pkX, pkY, balance, timestamp])` ← MACI 4-input
+    - [ ] stateAq.enqueue(leaf)
+    - [ ] emit SignUp event
+  - [ ] `deployPoll(title, duration, coordPubKey, verifier, vkRegistry, msgTreeDepth)`
+    - [ ] Poll + MessageProcessor + Tally 배포
+    - [ ] polls mapping 등록
+  - [ ] **revealVote 함수 없음** 확인
 
-- [ ] **`signUp(pubKeyX, pubKeyY, voiceCreditBalance)`**
-  - [ ] State leaf = Poseidon(pubKeyX, pubKeyY, 0, voiceCreditBalance)
-  - [ ] stateTree.insertLeaf(leaf)
-  - [ ] emit `SignedUp` event
-  - [ ] stateIndex 발급 (numSignUps++)
+- [ ] **`contracts/Poll.sol`** (★ 투표 전용)
+  - [ ] `messageAq` — Message AccQueue
+  - [ ] `coordinatorPubKeyX/Y`
+  - [ ] `publishMessage(encMessage[10], encPubKeyX, encPubKeyY)`
+    - [ ] Voting 기간 검증
+    - [ ] messageLeaf 해싱 (다단계 Poseidon)
+    - [ ] messageAq.enqueue(leaf)
+    - [ ] emit MessagePublished event (encMessage 전체 포함!)
+  - [ ] AccQueue merge 함수들 (투표 종료 후)
+    - [ ] `mergeMaciStateAqSubRoots(numOps)`
+    - [ ] `mergeMaciStateAq()`
+    - [ ] `mergeMessageAqSubRoots(numOps)`
+    - [ ] `mergeMessageAq()`
+  - [ ] `isVotingOpen()` view function
 
-- [ ] **`createProposalV2(title, description, votingDuration, processDeadline)`**
-  - [ ] proposalId 발급
-  - [ ] endTime, processDeadline 설정
-  - [ ] emit `ProposalCreatedV2` event
+- [ ] **`contracts/MessageProcessor.sol`** (★ State transition 검증)
+  - [ ] `processMessages(newStateCommitment, pA, pB, pC)`
+    - [ ] Voting 종료 확인
+    - [ ] AccQueue merge 완료 확인
+    - [ ] SHA256 public input 해시 구성 → Groth16 검증
+    - [ ] currentStateCommitment 업데이트
+  - [ ] `processingComplete` 플래그
 
-- [ ] **`publishMessage(proposalId, encMessage[7], encPubKeyX, encPubKeyY)`**
-  - [ ] Phase 검증: `block.timestamp <= endTime`
-  - [ ] messageLeaf 계산 (2-stage Poseidon hash)
-  - [ ] messageTree.insertLeaf(messageLeaf)
-  - [ ] emit `MessagePublished` event (encMessage 전체 포함!)
+- [ ] **`contracts/Tally.sol`** (★ 집계 검증)
+  - [ ] `tallyVotes(newTallyCommitment, pA, pB, pC)`
+    - [ ] processing 완료 확인
+    - [ ] SHA256 public input → Groth16 검증
+    - [ ] tallyCommitment 업데이트
+  - [ ] `publishResults(forVotes, againstVotes, abstainVotes, totalVoters, proof)`
+    - [ ] tallyCommitment과 Merkle 일치 검증
+    - [ ] 결과 기록, tallyVerified = true
 
-- [ ] **`processMessages(proposalId, newStateRoot, pA, pB, pC, pubSignals)`**
-  - [ ] `onlyCoordinator` modifier
-  - [ ] Phase 검증: 투표 종료 후
-  - [ ] ZKP 검증: `msgVerifier.verifyProof()`
-  - [ ] `stateTreeRoot = newStateRoot` 업데이트
+- [ ] **`contracts/VkRegistry.sol`**
+  - [ ] `setVerifyingKeys(stateTreeDepth, msgTreeDepth, processVk, tallyVk)`
+  - [ ] process/tally 회로별 검증키 저장
 
-- [ ] **`tallyVotes(proposalId, forVotes, againstVotes, abstainVotes, totalVoters, pA, pB, pC, pubSignals)`**
-  - [ ] `onlyCoordinator` modifier
-  - [ ] ZKP 검증: `tallyVerifier.verifyProof()`
-  - [ ] 결과 기록, `tallyVerified = true`
-
-- [ ] **View functions**
-  - [ ] `getProposalV2()` — 제안 상세
-  - [ ] `getPhaseV2()` — 현재 phase
-
-- [ ] **Verifier interfaces**
-  - [ ] `IMessageProcessorVerifier`
-  - [ ] `ITallyVerifier`
-
-- [ ] **revealVote 함수 없음 확인** (ABI에 reveal 관련 함수 0개)
-
-**기존 코드 참조**:
-- `ZkVotingFinal.sol` 구조 참고 (ProposalD1, IVerifierD1 패턴)
-- `PoseidonT5.sol` import
-- `Groth16Verifier.sol` verifyProof 시그니처
+- [ ] **Gatekeeper & VoiceCreditProxy**
+  - [ ] `ISignUpGatekeeper.register(user, data)`
+  - [ ] `FreeForAllGatekeeper` — 무조건 통과
+  - [ ] `IVoiceCreditProxy.getVoiceCredits(user, data)` → uint256
+  - [ ] `ConstantVoiceCreditProxy(amount)` — 고정 credit
 
 **테스트 체크리스트** (Design 12.1):
 
 | # | 테스트 | 상태 |
 |:-:|--------|:----:|
-| 1 | `test_SignUp` — stateIndex 발급, State Tree 업데이트 | [ ] |
-| 2 | `test_PublishMessage` — Message Tree 업데이트, 이벤트 | [ ] |
-| 3 | `test_PublishMessage_AfterVotingPhase` — revert | [ ] |
-| 4 | `test_ProcessMessages` — state root 업데이트 | [ ] |
-| 5 | `test_ProcessMessages_InvalidProof` — revert | [ ] |
-| 6 | `test_ProcessMessages_NotCoordinator` — revert | [ ] |
-| 7 | `test_TallyVotes` — 결과 기록 | [ ] |
-| 8 | `test_TallyVotes_InvalidProof` — revert | [ ] |
-| 9 | `test_TallyVotes_AlreadyFinalized` — revert | [ ] |
-| 10 | `test_NoRevealFunction` — ABI에 reveal 없음 | [ ] |
-| 11 | `test_IntegrationFlow` — 전체 흐름 | [ ] |
+| 1 | `test_MACI_SignUp` — stateIndex 발급, AccQueue 업데이트 | [ ] |
+| 2 | `test_MACI_SignUp_Gatekeeper` — Gatekeeper 실패 revert | [ ] |
+| 3 | `test_Poll_PublishMessage` — Message AccQueue 업데이트, 이벤트 | [ ] |
+| 4 | `test_Poll_PublishMessage_AfterVoting` — revert | [ ] |
+| 5 | `test_Poll_MergeAccQueues` — merge 후 root 확정 | [ ] |
+| 6 | `test_MessageProcessor_Process` — state commitment 업데이트 | [ ] |
+| 7 | `test_MessageProcessor_InvalidProof` — revert | [ ] |
+| 8 | `test_MessageProcessor_NotMerged` — merge 전 process revert | [ ] |
+| 9 | `test_Tally_TallyVotes` — tally commitment 업데이트 | [ ] |
+| 10 | `test_Tally_InvalidProof` — revert | [ ] |
+| 11 | `test_Tally_PublishResults` — 결과 기록 | [ ] |
+| 12 | `test_NoRevealFunction` — 모든 ABI에 reveal 없음 | [ ] |
+| 13 | `test_IntegrationFlow` — signUp → publish → merge → process → tally | [ ] |
 
-**완료 기준**: 11개 테스트 전체 통과, `forge test` 성공
+**완료 기준**: 13개 테스트 전체 통과, `forge test` 성공
 
 ---
 
-### Step 4: MessageProcessor 회로
+### Step 4: MessageProcessor 회로 (MACI 100% 반영)
 
-**목표**: 메시지 복호화 → EdDSA 검증 → State transition 증명
+**목표**: 역순 처리 + index 0 라우팅 + DuplexSponge + SHA256 + Quinary
 
 **신규 파일**:
 
 | 파일 | LOC | 설명 |
 |------|:---:|------|
-| `circuits/MessageProcessor.circom` | ~300 | State transition 검증 회로 |
-| `circuits/utils/ecdh.circom` | ~30 | ECDH 키 교환 circom |
-| `circuits/utils/poseidonEncrypt.circom` | ~50 | Poseidon 암호화 circom |
+| `circuits/MessageProcessor.circom` | ~400 | State transition 검증 (MACI 완전 반영) |
+| `circuits/utils/quinaryMerkleProof.circom` | ~60 | Quinary (5-ary) Merkle proof |
+| `circuits/utils/duplexSponge.circom` | ~80 | Poseidon DuplexSponge |
+| `circuits/utils/sha256Hasher.circom` | ~40 | SHA256 public input 해싱 |
+| `circuits/utils/unpackCommand.circom` | ~40 | Binary-packed command → fields |
 
 **구현 체크리스트**:
 
-- [ ] **Public Inputs**
-  - [ ] `inputStateRoot` — 처리 전 state root
-  - [ ] `outputStateRoot` — 처리 후 state root
-  - [ ] `inputMessageRoot` — 메시지 트리 root
-  - [ ] `coordinatorPubKeyX/Y` — Coordinator 공개키
+- [ ] **Public Inputs (SHA256 압축)**
+  - [ ] `inputHash` — SHA256(모든 public values) % SNARK_SCALAR_FIELD
+  - [ ] 내부: inputStateRoot, outputStateRoot, inputBallotRoot, outputBallotRoot, inputMessageRoot, coordPubKeyHash, batchStartIndex, batchEndIndex
 
 - [ ] **Private Inputs (per message)**
-  - [ ] `messages[batchSize][7]` — 암호화 메시지
+  - [ ] `messages[batchSize][10]` — DuplexSponge 암호화 (10 필드)
   - [ ] `encPubKeys[batchSize][2]` — 임시 공개키
   - [ ] `coordinatorSk` — Coordinator 비밀키
+  - [ ] `stateLeaves[batchSize][4]` — [pkX, pkY, balance, timestamp]
+  - [ ] `ballots[batchSize]` — ballot hashes
+  - [ ] `stateProofs[batchSize][]` — Quinary Merkle proofs
+  - [ ] `messageProofs[batchSize][]` — Quinary Merkle proofs
 
-- [ ] **Per-message 로직**
-  - [ ] ECDH: `sharedKey = coordinatorSk * encPubKey`
-  - [ ] Poseidon 복호화: `command = decrypt(message, sharedKey)`
-  - [ ] EdDSA 서명 검증
-  - [ ] Nonce 순서 검증
-  - [ ] State leaf 업데이트
-  - [ ] State tree root 재계산
+- [ ] **Per-message 로직** (★ 역순 처리)
+  - [ ] messages[0] = 가장 마지막 메시지 (MACI 핵심)
+  - [ ] ECDH: `sharedKey = coordinatorSk * encPubKey` (Baby Jubjub)
+  - [ ] Poseidon DuplexSponge 복호화 (★ CTR이 아님)
+  - [ ] Command unpack (binary → stateIndex, newPubKey, voteOption, weight, nonce, pollId, salt)
+  - [ ] EdDSA-Poseidon 서명 검증
+  - [ ] 유효성 검증:
+    - [ ] stateIndex < numSignUps
+    - [ ] nonce === ballot.nonce + 1
+    - [ ] voiceCreditBalance + (currentWeight² - newWeight²) >= 0
+    - [ ] newVoteWeight < sqrt(SNARK_FIELD)
+    - [ ] voteOptionIndex < maxVoteOptions
+  - [ ] ★ 유효/무효 분기 (Mux):
+    - [ ] isValid ? stateIndex : 0 (★ blank leaf로 라우팅)
+    - [ ] 회로 내에서 무효 → index 0 적용 증명
+  - [ ] State leaf 업데이트: `poseidon_4([newPkX, newPkY, newBalance, timestamp])`
+  - [ ] Ballot 업데이트: `poseidon_2([newNonce, newVoteOptionRoot])`
+  - [ ] Quinary State Tree root 재계산
+  - [ ] Quinary Ballot Tree root 재계산
 
-- [ ] **기존 회로 재사용**
-  - [ ] `MerkleProof` template (PrivateVoting.circom:25-59)
-  - [ ] `SecretToPublic` template (PrivateVoting.circom:62-72)
-  - [ ] Poseidon hash (circomlib)
+- [ ] **`circuits/utils/quinaryMerkleProof.circom`** (★ Binary → Quinary)
+  - [ ] `QuinaryMerkleProof(depth)` template
+  - [ ] `path_index[depth]` — 0~4 (5-ary 위치)
+  - [ ] `path_elements[depth][4]` — 형제 노드 (5-1=4개)
+  - [ ] Poseidon(5) 해싱 (PoseidonT6)
+
+- [ ] **`circuits/utils/duplexSponge.circom`** (★ CTR → DuplexSponge)
+  - [ ] `PoseidonDuplexSpongeDecrypt(length)` template
+  - [ ] Sponge state 관리
+  - [ ] field subtraction으로 복호화
+
+- [ ] **`circuits/utils/sha256Hasher.circom`** (★ 신규)
+  - [ ] SHA256 해싱 (circomlib의 sha256 사용)
+  - [ ] public input을 SHA256으로 압축 → 단일 uint256
+
+- [ ] **기존 회로 참조** (수정 필요)
+  - [ ] `MerkleProof` → `QuinaryMerkleProof`로 대체
+  - [ ] `SecretToPublic` template — 재사용
 
 - [ ] **컴파일 & 테스트**
-  - [ ] `circom MessageProcessor.circom --r1cs --wasm --sym`
-  - [ ] witness 생성 테스트 (유효 메시지)
-  - [ ] witness 생성 실패 테스트 (무효 서명)
+  - [ ] `circom circuits/MessageProcessor.circom --r1cs --wasm --sym`
+  - [ ] witness 생성: 유효 메시지 (state transition)
+  - [ ] witness 생성: 무효 서명 → index 0 라우팅
+  - [ ] witness 생성: 역순 처리 검증
+  - [ ] SHA256 해시 일치 (온체인 vs 회로)
 
 **예상 Constraint 수**: ~500K~1M (batchSize에 따라)
 
-**완료 기준**: 유효/무효 메시지에 대한 witness 생성 성공/실패
+**완료 기준**: 유효/무효/역순 메시지에 대한 witness 생성 성공 + SHA256 일치
 
 ---
 
 ### Step 5: TallyVotes 회로
 
-**목표**: 최종 state에서 투표 집계 정확성 증명
+**목표**: 최종 state에서 투표 집계 + tally commitment 3-input
 
 **신규 파일**:
 
 | 파일 | LOC | 설명 |
 |------|:---:|------|
-| `circuits/TallyVotes.circom` | ~150 | 집계 검증 회로 |
+| `circuits/TallyVotes.circom` | ~200 | 집계 검증 회로 |
 
 **구현 체크리스트**:
 
-- [ ] **Public Inputs**
-  - [ ] `stateRoot` — 최종 state root
-  - [ ] `tallyCommitment` — 이전 집계 commitment
-  - [ ] `newTallyCommitment` — 업데이트된 집계 commitment
+- [ ] **Public Inputs (SHA256 압축)**
+  - [ ] `inputHash` — SHA256(stateCommitment, tallyCommitment, newTallyCommitment, batchNum) % p
 
 - [ ] **로직**
-  - [ ] 배치 내 각 state leaf의 Merkle inclusion 검증
-  - [ ] voteWeight가 voteOptionTree에서 정확한지 검증
-  - [ ] 집계 합산: `tally[option] += voteWeight`
-  - [ ] newTallyCommitment = Poseidon(tally[0], tally[1], ...)
+  - [ ] 배치 내 각 state leaf의 Quinary Merkle inclusion 검증
+  - [ ] Ballot에서 각 option의 voteWeight 검증
+  - [ ] 집계 합산: `newTally[option] = currentTally[option] + voteWeight`
 
-- [ ] **D1/D2 모드 분기**
+- [ ] **Tally commitment (★ MACI 3-input)**
+  - [ ] `newTallyCommitment = poseidon_3([tallyResultsRoot, totalSpentVoiceCredits, perVoteOptionSpentRoot])`
   - [ ] D1: `tally += votingPower` (1:1)
-  - [ ] D2: `tally += numVotes` (quadratic cost는 이미 MessageProcessor에서 검증)
+  - [ ] D2: `tally += numVotes` (quadratic cost는 MessageProcessor에서 이미 검증)
+
+- [ ] **SHA256 input hash 검증**
 
 - [ ] **컴파일 & 테스트**
 
@@ -339,9 +424,9 @@ import { buildBabyjub, buildPoseidon } from 'circomlibjs'
 
 ---
 
-### Step 6: Coordinator 서비스
+### Step 6: Coordinator 서비스 (MACI 워크플로우)
 
-**목표**: 오프체인 메시지 처리 + ZKP 생성 + 온체인 제출
+**목표**: 역순 메시지 처리 + AccQueue merge + DuplexSponge 복호화 + ZKP 생성
 
 **신규 디렉토리**:
 
@@ -351,14 +436,18 @@ coordinator/
 │   ├── index.ts              # 메인 엔트리
 │   ├── crypto/
 │   │   ├── ecdh.ts           # ECDH (src/crypto 재사용)
-│   │   ├── encrypt.ts        # Poseidon 복호화
-│   │   └── eddsa.ts          # EdDSA 검증
+│   │   ├── duplexSponge.ts   # DuplexSponge 복호화
+│   │   ├── eddsa.ts          # EdDSA 검증
+│   │   ├── blake512.ts       # BLAKE512 키 파생
+│   │   └── sha256.ts         # SHA256 public input 해싱
 │   ├── trees/
+│   │   ├── quinaryTree.ts    # Quinary Merkle Tree
 │   │   ├── stateTree.ts      # State Tree 관리
+│   │   ├── ballotTree.ts     # Ballot Tree 관리 (★ 신규)
 │   │   ├── messageTree.ts    # Message Tree 관리
-│   │   └── voteOptionTree.ts # Vote Option Tree (per user)
+│   │   └── accQueue.ts       # AccQueue 오프체인 재구축
 │   ├── processing/
-│   │   ├── processMessages.ts # 메시지 순차 처리
+│   │   ├── processMessages.ts # ★ 역순 메시지 처리
 │   │   ├── tally.ts          # 투표 집계
 │   │   └── batchProof.ts     # 배치 ZKP 생성 (snarkjs)
 │   └── chain/
@@ -371,33 +460,54 @@ coordinator/
 **구현 체크리스트**:
 
 - [ ] **이벤트 리스너** (`chain/listener.ts`)
-  - [ ] `SignedUp` 이벤트 수신 → State Tree 동기화
+  - [ ] `SignUp` 이벤트 수신 → State Tree 동기화
   - [ ] `MessagePublished` 이벤트 수신 → Message 저장
-  - [ ] `ProposalCreatedV2` 이벤트 수신 → 타이머 설정
+  - [ ] `DeployPoll` 이벤트 수신
 
-- [ ] **메시지 처리** (`processing/processMessages.ts`)
-  - [ ] 모든 메시지 순차 처리 (Design 6.2 시퀀스)
-  - [ ] ECDH 복호화 → EdDSA 검증 → Nonce 검증
-  - [ ] State leaf 업데이트
-  - [ ] 무효 메시지 스킵 로직
+- [ ] **Quinary Tree** (`trees/quinaryTree.ts`)
+  - [ ] Quinary (5-ary) Merkle Tree 구현
+  - [ ] Poseidon(5) 해싱
+  - [ ] insert, update, getLeaf, getProof, root
+
+- [ ] **AccQueue 오프체인** (`trees/accQueue.ts`)
+  - [ ] 온체인 AccQueue와 동일한 로직 재현
+  - [ ] enqueue + merge로 오프체인 트리 재구축
+
+- [ ] **★ 역순 메시지 처리** (`processing/processMessages.ts`)
+  - [ ] `[...messages].reverse()` — 마지막 → 처음
+  - [ ] ECDH 복호화 (Poseidon DuplexSponge, ★ CTR이 아님)
+  - [ ] Command unpack (binary → fields)
+  - [ ] EdDSA 서명 검증
+  - [ ] 유효성 검증 (nonce, credit, range)
+  - [ ] ★ 유효 → State/Ballot transition 적용
+  - [ ] ★ 무효 → blank leaf (index 0)로 라우팅
+
+- [ ] **AccQueue merge 호출** (`chain/submitter.ts`)
+  - [ ] `poll.mergeMaciStateAqSubRoots(0)`
+  - [ ] `poll.mergeMaciStateAq()`
+  - [ ] `poll.mergeMessageAqSubRoots(0)`
+  - [ ] `poll.mergeMessageAq()`
 
 - [ ] **D1/D2 분기** (`processing/processMessages.ts`)
-  - [ ] `calculateCost(weight, mode)` — D1: linear, D2: quadratic
-  - [ ] voiceCreditBalance 차감
+  - [ ] D1: linear cost (`newWeight - currentWeight`)
+  - [ ] D2: quadratic cost (`newWeight² - currentWeight²`)
 
 - [ ] **집계** (`processing/tally.ts`)
-  - [ ] 최종 State Tree에서 모든 유효 투표 합산
+  - [ ] 최종 State + Ballot Tree에서 모든 유효 투표 합산
+  - [ ] tallyCommitment = `poseidon_3([votesRoot, totalSpent, perOptionSpent])`
   - [ ] D1: `{forVotes, againstVotes, abstainVotes}`
   - [ ] D2: `{forVotes, againstVotes}` (abstain 없음)
 
 - [ ] **ZKP 생성** (`processing/batchProof.ts`)
   - [ ] snarkjs로 processMessages proof 생성
   - [ ] snarkjs로 tallyVotes proof 생성
+  - [ ] SHA256 public input 해시 생성
   - [ ] `.wasm` + `.zkey` 파일 경로 설정
 
 - [ ] **온체인 제출** (`chain/submitter.ts`)
-  - [ ] `processMessages()` tx 제출
-  - [ ] `tallyVotes()` tx 제출
+  - [ ] `messageProcessor.processMessages()` tx
+  - [ ] `tally.tallyVotes()` tx
+  - [ ] `tally.publishResults()` tx
   - [ ] gas estimation + 에러 핸들링
 
 **주요 의존성**:
@@ -406,84 +516,95 @@ coordinator/
   "dependencies": {
     "ethers": "^6.x",
     "snarkjs": "^0.7.6",
-    "circomlibjs": "^0.1.7"
+    "circomlibjs": "^0.1.7",
+    "@noble/hashes": "^1.x"
   }
 }
 ```
 
-**완료 기준**: 로컬 Hardhat 네트워크에서 전체 플로우 (signUp → publish → process → tally) 성공
+**완료 기준**: 로컬 Hardhat 네트워크에서 전체 플로우 (signUp → publish → merge → process → tally → results) 성공
 
 ---
 
 ### Step 7: 프론트엔드 V2
 
-**목표**: Reveal 제거, 암호화 투표 UI, Processing 대기 화면
+**목표**: DuplexSponge 암호화 투표 + AccQueue merge 대기 + Processing 대기
 
 **신규 파일**:
 
 | 파일 | LOC | 설명 |
 |------|:---:|------|
-| `src/components/voting/VoteFormV2.tsx` | ~200 | 암호화 투표 폼 |
+| `src/components/voting/VoteFormV2.tsx` | ~200 | DuplexSponge 암호화 투표 폼 |
+| `src/components/voting/MergingStatus.tsx` | ~60 | AccQueue merge 대기 UI |
 | `src/components/voting/ProcessingStatus.tsx` | ~80 | "집계 진행 중" UI |
 | `src/components/voting/KeyManager.tsx` | ~150 | 키 관리/변경 UI |
-| `src/contractV2.ts` | ~200 | V2 ABI + 주소 |
+| `src/contractV2.ts` | ~300 | V2 ABI (MACI + Poll + MP + Tally) |
 
 **수정 파일**:
 
 | 파일 | 변경 | 위험도 |
 |------|------|:------:|
-| `src/components/QuadraticVotingDemo.tsx` | V2 모드 분기, Phase 변경 | 높음 |
-| `src/zkproof.ts` | ECDH/EdDSA import, encryptCommand 추가 | 높음 |
+| `src/components/QuadraticVotingDemo.tsx` | V2 모드 분기, 4-Phase 변경 | 높음 |
+| `src/zkproof.ts` | ECDH/EdDSA/DuplexSponge import | 높음 |
 | `src/contract.ts` | V2 ABI/주소 추가 | 중 |
-| `src/components/voting/PhaseIndicator.tsx` | V2 Phase (Voting/Processing/Finalized) | 낮음 |
+| `src/components/voting/PhaseIndicator.tsx` | V2 Phase (Voting/Merging/Processing/Finalized) | 낮음 |
 | `src/components/voting/VoteResult.tsx` | tallyVerified 표시 | 낮음 |
 
 **구현 체크리스트**:
 
 - [ ] **`src/contractV2.ts`**
-  - [ ] PrivateVotingV2 ABI 정의
+  - [ ] MACI ABI (signUp, deployPoll)
+  - [ ] Poll ABI (publishMessage, merge 함수들, isVotingOpen)
+  - [ ] MessageProcessor ABI
+  - [ ] Tally ABI (tallyVotes, publishResults)
   - [ ] 배포 주소 (추후 업데이트)
-  - [ ] V2 전용 타입
 
-- [ ] **`VoteFormV2.tsx`**
+- [ ] **`VoteFormV2.tsx`** (Design 9.3 참조)
   - [ ] 투표 선택 UI (D1: 3옵션, D2: 2옵션)
-  - [ ] ECDH 암호화 로직 (handleVoteV2, Design 9.4)
-  - [ ] `publishMessage()` 호출
+  - [ ] BLAKE512 키 파생 → ECDH → DuplexSponge 암호화
+  - [ ] Command binary packing (pollId 포함)
+  - [ ] EdDSA 서명 (Poseidon)
+  - [ ] `Poll.publishMessage()` 호출
   - [ ] nonce 관리 (localStorage)
   - [ ] **Reveal 관련 코드 없음** 확인
 
+- [ ] **`MergingStatus.tsx`** (★ 신규 — AccQueue merge 대기)
+  - [ ] Phase == Merging 시 표시
+  - [ ] "AccQueue 병합 중입니다" 메시지
+  - [ ] merge 진행률 표시 (stateAqMerged, messageAqMerged)
+
 - [ ] **`ProcessingStatus.tsx`**
-  - [ ] Phase == PROCESSING 시 대기 UI
+  - [ ] Phase == Processing 시 표시
   - [ ] "Coordinator가 집계 중입니다" 메시지
-  - [ ] 예상 완료 시간 표시
+  - [ ] 예상 완료 시간
 
 - [ ] **`KeyManager.tsx`**
   - [ ] 현재 EdDSA 키 표시 (공개키만)
-  - [ ] "키 변경" 버튼 → 새 키쌍 생성 → publishMessage(keyChange)
+  - [ ] "키 변경" 버튼 → BLAKE512로 새 키 파생 → publishMessage(keyChange)
   - [ ] 키 변경 확인 UI
 
 - [ ] **`QuadraticVotingDemo.tsx` 수정**
-  - [ ] V1/V2 모드 토글 또는 V2 전용
-  - [ ] Phase: Voting / Processing / Finalized
+  - [ ] V1/V2 모드 분기
+  - [ ] Phase: Voting / Merging / Processing / Finalized (4단계)
   - [ ] RevealForm 렌더링 조건 제거
 
 - [ ] **폐기 확인**
-  - [ ] `RevealForm.tsx` — V2에서 import 없음 확인
-  - [ ] localStorage reveal 데이터 저장 코드 — 제거/분기
+  - [ ] `RevealForm.tsx` — V2에서 import 없음
+  - [ ] localStorage reveal 데이터 코드 — 제거/분기
 
-**완료 기준**: 프론트엔드에서 V2 투표 전체 흐름 동작
+**완료 기준**: 프론트엔드에서 V2 투표 전체 흐름 동작 (4-Phase)
 
 ---
 
-### Step 8: Key Change 확장
+### Step 8: Key Change 확장 (Anti-Coercion 완성)
 
-**목표**: 투표 기간 중 키 변경으로 Anti-Coercion 완성
+**목표**: 투표 기간 중 키 변경으로 MACI 7대 보안 속성 전체 충족
 
 **수정 파일**:
 
 | 파일 | 변경 |
 |------|------|
-| `circuits/MessageProcessor.circom` | key change 분기 로직 |
+| `circuits/MessageProcessor.circom` | key change 분기 + 역순 처리 통합 |
 | `coordinator/src/processing/processMessages.ts` | key change 처리 |
 | `src/components/voting/KeyManager.tsx` | UI 완성 |
 
@@ -491,24 +612,27 @@ coordinator/
 
 - [ ] **MessageProcessor 회로 확장**
   - [ ] `if (newPubKey != currentPubKey)` → 키 변경
-  - [ ] 이전 키로 서명된 후속 메시지 무효화
+  - [ ] 이전 키로 서명된 후속 메시지 → 역순 처리에서 자동 무효 → index 0
   - [ ] state leaf의 pubKey 업데이트
 
 - [ ] **Coordinator 처리**
   - [ ] key change 감지 및 적용
-  - [ ] 이전 키 서명 무효 처리
+  - [ ] 역순 처리에서 자연스럽게 이전 키 무효화
   - [ ] 투표 리셋 처리
 
-- [ ] **시나리오 테스트** (Design 12.3):
+- [ ] **MACI 7대 속성 시나리오 테스트** (Design 12.3):
 
-| # | 시나리오 | 상태 |
-|:-:|---------|:----:|
-| 1 | 강압 투표 후 키 변경 + 재투표 → 재투표가 최종 | [ ] |
-| 2 | 매수자가 투표 내용 확인 시도 → 암호화로 불가 | [ ] |
-| 3 | 매수자에게 이전 키 제공 → 키 변경됨, 무효 투표 | [ ] |
-| 4 | Coordinator가 투표 누락 시도 → proof 실패 | [ ] |
+| # | MACI 속성 | 시나리오 | 상태 |
+|:-:|----------|---------|:----:|
+| 1 | Collusion Resistance | 매수자가 투표 확인 시도 → DuplexSponge 불가 | [ ] |
+| 2 | Receipt-freeness | 강압 투표 후 Key Change → 역순 처리 → 재투표 최종 | [ ] |
+| 3 | Privacy | 온체인에 choice 평문 없음 | [ ] |
+| 4 | Uncensorability | Coordinator 투표 누락 → AccQueue 포함 후 proof 실패 | [ ] |
+| 5 | Unforgeability | 잘못된 EdDSA 서명 → index 0 라우팅 | [ ] |
+| 6 | Non-repudiation | 동일 stateIndex 재투표 → 이전 투표 대체 | [ ] |
+| 7 | Correct Execution | 잘못된 tally proof → revert | [ ] |
 
-**완료 기준**: 4개 anti-coercion 시나리오 테스트 통과
+**완료 기준**: 7개 MACI 보안 속성 시나리오 테스트 전체 통과
 
 ---
 
@@ -518,10 +642,9 @@ coordinator/
 
 | 기존 파일 | V2에서의 역할 |
 |-----------|-------------|
-| `contracts/PoseidonT5.sol` | State leaf 해싱 |
+| `contracts/PoseidonT5.sol` | State leaf 해싱 (4-input) |
 | `contracts/Groth16Verifier.sol` | 투표 자격 검증 (signUp 시) |
-| `circuits/PrivateVoting.circom` → `MerkleProof` template | State/Message Tree 검증 |
-| `circuits/PrivateVoting.circom` → `SecretToPublic` template | 키 소유권 증명 |
+| `circuits/PrivateVoting.circom` → `SecretToPublic` | 키 소유권 증명 |
 | `src/workers/proofWorkerHelper.ts` | Web Worker 증명 생성 |
 | `src/workers/zkProofWorker.ts` | Web Worker |
 
@@ -529,9 +652,10 @@ coordinator/
 
 | 기존 파일 | 변경 사항 |
 |-----------|----------|
-| `src/zkproof.ts` | ECDH/EdDSA 함수 추가, `generateVoteProofV2()` 추가 |
+| `src/zkproof.ts` | ECDH/EdDSA/DuplexSponge import, `generateVoteProofV2()` 추가 |
 | `src/contract.ts` | V2 ABI/주소 export 추가 |
-| `src/hooks/useVotingMachine.ts` | V2 상태 머신 분기 |
+| `src/hooks/useVotingMachine.ts` | V2 4-Phase 상태 머신 분기 |
+| `circuits/PrivateVoting.circom` → `MerkleProof` | **QuinaryMerkleProof로 대체** |
 
 ### 4.3 V2 완성 후 폐기 대상
 
@@ -573,9 +697,11 @@ coordinator/
 
 | 위험 | 영향 | 대응 |
 |------|------|------|
-| PoseidonT3 (2-input) 온체인 없음 | Merkle Tree 빌드 불가 | `poseidon-solidity` 패키지에서 생성 |
+| PoseidonT3/T6 온체인 없음 | AccQueue 빌드 불가 | `poseidon-solidity` 패키지 또는 MACI 소스 참조 |
+| AccQueue 가스 비용 높음 | merge 트랜잭션 실패 | 점진적 merge (numSrQueueOps 조절) |
 | MessageProcessor 회로 너무 큼 | 증명 시간 수십 분 | batchSize 줄이기 (5→1), 서버사이드 증명 |
-| Trusted Setup 필요 | 보안 신뢰 의존 | Powers of Tau ceremony 재사용 |
+| DuplexSponge circom 복잡 | 구현 난이도 높음 | MACI의 circom-ecdsa 또는 zk-kit circom 참조 |
+| Trusted Setup 필요 | 보안 신뢰 | Powers of Tau ceremony 재사용 |
 | Coordinator 단일 장애점 | 집계 지연 | processDeadline + backup coordinator |
 | V1↔V2 병행 시 상태 혼란 | 사용자 혼란 | V2 전용 UI, V1은 읽기 전용 |
 
@@ -586,13 +712,13 @@ coordinator/
 ```
 main
   └── feature/maci-v2-core
-        ├── feature/maci-crypto        (Step 1)
-        ├── feature/maci-merkle-tree   (Step 2)
-        ├── feature/maci-contract-v2   (Step 3)
-        ├── feature/maci-circuits      (Step 4, 5)
-        ├── feature/maci-coordinator   (Step 6)
-        ├── feature/maci-frontend-v2   (Step 7)
-        └── feature/maci-key-change    (Step 8)
+        ├── feature/maci-crypto          (Step 1: ECDH, DuplexSponge, EdDSA, BLAKE512)
+        ├── feature/maci-accqueue        (Step 2: AccQueue, PoseidonT3/T6)
+        ├── feature/maci-contracts-v2    (Step 3: MACI.sol, Poll.sol, MP.sol, Tally.sol)
+        ├── feature/maci-circuits-v2     (Step 4, 5: MessageProcessor, TallyVotes)
+        ├── feature/maci-coordinator     (Step 6: 역순 처리, AccQueue merge)
+        ├── feature/maci-frontend-v2     (Step 7: 4-Phase UI)
+        └── feature/maci-key-change      (Step 8: Anti-Coercion)
 ```
 
 **권장**: Step 1~3 완료 후 중간 PR → 리뷰 → Step 4~8 진행
@@ -603,13 +729,17 @@ main
 
 ```bash
 # Step 1: Crypto 모듈 테스트
+npm install @noble/hashes  # BLAKE512 의존성
 npx vitest run src/crypto/
 
-# Step 2: Merkle Tree 테스트
-forge test --match-contract IncrementalMerkleTreeTest -vvv
+# Step 2: AccQueue 테스트
+forge test --match-contract AccQueueTest -vvv
 
 # Step 3: V2 컨트랙트 테스트
-forge test --match-contract PrivateVotingV2Test -vvv
+forge test --match-contract MACITest -vvv
+forge test --match-contract PollTest -vvv
+forge test --match-contract MessageProcessorTest -vvv
+forge test --match-contract TallyTest -vvv
 
 # Step 4: 회로 컴파일
 circom circuits/MessageProcessor.circom --r1cs --wasm --sym -o circuits/build_v2/
@@ -634,3 +764,4 @@ forge test && npx vitest run
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-02-13 | AI | Design 기반 초기 Do 가이드 작성 |
+| 2026-02-13 | AI | MACI 100% 반영 업데이트: DuplexSponge, BLAKE512, AccQueue+Quinary, MACI 분리 컨트랙트, 역순 처리, index 0 라우팅, SHA256, Ballot Tree, tally commitment 3-input, 4-Phase UI |
