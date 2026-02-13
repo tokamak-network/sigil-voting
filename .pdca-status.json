@@ -25,5 +25,18 @@
       "report": null
     },
     "tasks": []
+  },
+  "service-launch-marketing": {
+    "phase": "plan",
+    "matchRate": null,
+    "iterationCount": 0,
+    "startedAt": "2026-02-13T00:00:00Z",
+    "documents": {
+      "plan": "docs/01-plan/features/service-launch-marketing.plan.md",
+      "design": null,
+      "analysis": null,
+      "report": null
+    },
+    "tasks": []
   }
 }
