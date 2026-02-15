@@ -88,29 +88,25 @@ export interface Translations {
     descPlaceholder: string
     durationLabel: string
     durationHours: string
-    modeLabel: string
-    modeD1: string
-    modeD1Desc: string
-    modeD2: string
-    modeD2Desc: string
     submit: string
     submitting: string
+    error: string
   }
   voteForm: {
     title: string
     desc: string
     against: string
     for: string
-    abstain: string
     weightLabel: string
     cost: string
     credits: string
+    costWarning: string
     submit: string
     submitting: string
     success: string
     error: string
-    modeD1Label: string
-    modeD2Label: string
+    errorGas: string
+    errorRejected: string
   }
   keyManager: {
     title: string
@@ -123,6 +119,7 @@ export interface Translations {
     changing: string
     cancel: string
     success: string
+    error: string
   }
   merging: {
     title: string

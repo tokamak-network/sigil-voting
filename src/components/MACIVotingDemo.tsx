@@ -312,6 +312,7 @@ export function MACIVotingDemo() {
                     </div>
                     <VoteFormV2
                       pollId={pollId!}
+                      pollAddress={pollAddress!}
                       coordinatorPubKeyX={COORD_PUB_KEY_X}
                       coordinatorPubKeyY={COORD_PUB_KEY_Y}
                       onVoteSubmitted={() => setTxHash(null)}

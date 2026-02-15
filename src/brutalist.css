@@ -4014,3 +4014,100 @@ h1, h2, h3, h4, h5, h6 {
 .submit-poll-btn {
   width: 100%;
 }
+
+/* ============================================
+   CHOICE BUTTON DISABLED STATE
+   ============================================ */
+.choice-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   COST WARNING COLORS
+   ============================================ */
+.weight-input .cost.cost-medium {
+  color: #b45309;
+}
+
+.weight-input .cost.cost-high {
+  color: #dc2626;
+}
+
+.cost-warning {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #dc2626;
+  margin-top: 4px;
+}
+
+/* ============================================
+   MOBILE RESPONSIVENESS (<768px)
+   ============================================ */
+@media (max-width: 767px) {
+  .brutalist-header {
+    padding: 0 12px;
+  }
+
+  .brutalist-card {
+    padding: 20px 16px;
+  }
+
+  .stepper {
+    gap: 4px;
+  }
+
+  .stepper-circle {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .stepper-label {
+    font-size: 10px;
+  }
+
+  .stepper-line {
+    min-width: 20px;
+  }
+
+  .choices {
+    gap: 8px;
+  }
+
+  .choice-btn {
+    padding: 12px 8px;
+    font-size: 13px;
+  }
+
+  .weight-input input {
+    padding: 10px;
+  }
+
+  .submit-btn {
+    padding: 14px;
+    font-size: 13px;
+  }
+
+  .poll-info {
+    font-size: 13px;
+  }
+
+  .poll-addr {
+    display: none;
+  }
+
+  .create-poll-form {
+    gap: 16px;
+  }
+
+  .confirm-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .brutalist-why-maci .why-maci-cards {
+    grid-template-columns: 1fr;
+  }
+}

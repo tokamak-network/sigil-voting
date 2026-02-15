@@ -79,7 +79,7 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create proposal')
+      setError(err instanceof Error ? err.message : t.createPoll.error)
     } finally {
       setIsSubmitting(false)
     }

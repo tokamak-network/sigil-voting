@@ -15,11 +15,12 @@
 
 import { useState } from 'react';
 import { useWriteContract, useAccount } from 'wagmi';
-import { POLL_ABI, POLL_V2_ADDRESS } from '../../contractV2';
+import { POLL_ABI } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 
 interface VoteFormV2Props {
   pollId: number;
+  pollAddress: `0x${string}`;
   coordinatorPubKeyX: bigint;
   coordinatorPubKeyY: bigint;
   onVoteSubmitted?: () => void;
@@ -27,6 +28,7 @@ interface VoteFormV2Props {
 
 export function VoteFormV2({
   pollId,
+  pollAddress,
   coordinatorPubKeyX,
   coordinatorPubKeyY,
   onVoteSubmitted,
@@ -46,7 +48,8 @@ export function VoteFormV2({
     { value: 1, label: t.voteForm.for },
   ];
 
-  const weightNum = parseInt(weight || '1', 10) || 1;
+  const MAX_WEIGHT = 10;
+  const weightNum = Math.min(Math.max(Math.floor(Number(weight) || 1), 1), MAX_WEIGHT);
   const cost = weightNum * weightNum;
 
   const handleSubmit = async () => {
@@ -127,7 +130,7 @@ export function VoteFormV2({
 
       // 9. Submit to Poll contract
       const hash = await writeContractAsync({
-        address: POLL_V2_ADDRESS,
+        address: pollAddress,
         abi: POLL_ABI,
         functionName: 'publishMessage',
         args: [
@@ -141,7 +144,14 @@ export function VoteFormV2({
       incrementNonce(address, pollId);
       onVoteSubmitted?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.voteForm.error);
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.includes('insufficient funds') || msg.includes('gas')) {
+        setError(t.voteForm.errorGas);
+      } else if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
+        setError(t.voteForm.errorRejected);
+      } else {
+        setError(t.voteForm.error);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -170,13 +180,16 @@ export function VoteFormV2({
         <input
           type="number"
           min="1"
+          max={MAX_WEIGHT}
+          step="1"
           value={weight}
           onChange={(e) => setWeight(e.target.value)}
           disabled={isSubmitting}
         />
-        <span className="cost">
+        <span className={`cost ${cost > 25 ? 'cost-high' : cost > 9 ? 'cost-medium' : ''}`}>
           {t.voteForm.cost} {cost} {t.voteForm.credits}
         </span>
+        {cost > 25 && <span className="cost-warning">{t.voteForm.costWarning}</span>}
       </div>
 
       <button
@@ -187,9 +200,9 @@ export function VoteFormV2({
         {isSubmitting ? t.voteForm.submitting : t.voteForm.submit}
       </button>
 
-      {error && <p className="error">{error}</p>}
+      {error && <p className="error" role="alert">{error}</p>}
       {txHash && (
-        <p className="success">
+        <p className="success" role="status">
           {t.voteForm.success} {txHash.slice(0, 10)}...
         </p>
       )}

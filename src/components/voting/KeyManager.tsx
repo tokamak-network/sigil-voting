@@ -146,7 +146,7 @@ export function KeyManager({
       setSuccess(true);
       setShowConfirm(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Key change failed');
+      setError(err instanceof Error ? err.message : t.keyManager.error);
     } finally {
       setIsChanging(false);
     }
