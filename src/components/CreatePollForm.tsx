@@ -84,7 +84,7 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
         setError(t.voteForm.errorGas)
       } else if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
         setError(t.voteForm.errorRejected)
-      } else if (msg.includes('NotOwner') || msg.includes('owner')) {
+      } else if (msg.includes('InsufficientTokens') || msg.includes('NotOwner') || msg.includes('owner')) {
         setError(t.createPoll.errorOwner)
       } else {
         setError(t.createPoll.error)

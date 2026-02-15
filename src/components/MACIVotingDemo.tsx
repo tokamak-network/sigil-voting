@@ -223,8 +223,9 @@ export function MACIVotingDemo() {
         }
       }
 
+      const { storeEncrypted } = await import('../crypto/keyStore')
       localStorage.setItem(`maci-signup-${address}`, 'true')
-      localStorage.setItem(`maci-sk-${address}`, sk.toString())
+      await storeEncrypted(`maci-sk-${address}`, sk.toString(), address)
       localStorage.setItem(`maci-pk-${address}`, JSON.stringify([pk[0].toString(), pk[1].toString()]))
 
       setSignedUp(true)

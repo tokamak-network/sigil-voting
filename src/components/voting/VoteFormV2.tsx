@@ -269,10 +269,12 @@ async function getOrCreateMaciKeypair(
   derivePrivateKey: (seed: Uint8Array) => bigint,
   eddsaDerivePublicKey: (sk: bigint) => Promise<[bigint, bigint]>,
 ): Promise<{ sk: bigint; pubKey: [bigint, bigint] }> {
+  const { loadEncrypted, storeEncrypted } = await import('../../crypto/keyStore');
+
   // 1. Check poll-specific key (set by KeyManager after key change)
   const pollSkKey = `maci-sk-${address}-${pollId}`;
   const pollPkKey = `maci-pubkey-${address}-${pollId}`;
-  const storedPollSk = localStorage.getItem(pollSkKey);
+  const storedPollSk = await loadEncrypted(pollSkKey, address);
   if (storedPollSk) {
     const sk = BigInt(storedPollSk);
     const storedPk = localStorage.getItem(pollPkKey);
@@ -288,7 +290,7 @@ async function getOrCreateMaciKeypair(
   // 2. Check global key (set during signUp in MACIVotingDemo)
   const globalSkKey = `maci-sk-${address}`;
   const globalPkKey = `maci-pk-${address}`;
-  const storedGlobalSk = localStorage.getItem(globalSkKey);
+  const storedGlobalSk = await loadEncrypted(globalSkKey, address);
   if (storedGlobalSk) {
     const sk = BigInt(storedGlobalSk);
     const storedPk = localStorage.getItem(globalPkKey);
@@ -309,7 +311,7 @@ async function getOrCreateMaciKeypair(
   const sk = derivePrivateKey(seed);
   const pubKey = await eddsaDerivePublicKey(sk);
 
-  localStorage.setItem(pollSkKey, sk.toString());
+  await storeEncrypted(pollSkKey, sk.toString(), address);
   localStorage.setItem(pollPkKey, JSON.stringify([pubKey[0].toString(), pubKey[1].toString()]));
   return { sk, pubKey };
 }

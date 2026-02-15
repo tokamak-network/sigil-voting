@@ -69,8 +69,9 @@ export function KeyManager({
 
       // Get current sk for signing the key change command
       // Priority: poll-specific (after previous key change) > global (from signUp)
-      const pollSk = localStorage.getItem(`maci-sk-${address}-${pollId}`);
-      const globalSk = localStorage.getItem(`maci-sk-${address}`);
+      const { loadEncrypted, storeEncrypted: storeEnc } = await import('../../crypto/keyStore');
+      const pollSk = await loadEncrypted(`maci-sk-${address}-${pollId}`, address);
+      const globalSk = await loadEncrypted(`maci-sk-${address}`, address);
       const currentSk = pollSk ? BigInt(pollSk) : globalSk ? BigInt(globalSk) : newSk;
 
       // ECDH shared key with coordinator
@@ -137,14 +138,15 @@ export function KeyManager({
         ],
       });
 
-      // Save new keypair
+      // Save new keypair (private key encrypted)
       localStorage.setItem(
         `maci-pubkey-${address}-${pollId}`,
         JSON.stringify([newPubKey[0].toString(), newPubKey[1].toString()]),
       );
-      localStorage.setItem(
+      await storeEnc(
         `maci-sk-${address}-${pollId}`,
         newSk.toString(),
+        address,
       );
 
       setCurrentPubKey(newPubKey);

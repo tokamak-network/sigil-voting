@@ -33,3 +33,8 @@ export {
   generateRandomPrivateKey,
   derivePrivateKeyFromSignature,
 } from './blake512'
+
+export {
+  storeEncrypted,
+  loadEncrypted,
+} from './keyStore'
