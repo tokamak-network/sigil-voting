@@ -93,19 +93,19 @@ describe('Test 3.1: Voting State Machine', () => {
   describe('UI Messages per State', () => {
     it('PROOFING shows proof message', () => {
       const result = votingReducer(initialContext, { type: 'START_VOTE' })
-      expect(result.message).toContain('증명')
+      expect(result.message.toLowerCase()).toContain('proof')
     })
 
     it('SIGNING shows wallet message', () => {
       const proofingContext = { ...initialContext, state: 'PROOFING' as const }
       const result = votingReducer(proofingContext, { type: 'PROOF_COMPLETE' })
-      expect(result.message).toContain('지갑')
+      expect(result.message.toLowerCase()).toContain('wallet')
     })
 
     it('SUCCESS shows completion message', () => {
       const submittingContext = { ...initialContext, state: 'SUBMITTING' as const }
       const result = votingReducer(submittingContext, { type: 'TX_CONFIRMED', payload: '0x...' })
-      expect(result.message).toContain('완료')
+      expect(result.message.toLowerCase()).toContain('complete')
     })
   })
 })
