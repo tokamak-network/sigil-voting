@@ -66,6 +66,13 @@ export const MACI_ABI = [
   },
   {
     type: 'function',
+    name: 'nextPollId',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
     name: 'polls',
     inputs: [{ name: '', type: 'uint256' }],
     outputs: [{ name: '', type: 'address' }],
