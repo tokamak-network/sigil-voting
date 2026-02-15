@@ -58,8 +58,8 @@ export function Header({
   return (
     <header className="brutalist-header">
       <div className="brutalist-header-left">
-        <div className="brutalist-logo" onClick={() => setCurrentPage('landing')}>
-          <div className="brutalist-logo-icon">
+        <button className="brutalist-logo" onClick={() => setCurrentPage('landing')} aria-label={t.header.home}>
+          <div className="brutalist-logo-icon" aria-hidden="true">
             <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M20 2 L35.32 11 L35.32 29 L20 38 L4.68 29 L4.68 11 Z" stroke="#000000" strokeWidth="2.5" fill="none"/>
               <path d="M20 6 L31.66 13 L31.66 27 L20 34 L8.34 27 L8.34 13 Z" stroke="#0052FF" strokeWidth="2" fill="none"/>
@@ -68,7 +68,7 @@ export function Header({
             </svg>
           </div>
           <span className="brutalist-logo-text">SIGIL</span>
-        </div>
+        </button>
         <nav className="brutalist-nav">
           <button
             className={`brutalist-nav-item ${currentPage === 'maci-voting' ? 'active' : ''}`}
@@ -88,8 +88,11 @@ export function Header({
                 {isSwitching ? t.header.switching : t.header.wrongNetwork}
               </button>
             ) : (
-              <div className="brutalist-wallet-info" onClick={() => disconnect()}>
+              <div className="brutalist-wallet-info">
                 <span>{shortenAddress(address!)}</span>
+                <button className="brutalist-disconnect-btn" onClick={() => disconnect()} aria-label={t.header.disconnect}>
+                  {t.header.disconnect}
+                </button>
               </div>
             )}
           </>

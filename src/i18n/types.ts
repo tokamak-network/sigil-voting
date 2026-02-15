@@ -2,9 +2,11 @@ export type Language = 'ko' | 'en'
 
 export interface Translations {
   header: {
+    home: string
     vote: string
     connect: string
     connecting: string
+    disconnect: string
     wrongNetwork: string
     switching: string
   }
