@@ -4,7 +4,7 @@
 > **Phase**: Check (Gap Analysis)
 > **Created**: 2026-02-15
 > **Status**: ANALYZED
-> **Match Rate**: 58%
+> **Match Rate**: 76%
 > **Design Reference**: `docs/02-design/features/maci-anti-collusion.design.md`
 
 ---
@@ -15,14 +15,14 @@
 |----------|:-----:|:--------:|:----:|:------:|
 | Smart Contracts (Section 4) | 13 | 11 full + 2 via npm | 92% | PASS |
 | ZK Circuits (Section 5) | 6 | 6 | 100% | PASS |
-| Coordinator Service (Section 6) | 8 | 0 | 0% | FAIL |
+| Coordinator Service (Section 6) | 8 | 7.5 | 92% | PASS |
 | Crypto Modules (Section 7) | 4 | 4 | 100% | PASS |
 | Frontend V2 (Section 9) | 5 | 5 | 100% | PASS |
 | Contract Tests (Section 12.1) | 13 | 13 | 100% | PASS |
 | Circuit Tests (Section 12.2) | 8 | 0 | 0% | FAIL |
 | MACI Property Tests (Section 12.3) | 7 | 0 | 0% | FAIL |
-| Implementation Steps (Section 11) | 8 | 5.5 | 69% | WARN |
-| **Weighted Overall** | | | **58%** | **FAIL** |
+| Implementation Steps (Section 11) | 8 | 7.5 | 94% | PASS |
+| **Weighted Overall** | **72** | **55** | **76%** | **FAIL** |
 
 ---
 
@@ -87,27 +87,31 @@ Impact: LOW - npm dependency is acceptable and already deployed on Sepolia via C
 
 ---
 
-## 4. Coordinator Service (0%) - CRITICAL GAP
+## 4. Coordinator Service (92%)
 
-### 4.1 NOT IMPLEMENTED (0/8 files)
+> **Correction (2026-02-15)**: Initial gap analysis incorrectly reported 0% (8 files missing).
+> All 8 files exist under `coordinator/src/` (993 total lines). Re-evaluated below.
 
-| Design File | Purpose | Status |
-|-------------|---------|:------:|
-| coordinator/src/index.ts | Main entry, event listener | MISSING |
-| coordinator/src/chain/listener.ts | On-chain event reception | MISSING |
-| coordinator/src/chain/submitter.ts | Transaction submission | MISSING |
-| coordinator/src/processing/processMessages.ts | Reverse message processing | MISSING |
-| coordinator/src/processing/tally.ts | Vote tallying | MISSING |
-| coordinator/src/processing/batchProof.ts | Batch ZKP generation (snarkjs) | MISSING |
-| coordinator/src/trees/quinaryTree.ts | Quinary Merkle Tree | MISSING |
-| coordinator/src/trees/accQueue.ts | AccQueue off-chain rebuild | MISSING |
+### 4.1 IMPLEMENTED (8/8 files)
 
-**This is the most critical gap.** Without the Coordinator service:
-- Encrypted votes cannot be decrypted and processed
-- State transitions cannot be computed
-- ZK proofs cannot be generated
-- Tally results cannot be submitted on-chain
-- The entire MACI flow cannot function end-to-end
+| Design File | Lines | Content Match | Score |
+|-------------|:-----:|:-------------:|:-----:|
+| index.ts | 28 | Barrel export, all modules re-exported | 100% |
+| processing/processMessages.ts | 217 | Reverse processing, ECDH, DuplexSponge, EdDSA verify, Key Change, invalid→index0 | 95% |
+| processing/tally.ts | 97 | D1/D2 support, tallyCommitment = poseidon_3 | 90% |
+| processing/batchProof.ts | 167 | snarkjs Groth16, SHA256 publicInputHash, process+tally proof | 85% |
+| chain/listener.ts | 97 | ethers.js EventListener, SignUp+MessagePublished, fetchPastEvents | 90% |
+| chain/submitter.ts | 129 | mergeAccQueues, submitProcessProof, submitTallyProof, publishResults | 95% |
+| trees/quinaryTree.ts | 137 | 5-ary Poseidon, insert/update/getProof, zeroValues | 95% |
+| trees/accQueue.ts | 121 | enqueue/merge, subtree computation | 90% |
+
+**Average Score: ~92%**
+
+### 4.2 Architectural Notes
+
+- Design's `crypto/` subdirectory (5 files) not duplicated; uses shared `src/crypto/` modules via DI pattern (architecturally superior)
+- `trees/stateTree.ts`, `ballotTree.ts`, `messageTree.ts` consolidated into `processMessages.ts` (reasonable simplification)
+- TallyProofInput: some private inputs omitted (commented "for brevity")
 
 ---
 
@@ -184,7 +188,7 @@ None of the 7 MACI security property tests (Collusion Resistance, Receipt-freene
 | 3 | MACI Separated Contracts | COMPLETE | 100% |
 | 4 | MessageProcessor Circuit | COMPLETE | 100% |
 | 5 | TallyVotes Circuit | COMPLETE | 100% |
-| 6 | **Coordinator Service** | **NOT STARTED** | **0%** |
+| 6 | Coordinator Service | COMPLETE | 92% |
 | 7 | Frontend V2 | COMPLETE | 100% |
 | 8 | Key Change Extension | PARTIAL | 50% |
 
@@ -219,29 +223,21 @@ MACI V2 is **completely standalone** from D1/D2 V1:
 
 ### P0: Blocking (Required for end-to-end functionality)
 
-1. **Build Coordinator Service** (Step 6) - The critical path item
-   - `coordinator/src/processing/processMessages.ts` (reverse processing)
-   - `coordinator/src/processing/tally.ts`
-   - `coordinator/src/processing/batchProof.ts` (snarkjs)
-   - `coordinator/src/chain/listener.ts` + `submitter.ts`
-   - `coordinator/src/trees/quinaryTree.ts` + `accQueue.ts`
+1. **Implement real EdDSA signing in VoteFormV2** - Replace placeholder zeros
+2. **Circuit compilation + trusted setup** - At least dev-level ptau for testing
 
-2. **Implement real EdDSA signing in VoteFormV2** - Replace placeholder zeros
+### P1: Quality (Required for 90% match rate)
 
-3. **Circuit compilation + trusted setup** - At least dev-level ptau for testing
-
-### P1: Quality (Required for production readiness)
-
-4. **Add Circuit Tests** (8 tests from design Section 12.2)
-5. **Add MACI Property Tests** (7 tests from design Section 12.3)
-6. **Full in-circuit DuplexSponge decryption** - Remove trust assumption on prover
-7. **Tally.publishResults Merkle proof verification** - Replace hash comparison
+3. **Add Circuit Tests** (8 tests from design Section 12.2) — would raise match rate to ~88%
+4. **Add MACI Property Tests** (7 tests from design Section 12.3) — would raise match rate to ~97%
+5. **Full in-circuit DuplexSponge decryption** - Remove trust assumption on prover
+6. **Tally.publishResults Merkle proof verification** - Replace hash comparison
 
 ### P2: Polish
 
-8. Update design document to reflect constructor changes
-9. Add crypto module unit tests
-10. Production circuit parameters compilation
+7. Update design document to reflect constructor changes
+8. Add crypto module unit tests
+9. Production circuit parameters compilation
 
 ---
 
@@ -263,3 +259,4 @@ MACI V2 is **completely standalone** from D1/D2 V1:
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-02-15 | AI | Initial Gap Analysis (Check phase) |
+| 2026-02-15 | AI | Corrected Coordinator 0%→92%, Impl Steps 69%→94%, Overall 58%→76% |
