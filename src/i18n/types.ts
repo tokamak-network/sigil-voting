@@ -95,6 +95,14 @@ export interface Translations {
     submitting: string
     error: string
     errorOwner: string
+    errorTokens: string
+    checkingEligibility: string
+    notEligible: string
+    ownerOnly: string
+    tokenRequired: string
+    required: string
+    yourBalance: string
+    eligible: string
   }
   voteForm: {
     title: string
