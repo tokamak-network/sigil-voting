@@ -38,12 +38,16 @@ export interface EdDSASignature {
 }
 
 /**
- * Convert a bigint private key to the Buffer format expected by circomlibjs.
- * circomlibjs eddsa expects a 32-byte Buffer as the private key.
+ * Convert a bigint private key to a 32-byte Uint8Array for circomlibjs.
+ * circomlibjs eddsa accepts Uint8Array as the private key.
  */
-function skToBuffer(sk: bigint): Buffer {
+function skToBytes(sk: bigint): Uint8Array {
   const hex = sk.toString(16).padStart(64, '0')
-  return Buffer.from(hex, 'hex')
+  const bytes = new Uint8Array(32)
+  for (let i = 0; i < 32; i++) {
+    bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+  }
+  return bytes
 }
 
 /**
@@ -61,7 +65,7 @@ export async function eddsaSign(
   const eddsa = eddsaInstance
   const babyjub = babyjubInstance
 
-  const skBuf = skToBuffer(sk)
+  const skBuf = skToBytes(sk)
   const msgF = babyjub.F.e(message)
 
   const signature = eddsa.signPoseidon(skBuf, msgF)
@@ -121,7 +125,7 @@ export async function eddsaDerivePublicKey(
   const eddsa = eddsaInstance
   const babyjub = babyjubInstance
 
-  const skBuf = skToBuffer(sk)
+  const skBuf = skToBytes(sk)
   const pubKey = eddsa.prv2pub(skBuf)
 
   return [

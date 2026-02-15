@@ -41,7 +41,7 @@ export function MACIVotingDemo() {
   const [signedUp, setSignedUp] = useState(false)
   const [pollId, setPollId] = useState<number | null>(null)
   const [pollAddress, setPollAddress] = useState<`0x${string}` | null>(null)
-  const [tallyAddress, setTallyAddress] = useState<`0x${string}` | null>(null)
+  const [tallyAddress] = useState<`0x${string}` | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
   const [isSigningUp, setIsSigningUp] = useState(false)
