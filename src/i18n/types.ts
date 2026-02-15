@@ -113,6 +113,8 @@ export interface Translations {
     weightLabel: string
     cost: string
     credits: string
+    myCredits: string
+    creditExceeded: string
     costWarning: string
     submit: string
     submitting: string
@@ -131,6 +133,7 @@ export interface Translations {
   keyManager: {
     title: string
     expandLabel: string
+    tooltip: string
     currentKey: string
     noKey: string
     changeKey: string

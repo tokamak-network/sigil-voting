@@ -10,6 +10,7 @@ import config from './config.json';
 // V2 Contract addresses (loaded from config.json)
 const v2 = (config as any).v2 || {};
 export const MACI_V2_ADDRESS = (v2.maci || '0x0000000000000000000000000000000000000000') as `0x${string}`;
+export const VOICE_CREDIT_PROXY_ADDRESS = (v2.voiceCreditProxy || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 export const MSG_PROCESSOR_VERIFIER_ADDRESS = (v2.msgProcessorVerifier || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 export const TALLY_VERIFIER_ADDRESS = (v2.tallyVerifier || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 export const VK_REGISTRY_ADDRESS = (v2.vkRegistry || '0x0000000000000000000000000000000000000000') as `0x${string}`;
@@ -126,6 +127,27 @@ export const MACI_ABI = [
       { name: 'messageProcessorAddr', type: 'address', indexed: false },
       { name: 'tallyAddr', type: 'address', indexed: false },
     ],
+  },
+] as const;
+
+// VoiceCreditProxy ABI
+export const VOICE_CREDIT_PROXY_ABI = [
+  {
+    type: 'function',
+    name: 'creditAmount',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getVoiceCredits',
+    inputs: [
+      { name: '_user', type: 'address' },
+      { name: '_data', type: 'bytes' },
+    ],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
   },
 ] as const;
 

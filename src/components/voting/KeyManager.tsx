@@ -33,7 +33,7 @@ export function KeyManager({
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
   const { t } = useTranslation();
 
   const { writeContractAsync } = useWriteContract();
@@ -161,60 +161,65 @@ export function KeyManager({
   }, [address, pollId, coordinatorPubKeyX, coordinatorPubKeyY, pollAddress, writeContractAsync]);
 
   return (
-    <div className="key-manager">
-      <button
-        className="key-manager-toggle"
-        onClick={() => setIsExpanded(!isExpanded)}
-        type="button"
-      >
-        <span>{t.keyManager.expandLabel}</span>
-        <span className="material-symbols-outlined">
-          {isExpanded ? 'expand_less' : 'expand_more'}
-        </span>
-      </button>
+    <div className="key-manager key-manager-visible">
+      <div className="key-manager-header">
+        <h4>
+          <span className="material-symbols-outlined key-manager-icon" aria-hidden="true">shield</span>
+          {t.keyManager.title}
+        </h4>
+        <button
+          className="key-manager-info-btn"
+          onClick={() => setShowTooltip(!showTooltip)}
+          type="button"
+          aria-label="Info"
+          aria-expanded={showTooltip}
+        >
+          <span className="material-symbols-outlined">help</span>
+        </button>
+      </div>
 
-      {isExpanded && (
-        <div className="key-manager-content">
-          <h4>{t.keyManager.title}</h4>
-
-          {currentPubKey ? (
-            <div className="current-key">
-              <label>{t.keyManager.currentKey}</label>
-              <code className="key-display">
-                ({currentPubKey[0].toString().slice(0, 12)}...,{' '}
-                {currentPubKey[1].toString().slice(0, 12)}...)
-              </code>
-            </div>
-          ) : (
-            <p className="no-key">{t.keyManager.noKey}</p>
-          )}
-
-          {!showConfirm ? (
-            <button
-              onClick={() => setShowConfirm(true)}
-              disabled={isChanging}
-              className="change-key-btn"
-            >
-              {t.keyManager.changeKey}
-            </button>
-          ) : (
-            <div className="confirm-dialog">
-              <p className="warning">{t.keyManager.warning}</p>
-              <div className="confirm-actions">
-                <button onClick={handleKeyChange} disabled={isChanging}>
-                  {isChanging ? t.keyManager.changing : t.keyManager.confirm}
-                </button>
-                <button onClick={() => setShowConfirm(false)} disabled={isChanging}>
-                  {t.keyManager.cancel}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {error && <p className="error">{error}</p>}
-          {success && <p className="success">{t.keyManager.success}</p>}
+      {showTooltip && (
+        <div className="key-manager-tooltip" role="tooltip">
+          {t.keyManager.tooltip}
         </div>
       )}
+
+      {currentPubKey ? (
+        <div className="current-key">
+          <label>{t.keyManager.currentKey}</label>
+          <code className="key-display">
+            ({currentPubKey[0].toString().slice(0, 12)}...,{' '}
+            {currentPubKey[1].toString().slice(0, 12)}...)
+          </code>
+        </div>
+      ) : (
+        <p className="no-key">{t.keyManager.noKey}</p>
+      )}
+
+      {!showConfirm ? (
+        <button
+          onClick={() => setShowConfirm(true)}
+          disabled={isChanging}
+          className="change-key-btn"
+        >
+          {t.keyManager.changeKey}
+        </button>
+      ) : (
+        <div className="confirm-dialog">
+          <p className="warning">{t.keyManager.warning}</p>
+          <div className="confirm-actions">
+            <button onClick={handleKeyChange} disabled={isChanging}>
+              {isChanging ? t.keyManager.changing : t.keyManager.confirm}
+            </button>
+            <button onClick={() => setShowConfirm(false)} disabled={isChanging}>
+              {t.keyManager.cancel}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {error && <p className="error">{error}</p>}
+      {success && <p className="success">{t.keyManager.success}</p>}
     </div>
   );
 }
