@@ -1,103 +1,168 @@
 pragma circom 2.1.6;
 
 include "circomlib/circuits/poseidon.circom";
+include "circomlib/circuits/comparators.circom";
 
 /**
  * Poseidon DuplexSponge Decryption
  *
- * Decrypts ciphertext encrypted with Poseidon DuplexSponge.
- * Sponge construction: rate=2, capacity=1 (t=3 state).
+ * Compatible with @zk-kit/poseidon-cipher and MACI maci-crypto.
+ * Uses PoseidonEx(3, 4) for full t=4 state permutation.
  *
- * Encryption (for reference):
- *   state = [0, 0, domainSep]  where domainSep = plaintext.length
- *   state = absorb(key)        // key[0] + state[0], key[1] + state[1], permute
- *   state = absorb(nonce)      // nonce + state[0], permute
- *   for each pair (p0, p1):
- *     ct[2i]   = state[0] + p0
- *     ct[2i+1] = state[1] + p1
- *     state = permute(ct[2i], ct[2i+1], state[2])
- *   authTag  = state[0]
+ * Sponge construction (t=4, rate=3, capacity=1):
+ *   1. Initial state = [0, key[0], key[1], nonce + length * 2^128]
+ *   2. For each 3-element block:
+ *      - Permute state via PoseidonEx(3, 4)
+ *      - Decrypt: pt[j] = ct[j] - state[j+1]  (j = 0,1,2)
+ *      - Absorb: state[j+1] = ct[j]  (for next permutation)
+ *   3. Final permute, verify authTag == state[1]
  *
- * Decryption reverses: plaintext = ciphertext - state (before absorb)
+ * Circom equivalent of: @zk-kit/poseidon-cipher poseidonDecrypt()
  */
 template PoseidonDuplexSpongeDecrypt(length) {
-    // length = number of plaintext field elements
-    // ciphertext has ceil(length/2)*2 + 1 elements (padded pairs + authTag)
-    var numPairs = (length + 1) \ 2;  // ceil(length/2) using integer division
-    var ciphertextLen = numPairs * 2 + 1; // pairs + authTag
+    // Pad to multiple of 3 (rate = 3)
+    var numBlocks = (length + 2) \ 3;   // ceil(length / 3)
+    var paddedLen = numBlocks * 3;
+    var ciphertextLen = paddedLen + 1;   // padded blocks + 1 auth tag
 
     signal input ciphertext[ciphertextLen];
     signal input key[2];
     signal input nonce;
     signal output plaintext[length];
 
-    // Initial state: [0, 0, domainSep]
-    // After key absorption: permute([key[0], key[1], length])
-    component keyAbsorb = Poseidon(3);
-    keyAbsorb.inputs[0] <== key[0];
-    keyAbsorb.inputs[1] <== key[1];
-    keyAbsorb.inputs[2] <== length;
+    // 2^128 for domain separation
+    var TWO128 = 340282366920938463463374607431768211456;
 
-    // After nonce absorption: permute([keyState[0] + nonce, keyState[1], keyState[2]])
-    component nonceAbsorb = Poseidon(3);
-    nonceAbsorb.inputs[0] <== keyAbsorb.out + nonce;  // simplified: use Poseidon output + nonce
-    nonceAbsorb.inputs[1] <== key[1];
-    nonceAbsorb.inputs[2] <== length;
+    // ============ Initial State ============
+    // state = [0, key[0], key[1], nonce + length * 2^128]
+    //
+    // Note: the initial state[3] encodes both nonce and plaintext length
+    // for domain separation, matching @zk-kit/poseidon-cipher.
 
-    // Note: The above is a simplified sponge. A fully correct implementation
-    // tracks the full 3-element state. We approximate with sequential Poseidon calls.
-    // For production, each permutation step maintains [s0, s1, s2] explicitly.
+    signal initState3;
+    initState3 <== nonce + length * TWO128;
 
-    // State tracking through squeeze/absorb rounds
-    component perms[numPairs];
-    signal state[numPairs + 1][3];
+    // ============ Block Processing ============
+    // Each block: permute → decrypt 3 elements → absorb ciphertext
 
-    // Initial state after key+nonce absorption
-    // Full sponge: state = Poseidon_perm([key[0], key[1], length])
-    //              state[0] += nonce, state = Poseidon_perm(state)
-    component initPerm = Poseidon(3);
-    initPerm.inputs[0] <== key[0];
-    initPerm.inputs[1] <== key[1];
-    initPerm.inputs[2] <== length;
+    component perms[numBlocks];
 
-    component noncePerm = Poseidon(3);
-    noncePerm.inputs[0] <== initPerm.out + nonce;
-    noncePerm.inputs[1] <== key[1];
-    noncePerm.inputs[2] <== length;
+    // State after each permutation: perms[i].out[0..3]
+    // Before first permutation, state = [0, key[0], key[1], initState3]
 
-    // We model the initial state as hash outputs (approximation for constraint efficiency)
-    // Real MACI uses PoseidonEx with full state tracking
-    state[0][0] <== noncePerm.out;
-    state[0][1] <== initPerm.out;
-    state[0][2] <== length;
+    // Decrypted (including padding) — we'll slice to `length` at the end
+    signal decrypted[paddedLen];
 
-    // Decrypt each pair
-    for (var i = 0; i < numPairs; i++) {
-        // Plaintext recovery: pt = ct - state (before permutation)
-        var idx0 = i * 2;
-        var idx1 = i * 2 + 1;
+    for (var i = 0; i < numBlocks; i++) {
+        // Permute state
+        perms[i] = PoseidonEx(3, 4);
 
-        // Decrypt: plaintext = ciphertext - current_state
-        if (idx0 < length) {
-            plaintext[idx0] <== ciphertext[idx0] - state[i][0];
-        }
-        if (idx1 < length) {
-            plaintext[idx1] <== ciphertext[idx1] - state[i][1];
+        if (i == 0) {
+            // First block: initial state
+            perms[i].initialState <== 0;
+            perms[i].inputs[0] <== key[0];
+            perms[i].inputs[1] <== key[1];
+            perms[i].inputs[2] <== initState3;
+        } else {
+            // Subsequent blocks: state = [perms[i-1].out[0], ct[prev_0], ct[prev_1], ct[prev_2]]
+            // After absorb: rate portion (state[1..3]) is set to ciphertext values
+            perms[i].initialState <== perms[i - 1].out[0];
+            perms[i].inputs[0] <== ciphertext[(i - 1) * 3];
+            perms[i].inputs[1] <== ciphertext[(i - 1) * 3 + 1];
+            perms[i].inputs[2] <== ciphertext[(i - 1) * 3 + 2];
         }
 
-        // Next state: permute with ciphertext values absorbed
-        perms[i] = Poseidon(3);
-        perms[i].inputs[0] <== ciphertext[idx0];
-        perms[i].inputs[1] <== ciphertext[idx1];
-        perms[i].inputs[2] <== state[i][2];
-
-        state[i + 1][0] <== perms[i].out;
-        state[i + 1][1] <== ciphertext[idx1];
-        state[i + 1][2] <== state[i][2];
+        // Decrypt: pt[j] = ct[j] - permuted_state[j+1]
+        for (var j = 0; j < 3; j++) {
+            decrypted[i * 3 + j] <== ciphertext[i * 3 + j] - perms[i].out[j + 1];
+        }
     }
 
-    // Verify authentication tag
-    signal authTag;
-    authTag <== ciphertext[numPairs * 2];
-    state[numPairs][0] === authTag;
+    // ============ Padding Verification ============
+    // Padded elements must be 0
+    for (var i = length; i < paddedLen; i++) {
+        decrypted[i] === 0;
+    }
+
+    // ============ Auth Tag Verification ============
+    // Final permutation with last block's ciphertext absorbed
+    component authPerm = PoseidonEx(3, 4);
+    authPerm.initialState <== perms[numBlocks - 1].out[0];
+    authPerm.inputs[0] <== ciphertext[(numBlocks - 1) * 3];
+    authPerm.inputs[1] <== ciphertext[(numBlocks - 1) * 3 + 1];
+    authPerm.inputs[2] <== ciphertext[(numBlocks - 1) * 3 + 2];
+
+    // Auth tag is the last element of ciphertext, must equal state[1] after final permute
+    authPerm.out[1] === ciphertext[paddedLen];
+
+    // ============ Output ============
+    for (var i = 0; i < length; i++) {
+        plaintext[i] <== decrypted[i];
+    }
+}
+
+/**
+ * Poseidon DuplexSponge Encryption (for testing/verification)
+ *
+ * Same sponge construction as decryption, but in encrypt direction.
+ */
+template PoseidonDuplexSpongeEncrypt(length) {
+    var numBlocks = (length + 2) \ 3;
+    var paddedLen = numBlocks * 3;
+    var ciphertextLen = paddedLen + 1;
+
+    signal input plaintext[length];
+    signal input key[2];
+    signal input nonce;
+    signal output ciphertext[ciphertextLen];
+
+    var TWO128 = 340282366920938463463374607431768211456;
+
+    signal initState3;
+    initState3 <== nonce + length * TWO128;
+
+    // Pad plaintext with zeros
+    signal padded[paddedLen];
+    for (var i = 0; i < length; i++) {
+        padded[i] <== plaintext[i];
+    }
+    for (var i = length; i < paddedLen; i++) {
+        padded[i] <== 0;
+    }
+
+    component perms[numBlocks];
+
+    // After permutation, state[1..3] + plaintext[0..2] = ciphertext[0..2]
+    // Then absorb: state[1..3] = ciphertext[0..2] for next block
+
+    for (var i = 0; i < numBlocks; i++) {
+        perms[i] = PoseidonEx(3, 4);
+
+        if (i == 0) {
+            perms[i].initialState <== 0;
+            perms[i].inputs[0] <== key[0];
+            perms[i].inputs[1] <== key[1];
+            perms[i].inputs[2] <== initState3;
+        } else {
+            // State after absorb: [perms[i-1].out[0], ct[prev_0], ct[prev_1], ct[prev_2]]
+            perms[i].initialState <== perms[i - 1].out[0];
+            perms[i].inputs[0] <== ciphertext[(i - 1) * 3];
+            perms[i].inputs[1] <== ciphertext[(i - 1) * 3 + 1];
+            perms[i].inputs[2] <== ciphertext[(i - 1) * 3 + 2];
+        }
+
+        // Encrypt: ct[j] = state[j+1] + pt[j]
+        for (var j = 0; j < 3; j++) {
+            ciphertext[i * 3 + j] <== perms[i].out[j + 1] + padded[i * 3 + j];
+        }
+    }
+
+    // Auth tag: final permute with last ciphertext absorbed
+    component authPerm = PoseidonEx(3, 4);
+    authPerm.initialState <== perms[numBlocks - 1].out[0];
+    authPerm.inputs[0] <== ciphertext[(numBlocks - 1) * 3];
+    authPerm.inputs[1] <== ciphertext[(numBlocks - 1) * 3 + 1];
+    authPerm.inputs[2] <== ciphertext[(numBlocks - 1) * 3 + 2];
+
+    ciphertext[paddedLen] <== authPerm.out[1];
 }
