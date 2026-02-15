@@ -12,17 +12,19 @@ include "circomlib/circuits/gates.circom";
 include "utils/quinaryMerkleProof.circom";
 include "utils/sha256Hasher.circom";
 include "utils/unpackCommand.circom";
+include "utils/duplexSponge.circom";
 
 /**
  * MACI MessageProcessor Circuit
  *
  * Verifies correct state transitions from encrypted vote messages.
  * Key properties:
- *   1. Reverse processing: messages[0] = last submitted message (MACI core)
- *   2. Index 0 routing: invalid messages apply to blank leaf at index 0
- *   3. SHA256-compressed public inputs (gas efficiency)
- *   4. Quinary (5-ary) Merkle trees
- *   5. EdDSA-Poseidon signature verification
+ *   1. In-circuit DuplexSponge decryption (no trust assumption)
+ *   2. Reverse processing: messages[0] = last submitted message (MACI core)
+ *   3. Index 0 routing: invalid messages apply to blank leaf at index 0
+ *   4. SHA256-compressed public inputs (gas efficiency)
+ *   5. Quinary (5-ary) Merkle trees
+ *   6. EdDSA-Poseidon signature verification
  *
  * Parameters:
  *   stateTreeDepth       - Quinary state tree depth
@@ -54,18 +56,8 @@ template MessageProcessor(
     signal input encPubKeys[batchSize][2];       // Ephemeral public keys
     signal input coordinatorSk;                  // Coordinator secret key
 
-    // Decrypted command fields (provided by prover, verified in circuit)
-    signal input cmdStateIndex[batchSize];
-    signal input cmdNewPubKeyX[batchSize];
-    signal input cmdNewPubKeyY[batchSize];
-    signal input cmdVoteOptionIndex[batchSize];
-    signal input cmdNewVoteWeight[batchSize];
-    signal input cmdNonce[batchSize];
-    signal input cmdPollId[batchSize];
-    signal input cmdSalt[batchSize];
-    signal input cmdSigR8x[batchSize];
-    signal input cmdSigR8y[batchSize];
-    signal input cmdSigS[batchSize];
+    // Message nonces for DuplexSponge decryption (per message)
+    signal input msgNonces[batchSize];
 
     signal input stateLeaves[batchSize][4];      // [pkX, pkY, balance, timestamp]
     signal input ballots[batchSize][2];          // [nonce, voteOptionRoot]
@@ -110,10 +102,15 @@ template MessageProcessor(
 
     // -- All component/signal declarations (outside loop) --
 
-    // ECDH
+    // ECDH: scalar mul coordinator_sk * encPubKey
     component ecdhMul[batchSize];
     component skBits[batchSize];
-    component sharedKeyHash[batchSize];
+
+    // In-circuit DuplexSponge decryption
+    component decrypt[batchSize];
+
+    // Command unpacking
+    component unpack[batchSize];
 
     // Command hash for EdDSA
     component cmdHash[batchSize];
@@ -164,6 +161,8 @@ template MessageProcessor(
 
     for (var i = 0; i < batchSize; i++) {
         // ---- 3.1 ECDH Key Exchange ----
+        // Compute shared key: coordinatorSk * encPubKey[i]
+        // Result is the raw ECDH point [x, y] used as DuplexSponge key
         skBits[i] = Num2Bits(253);
         skBits[i].in <== coordinatorSk;
 
@@ -174,41 +173,61 @@ template MessageProcessor(
         ecdhMul[i].p[0] <== encPubKeys[i][0];
         ecdhMul[i].p[1] <== encPubKeys[i][1];
 
-        // Shared key = Poseidon(ECDH result)
-        sharedKeyHash[i] = Poseidon(2);
-        sharedKeyHash[i].inputs[0] <== ecdhMul[i].out[0];
-        sharedKeyHash[i].inputs[1] <== ecdhMul[i].out[1];
+        // ECDH shared key = [ecdhMul.out[0], ecdhMul.out[1]]
+        // Used directly as key[0], key[1] for DuplexSponge
 
-        // ---- 3.2 Command Hash (for EdDSA verification) ----
-        // The prover provides decrypted command fields as private inputs.
-        // The circuit verifies the EdDSA signature over the command hash.
+        // ---- 3.2 In-Circuit DuplexSponge Decryption ----
+        // Plaintext: 7 fields [packedCmd, newPubKeyX, newPubKeyY, salt, sigR8x, sigR8y, sigS]
+        // Ciphertext: 10 fields (7 padded to 9, 3 blocks of 3, + 1 auth tag)
+        decrypt[i] = PoseidonDuplexSpongeDecrypt(7);
+        for (var j = 0; j < 10; j++) {
+            decrypt[i].ciphertext[j] <== messages[i][j];
+        }
+        decrypt[i].key[0] <== ecdhMul[i].out[0];
+        decrypt[i].key[1] <== ecdhMul[i].out[1];
+        decrypt[i].nonce <== msgNonces[i];
+
+        // Decrypted plaintext fields:
+        // decrypt[i].plaintext[0] = packedCommand
+        // decrypt[i].plaintext[1] = newPubKeyX
+        // decrypt[i].plaintext[2] = newPubKeyY
+        // decrypt[i].plaintext[3] = salt
+        // decrypt[i].plaintext[4] = sigR8x
+        // decrypt[i].plaintext[5] = sigR8y
+        // decrypt[i].plaintext[6] = sigS
+
+        // ---- 3.3 Unpack Command ----
+        unpack[i] = UnpackCommand();
+        unpack[i].packedCommand <== decrypt[i].plaintext[0];
+
+        // ---- 3.4 Command Hash (for EdDSA verification) ----
         cmdHash[i] = Poseidon(5);
-        cmdHash[i].inputs[0] <== cmdStateIndex[i];
-        cmdHash[i].inputs[1] <== cmdNewPubKeyX[i];
-        cmdHash[i].inputs[2] <== cmdNewPubKeyY[i];
-        cmdHash[i].inputs[3] <== cmdNewVoteWeight[i];
-        cmdHash[i].inputs[4] <== cmdSalt[i];
+        cmdHash[i].inputs[0] <== unpack[i].stateIndex;
+        cmdHash[i].inputs[1] <== decrypt[i].plaintext[1]; // newPubKeyX
+        cmdHash[i].inputs[2] <== decrypt[i].plaintext[2]; // newPubKeyY
+        cmdHash[i].inputs[3] <== unpack[i].newVoteWeight;
+        cmdHash[i].inputs[4] <== decrypt[i].plaintext[3]; // salt
 
-        // ---- 3.3 EdDSA Signature Verification ----
+        // ---- 3.5 EdDSA Signature Verification ----
         sigVerify[i] = EdDSAPoseidonVerifier();
         sigVerify[i].enabled <== 1;
         sigVerify[i].Ax <== stateLeaves[i][0]; // Current pubKey X
         sigVerify[i].Ay <== stateLeaves[i][1]; // Current pubKey Y
-        sigVerify[i].R8x <== cmdSigR8x[i];
-        sigVerify[i].R8y <== cmdSigR8y[i];
-        sigVerify[i].S <== cmdSigS[i];
+        sigVerify[i].R8x <== decrypt[i].plaintext[4]; // sigR8x
+        sigVerify[i].R8y <== decrypt[i].plaintext[5]; // sigR8y
+        sigVerify[i].S <== decrypt[i].plaintext[6];   // sigS
         sigVerify[i].M <== cmdHash[i].out;
 
-        // ---- 3.4 Validity Checks ----
+        // ---- 3.6 Validity Checks ----
 
         // Check: stateIndex < batchEndIndex (numSignUps bound)
         indexCheck[i] = LessThan(50);
-        indexCheck[i].in[0] <== cmdStateIndex[i];
+        indexCheck[i].in[0] <== unpack[i].stateIndex;
         indexCheck[i].in[1] <== batchEndIndex;
 
         // Check: nonce === ballot.nonce + 1
         nonceCheck[i] = IsEqual();
-        nonceCheck[i].in[0] <== cmdNonce[i];
+        nonceCheck[i].in[0] <== unpack[i].nonce;
         nonceCheck[i].in[1] <== ballots[i][0] + 1;
 
         // Combined validity
@@ -216,14 +235,14 @@ template MessageProcessor(
         validityAnd[i].a <== indexCheck[i].out;
         validityAnd[i].b <== nonceCheck[i].out;
 
-        // ---- 3.5 Index 0 Routing (MACI Core) ----
+        // ---- 3.7 Index 0 Routing (MACI Core) ----
         // invalid → index 0 (blank leaf); valid → actual stateIndex
         targetIndexMux[i] = Mux1();
         targetIndexMux[i].c[0] <== 0;
-        targetIndexMux[i].c[1] <== cmdStateIndex[i];
+        targetIndexMux[i].c[1] <== unpack[i].stateIndex;
         targetIndexMux[i].s <== validityAnd[i].out;
 
-        // ---- 3.6 State Leaf Verification ----
+        // ---- 3.8 State Leaf Verification ----
         stateLeafHash[i] = Poseidon(4);
         stateLeafHash[i].inputs[0] <== stateLeaves[i][0]; // pkX
         stateLeafHash[i].inputs[1] <== stateLeaves[i][1]; // pkY
@@ -241,22 +260,22 @@ template MessageProcessor(
         }
         stateIncBefore[i].root === currentStateRoot[i];
 
-        // ---- 3.7 State Update ----
+        // ---- 3.9 State Update ----
         // Voice credit: newBalance = balance + currentWeight^2 - newWeight^2
         currentWeightSq[i] <== ballotVoteWeights[i] * ballotVoteWeights[i];
-        newWeightSq[i] <== cmdNewVoteWeight[i] * cmdNewVoteWeight[i];
+        newWeightSq[i] <== unpack[i].newVoteWeight * unpack[i].newVoteWeight;
         newBalance[i] <== stateLeaves[i][2] + currentWeightSq[i] - newWeightSq[i];
 
         // Mux: valid → new values; invalid → keep original
         pkXMux[i] = Mux1();
         pkXMux[i].c[0] <== stateLeaves[i][0];
-        pkXMux[i].c[1] <== cmdNewPubKeyX[i];
+        pkXMux[i].c[1] <== decrypt[i].plaintext[1]; // newPubKeyX
         pkXMux[i].s <== validityAnd[i].out;
         finalPkX[i] <== pkXMux[i].out;
 
         pkYMux[i] = Mux1();
         pkYMux[i].c[0] <== stateLeaves[i][1];
-        pkYMux[i].c[1] <== cmdNewPubKeyY[i];
+        pkYMux[i].c[1] <== decrypt[i].plaintext[2]; // newPubKeyY
         pkYMux[i].s <== validityAnd[i].out;
         finalPkY[i] <== pkYMux[i].out;
 
@@ -284,7 +303,7 @@ template MessageProcessor(
         }
         currentStateRoot[i + 1] <== stateIncAfter[i].root;
 
-        // ---- 3.8 Ballot Update ----
+        // ---- 3.10 Ballot Update ----
         ballotHash[i] = Poseidon(2);
         ballotHash[i].inputs[0] <== ballots[i][0]; // nonce
         ballotHash[i].inputs[1] <== ballots[i][1]; // voteOptionRoot
@@ -320,7 +339,7 @@ template MessageProcessor(
         }
         currentBallotRoot[i + 1] <== ballotIncAfter[i].root;
 
-        // ---- 3.9 Message Inclusion ----
+        // ---- 3.11 Message Inclusion ----
         // Hash message the same way as Poll.hashMessageAndEncPubKey
         msgLeafHash1[i] = Poseidon(5);
         msgLeafHash1[i].inputs[0] <== messages[i][0];
