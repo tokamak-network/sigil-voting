@@ -122,6 +122,8 @@ export const en: Translations = {
     weightLabel: 'Vote Weight (cost = weight\u00B2)',
     cost: 'Cost:',
     credits: 'credits',
+    myCredits: 'My Voice Credits',
+    creditExceeded: 'Not enough credits! Lower your vote weight.',
     costWarning: 'High weight consumes many credits',
     submit: 'Submit Encrypted Vote',
     submitting: 'Encrypting & Submitting...',
@@ -140,6 +142,7 @@ export const en: Translations = {
   keyManager: {
     title: 'Key Management (Anti-Coercion)',
     expandLabel: 'Anti-Coercion Protection',
+    tooltip: 'Being forced to vote? Change your key to invalidate your previous vote. Then re-vote with your true choice. The coercer cannot tell because everything is encrypted.',
     currentKey: 'Current Public Key:',
     noKey: 'No key registered yet.',
     changeKey: 'Change Key',

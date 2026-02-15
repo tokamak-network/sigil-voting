@@ -4026,43 +4026,93 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* KeyManager Styles */
-.key-manager {
-  margin-top: 24px;
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
-  padding-top: 16px;
+/* Credit balance display */
+.credit-balance {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--grid-gray);
+  border: 2px solid var(--pure-black);
+  margin-bottom: 16px;
 }
 
-.key-manager-toggle {
+.credit-balance-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #666;
+}
+
+.credit-balance-value {
+  font-size: 24px;
+  font-weight: 900;
+  font-family: var(--font-display);
+  color: var(--bold-blue);
+}
+
+.cost-exceeded {
+  background: #fff5f5;
+  padding: 8px 12px;
+  border: 1px solid #e53e3e;
+}
+
+/* KeyManager - always visible */
+.key-manager {
+  margin-top: 24px;
+  border: 2px solid var(--pure-black);
+  padding: 16px;
+  background: #fefce8;
+}
+
+.key-manager-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.key-manager-header h4 {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: none;
-  border: none;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 14px;
+  font-style: italic;
+  margin: 0;
   text-transform: uppercase;
-  cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.15s;
-  padding: 8px 0;
 }
 
-.key-manager-toggle:hover {
+.key-manager-icon {
+  font-size: 20px;
+  color: #b45309;
+}
+
+.key-manager-info-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.key-manager-info-btn:hover {
   opacity: 1;
 }
 
-.key-manager-toggle .material-symbols-outlined {
+.key-manager-info-btn .material-symbols-outlined {
   font-size: 20px;
 }
 
-.key-manager-content {
-  padding: 16px 0 0;
-}
-
-.key-manager-content h4 {
-  font-size: 16px;
-  font-style: italic;
-  margin: 0 0 16px;
+.key-manager-tooltip {
+  padding: 12px;
+  background: #fff;
+  border: 2px solid #b45309;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #333;
+  margin-bottom: 12px;
 }
 
 .current-key {

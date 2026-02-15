@@ -24,6 +24,7 @@ interface VoteFormV2Props {
   pollAddress: `0x${string}`;
   coordinatorPubKeyX: bigint;
   coordinatorPubKeyY: bigint;
+  voiceCredits?: number;
   onVoteSubmitted?: () => void;
 }
 
@@ -34,6 +35,7 @@ export function VoteFormV2({
   pollAddress,
   coordinatorPubKeyX,
   coordinatorPubKeyY,
+  voiceCredits = 100,
   onVoteSubmitted,
 }: VoteFormV2Props) {
   const { address } = useAccount();
@@ -48,8 +50,9 @@ export function VoteFormV2({
 
   const { writeContractAsync } = useWriteContract();
 
-  const MAX_WEIGHT = 10;
+  const MAX_WEIGHT = Math.floor(Math.sqrt(voiceCredits));
   const cost = weight * weight;
+  const creditExceeded = cost > voiceCredits;
 
   const handleSubmit = async () => {
     if (choice === null || !address) return;
@@ -204,6 +207,12 @@ export function VoteFormV2({
       <h3>{t.voteForm.title}</h3>
       <p className="vote-form-desc">{t.voteForm.desc}</p>
 
+      {/* Voice credit balance */}
+      <div className="credit-balance">
+        <span className="credit-balance-label">{t.voteForm.myCredits}</span>
+        <span className="credit-balance-value">{voiceCredits}</span>
+      </div>
+
       {/* Choice buttons - large, distinct */}
       <div className="choices" role="radiogroup" aria-label={t.voteForm.title}>
         <button
@@ -252,13 +261,14 @@ export function VoteFormV2({
           </span>
           <span className="cost-formula">({weight} × {weight} = {cost})</span>
         </div>
-        {cost > 25 && <span className="cost-warning" role="alert">{t.voteForm.costWarning}</span>}
+        {creditExceeded && <span className="cost-warning cost-exceeded" role="alert">{t.voteForm.creditExceeded}</span>}
+        {!creditExceeded && cost > 25 && <span className="cost-warning" role="alert">{t.voteForm.costWarning}</span>}
       </div>
 
       {/* Submit button - prominent */}
       <button
         onClick={() => setShowConfirm(true)}
-        disabled={choice === null || isSubmitting || !address}
+        disabled={choice === null || isSubmitting || !address || creditExceeded}
         className="vote-submit-btn"
         aria-busy={isSubmitting}
       >

@@ -122,6 +122,8 @@ export const ko: Translations = {
     weightLabel: '투표 가중치 (비용 = 가중치\u00B2)',
     cost: '비용:',
     credits: '크레딧',
+    myCredits: '내 보이스 크레딧',
+    creditExceeded: '크레딧이 부족합니다! 가중치를 줄여주세요.',
     costWarning: '가중치가 높으면 크레딧이 많이 소모됩니다',
     submit: '암호화 투표 제출',
     submitting: '암호화 및 제출 중...',
@@ -140,6 +142,7 @@ export const ko: Translations = {
   keyManager: {
     title: '키 관리 (강압 방지)',
     expandLabel: '강압 방지 보호',
+    tooltip: '누군가 투표를 강요하면? → 키를 변경하면 이전 투표가 자동 무효화됩니다. 새 키로 진짜 내 의사대로 다시 투표할 수 있습니다. 강요한 사람은 암호화 때문에 알 수 없습니다.',
     currentKey: '현재 공개키:',
     noKey: '등록된 키가 없습니다.',
     changeKey: '키 변경하기',

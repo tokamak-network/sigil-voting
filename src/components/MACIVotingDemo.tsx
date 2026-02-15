@@ -16,6 +16,8 @@ import {
   MACI_V2_ADDRESS,
   MACI_ABI,
   POLL_ABI,
+  VOICE_CREDIT_PROXY_ADDRESS,
+  VOICE_CREDIT_PROXY_ABI,
   V2Phase,
   DEFAULT_COORD_PUB_KEY_X,
   DEFAULT_COORD_PUB_KEY_Y,
@@ -68,6 +70,15 @@ export function MACIVotingDemo() {
 
   const coordPubKeyX = coordPubKeyXRaw ? BigInt(coordPubKeyXRaw as any) : DEFAULT_COORD_PUB_KEY_X
   const coordPubKeyY = coordPubKeyYRaw ? BigInt(coordPubKeyYRaw as any) : DEFAULT_COORD_PUB_KEY_Y
+
+  // Read voice credits from VoiceCreditProxy
+  const { data: voiceCreditsRaw } = useReadContract({
+    address: VOICE_CREDIT_PROXY_ADDRESS,
+    abi: VOICE_CREDIT_PROXY_ABI,
+    functionName: 'creditAmount',
+    query: { enabled: isConfigured && VOICE_CREDIT_PROXY_ADDRESS !== ZERO_ADDRESS },
+  })
+  const voiceCredits = voiceCreditsRaw ? Number(voiceCreditsRaw) : 100
 
   // Auto-dismiss tx banner after 8 seconds
   useEffect(() => {
@@ -390,6 +401,7 @@ export function MACIVotingDemo() {
                       pollAddress={pollAddress!}
                       coordinatorPubKeyX={coordPubKeyX}
                       coordinatorPubKeyY={coordPubKeyY}
+                      voiceCredits={voiceCredits}
                       onVoteSubmitted={() => setTxHash(null)}
                     />
                     <KeyManager
