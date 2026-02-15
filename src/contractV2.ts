@@ -25,12 +25,13 @@ export const MESSAGE_PROCESSOR_ADDRESS = '0x000000000000000000000000000000000000
 export const TALLY_V2_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`;
 
 // V2 Phases (4-phase, no Reveal)
-export enum V2Phase {
-  Voting = 'voting',
-  Merging = 'merging',
-  Processing = 'processing',
-  Finalized = 'finalized',
-}
+export const V2Phase = {
+  Voting: 'voting',
+  Merging: 'merging',
+  Processing: 'processing',
+  Finalized: 'finalized',
+} as const;
+export type V2Phase = (typeof V2Phase)[keyof typeof V2Phase];
 
 // MACI ABI
 export const MACI_ABI = [
