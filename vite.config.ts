@@ -16,7 +16,4 @@ export default defineConfig({
   worker: {
     format: 'es',
   },
-  test: {
-    exclude: ['**/node_modules/**', '**/dist/**', '**/*.cjs'],
-  },
 })
