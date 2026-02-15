@@ -26,15 +26,11 @@ export interface Translations {
       step2: { title: string; desc: string }
       step3: { title: string; desc: string }
     }
-    qv: {
+    whyMaci: {
       title: string
-      desc: string
-      metric: string
-      regular: string
-      quadratic: string
-      tokenCost: string
-      votingPower: string
-      totalStrength: string
+      anti: { title: string; desc: string }
+      privacy: { title: string; desc: string }
+      verify: { title: string; desc: string }
     }
     cta: {
       title: string
@@ -52,27 +48,24 @@ export interface Translations {
     notDeployedHint: string
     connectWallet: string
     description: string
-    modeD1: string
-    modeD2: string
-    modeD1Desc: string
-    modeD2Desc: string
+    stepper: {
+      register: string
+      createPoll: string
+      vote: string
+      result: string
+    }
     stats: {
       registered: string
       currentPoll: string
-      phase: string
       none: string
     }
     signup: {
-      title: string
       complete: string
       button: string
       loading: string
     }
     poll: {
-      title: string
       active: string
-      button: string
-      loading: string
     }
     vote: {
       title: string
@@ -82,6 +75,26 @@ export interface Translations {
       desc: string
     }
     lastTx: string
+    waiting: {
+      merging: string
+      processing: string
+    }
+  }
+  createPoll: {
+    title: string
+    titleLabel: string
+    titlePlaceholder: string
+    descLabel: string
+    descPlaceholder: string
+    durationLabel: string
+    durationHours: string
+    modeLabel: string
+    modeD1: string
+    modeD1Desc: string
+    modeD2: string
+    modeD2Desc: string
+    submit: string
+    submitting: string
   }
   voteForm: {
     title: string
@@ -96,9 +109,12 @@ export interface Translations {
     submitting: string
     success: string
     error: string
+    modeD1Label: string
+    modeD2Label: string
   }
   keyManager: {
     title: string
+    expandLabel: string
     currentKey: string
     noKey: string
     changeKey: string

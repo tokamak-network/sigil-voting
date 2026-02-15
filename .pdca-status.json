@@ -48,6 +48,19 @@
       }
     }
   },
+  "ux-overhaul": {
+    "phase": "plan",
+    "matchRate": null,
+    "iterationCount": 0,
+    "startedAt": "2026-02-15T00:00:00Z",
+    "documents": {
+      "plan": "docs/01-plan/features/ux-overhaul.plan.md",
+      "design": null,
+      "analysis": null,
+      "report": null
+    },
+    "tasks": []
+  },
   "service-launch-marketing": {
     "phase": "plan",
     "matchRate": null,

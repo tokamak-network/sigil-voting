@@ -114,39 +114,27 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
         </div>
       </section>
 
-      {/* Quadratic Voting Section */}
-      <section className="brutalist-qv" id="qv">
-        <div className="brutalist-qv-left">
-          <h2>{t.landing.qv.title}</h2>
-          <p>{t.landing.qv.desc}</p>
+      {/* Why MACI Section (replaces old QV comparison) */}
+      <section className="brutalist-why-maci" id="why-maci">
+        <div className="brutalist-section-header">
+          <h2>{t.landing.whyMaci.title}</h2>
         </div>
-        <div className="brutalist-qv-right">
-          <table className="brutalist-table">
-            <thead>
-              <tr>
-                <th>{t.landing.qv.metric}</th>
-                <th>{t.landing.qv.regular}</th>
-                <th className="highlight">{t.landing.qv.quadratic}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="label">{t.landing.qv.tokenCost}</td>
-                <td>100 Tokens</td>
-                <td>100 Tokens</td>
-              </tr>
-              <tr>
-                <td className="label">{t.landing.qv.votingPower}</td>
-                <td className="bad">100 Votes</td>
-                <td className="good">10 Votes</td>
-              </tr>
-              <tr className="total-row">
-                <td className="label">{t.landing.qv.totalStrength}</td>
-                <td>100x</td>
-                <td className="good bold">10x</td>
-              </tr>
-            </tbody>
-          </table>
+        <div className="why-maci-cards">
+          <div className="why-maci-card">
+            <span className="material-symbols-outlined">lock_reset</span>
+            <h3>{t.landing.whyMaci.anti.title}</h3>
+            <p>{t.landing.whyMaci.anti.desc}</p>
+          </div>
+          <div className="why-maci-card">
+            <span className="material-symbols-outlined">visibility_off</span>
+            <h3>{t.landing.whyMaci.privacy.title}</h3>
+            <p>{t.landing.whyMaci.privacy.desc}</p>
+          </div>
+          <div className="why-maci-card">
+            <span className="material-symbols-outlined">verified</span>
+            <h3>{t.landing.whyMaci.verify.title}</h3>
+            <p>{t.landing.whyMaci.verify.desc}</p>
+          </div>
         </div>
       </section>
 
