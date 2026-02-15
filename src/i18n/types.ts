@@ -189,6 +189,28 @@ export interface Translations {
     submit: string
     cancel: string
   }
+  proposals: {
+    title: string
+    empty: string
+    createNew: string
+    status: {
+      active: string
+      ended: string
+      finalized: string
+    }
+    messages: string
+    backToList: string
+    voted: string
+    notVoted: string
+  }
+  voteHistory: {
+    alreadyVoted: string
+    overrideWarning: string
+    lastChoice: string
+    lastWeight: string
+    lastCost: string
+    creditsRemaining: string
+  }
   footer: {
     desc: string
     resources: string

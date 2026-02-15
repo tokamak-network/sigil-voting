@@ -72,8 +72,8 @@ export function Header({
         </button>
         <nav className="brutalist-nav">
           <button
-            className={`brutalist-nav-item ${currentPage === 'maci-voting' ? 'active' : ''}`}
-            onClick={() => setCurrentPage('maci-voting')}
+            className={`brutalist-nav-item ${currentPage === 'proposals' || currentPage === 'proposal-detail' ? 'active' : ''}`}
+            onClick={() => setCurrentPage('proposals')}
           >
             {t.header.vote}
           </button>

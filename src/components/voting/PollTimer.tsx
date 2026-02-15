@@ -12,9 +12,10 @@ import { useTranslation } from '../../i18n';
 
 interface PollTimerProps {
   pollAddress: `0x${string}`;
+  onExpired?: () => void;
 }
 
-export function PollTimer({ pollAddress }: PollTimerProps) {
+export function PollTimer({ pollAddress, onExpired }: PollTimerProps) {
   const { t } = useTranslation();
   const [now, setNow] = useState(Math.floor(Date.now() / 1000));
 
@@ -38,6 +39,13 @@ export function PollTimer({ pollAddress }: PollTimerProps) {
   const duration = Number((timeData as [bigint, bigint])[1]);
   const deadline = deployTime + duration;
   const remaining = deadline - now;
+
+  // Notify parent when timer reaches zero
+  useEffect(() => {
+    if (remaining <= 0 && onExpired) {
+      onExpired();
+    }
+  }, [remaining <= 0, onExpired]);
 
   if (remaining <= 0) {
     return (

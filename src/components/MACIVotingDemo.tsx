@@ -22,7 +22,6 @@ import {
   DEFAULT_COORD_PUB_KEY_X,
   DEFAULT_COORD_PUB_KEY_Y,
 } from '../contractV2'
-import { CreatePollForm } from './CreatePollForm'
 import { VoteFormV2 } from './voting/VoteFormV2'
 import { MergingStatus } from './voting/MergingStatus'
 import { ProcessingStatus } from './voting/ProcessingStatus'
@@ -33,7 +32,12 @@ import { useTranslation } from '../i18n'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
 
-export function MACIVotingDemo() {
+interface MACIVotingDemoProps {
+  pollId: number
+  onBack: () => void
+}
+
+export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoProps) {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
   const { writeContractAsync, isPending } = useWriteContract()
@@ -41,18 +45,74 @@ export function MACIVotingDemo() {
 
   const [phase, setPhase] = useState<V2Phase>(V2Phase.Voting)
   const [signedUp, setSignedUp] = useState(false)
-  const [pollId, setPollId] = useState<number | null>(null)
   const [pollAddress, setPollAddress] = useState<`0x${string}` | null>(null)
-  const [tallyAddress] = useState<`0x${string}` | null>(null)
+  const [tallyAddress, setTallyAddress] = useState<`0x${string}` | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
   const [isSigningUp, setIsSigningUp] = useState(false)
-  const [showCreatePoll, setShowCreatePoll] = useState(false)
-  const [isLoadingPoll, setIsLoadingPoll] = useState(false)
+  const [isLoadingPoll, setIsLoadingPoll] = useState(true)
   const [pollTitle, setPollTitle] = useState<string | null>(null)
+  const [isPollExpired, setIsPollExpired] = useState(false)
 
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
-  const hasPoll = pollId !== null && pollAddress !== null
+  const hasPoll = pollAddress !== null
+
+  // Load poll address from contract using propPollId
+  useEffect(() => {
+    if (!publicClient || !isConfigured) return
+    setIsLoadingPoll(true)
+
+    const loadPoll = async () => {
+      try {
+        const addr = await publicClient.readContract({
+          address: MACI_V2_ADDRESS,
+          abi: MACI_ABI,
+          functionName: 'polls',
+          args: [BigInt(propPollId)],
+        })
+        const pollAddr = addr as `0x${string}`
+        if (pollAddr && pollAddr !== ZERO_ADDRESS) {
+          setPollAddress(pollAddr)
+        }
+        const title = localStorage.getItem(`maci-poll-title-${propPollId}`)
+        if (title) setPollTitle(title)
+
+        // Try to get tally address from DeployPoll event logs
+        try {
+          const logs = await publicClient.getLogs({
+            address: MACI_V2_ADDRESS,
+            event: {
+              type: 'event',
+              name: 'DeployPoll',
+              inputs: [
+                { name: '_pollId', type: 'uint256', indexed: false },
+                { name: 'pollAddr', type: 'address', indexed: true },
+                { name: 'messageProcessorAddr', type: 'address', indexed: false },
+                { name: 'tallyAddr', type: 'address', indexed: false },
+              ],
+            },
+            fromBlock: 0n,
+            toBlock: 'latest',
+          })
+          for (const log of logs) {
+            const args = log.args as { _pollId?: bigint; tallyAddr?: `0x${string}` }
+            if (args._pollId !== undefined && Number(args._pollId) === propPollId && args.tallyAddr) {
+              setTallyAddress(args.tallyAddr)
+              break
+            }
+          }
+        } catch {
+          // Event reading may fail on some RPCs
+        }
+      } catch {
+        // Poll doesn't exist
+      } finally {
+        setIsLoadingPoll(false)
+      }
+    }
+
+    loadPoll()
+  }, [propPollId, publicClient, isConfigured])
 
   // Read coordinator keys from Poll contract (on-chain, not hardcoded)
   const { data: coordPubKeyXRaw } = useReadContract({
@@ -98,63 +158,12 @@ export function MACIVotingDemo() {
     query: { enabled: isConfigured },
   })
 
-  // Read nextPollId to auto-detect existing polls
-  const { data: nextPollId } = useReadContract({
-    address: MACI_V2_ADDRESS,
-    abi: MACI_ABI,
-    functionName: 'nextPollId',
-    query: { enabled: isConfigured },
-  })
-
   // Check if user already signed up (localStorage)
   useEffect(() => {
     if (!address) return
     const stored = localStorage.getItem(`maci-signup-${address}`)
     if (stored) setSignedUp(true)
   }, [address])
-
-  // Load poll: first try localStorage, then auto-detect from contract
-  useEffect(() => {
-    const storedPollId = localStorage.getItem('maci-last-poll-id')
-    const storedPollAddr = localStorage.getItem('maci-last-poll-addr')
-    if (storedPollId && storedPollAddr) {
-      const id = parseInt(storedPollId, 10)
-      setPollId(id)
-      setPollAddress(storedPollAddr as `0x${string}`)
-      // Load poll title from localStorage
-      const title = localStorage.getItem(`maci-poll-title-${id}`)
-      if (title) setPollTitle(title)
-      return
-    }
-
-    // Auto-detect latest poll from contract
-    if (!nextPollId || !publicClient) return
-    const latestId = Number(nextPollId)
-    if (latestId <= 0) return
-
-    setIsLoadingPoll(true)
-    const targetPollId = latestId - 1
-    publicClient
-      .readContract({
-        address: MACI_V2_ADDRESS,
-        abi: MACI_ABI,
-        functionName: 'polls',
-        args: [BigInt(targetPollId)],
-      })
-      .then((addr) => {
-        const pollAddr = addr as `0x${string}`
-        if (pollAddr && pollAddr !== ZERO_ADDRESS) {
-          setPollId(targetPollId)
-          setPollAddress(pollAddr)
-          localStorage.setItem('maci-last-poll-id', targetPollId.toString())
-          localStorage.setItem('maci-last-poll-addr', pollAddr)
-          const title = localStorage.getItem(`maci-poll-title-${targetPollId}`)
-          if (title) setPollTitle(title)
-        }
-      })
-      .catch(() => {})
-      .finally(() => setIsLoadingPoll(false))
-  }, [nextPollId, publicClient])
 
   // Determine phase from poll state
   useEffect(() => {
@@ -256,14 +265,6 @@ export function MACIVotingDemo() {
     }
   }, [address, writeContractAsync, refetchSignUps, publicClient, t])
 
-  // === Poll created handler ===
-  const handlePollCreated = useCallback((newPollId: number, newPollAddress: `0x${string}`, title?: string) => {
-    setPollId(newPollId)
-    setPollAddress(newPollAddress)
-    setShowCreatePoll(false)
-    if (title) setPollTitle(title)
-  }, [])
-
   // === Stepper labels (3 steps) ===
   const steps = [
     t.maci.stepper.register,
@@ -302,7 +303,11 @@ export function MACIVotingDemo() {
   return (
     <div className="maci-voting-demo">
       <div className="brutalist-card">
-        <h2>{t.maci.title}</h2>
+        <button className="back-to-list-btn" onClick={onBack}>
+          <span className="material-symbols-outlined">arrow_back</span>
+          {t.proposals.backToList}
+        </button>
+        <h2>{pollTitle || `${t.maci.poll.active.replace('{id}', String(propPollId))}`}</h2>
         <p className="maci-description">{t.maci.description}</p>
 
         {/* Stepper - 3 steps */}
@@ -385,49 +390,33 @@ export function MACIVotingDemo() {
                   </div>
                 ) : hasPoll && phase === V2Phase.Voting ? (
                   <>
-                    {/* Poll info card */}
                     <div className="poll-info-card">
                       <div className="poll-info-header">
-                        <span className="step-check" aria-hidden="true">&#10003;</span>
-                        <span className="poll-title">
-                          {pollTitle || `${t.maci.poll.active.replace('{id}', String(pollId))}`}
-                        </span>
                         <span className="poll-addr">({pollAddress!.slice(0, 8)}...{pollAddress!.slice(-6)})</span>
                       </div>
-                      <PollTimer pollAddress={pollAddress!} />
+                      <PollTimer pollAddress={pollAddress!} onExpired={() => setIsPollExpired(true)} />
                     </div>
                     <VoteFormV2
-                      pollId={pollId!}
+                      pollId={propPollId}
                       pollAddress={pollAddress!}
                       coordinatorPubKeyX={coordPubKeyX}
                       coordinatorPubKeyY={coordPubKeyY}
                       voiceCredits={voiceCredits}
+                      isExpired={isPollExpired}
                       onVoteSubmitted={() => setTxHash(null)}
                     />
                     <KeyManager
-                      pollId={pollId!}
+                      pollId={propPollId}
                       coordinatorPubKeyX={coordPubKeyX}
                       coordinatorPubKeyY={coordPubKeyY}
                       pollAddress={pollAddress!}
                     />
                   </>
-                ) : (
-                  <>
-                    <div className="no-poll-notice">
-                      <p>{t.maci.stats.currentPoll}: {t.maci.stats.none}</p>
-                      {!showCreatePoll ? (
-                        <button
-                          onClick={() => setShowCreatePoll(true)}
-                          className="brutalist-btn"
-                        >
-                          {t.createPoll.title}
-                        </button>
-                      ) : (
-                        <CreatePollForm onPollCreated={handlePollCreated} />
-                      )}
-                    </div>
-                  </>
-                )}
+                ) : !hasPoll && !isLoadingPoll ? (
+                  <div className="no-poll-notice">
+                    <p>{t.maci.stats.currentPoll}: {t.maci.stats.none}</p>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div className="step-summary">
