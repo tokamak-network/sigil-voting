@@ -14,7 +14,7 @@
   },
   "maci-anti-collusion": {
     "phase": "check",
-    "matchRate": 58,
+    "matchRate": 76,
     "iterationCount": 0,
     "startedAt": "2026-02-13T00:00:00Z",
     "doCompletedAt": "2026-02-14T00:00:00Z",
@@ -27,9 +27,9 @@
       "report": null
     },
     "gapSummary": {
-      "pass": ["contracts (92%)", "circuits (100%)", "crypto (100%)", "frontend (100%)", "contract-tests (100%)"],
-      "fail": ["coordinator (0%)", "circuit-tests (0%)", "property-tests (0%)"],
-      "criticalGap": "Coordinator service entirely missing (0/8 files)"
+      "pass": ["contracts (92%)", "circuits (100%)", "coordinator (92%)", "crypto (100%)", "frontend (100%)", "contract-tests (100%)", "impl-steps (94%)"],
+      "fail": ["circuit-tests (0%)", "property-tests (0%)"],
+      "criticalGap": "Circuit tests (0/8) and MACI property tests (0/7) not implemented"
     },
     "tasks": [],
     "doSummary": {
