@@ -38,6 +38,15 @@ contract RejectAllGatekeeper is ISignUpGatekeeper {
     }
 }
 
+/// @dev Simple ERC20 mock for token gate testing
+contract MockERC20 {
+    mapping(address => uint256) public balanceOf;
+
+    function mint(address to, uint256 amount) external {
+        balanceOf[to] += amount;
+    }
+}
+
 contract MACITest is Test {
     MACI public maci;
     FreeForAllGatekeeper public gatekeeper;
@@ -412,7 +421,94 @@ contract MACITest is Test {
         assertEq(tally.totalVoters(), 5);
     }
 
-    // ============ 12. test_NoRevealFunction ============
+    // ============ 12. test_TokenGate_MultiToken ============
+
+    function test_TokenGate_NoGate_OwnerOnly() public {
+        // No gates set → only owner can create polls
+        assertTrue(maci.canCreatePoll(address(this)));
+        assertFalse(maci.canCreatePoll(address(0xBEEF)));
+    }
+
+    function test_TokenGate_SingleToken() public {
+        MockERC20 token = new MockERC20();
+        maci.addProposalGate(address(token), 100);
+
+        address user = address(0xCAFE);
+        assertFalse(maci.canCreatePoll(user));
+
+        token.mint(user, 100);
+        assertTrue(maci.canCreatePoll(user));
+    }
+
+    function test_TokenGate_MultiToken() public {
+        MockERC20 tokenA = new MockERC20();
+        MockERC20 tokenB = new MockERC20();
+        maci.addProposalGate(address(tokenA), 100);
+        maci.addProposalGate(address(tokenB), 50);
+
+        address user = address(0xCAFE);
+        assertFalse(maci.canCreatePoll(user));
+
+        // Only tokenB is enough
+        tokenB.mint(user, 50);
+        assertTrue(maci.canCreatePoll(user));
+    }
+
+    function test_TokenGate_DeployPoll_WithToken() public {
+        MockERC20 token = new MockERC20();
+        maci.addProposalGate(address(token), 100);
+
+        address user = address(0xCAFE);
+        token.mint(user, 200);
+
+        vm.prank(user);
+        maci.deployPoll(
+            "Token Gated Poll",
+            POLL_DURATION,
+            COORD_PUB_KEY_X,
+            COORD_PUB_KEY_Y,
+            address(verifier),
+            address(vkRegistry),
+            MSG_TREE_DEPTH
+        );
+
+        address pollAddr = maci.polls(0);
+        assertTrue(pollAddr != address(0));
+    }
+
+    function test_TokenGate_DeployPoll_Reverts_InsufficientTokens() public {
+        MockERC20 token = new MockERC20();
+        maci.addProposalGate(address(token), 100);
+
+        address user = address(0xCAFE);
+        token.mint(user, 50); // Not enough
+
+        vm.prank(user);
+        vm.expectRevert(MACI.InsufficientTokens.selector);
+        maci.deployPoll(
+            "Should Fail",
+            POLL_DURATION,
+            COORD_PUB_KEY_X,
+            COORD_PUB_KEY_Y,
+            address(verifier),
+            address(vkRegistry),
+            MSG_TREE_DEPTH
+        );
+    }
+
+    function test_TokenGate_ClearGates() public {
+        MockERC20 token = new MockERC20();
+        maci.addProposalGate(address(token), 100);
+        assertEq(maci.proposalGateCount(), 1);
+
+        maci.clearProposalGates();
+        assertEq(maci.proposalGateCount(), 0);
+
+        // Back to owner-only mode
+        assertTrue(maci.canCreatePoll(address(this)));
+    }
+
+    // ============ 13. test_NoRevealFunction ============
 
     function test_NoRevealFunction() public pure {
         // MACI.sol has no revealVote function

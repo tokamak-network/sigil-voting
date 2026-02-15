@@ -27,8 +27,18 @@ contract MACI is DomainObjs {
     mapping(uint256 => address) public polls;
     uint256 public nextPollId;
 
+    // ============ Proposal Token Gate (Multi-Token) ============
+    struct TokenGate {
+        address token;
+        uint256 threshold;
+    }
+
+    TokenGate[] public proposalGates;
+
     // ============ Access Control ============
     error NotOwner();
+    error InsufficientTokens();
+    error NoProposalGates();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -89,7 +99,39 @@ contract MACI is DomainObjs {
         emit SignUp(stateIndex, _pubKeyX, _pubKeyY, voiceCreditBalance, block.timestamp);
     }
 
+    /// @notice Add a token gate for proposal creation (owner only)
+    /// @param _token ERC20 token address
+    /// @param _threshold Minimum balance required
+    function addProposalGate(address _token, uint256 _threshold) external onlyOwner {
+        proposalGates.push(TokenGate(_token, _threshold));
+    }
+
+    /// @notice Remove all proposal gates (owner only)
+    function clearProposalGates() external onlyOwner {
+        delete proposalGates;
+    }
+
+    /// @notice Get number of proposal gates
+    function proposalGateCount() external view returns (uint256) {
+        return proposalGates.length;
+    }
+
+    /// @notice Check if an address can create a poll
+    function canCreatePoll(address _user) public view returns (bool) {
+        if (proposalGates.length == 0) return _user == owner;
+        for (uint256 i = 0; i < proposalGates.length; i++) {
+            (bool ok, bytes memory data) =
+                proposalGates[i].token.staticcall(abi.encodeWithSignature("balanceOf(address)", _user));
+            if (ok && data.length >= 32) {
+                uint256 balance = abi.decode(data, (uint256));
+                if (balance >= proposalGates[i].threshold) return true;
+            }
+        }
+        return false;
+    }
+
     /// @notice Deploy a new Poll with associated MessageProcessor and Tally
+    /// @dev If no token gates set: owner only. If token gates set: any qualifying holder.
     function deployPoll(
         string calldata _title,
         uint256 _duration,
@@ -98,7 +140,8 @@ contract MACI is DomainObjs {
         address _verifier,
         address _vkRegistry,
         uint8 _messageTreeDepth
-    ) external onlyOwner returns (uint256 pollId) {
+    ) external returns (uint256 pollId) {
+        if (!canCreatePoll(msg.sender)) revert InsufficientTokens();
         pollId = nextPollId++;
 
         Poll poll = new Poll(

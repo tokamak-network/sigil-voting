@@ -95,11 +95,27 @@ export const MACI_ABI = [
     ],
   },
   {
+    type: 'function',
+    name: 'canCreatePoll',
+    inputs: [{ name: '_user', type: 'address' }],
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'proposalGateCount',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
     type: 'event',
-    name: 'PollDeployed',
+    name: 'DeployPoll',
     inputs: [
       { name: 'pollId', type: 'uint256', indexed: true },
       { name: 'pollAddr', type: 'address', indexed: false },
+      { name: 'messageProcessorAddr', type: 'address', indexed: false },
+      { name: 'tallyAddr', type: 'address', indexed: false },
     ],
   },
 ] as const;
