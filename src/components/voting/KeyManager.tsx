@@ -54,15 +54,19 @@ export function KeyManager({
     setSuccess(false);
 
     try {
-      // Generate new key pair using BLAKE512
       const { derivePrivateKey } = await import('../../crypto/blake512');
       const { generateEphemeralKeyPair, generateECDHSharedKey } = await import('../../crypto/ecdh');
       const { poseidonEncrypt } = await import('../../crypto/duplexSponge');
+      const { eddsaSign, eddsaDerivePublicKey } = await import('../../crypto/eddsa');
 
-      // New key from random seed
+      // Generate new MACI keypair from random seed
       const seed = crypto.getRandomValues(new Uint8Array(32));
-      const newSk = await derivePrivateKey(seed);
-      const newKeyPair = await generateEphemeralKeyPair();
+      const newSk = derivePrivateKey(seed);
+      const newPubKey = await eddsaDerivePublicKey(newSk);
+
+      // Get current sk for signing the key change command
+      const storedSk = localStorage.getItem(`maci-sk-${address}-${pollId}`);
+      const currentSk = storedSk ? BigInt(storedSk) : newSk;
 
       // ECDH shared key with coordinator
       const ephemeral = await generateEphemeralKeyPair();
@@ -72,15 +76,38 @@ export function KeyManager({
       );
 
       // Pack key change command
-      // Key change = publishMessage with newPubKey set to the new key
       const nonce = BigInt(getKeyChangeNonce(address, pollId));
-      const packedCommand = 0n; // stateIndex will be resolved
+      const stateIndexStr = localStorage.getItem(`maci-stateIndex-${address}-${pollId}`);
+      const stateIndex = stateIndexStr ? BigInt(stateIndexStr) : 0n;
+      const packedCommand = stateIndex; // Key change: only stateIndex matters, weight=0
+
+      // Compute command hash for EdDSA signature
+      const salt = BigInt(Math.floor(Math.random() * 2 ** 250));
+      // @ts-expect-error - circomlibjs doesn't have types
+      const { buildPoseidon } = await import('circomlibjs');
+      const poseidon = await buildPoseidon();
+      const F = poseidon.F;
+      const cmdHashF = poseidon([
+        F.e(stateIndex),
+        F.e(newPubKey[0]),
+        F.e(newPubKey[1]),
+        F.e(0n), // newVoteWeight = 0 for key change
+        F.e(salt),
+      ]);
+      const cmdHash = F.toObject(cmdHashF);
+
+      // Sign with current key
+      const signature = await eddsaSign(cmdHash, currentSk);
+
+      // Compose plaintext with real signature
       const plaintext = [
         packedCommand,
-        newKeyPair.pk[0],  // newPubKeyX
-        newKeyPair.pk[1],  // newPubKeyY
-        BigInt(Math.floor(Math.random() * 2 ** 250)), // salt
-        0n, 0n, 0n, // signature placeholders
+        newPubKey[0],
+        newPubKey[1],
+        salt,
+        signature.R8[0],
+        signature.R8[1],
+        signature.S,
       ];
 
       const ciphertext = await poseidonEncrypt(plaintext, sharedKey, nonce);
@@ -98,22 +125,22 @@ export function KeyManager({
         functionName: 'publishMessage',
         args: [
           encMessage.map((v) => v) as any,
-          ephemeral.pk[0],
-          ephemeral.pk[1],
+          ephemeral.pubKey[0],
+          ephemeral.pubKey[1],
         ],
       });
 
-      // Save new key
+      // Save new keypair
       localStorage.setItem(
         `maci-pubkey-${address}-${pollId}`,
-        JSON.stringify([newKeyPair.pk[0].toString(), newKeyPair.pk[1].toString()]),
+        JSON.stringify([newPubKey[0].toString(), newPubKey[1].toString()]),
       );
       localStorage.setItem(
         `maci-sk-${address}-${pollId}`,
         newSk.toString(),
       );
 
-      setCurrentPubKey(newKeyPair.pk);
+      setCurrentPubKey(newPubKey);
       incrementKeyChangeNonce(address, pollId);
       setSuccess(true);
       setShowConfirm(false);
