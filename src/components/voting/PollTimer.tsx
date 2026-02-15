@@ -25,6 +25,12 @@ export function PollTimer({ pollAddress, onExpired }: PollTimerProps) {
     functionName: 'getDeployTimeAndDuration',
   });
 
+  const deployTime = timeData ? Number((timeData as [bigint, bigint])[0]) : 0;
+  const duration = timeData ? Number((timeData as [bigint, bigint])[1]) : 0;
+  const deadline = deployTime + duration;
+  const remaining = deadline - now;
+  const expired = timeData ? remaining <= 0 : false;
+
   // Update clock every second
   useEffect(() => {
     const interval = setInterval(() => {
@@ -33,21 +39,16 @@ export function PollTimer({ pollAddress, onExpired }: PollTimerProps) {
     return () => clearInterval(interval);
   }, []);
 
-  if (!timeData) return null;
-
-  const deployTime = Number((timeData as [bigint, bigint])[0]);
-  const duration = Number((timeData as [bigint, bigint])[1]);
-  const deadline = deployTime + duration;
-  const remaining = deadline - now;
-
   // Notify parent when timer reaches zero
   useEffect(() => {
-    if (remaining <= 0 && onExpired) {
+    if (expired && onExpired) {
       onExpired();
     }
-  }, [remaining <= 0, onExpired]);
+  }, [expired, onExpired]);
 
-  if (remaining <= 0) {
+  if (!timeData) return null;
+
+  if (expired) {
     return (
       <div className="poll-timer ended" role="timer" aria-label={t.timer.ended}>
         <span className="timer-icon">\u23F0</span>
