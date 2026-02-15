@@ -72,6 +72,7 @@ export const en: Translations = {
       complete: 'Registered',
       button: 'Register as Voter',
       loading: 'Generating Key & Registering...',
+      error: 'Registration failed',
     },
     poll: {
       active: 'Poll #{id} active',
@@ -100,6 +101,7 @@ export const en: Translations = {
     submit: 'Create Proposal',
     submitting: 'Creating Proposal...',
     error: 'Failed to create proposal',
+    errorOwner: 'Only the contract owner can create proposals',
   },
   voteForm: {
     title: 'Cast Your Vote',

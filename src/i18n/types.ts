@@ -63,6 +63,7 @@ export interface Translations {
       complete: string
       button: string
       loading: string
+      error: string
     }
     poll: {
       active: string
@@ -91,6 +92,7 @@ export interface Translations {
     submit: string
     submitting: string
     error: string
+    errorOwner: string
   }
   voteForm: {
     title: string

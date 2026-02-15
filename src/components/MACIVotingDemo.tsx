@@ -47,6 +47,13 @@ export function MACIVotingDemo() {
 
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
 
+  // Auto-dismiss tx banner after 8 seconds
+  useEffect(() => {
+    if (!txHash) return
+    const timer = setTimeout(() => setTxHash(null), 8000)
+    return () => clearTimeout(timer)
+  }, [txHash])
+
   // 3 steps: 0=Register, 1=Vote, 2=Result
   const currentStep = !signedUp ? 0 : (pollId !== null && phase !== V2Phase.Voting) ? 2 : 1
 
@@ -171,6 +178,25 @@ export function MACIVotingDemo() {
         args: [pk[0], pk[1], '0x', '0x'],
       })
 
+      // Parse SignUp event to get stateIndex
+      if (publicClient) {
+        try {
+          const receipt = await publicClient.waitForTransactionReceipt({ hash })
+          for (const log of receipt.logs) {
+            if (log.topics.length >= 2 && log.topics[0]) {
+              // SignUp event: topic[1] = stateIndex
+              const stateIndex = parseInt(log.topics[1] as string, 16)
+              if (!isNaN(stateIndex) && stateIndex > 0) {
+                localStorage.setItem(`maci-stateIndex-${address}`, String(stateIndex))
+              }
+            }
+          }
+        } catch {
+          // Receipt parsing failed, stateIndex defaults to 1
+          localStorage.setItem(`maci-stateIndex-${address}`, '1')
+        }
+      }
+
       localStorage.setItem(`maci-signup-${address}`, 'true')
       localStorage.setItem(`maci-sk-${address}`, sk.toString())
       localStorage.setItem(`maci-pk-${address}`, JSON.stringify([pk[0].toString(), pk[1].toString()]))
@@ -179,7 +205,14 @@ export function MACIVotingDemo() {
       setTxHash(hash)
       refetchSignUps()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'SignUp failed')
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('insufficient funds') || msg.includes('gas')) {
+        setError(t.voteForm.errorGas)
+      } else if (msg.includes('rejected') || msg.includes('denied')) {
+        setError(t.voteForm.errorRejected)
+      } else {
+        setError(t.maci.signup.error)
+      }
     } finally {
       setIsSigningUp(false)
     }

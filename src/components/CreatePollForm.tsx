@@ -53,8 +53,9 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
           COORD_PUB_KEY_Y,
           MOCK_VERIFIER_ADDRESS as `0x${string}`,
           VK_REGISTRY_ADDRESS as `0x${string}`,
-          10, // messageTreeDepth
+          2, // messageTreeDepth (dev: 2, production: 10)
         ],
+        gas: 15000000n, // bypass RPC estimation cap (publicnode caps at 16.7M)
       })
 
       if (publicClient) {
@@ -79,7 +80,16 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.createPoll.error)
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('insufficient funds') || msg.includes('gas')) {
+        setError(t.voteForm.errorGas)
+      } else if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
+        setError(t.voteForm.errorRejected)
+      } else if (msg.includes('NotOwner') || msg.includes('owner')) {
+        setError(t.createPoll.errorOwner)
+      } else {
+        setError(t.createPoll.error)
+      }
     } finally {
       setIsSubmitting(false)
     }

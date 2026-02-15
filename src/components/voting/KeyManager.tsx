@@ -38,10 +38,12 @@ export function KeyManager({
 
   const { writeContractAsync } = useWriteContract();
 
-  // Load current key from localStorage
+  // Load current key from localStorage (poll-specific > global)
   useEffect(() => {
     if (!address) return;
-    const stored = localStorage.getItem(`maci-pubkey-${address}-${pollId}`);
+    const pollPk = localStorage.getItem(`maci-pubkey-${address}-${pollId}`);
+    const globalPk = localStorage.getItem(`maci-pk-${address}`);
+    const stored = pollPk || globalPk;
     if (stored) {
       const parsed = JSON.parse(stored);
       setCurrentPubKey([BigInt(parsed[0]), BigInt(parsed[1])]);
@@ -66,8 +68,10 @@ export function KeyManager({
       const newPubKey = await eddsaDerivePublicKey(newSk);
 
       // Get current sk for signing the key change command
-      const storedSk = localStorage.getItem(`maci-sk-${address}-${pollId}`);
-      const currentSk = storedSk ? BigInt(storedSk) : newSk;
+      // Priority: poll-specific (after previous key change) > global (from signUp)
+      const pollSk = localStorage.getItem(`maci-sk-${address}-${pollId}`);
+      const globalSk = localStorage.getItem(`maci-sk-${address}`);
+      const currentSk = pollSk ? BigInt(pollSk) : globalSk ? BigInt(globalSk) : newSk;
 
       // ECDH shared key with coordinator
       const ephemeral = await generateEphemeralKeyPair();
@@ -78,8 +82,10 @@ export function KeyManager({
 
       // Pack key change command
       const nonce = BigInt(getKeyChangeNonce(address, pollId));
-      const stateIndexStr = localStorage.getItem(`maci-stateIndex-${address}-${pollId}`);
-      const stateIndex = stateIndexStr ? BigInt(stateIndexStr) : 0n;
+      // Priority: global key (from signUp) > poll-specific > default 1
+      const globalIdx = localStorage.getItem(`maci-stateIndex-${address}`);
+      const pollIdx = localStorage.getItem(`maci-stateIndex-${address}-${pollId}`);
+      const stateIndex = globalIdx ? BigInt(globalIdx) : pollIdx ? BigInt(pollIdx) : 1n;
       const packedCommand = stateIndex; // Key change: only stateIndex matters, weight=0
 
       // Compute command hash for EdDSA signature

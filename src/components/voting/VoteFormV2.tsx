@@ -223,35 +223,61 @@ function incrementNonce(address: string, pollId: number): void {
 }
 
 // State index management (localStorage) — set after MACI signUp
-function getStateIndex(address: string, pollId: number): number {
-  const key = `maci-stateIndex-${address}-${pollId}`;
-  return parseInt(localStorage.getItem(key) || '0', 10);
+// stateIndex is global per address (not per poll), but we check both keys for compatibility
+function getStateIndex(address: string, _pollId: number): number {
+  // First check address-only key (set by MACIVotingDemo after signup)
+  const globalKey = `maci-stateIndex-${address}`;
+  const globalVal = localStorage.getItem(globalKey);
+  if (globalVal) return parseInt(globalVal, 10);
+  // Fallback: poll-specific key
+  const pollKey = `maci-stateIndex-${address}-${_pollId}`;
+  const pollVal = localStorage.getItem(pollKey);
+  if (pollVal) return parseInt(pollVal, 10);
+  // Default: 1 (index 0 is blank leaf in MACI state tree)
+  return 1;
 }
 
 // MACI keypair management
+// Priority: poll-specific key (set by KeyManager after key change) > global key (set during signUp) > generate new
 async function getOrCreateMaciKeypair(
   address: string,
   pollId: number,
   derivePrivateKey: (seed: Uint8Array) => bigint,
   eddsaDerivePublicKey: (sk: bigint) => Promise<[bigint, bigint]>,
 ): Promise<{ sk: bigint; pubKey: [bigint, bigint] }> {
-  const skKey = `maci-sk-${address}-${pollId}`;
-  const pkKey = `maci-pubkey-${address}-${pollId}`;
-
-  const storedSk = localStorage.getItem(skKey);
-  if (storedSk) {
-    const sk = BigInt(storedSk);
-    const storedPk = localStorage.getItem(pkKey);
+  // 1. Check poll-specific key (set by KeyManager after key change)
+  const pollSkKey = `maci-sk-${address}-${pollId}`;
+  const pollPkKey = `maci-pubkey-${address}-${pollId}`;
+  const storedPollSk = localStorage.getItem(pollSkKey);
+  if (storedPollSk) {
+    const sk = BigInt(storedPollSk);
+    const storedPk = localStorage.getItem(pollPkKey);
     if (storedPk) {
       const parsed = JSON.parse(storedPk);
       return { sk, pubKey: [BigInt(parsed[0]), BigInt(parsed[1])] };
     }
     const pubKey = await eddsaDerivePublicKey(sk);
-    localStorage.setItem(pkKey, JSON.stringify([pubKey[0].toString(), pubKey[1].toString()]));
+    localStorage.setItem(pollPkKey, JSON.stringify([pubKey[0].toString(), pubKey[1].toString()]));
     return { sk, pubKey };
   }
 
-  // Generate new keypair from deterministic seed
+  // 2. Check global key (set during signUp in MACIVotingDemo)
+  const globalSkKey = `maci-sk-${address}`;
+  const globalPkKey = `maci-pk-${address}`;
+  const storedGlobalSk = localStorage.getItem(globalSkKey);
+  if (storedGlobalSk) {
+    const sk = BigInt(storedGlobalSk);
+    const storedPk = localStorage.getItem(globalPkKey);
+    if (storedPk) {
+      const parsed = JSON.parse(storedPk);
+      return { sk, pubKey: [BigInt(parsed[0]), BigInt(parsed[1])] };
+    }
+    const pubKey = await eddsaDerivePublicKey(sk);
+    localStorage.setItem(globalPkKey, JSON.stringify([pubKey[0].toString(), pubKey[1].toString()]));
+    return { sk, pubKey };
+  }
+
+  // 3. Generate new keypair from deterministic seed (fallback)
   const encoder = new TextEncoder();
   const seedData = encoder.encode(`maci-keypair-${address}-${pollId}`);
   const hashBuffer = await crypto.subtle.digest('SHA-256', seedData);
@@ -259,8 +285,8 @@ async function getOrCreateMaciKeypair(
   const sk = derivePrivateKey(seed);
   const pubKey = await eddsaDerivePublicKey(sk);
 
-  localStorage.setItem(skKey, sk.toString());
-  localStorage.setItem(pkKey, JSON.stringify([pubKey[0].toString(), pubKey[1].toString()]));
+  localStorage.setItem(pollSkKey, sk.toString());
+  localStorage.setItem(pollPkKey, JSON.stringify([pubKey[0].toString(), pubKey[1].toString()]));
   return { sk, pubKey };
 }
 

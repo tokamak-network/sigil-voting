@@ -72,6 +72,7 @@ export const ko: Translations = {
       complete: '등록 완료',
       button: '투표자 등록하기',
       loading: '키 생성 및 등록 중...',
+      error: '등록에 실패했습니다',
     },
     poll: {
       active: '투표 #{id} 진행 중',
@@ -100,6 +101,7 @@ export const ko: Translations = {
     submit: '제안 생성',
     submitting: '제안 생성 중...',
     error: '제안 생성에 실패했습니다',
+    errorOwner: '컨트랙트 소유자만 제안을 생성할 수 있습니다',
   },
   voteForm: {
     title: '투표하기',
