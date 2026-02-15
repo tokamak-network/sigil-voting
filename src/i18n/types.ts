@@ -64,8 +64,10 @@ export interface Translations {
     signup: {
       complete: string
       button: string
+      desc: string
       loading: string
       error: string
+      retry: string
     }
     poll: {
       active: string
@@ -92,6 +94,7 @@ export interface Translations {
     descPlaceholder: string
     durationLabel: string
     durationHours: string
+    durationHint: string
     submit: string
     submitting: string
     error: string
@@ -114,6 +117,8 @@ export interface Translations {
     cost: string
     credits: string
     myCredits: string
+    creditsTooltip: string
+    weightTooltip: string
     creditExceeded: string
     costWarning: string
     submit: string
@@ -129,12 +134,15 @@ export interface Translations {
     stageDone: string
     processing: string
     patience: string
+    successNext: string
+    retry: string
   }
   keyManager: {
     title: string
     expandLabel: string
     tooltip: string
     currentKey: string
+    keyActive: string
     noKey: string
     changeKey: string
     warning: string
@@ -191,7 +199,9 @@ export interface Translations {
   }
   proposals: {
     title: string
+    loading: string
     empty: string
+    emptyHint: string
     createNew: string
     status: {
       active: string
@@ -220,5 +230,6 @@ export interface Translations {
     social: string
     copyright: string
     secured: string
+    builtBy: string
   }
 }

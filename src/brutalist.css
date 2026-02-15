@@ -106,14 +106,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .brutalist-logo-icon {
-  width: 48px;
-  height: 48px;
-  background: var(--bold-blue);
-  border: 2px solid var(--pure-black);
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--stark-white);
 }
 
 .brutalist-logo-icon .material-symbols-outlined {
@@ -400,13 +397,26 @@ h1, h2, h3, h4, h5, h6 {
   border-bottom: 1px solid var(--stark-white);
 }
 
+.brutalist-hero-symbol {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+  user-select: none;
+}
+
+.brutalist-hero-symbol svg {
+  filter: drop-shadow(0 2px 8px rgba(0, 82, 255, 0.3));
+}
+
 .brutalist-hero-text {
   position: relative;
   z-index: 10;
   color: var(--stark-white);
   font-family: var(--font-display);
   font-weight: 900;
-  font-size: 100px;
+  font-size: 64px;
   line-height: 0.8;
   letter-spacing: -0.06em;
   text-transform: uppercase;
@@ -415,8 +425,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @media (min-width: 1024px) {
+  .brutalist-hero-symbol svg {
+    width: 240px;
+    height: 240px;
+  }
   .brutalist-hero-text {
-    font-size: 192px;
+    font-size: 80px;
   }
 }
 

@@ -1,10 +1,15 @@
-<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Outer hexagon (D1: Privacy) -->
-  <path d="M20 2 L35.32 11 L35.32 29 L20 38 L4.68 29 L4.68 11 Z" stroke="#000000" stroke-width="2.5" fill="none"/>
-  <!-- Middle hexagon rotated (D2: Quadratic) -->
-  <path d="M20 6 L31.66 13 L31.66 27 L20 34 L8.34 27 L8.34 13 Z" stroke="#0052FF" stroke-width="2" fill="none"/>
-  <!-- Inner diamond (MACI: Anti-Collusion) -->
-  <path d="M20 10 L28 20 L20 30 L12 20 Z" stroke="#000000" stroke-width="2.5" fill="none"/>
-  <!-- Center keyhole / seal dot -->
-  <circle cx="20" cy="20" r="3" fill="#0052FF"/>
+<svg width="200" height="48" viewBox="0 0 200 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Symbol Mark -->
+  <g transform="translate(4, 4)">
+    <!-- Outer hexagon — D1: Privacy -->
+    <path d="M20 3 L34 12 L34 28 L20 37 L6 28 L6 12 Z" stroke="#000000" stroke-width="2.8" fill="none" stroke-linejoin="round"/>
+    <!-- Middle hexagon — D2: Quadratic Voting -->
+    <path d="M20 8 L30.5 14 L30.5 26 L20 32 L9.5 26 L9.5 14 Z" stroke="#0052FF" stroke-width="2.2" fill="none" stroke-linejoin="round"/>
+    <!-- Inner diamond — MACI: Anti-Collusion -->
+    <path d="M20 12 L27 20 L20 28 L13 20 Z" stroke="#000000" stroke-width="2.8" fill="none" stroke-linejoin="round"/>
+    <!-- Center seal -->
+    <circle cx="20" cy="20" r="3.2" fill="#0052FF"/>
+  </g>
+  <!-- SIGIL Text -->
+  <text x="56" y="32" font-family="'Space Grotesk', sans-serif" font-weight="900" font-size="28" letter-spacing="-0.5" fill="#000000">SIGIL</text>
 </svg>

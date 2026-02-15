@@ -61,11 +61,11 @@ export function Header({
       <div className="brutalist-header-left">
         <button className="brutalist-logo" onClick={() => setCurrentPage('landing')} aria-label={t.header.home}>
           <div className="brutalist-logo-icon" aria-hidden="true">
-            <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M20 2 L35.32 11 L35.32 29 L20 38 L4.68 29 L4.68 11 Z" stroke="#000000" strokeWidth="2.5" fill="none"/>
-              <path d="M20 6 L31.66 13 L31.66 27 L20 34 L8.34 27 L8.34 13 Z" stroke="#0052FF" strokeWidth="2" fill="none"/>
-              <path d="M20 10 L28 20 L20 30 L12 20 Z" stroke="#000000" strokeWidth="2.5" fill="none"/>
-              <circle cx="20" cy="20" r="3" fill="#0052FF"/>
+            <svg width="36" height="36" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 3 L34 12 L34 28 L20 37 L6 28 L6 12 Z" stroke="#000000" strokeWidth="2.8" fill="none" strokeLinejoin="round"/>
+              <path d="M20 8 L30.5 14 L30.5 26 L20 32 L9.5 26 L9.5 14 Z" stroke="#0052FF" strokeWidth="2.2" fill="none" strokeLinejoin="round"/>
+              <path d="M20 12 L27 20 L20 28 L13 20 Z" stroke="#000000" strokeWidth="2.8" fill="none" strokeLinejoin="round"/>
+              <circle cx="20" cy="20" r="3.2" fill="#0052FF"/>
             </svg>
           </div>
           <span className="brutalist-logo-text">SIGIL</span>
