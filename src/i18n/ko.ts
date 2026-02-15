@@ -2,9 +2,11 @@ import type { Translations } from './types'
 
 export const ko: Translations = {
   header: {
+    home: '홈으로',
     vote: '투표하기',
     connect: '지갑 연결',
     connecting: '연결 중...',
+    disconnect: '연결 해제',
     wrongNetwork: '네트워크 변경',
     switching: '변경 중...',
   },

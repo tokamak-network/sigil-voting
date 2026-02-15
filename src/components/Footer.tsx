@@ -14,9 +14,9 @@ export function Footer() {
         <div className="brutalist-footer-links">
           <h5>{t.footer.resources}</h5>
           <ul>
-            <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting#readme" target="_blank" rel="noopener noreferrer">{t.footer.whitepaper}</a></li>
-            <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting" target="_blank" rel="noopener noreferrer">{t.footer.audit}</a></li>
-            <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting" target="_blank" rel="noopener noreferrer">{t.footer.sdk}</a></li>
+            <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting#readme" target="_blank" rel="noopener noreferrer">{t.footer.whitepaper} <span aria-hidden="true">&#8599;</span></a></li>
+            <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting" target="_blank" rel="noopener noreferrer">{t.footer.audit} <span aria-hidden="true">&#8599;</span></a></li>
+            <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting" target="_blank" rel="noopener noreferrer">{t.footer.sdk} <span aria-hidden="true">&#8599;</span></a></li>
           </ul>
         </div>
         <div className="brutalist-footer-links">

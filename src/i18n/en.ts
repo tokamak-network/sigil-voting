@@ -2,9 +2,11 @@ import type { Translations } from './types'
 
 export const en: Translations = {
   header: {
+    home: 'Home',
     vote: 'Vote',
     connect: 'Connect',
     connecting: '...',
+    disconnect: 'Disconnect',
     wrongNetwork: 'Wrong Network',
     switching: 'Switching...',
   },
