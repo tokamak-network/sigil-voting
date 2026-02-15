@@ -14,7 +14,7 @@
   },
   "maci-anti-collusion": {
     "phase": "check",
-    "matchRate": 76,
+    "matchRate": 97,
     "iterationCount": 0,
     "startedAt": "2026-02-13T00:00:00Z",
     "doCompletedAt": "2026-02-14T00:00:00Z",
@@ -27,14 +27,15 @@
       "report": null
     },
     "gapSummary": {
-      "pass": ["contracts (92%)", "circuits (100%)", "coordinator (92%)", "crypto (100%)", "frontend (100%)", "contract-tests (100%)", "impl-steps (94%)"],
-      "fail": ["circuit-tests (0%)", "property-tests (0%)"],
-      "criticalGap": "Circuit tests (0/8) and MACI property tests (0/7) not implemented"
+      "pass": ["contracts (96%)", "circuits (100%)", "coordinator (94%)", "crypto (100%)", "frontend (100%)", "contract-tests (100%)", "circuit-tests (100%)", "property-tests (100%)", "impl-steps (100%)"],
+      "fail": [],
+      "criticalGap": null
     },
     "tasks": [],
     "doSummary": {
-      "contracts": ["MACI.sol (refactored constructor)", "MockVerifier.sol (new)", "DeployMACI.s.sol (new)"],
-      "frontend": ["MACIVotingDemo.tsx (new)", "Header.tsx (nav)", "App.tsx (routing)", "contractV2.ts (addresses)", "config.json (v2 section)"],
+      "contracts": ["MACI.sol (refactored constructor)", "Groth16VerifierMsgProcessor.sol (new)", "Groth16VerifierTally.sol (new)", "DeployMACI.s.sol (updated)"],
+      "frontend": ["MACIVotingDemo.tsx (D1/D2 mode)", "VoteFormV2.tsx (real EdDSA)", "KeyManager.tsx (real EdDSA)", "contractV2.ts (verifier addresses)"],
+      "tests": "69 forge + 54 vitest = 123 total, 0 failed",
       "deployment": {
         "network": "sepolia",
         "maci": "0x68E0D7AA5859BEB5D0aaBBf5F1735C8950d0AFA3",
@@ -43,9 +44,7 @@
         "gatekeeper": "0x4c18984A78910Dd1976d6DFd820f6d18e7edD672",
         "voiceCreditProxy": "0x800D89970c9644619566FEcdA79Ff27110af0cDf",
         "accQueue": "0xC87be30dDC7553b12dc2046D7dADc455eb4fc7e2"
-      },
-      "tests": "62 passed, 0 failed",
-      "ciFixNeeded": "forge fmt (committed separately)"
+      }
     }
   },
   "service-launch-marketing": {
