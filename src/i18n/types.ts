@@ -86,6 +86,7 @@ export interface Translations {
   createPoll: {
     title: string
     titleLabel: string
+    titleMin: string
     titlePlaceholder: string
     descLabel: string
     descPlaceholder: string

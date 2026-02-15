@@ -95,6 +95,7 @@ export const en: Translations = {
   createPoll: {
     title: 'Create New Proposal',
     titleLabel: 'Proposal Title',
+    titleMin: 'At least 3 characters required',
     titlePlaceholder: 'e.g. Community Fund Allocation',
     descLabel: 'Description (optional)',
     descPlaceholder: 'Describe the proposal',
