@@ -1,8 +1,8 @@
 /**
- * CreatePollForm - Proposal creation form with voting mode selection
+ * CreatePollForm - Simple proposal creation form
  *
- * Moved poll deployment logic from MACIVotingDemo into a dedicated form.
- * Users can set title, description, duration, and voting mode (D1/D2).
+ * Only title, description (optional), and duration.
+ * Voting mode is always quadratic (D2) — voters choose their own weight.
  */
 
 import { useState, useCallback } from 'react'
@@ -31,7 +31,6 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [durationHours, setDurationHours] = useState(1)
-  const [votingMode, setVotingMode] = useState<'d1' | 'd2'>('d1')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -68,7 +67,6 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
 
               localStorage.setItem('maci-last-poll-id', newPollId.toString())
               localStorage.setItem('maci-last-poll-addr', pollAddr)
-              localStorage.setItem(`maci-poll-mode-${newPollId}`, votingMode)
               localStorage.setItem(`maci-poll-title-${newPollId}`, title.trim())
               if (description.trim()) {
                 localStorage.setItem(`maci-poll-desc-${newPollId}`, description.trim())
@@ -85,7 +83,7 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
     } finally {
       setIsSubmitting(false)
     }
-  }, [address, title, description, durationHours, votingMode, writeContractAsync, publicClient, onPollCreated])
+  }, [address, title, description, durationHours, writeContractAsync, publicClient, onPollCreated])
 
   return (
     <div className="create-poll-form">
@@ -125,30 +123,6 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
           <span className="duration-value">
             {durationHours} {t.createPoll.durationHours}
           </span>
-        </div>
-      </div>
-
-      <div className="form-group">
-        <label>{t.createPoll.modeLabel}</label>
-        <div className="mode-options">
-          <button
-            className={`mode-option ${votingMode === 'd1' ? 'active' : ''}`}
-            onClick={() => setVotingMode('d1')}
-            disabled={isSubmitting}
-            type="button"
-          >
-            <strong>{t.createPoll.modeD1}</strong>
-            <span>{t.createPoll.modeD1Desc}</span>
-          </button>
-          <button
-            className={`mode-option ${votingMode === 'd2' ? 'active' : ''}`}
-            onClick={() => setVotingMode('d2')}
-            disabled={isSubmitting}
-            type="button"
-          >
-            <strong>{t.createPoll.modeD2}</strong>
-            <span>{t.createPoll.modeD2Desc}</span>
-          </button>
         </div>
       </div>
 

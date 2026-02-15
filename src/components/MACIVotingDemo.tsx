@@ -50,13 +50,8 @@ export function MACIVotingDemo() {
   // 3 steps: 0=Register, 1=Vote, 2=Result
   const currentStep = !signedUp ? 0 : (pollId !== null && phase !== V2Phase.Voting) ? 2 : 1
 
-  // Voting mode for current poll (set at poll creation)
-  const votingMode = pollId !== null
-    ? (localStorage.getItem(`maci-poll-mode-${pollId}`) || 'd1') as 'd1' | 'd2'
-    : 'd1'
-
   // Read numSignUps from MACI
-  const { data: numSignUps, refetch: refetchSignUps } = useReadContract({
+  const { data: _numSignUps, refetch: refetchSignUps } = useReadContract({
     address: MACI_V2_ADDRESS as `0x${string}`,
     abi: MACI_ABI,
     functionName: 'numSignUps',
@@ -266,18 +261,6 @@ export function MACIVotingDemo() {
           ))}
         </div>
 
-        {/* Stats */}
-        <div className="maci-stats">
-          <div className="stat">
-            <span className="stat-label">{t.maci.stats.registered}</span>
-            <span className="stat-value">{numSignUps?.toString() || '0'}</span>
-          </div>
-          <div className="stat">
-            <span className="stat-label">{t.maci.stats.currentPoll}</span>
-            <span className="stat-value">{pollId !== null ? `#${pollId}` : t.maci.stats.none}</span>
-          </div>
-        </div>
-
         {error && <div className="error-banner">{error}</div>}
         {txHash && (
           <div className="tx-banner">
@@ -327,12 +310,8 @@ export function MACIVotingDemo() {
                       {t.maci.poll.active.replace('{id}', String(pollId))}
                       <span className="poll-addr"> ({pollAddress!.slice(0, 8)}...{pollAddress!.slice(-6)})</span>
                     </div>
-                    <div className="vote-mode-badge">
-                      {votingMode === 'd1' ? t.voteForm.modeD1Label : t.voteForm.modeD2Label}
-                    </div>
                     <VoteFormV2
                       pollId={pollId!}
-                      isD2={votingMode === 'd2'}
                       coordinatorPubKeyX={COORD_PUB_KEY_X}
                       coordinatorPubKeyY={COORD_PUB_KEY_Y}
                       onVoteSubmitted={() => setTxHash(null)}

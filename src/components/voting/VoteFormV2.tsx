@@ -1,15 +1,16 @@
 /**
  * VoteFormV2 - MACI Encrypted Voting Form
  *
- * No reveal phase. Votes are encrypted with Poseidon DuplexSponge
- * and submitted as encrypted messages to Poll.publishMessage().
+ * Quadratic voting: voters choose For/Against and pick their vote weight.
+ * Cost = weight² credits. Weight 1 = simple vote. Weight 3 = 9 credits.
  *
  * Flow:
- *   1. User selects vote choice (D1: 3 options, D2: 2 options)
- *   2. BLAKE512 key derivation -> ECDH -> DuplexSponge encryption
- *   3. EdDSA-Poseidon signature
- *   4. Binary command packing
- *   5. Poll.publishMessage(encMessage, encPubKey)
+ *   1. User selects vote choice (For / Against)
+ *   2. User picks vote weight (default 1)
+ *   3. BLAKE512 key derivation -> ECDH -> DuplexSponge encryption
+ *   4. EdDSA-Poseidon signature
+ *   5. Binary command packing
+ *   6. Poll.publishMessage(encMessage, encPubKey)
  */
 
 import { useState } from 'react';
@@ -19,7 +20,6 @@ import { useTranslation } from '../../i18n';
 
 interface VoteFormV2Props {
   pollId: number;
-  isD2?: boolean;
   coordinatorPubKeyX: bigint;
   coordinatorPubKeyY: bigint;
   onVoteSubmitted?: () => void;
@@ -27,7 +27,6 @@ interface VoteFormV2Props {
 
 export function VoteFormV2({
   pollId,
-  isD2 = false,
   coordinatorPubKeyX,
   coordinatorPubKeyY,
   onVoteSubmitted,
@@ -42,16 +41,13 @@ export function VoteFormV2({
 
   const { writeContractAsync } = useWriteContract();
 
-  const choices = isD2
-    ? [
-        { value: 0, label: t.voteForm.against },
-        { value: 1, label: t.voteForm.for },
-      ]
-    : [
-        { value: 0, label: t.voteForm.against },
-        { value: 1, label: t.voteForm.for },
-        { value: 2, label: t.voteForm.abstain },
-      ];
+  const choices = [
+    { value: 0, label: t.voteForm.against },
+    { value: 1, label: t.voteForm.for },
+  ];
+
+  const weightNum = parseInt(weight || '1', 10) || 1;
+  const cost = weightNum * weightNum;
 
   const handleSubmit = async () => {
     if (choice === null || !address) return;
@@ -169,21 +165,19 @@ export function VoteFormV2({
         ))}
       </div>
 
-      {isD2 && (
-        <div className="weight-input">
-          <label>{t.voteForm.weightLabel}</label>
-          <input
-            type="number"
-            min="1"
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-            disabled={isSubmitting}
-          />
-          <span className="cost">
-            {t.voteForm.cost} {BigInt(weight || '0') * BigInt(weight || '0')} {t.voteForm.credits}
-          </span>
-        </div>
-      )}
+      <div className="weight-input">
+        <label>{t.voteForm.weightLabel}</label>
+        <input
+          type="number"
+          min="1"
+          value={weight}
+          onChange={(e) => setWeight(e.target.value)}
+          disabled={isSubmitting}
+        />
+        <span className="cost">
+          {t.voteForm.cost} {cost} {t.voteForm.credits}
+        </span>
+      </div>
 
       <button
         onClick={handleSubmit}
