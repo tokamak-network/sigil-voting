@@ -39,6 +39,7 @@ export function MACIVotingDemo() {
   const [txHash, setTxHash] = useState<string | null>(null)
   const [isSigningUp, setIsSigningUp] = useState(false)
   const [isDeployingPoll, setIsDeployingPoll] = useState(false)
+  const [votingMode, setVotingMode] = useState<'d1' | 'd2'>('d1')
 
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
 
@@ -229,8 +230,29 @@ export function MACIVotingDemo() {
       <div className="brutalist-card">
         <h2>MACI V2 - Anti-Collusion Voting</h2>
         <p className="maci-description">
-          Minimal Anti-Collusion Infrastructure. Votes are encrypted and cannot be
-          revealed. Key changes invalidate previous votes, preventing coercion.
+          Minimal Anti-Collusion Infrastructure with D1 (Private) and D2 (Quadratic) voting modes.
+          Votes are encrypted and cannot be revealed. Key changes invalidate previous votes, preventing coercion.
+        </p>
+
+        {/* Voting Mode Selector */}
+        <div className="mode-selector">
+          <button
+            className={`mode-btn ${votingMode === 'd1' ? 'active' : ''}`}
+            onClick={() => setVotingMode('d1')}
+          >
+            D1: Private Voting
+          </button>
+          <button
+            className={`mode-btn ${votingMode === 'd2' ? 'active' : ''}`}
+            onClick={() => setVotingMode('d2')}
+          >
+            D2: Quadratic Voting
+          </button>
+        </div>
+        <p className="mode-description">
+          {votingMode === 'd1'
+            ? 'Standard private voting (For / Against / Abstain). Each token = 1 vote.'
+            : 'Quadratic voting (For / Against). Cost = weight\u00B2 credits.'}
         </p>
 
         {/* Phase Indicator */}
@@ -324,6 +346,7 @@ export function MACIVotingDemo() {
             <h3>3. Cast Vote</h3>
             <VoteFormV2
               pollId={pollId}
+              isD2={votingMode === 'd2'}
               coordinatorPubKeyX={COORD_PUB_KEY_X}
               coordinatorPubKeyY={COORD_PUB_KEY_Y}
               onVoteSubmitted={() => setTxHash(null)}
