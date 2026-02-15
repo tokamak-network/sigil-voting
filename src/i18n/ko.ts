@@ -129,6 +129,13 @@ export const ko: Translations = {
     error: '투표 제출 실패',
     errorGas: 'ETH가 부족합니다. 가스비를 확인하세요.',
     errorRejected: '트랜잭션이 거부되었습니다.',
+    stageEncrypting: '투표 암호화 중...',
+    stageSigning: 'EdDSA 서명 생성 중...',
+    stageConfirming: '지갑에서 트랜잭션 확인 중...',
+    stageWaiting: '블록체인 확인 대기 중...',
+    stageDone: '투표 완료!',
+    processing: '투표 처리 중',
+    patience: '암호화 과정이 포함되어 있어 시간이 걸릴 수 있습니다. 잠시만 기다려주세요.',
   },
   keyManager: {
     title: '키 관리 (강압 방지)',

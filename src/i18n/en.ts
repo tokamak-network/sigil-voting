@@ -129,6 +129,13 @@ export const en: Translations = {
     error: 'Vote submission failed',
     errorGas: 'Insufficient ETH. Please check your gas balance.',
     errorRejected: 'Transaction was rejected.',
+    stageEncrypting: 'Encrypting your vote...',
+    stageSigning: 'Generating EdDSA signature...',
+    stageConfirming: 'Confirm transaction in wallet...',
+    stageWaiting: 'Waiting for blockchain confirmation...',
+    stageDone: 'Vote complete!',
+    processing: 'Processing Vote',
+    patience: 'This includes encryption steps and may take a moment. Please wait.',
   },
   keyManager: {
     title: 'Key Management (Anti-Coercion)',
