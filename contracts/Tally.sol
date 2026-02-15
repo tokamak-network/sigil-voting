@@ -5,6 +5,7 @@ import {Poll} from "./Poll.sol";
 import {MessageProcessor} from "./MessageProcessor.sol";
 import {DomainObjs} from "./DomainObjs.sol";
 import {IVerifier} from "./IVerifier.sol";
+import {PoseidonT4} from "poseidon-solidity/PoseidonT4.sol";
 
 /// @title Tally - Vote aggregation verification
 /// @notice Verifies Groth16 proofs of correct vote tallying
@@ -14,6 +15,7 @@ contract Tally is DomainObjs {
     address public immutable messageProcessor;
     address public immutable verifier;
     address public immutable vkRegistry;
+    address public coordinator;
 
     // Tally commitment: poseidon_3([votesRoot, totalSpentVoiceCredits, perVoteOptionSpentRoot])
     uint256 public tallyCommitment;
@@ -25,16 +27,24 @@ contract Tally is DomainObjs {
     uint256 public abstainVotes; // D1 only (D2 = 0)
     uint256 public totalVoters;
 
+    error NotCoordinator();
+
+    modifier onlyCoordinator() {
+        if (msg.sender != coordinator) revert NotCoordinator();
+        _;
+    }
+
     event Tallied(uint256 indexed batchIndex, uint256 newTallyCommitment);
     event TallyPublished(
         uint256 forVotes, uint256 againstVotes, uint256 abstainVotes, uint256 totalVoters, uint256 tallyCommitment
     );
 
-    constructor(address _poll, address _mp, address _verifier, address _vkRegistry) {
+    constructor(address _poll, address _mp, address _verifier, address _vkRegistry, address _coordinator) {
         poll = _poll;
         messageProcessor = _mp;
         verifier = _verifier;
         vkRegistry = _vkRegistry;
+        coordinator = _coordinator;
     }
 
     /// @notice Verify a tally batch proof
@@ -47,7 +57,7 @@ contract Tally is DomainObjs {
         uint256[2] calldata _pA,
         uint256[2][2] calldata _pB,
         uint256[2] calldata _pC
-    ) external {
+    ) external onlyCoordinator {
         // 1. Processing must be complete
         require(MessageProcessor(messageProcessor).processingComplete(), "Processing not done");
 
@@ -78,20 +88,22 @@ contract Tally is DomainObjs {
     /// @param _againstVotes Total votes against
     /// @param _abstainVotes Total abstain votes (D1 only, 0 for D2)
     /// @param _totalVoters Total number of voters who participated
-    /// @param _tallyResultsHash Hash of the results for verification against tallyCommitment
+    /// @param _tallyResultsRoot Merkle root of per-option vote totals
+    /// @param _totalSpent Total voice credits spent
+    /// @param _perOptionSpentRoot Merkle root of per-option spent credits
     function publishResults(
         uint256 _forVotes,
         uint256 _againstVotes,
         uint256 _abstainVotes,
         uint256 _totalVoters,
-        uint256 _tallyResultsHash
-    ) external {
+        uint256 _tallyResultsRoot,
+        uint256 _totalSpent,
+        uint256 _perOptionSpentRoot
+    ) external onlyCoordinator {
         require(tallyCommitment != 0, "Tally not computed");
-        // Verify that the results hash matches the tally commitment
-        // In a full implementation, this would verify a Merkle proof
-        // For now, we trust the coordinator to provide correct results
-        // that match the on-chain verified tally commitment
-        require(_tallyResultsHash == tallyCommitment, "Results hash mismatch");
+        // Verify: poseidon_3(tallyResultsRoot, totalSpent, perOptionSpentRoot) == tallyCommitment
+        uint256 computedCommitment = PoseidonT4.hash([_tallyResultsRoot, _totalSpent, _perOptionSpentRoot]);
+        require(computedCommitment == tallyCommitment, "Tally commitment mismatch");
 
         forVotes = _forVotes;
         againstVotes = _againstVotes;

@@ -53,6 +53,9 @@ contract AccQueue {
     /// @notice Total number of leaves enqueued
     uint256 public numLeaves;
 
+    /// @notice Number of subRoots processed so far during incremental merge
+    uint256 public mergeProgress;
+
     /// @notice Number of leaves per subtree
     uint256 public immutable LEAVES_PER_SUBTREE;
 
@@ -180,16 +183,30 @@ contract AccQueue {
     /// @param _numSrQueueOps Number of operations (0 = all at once)
     function mergeSubRoots(uint256 _numSrQueueOps) external {
         require(!merged, "Already merged");
+        require(!subRootsMerged, "SubRoots already merged");
+
         // If there are remaining leaves in an incomplete subtree, finalize it
         if (currentSubtreeLeafCount > 0) {
             _padAndFinalizeCurrentSubtree();
         }
-        // For simplicity, process all at once (ignore _numSrQueueOps)
-        // In production, this would be incremental
-        if (_numSrQueueOps > 0) {
-            // Placeholder for incremental merge
+
+        uint256 total = subRoots.length;
+        require(total > 0, "No subtrees to merge");
+
+        if (_numSrQueueOps == 0) {
+            // Process all remaining at once
+            mergeProgress = total;
+        } else {
+            // Process incrementally
+            uint256 remaining = total - mergeProgress;
+            uint256 toProcess = _numSrQueueOps < remaining ? _numSrQueueOps : remaining;
+            mergeProgress += toProcess;
         }
-        subRootsMerged = true;
+
+        // Mark as merged only when all subRoots have been processed
+        if (mergeProgress >= total) {
+            subRootsMerged = true;
+        }
     }
 
     /// @notice Pad remaining slots with zeros and finalize the current subtree

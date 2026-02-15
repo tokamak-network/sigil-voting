@@ -11,6 +11,7 @@ import "../contracts/VkRegistry.sol";
 import "../contracts/IVerifier.sol";
 import "../contracts/gatekeepers/FreeForAllGatekeeper.sol";
 import "../contracts/voiceCreditProxy/ConstantVoiceCreditProxy.sol";
+import {PoseidonT4} from "poseidon-solidity/PoseidonT4.sol";
 
 /// @dev Mock verifier that always returns true (for testing)
 contract MockVerifier is IVerifier {
@@ -211,7 +212,7 @@ contract MACITest is Test {
 
         // Get MessageProcessor address from event
         // For testing, we deploy manually
-        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry));
+        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry), address(this));
 
         uint256[2] memory pA = [uint256(0), uint256(0)];
         uint256[2][2] memory pB = [[uint256(0), uint256(0)], [uint256(0), uint256(0)]];
@@ -249,7 +250,7 @@ contract MACITest is Test {
 
         // Set verifier to reject
         verifier.setReturnValue(false);
-        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry));
+        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry), address(this));
 
         uint256[2] memory pA;
         uint256[2][2] memory pB;
@@ -276,7 +277,7 @@ contract MACITest is Test {
         Poll poll = Poll(maci.polls(0));
         vm.warp(block.timestamp + POLL_DURATION + 1);
 
-        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry));
+        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry), address(this));
 
         uint256[2] memory pA;
         uint256[2][2] memory pB;
@@ -312,16 +313,17 @@ contract MACITest is Test {
         poll.mergeMessageAqSubRoots(0);
         poll.mergeMessageAq();
 
-        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry));
+        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry), address(this));
         uint256[2] memory pA;
         uint256[2][2] memory pB;
         uint256[2] memory pC;
         mp.processMessages(12345, pA, pB, pC);
         mp.completeProcessing();
 
-        Tally tally = new Tally(address(poll), address(mp), address(verifier), address(vkRegistry));
-        tally.tallyVotes(67890, pA, pB, pC);
-        assertEq(tally.tallyCommitment(), 67890);
+        Tally tally = new Tally(address(poll), address(mp), address(verifier), address(vkRegistry), address(this));
+        uint256 tallyCommitment = PoseidonT4.hash([uint256(111), uint256(222), uint256(333)]);
+        tally.tallyVotes(tallyCommitment, pA, pB, pC);
+        assertEq(tally.tallyCommitment(), tallyCommitment);
     }
 
     // ============ 10. test_Tally_InvalidProof ============
@@ -348,7 +350,7 @@ contract MACITest is Test {
         poll.mergeMessageAqSubRoots(0);
         poll.mergeMessageAq();
 
-        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry));
+        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry), address(this));
         uint256[2] memory pA;
         uint256[2][2] memory pB;
         uint256[2] memory pC;
@@ -356,7 +358,7 @@ contract MACITest is Test {
         mp.completeProcessing();
 
         verifier.setReturnValue(false);
-        Tally tally = new Tally(address(poll), address(mp), address(verifier), address(vkRegistry));
+        Tally tally = new Tally(address(poll), address(mp), address(verifier), address(vkRegistry), address(this));
 
         vm.expectRevert("Invalid tally proof");
         tally.tallyVotes(67890, pA, pB, pC);
@@ -386,18 +388,22 @@ contract MACITest is Test {
         poll.mergeMessageAqSubRoots(0);
         poll.mergeMessageAq();
 
-        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry));
+        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry), address(this));
         uint256[2] memory pA;
         uint256[2][2] memory pB;
         uint256[2] memory pC;
         mp.processMessages(12345, pA, pB, pC);
         mp.completeProcessing();
 
-        Tally tally = new Tally(address(poll), address(mp), address(verifier), address(vkRegistry));
-        tally.tallyVotes(67890, pA, pB, pC);
+        Tally tally = new Tally(address(poll), address(mp), address(verifier), address(vkRegistry), address(this));
+        uint256 tallyResultsRoot = 1111;
+        uint256 totalSpent = 2222;
+        uint256 perOptionSpentRoot = 3333;
+        uint256 commitment = PoseidonT4.hash([tallyResultsRoot, totalSpent, perOptionSpentRoot]);
+        tally.tallyVotes(commitment, pA, pB, pC);
 
-        // Publish results (tallyResultsHash must match tallyCommitment)
-        tally.publishResults(50, 30, 20, 5, 67890);
+        // Publish results with Poseidon-verified commitment
+        tally.publishResults(50, 30, 20, 5, tallyResultsRoot, totalSpent, perOptionSpentRoot);
 
         assertTrue(tally.tallyVerified());
         assertEq(tally.forVotes(), 50);
@@ -463,7 +469,7 @@ contract MACITest is Test {
         assertTrue(poll.messageAqMerged());
 
         // 6. Process messages
-        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry));
+        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry), address(this));
         uint256[2] memory pA;
         uint256[2][2] memory pB;
         uint256[2] memory pC;
@@ -472,12 +478,16 @@ contract MACITest is Test {
         assertTrue(mp.processingComplete());
 
         // 7. Tally votes
-        Tally tally = new Tally(address(poll), address(mp), address(verifier), address(vkRegistry));
-        tally.tallyVotes(88888, pA, pB, pC);
-        assertEq(tally.tallyCommitment(), 88888);
+        Tally tally = new Tally(address(poll), address(mp), address(verifier), address(vkRegistry), address(this));
+        uint256 tallyResultsRoot = 4444;
+        uint256 totalSpent = 5555;
+        uint256 perOptionSpentRoot = 6666;
+        uint256 commitment = PoseidonT4.hash([tallyResultsRoot, totalSpent, perOptionSpentRoot]);
+        tally.tallyVotes(commitment, pA, pB, pC);
+        assertEq(tally.tallyCommitment(), commitment);
 
         // 8. Publish results
-        tally.publishResults(60, 35, 5, 2, 88888);
+        tally.publishResults(60, 35, 5, 2, tallyResultsRoot, totalSpent, perOptionSpentRoot);
         assertTrue(tally.tallyVerified());
     }
 }

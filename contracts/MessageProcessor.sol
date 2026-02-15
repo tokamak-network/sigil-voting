@@ -13,18 +13,27 @@ contract MessageProcessor is DomainObjs {
     address public immutable poll;
     address public immutable verifier;
     address public immutable vkRegistry;
+    address public coordinator;
 
     uint256 public processedBatchCount;
     uint256 public currentStateCommitment;
     bool public processingComplete;
 
+    error NotCoordinator();
+
+    modifier onlyCoordinator() {
+        if (msg.sender != coordinator) revert NotCoordinator();
+        _;
+    }
+
     event MessagesProcessed(uint256 indexed batchIndex, uint256 newStateCommitment);
     event ProcessingCompleted(uint256 finalStateCommitment);
 
-    constructor(address _poll, address _verifier, address _vkRegistry) {
+    constructor(address _poll, address _verifier, address _vkRegistry, address _coordinator) {
         poll = _poll;
         verifier = _verifier;
         vkRegistry = _vkRegistry;
+        coordinator = _coordinator;
     }
 
     /// @notice Verify a batch of processed messages
@@ -37,7 +46,7 @@ contract MessageProcessor is DomainObjs {
         uint256[2] calldata _pA,
         uint256[2][2] calldata _pB,
         uint256[2] calldata _pC
-    ) external {
+    ) external onlyCoordinator {
         // 1. Voting must be over
         require(!Poll(poll).isVotingOpen(), "Voting still open");
 
@@ -69,7 +78,7 @@ contract MessageProcessor is DomainObjs {
     }
 
     /// @notice Mark processing as complete (called after all batches processed)
-    function completeProcessing() external {
+    function completeProcessing() external onlyCoordinator {
         require(!processingComplete, "Already complete");
         require(processedBatchCount > 0, "No batches processed");
         processingComplete = true;

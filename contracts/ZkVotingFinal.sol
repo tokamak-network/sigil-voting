@@ -692,7 +692,8 @@ contract ZkVotingFinal is IERC165 {
         if (block.timestamp > proposal.revealEndTime) revert NotInRevealPhase();
         if (!vc.exists) revert CommitmentNotFound();
         if (vc.revealed) revert AlreadyRevealed();
-        if (_choice > CHOICE_ABSTAIN) revert InvalidChoice();
+        // D2 spec: binary choice only (0=against, 1=for), NO abstain
+        if (_choice > CHOICE_FOR) revert InvalidChoice();
 
         // Verify reveal: commitment = hash(hash(choice, numVotes, creditsSpent, proposalId), voteSalt, 0, 0)
         uint256 inner = PoseidonT5.hash([_choice, _numVotes, vc.creditsSpent, _proposalId]);

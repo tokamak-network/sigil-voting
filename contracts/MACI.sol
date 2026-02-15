@@ -18,6 +18,7 @@ contract MACI is DomainObjs {
     AccQueue public stateAq;
     uint256 public numSignUps;
     uint8 public immutable stateTreeDepth;
+    address public owner;
 
     ISignUpGatekeeper public signUpGatekeeper;
     IVoiceCreditProxy public voiceCreditProxy;
@@ -25,6 +26,14 @@ contract MACI is DomainObjs {
     // ============ Poll Registry ============
     mapping(uint256 => address) public polls;
     uint256 public nextPollId;
+
+    // ============ Access Control ============
+    error NotOwner();
+
+    modifier onlyOwner() {
+        if (msg.sender != owner) revert NotOwner();
+        _;
+    }
 
     // ============ Events ============
     event SignUp(
@@ -42,6 +51,7 @@ contract MACI is DomainObjs {
         signUpGatekeeper = ISignUpGatekeeper(_signUpGatekeeper);
         voiceCreditProxy = IVoiceCreditProxy(_voiceCreditProxy);
         stateTreeDepth = _stateTreeDepth;
+        owner = msg.sender;
 
         // Use pre-deployed AccQueue
         stateAq = AccQueue(_stateAq);
@@ -88,15 +98,15 @@ contract MACI is DomainObjs {
         address _verifier,
         address _vkRegistry,
         uint8 _messageTreeDepth
-    ) external returns (uint256 pollId) {
+    ) external onlyOwner returns (uint256 pollId) {
         pollId = nextPollId++;
 
         Poll poll = new Poll(
             _title, _duration, _coordinatorPubKeyX, _coordinatorPubKeyY, address(stateAq), numSignUps, _messageTreeDepth
         );
 
-        MessageProcessor mp = new MessageProcessor(address(poll), _verifier, _vkRegistry);
-        Tally tally = new Tally(address(poll), address(mp), _verifier, _vkRegistry);
+        MessageProcessor mp = new MessageProcessor(address(poll), _verifier, _vkRegistry, msg.sender);
+        Tally tally = new Tally(address(poll), address(mp), _verifier, _vkRegistry, msg.sender);
 
         polls[pollId] = address(poll);
 
