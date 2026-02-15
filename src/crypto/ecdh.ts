@@ -8,23 +8,16 @@
  */
 
 // @ts-expect-error - circomlibjs doesn't have types
-import { buildBabyjub, buildPoseidon } from 'circomlibjs'
+import { buildBabyjub } from 'circomlibjs'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let babyjubInstance: any = null
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let poseidonInstance: any = null
 let initPromise: Promise<void> | null = null
 
 async function init() {
   if (!initPromise) {
     initPromise = (async () => {
-      const [babyjub, poseidon] = await Promise.all([
-        buildBabyjub(),
-        buildPoseidon(),
-      ])
-      babyjubInstance = babyjub
-      poseidonInstance = poseidon
+      babyjubInstance = await buildBabyjub()
     })()
   }
   return initPromise
@@ -40,20 +33,22 @@ export const BABYJUB_SUBORDER =
 
 /**
  * Generate ECDH shared key from private key and other party's public key.
- * sharedKey = Poseidon(sk * otherPubKey)
+ * Returns the raw ECDH point [x, y] for use as DuplexSponge encryption key.
  *
- * Both sides derive the same shared key:
- *   Alice: Poseidon(skA * pkB)
- *   Bob:   Poseidon(skB * pkA)
+ * Both sides derive the same shared point:
+ *   Alice: skA * pkB
+ *   Bob:   skB * pkA
  *   skA * pkB = skA * (skB * G) = skB * (skA * G) = skB * pkA
+ *
+ * The returned [x, y] is used directly as key[0], key[1] in PoseidonDuplexSponge.
+ * This matches MACI's ECDH → DuplexSponge pipeline.
  */
 export async function generateECDHSharedKey(
   sk: bigint,
   otherPubKey: PubKey,
-): Promise<bigint> {
+): Promise<PubKey> {
   await init()
   const babyjub = babyjubInstance
-  const poseidon = poseidonInstance
 
   // Convert pubkey components to field elements
   const pkPoint = [
@@ -63,11 +58,11 @@ export async function generateECDHSharedKey(
 
   // Scalar multiplication: sk * otherPubKey
   const sharedPoint = babyjub.mulPointEscalar(pkPoint, sk)
-  const sharedX = babyjub.F.toObject(sharedPoint[0])
 
-  // Hash the x-coordinate to get the shared key (MACI pattern)
-  const hash = poseidon([poseidon.F.e(sharedX)])
-  return poseidon.F.toObject(hash)
+  return [
+    babyjub.F.toObject(sharedPoint[0]),
+    babyjub.F.toObject(sharedPoint[1]),
+  ]
 }
 
 /**

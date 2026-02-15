@@ -2,6 +2,9 @@
  * MACI Crypto Module Tests
  *
  * Tests for: ECDH, Poseidon DuplexSponge, EdDSA-Poseidon, BLAKE512
+ *
+ * The DuplexSponge uses t=4 state (rate=3, capacity=1), matching
+ * @zk-kit/poseidon-cipher and circomlib PoseidonEx(3,4).
  */
 
 import { describe, it, expect } from 'vitest'
@@ -37,17 +40,15 @@ describe('ECDH (Baby Jubjub)', () => {
   })
 
   it('should derive same shared key from both sides', async () => {
-    // Alice generates keypair
     const alice = await generateEphemeralKeyPair()
-    // Bob generates keypair
     const bob = await generateEphemeralKeyPair()
 
-    // Alice computes shared key with Bob's pubkey
+    // Both sides derive the same ECDH point [x, y]
     const sharedA = await generateECDHSharedKey(alice.sk, bob.pubKey)
-    // Bob computes shared key with Alice's pubkey
     const sharedB = await generateECDHSharedKey(bob.sk, alice.pubKey)
 
-    expect(sharedA).toBe(sharedB)
+    expect(sharedA[0]).toBe(sharedB[0])
+    expect(sharedA[1]).toBe(sharedB[1])
   })
 
   it('should derive consistent public key from secret key', async () => {
@@ -65,16 +66,17 @@ describe('ECDH (Baby Jubjub)', () => {
     const sharedAB = await generateECDHSharedKey(alice.sk, bob.pubKey)
     const sharedAC = await generateECDHSharedKey(alice.sk, charlie.pubKey)
 
-    expect(sharedAB).not.toBe(sharedAC)
+    // At least one coordinate differs
+    expect(sharedAB[0] === sharedAC[0] && sharedAB[1] === sharedAC[1]).toBe(false)
   })
 })
 
 // ============ Poseidon DuplexSponge Tests ============
 
-describe('Poseidon DuplexSponge Encryption', () => {
+describe('Poseidon DuplexSponge Encryption (t=4, rate=3)', () => {
   it('should encrypt and decrypt single element', async () => {
     const plaintext = [42n]
-    const sharedKey = 12345n
+    const sharedKey = [12345n, 67890n]
     const nonce = 1n
 
     const ciphertext = await poseidonEncrypt(plaintext, sharedKey, nonce)
@@ -83,23 +85,39 @@ describe('Poseidon DuplexSponge Encryption', () => {
     expect(decrypted).toEqual(plaintext)
   })
 
-  it('should encrypt and decrypt multiple elements', async () => {
-    const plaintext = [100n, 200n, 300n, 400n]
-    const sharedKey = 67890n
+  it('should encrypt and decrypt 3 elements (exact block)', async () => {
+    const plaintext = [100n, 200n, 300n]
+    const sharedKey = [11111n, 22222n]
     const nonce = 2n
 
     const ciphertext = await poseidonEncrypt(plaintext, sharedKey, nonce)
+    expect(ciphertext.length).toBe(3 + 1) // 1 block of 3 + auth tag
     const decrypted = await poseidonDecrypt(ciphertext, sharedKey, nonce, plaintext.length)
 
     expect(decrypted).toEqual(plaintext)
   })
 
-  it('should encrypt and decrypt odd-length plaintext', async () => {
-    const plaintext = [11n, 22n, 33n]
-    const sharedKey = 99999n
+  it('should encrypt and decrypt multiple elements with padding', async () => {
+    const plaintext = [100n, 200n, 300n, 400n]
+    const sharedKey = [67890n, 13579n]
+    const nonce = 2n
+
+    const ciphertext = await poseidonEncrypt(plaintext, sharedKey, nonce)
+    // 4 elements → padded to 6 (2 blocks of 3) → 6 + 1 auth tag = 7
+    expect(ciphertext.length).toBe(7)
+    const decrypted = await poseidonDecrypt(ciphertext, sharedKey, nonce, plaintext.length)
+
+    expect(decrypted).toEqual(plaintext)
+  })
+
+  it('should encrypt and decrypt 7 elements', async () => {
+    const plaintext = [1n, 2n, 3n, 4n, 5n, 6n, 7n]
+    const sharedKey = [99999n, 88888n]
     const nonce = 3n
 
     const ciphertext = await poseidonEncrypt(plaintext, sharedKey, nonce)
+    // 7 elements → padded to 9 (3 blocks of 3) → 9 + 1 = 10
+    expect(ciphertext.length).toBe(10)
     const decrypted = await poseidonDecrypt(ciphertext, sharedKey, nonce, plaintext.length)
 
     expect(decrypted).toEqual(plaintext)
@@ -107,7 +125,7 @@ describe('Poseidon DuplexSponge Encryption', () => {
 
   it('should produce different ciphertext for different nonces', async () => {
     const plaintext = [42n]
-    const sharedKey = 12345n
+    const sharedKey = [12345n, 67890n]
 
     const ct1 = await poseidonEncrypt(plaintext, sharedKey, 1n)
     const ct2 = await poseidonEncrypt(plaintext, sharedKey, 2n)
@@ -117,8 +135,8 @@ describe('Poseidon DuplexSponge Encryption', () => {
 
   it('should fail decryption with wrong key', async () => {
     const plaintext = [42n]
-    const sharedKey = 12345n
-    const wrongKey = 54321n
+    const sharedKey = [12345n, 67890n]
+    const wrongKey = [54321n, 9876n]
     const nonce = 1n
 
     const ciphertext = await poseidonEncrypt(plaintext, sharedKey, nonce)
@@ -260,7 +278,8 @@ describe('BLAKE512 Key Derivation', () => {
     const shared1 = await generateECDHSharedKey(sk, other.pubKey)
     const shared2 = await generateECDHSharedKey(other.sk, pubKey)
 
-    expect(shared1).toBe(shared2)
+    expect(shared1[0]).toBe(shared2[0])
+    expect(shared1[1]).toBe(shared2[1])
   })
 })
 
@@ -299,7 +318,8 @@ describe('Full MACI Crypto Pipeline', () => {
 
     // 5. Coordinator decrypts
     const coordSharedKey = await generateECDHSharedKey(coordSk, ephemeral.pubKey)
-    expect(coordSharedKey).toBe(sharedKey)
+    expect(coordSharedKey[0]).toBe(sharedKey[0])
+    expect(coordSharedKey[1]).toBe(sharedKey[1])
 
     const decrypted = await poseidonDecrypt(encrypted, coordSharedKey, nonce, message.length)
     expect(decrypted).toEqual(message)

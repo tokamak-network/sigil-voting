@@ -1,15 +1,19 @@
 /**
  * Poseidon DuplexSponge Encryption/Decryption
  *
- * MACI uses Poseidon in duplex sponge mode (NOT CTR mode) for message encryption.
- * The sponge construction:
- *   1. Initialize state = [0, 0, 0] (rate=2, capacity=1)
- *   2. For each block:
- *      - Absorb: state[0] += plaintext[i], state[1] += (plaintext[i+1] or key)
- *      - Permute: state = Poseidon_permutation(state)
- *      - Squeeze: ciphertext[i] = state[0], ciphertext[i+1] = state[1]
+ * Compatible with MACI / @zk-kit/poseidon-cipher and circomlib PoseidonEx.
  *
- * Reference: MACI maci-crypto poseidonEncrypt/poseidonDecrypt
+ * Sponge construction (t=4, rate=3, capacity=1):
+ *   1. Initial state = [0, key[0], key[1], nonce + length * 2^128]
+ *   2. For each 3-element block:
+ *      - Permute state
+ *      - Absorb: state[1] += pt[0], state[2] += pt[1], state[3] += pt[2]
+ *      - Squeeze: ct[i..i+2] = state[1..3]
+ *   3. Final permute, auth tag = state[1]
+ *
+ * Circom equivalent: PoseidonEx(3, 4) with initialState = state[0]
+ *
+ * Reference: @zk-kit/poseidon-cipher poseidonEncrypt/poseidonDecrypt
  */
 
 // @ts-expect-error - circomlibjs doesn't have types
@@ -29,99 +33,96 @@ async function init() {
 }
 
 /**
- * SNARK scalar field prime
+ * SNARK scalar field prime (BN254)
  */
 const SNARK_FIELD_SIZE =
   21888242871839275222246405745257275088548364400416034343698204186575808495617n
 
 /**
- * Poseidon permutation on 3-element state (rate=2, capacity=1).
- * Uses circomlibjs poseidon as the permutation function.
+ * 2^128 — used for domain separation in initial state
+ */
+const TWO128 = 2n ** 128n
+
+/**
+ * Full Poseidon permutation on t-element state using circomlibjs.
+ *
+ * circomlibjs poseidon(inputs, initState, nOut):
+ *   - Constructs state as [initState, ...inputs] (length t)
+ *   - Runs Poseidon permutation
+ *   - Returns state[0..nOut-1]
+ *
+ * To permute [s0, s1, s2, s3]: call poseidon([s1, s2, s3], s0, 4)
+ * This matches PoseidonEx(3, 4) in circom with initialState = s0.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function poseidonPermutation(poseidon: any, state: bigint[]): bigint[] {
-  // circomlibjs poseidon(inputs) hashes inputs and returns a single value
-  // For sponge mode, we need the full permutation output.
-  // MACI uses a custom approach: hash state elements to get new state.
-  //
-  // MACI's poseidon encryption uses poseidon([state[0], state[1], state[2]])
-  // and distributes the output across the state.
+function poseidonPerm(poseidon: any, state: bigint[]): bigint[] {
   const F = poseidon.F
+  const t = state.length
 
-  // Perform Poseidon hash on the full state (3 elements → T4 Poseidon)
-  const input = state.map((s) => F.e(s))
-  const h = poseidon(input)
-  const hashVal = F.toObject(h)
+  // poseidon(inputs=[s1..s_{t-1}], initState=s0, nOut=t)
+  const inputs = state.slice(1).map((s) => F.e(s))
+  const initState = F.e(state[0])
+  const result = poseidon(inputs, initState, t)
 
-  // New state: the hash determines the permuted state
-  // Following MACI's pattern: use the hash to update state elements
-  return [
-    (state[0] + hashVal) % SNARK_FIELD_SIZE,
-    (state[1] + hashVal) % SNARK_FIELD_SIZE,
-    (state[2] + hashVal) % SNARK_FIELD_SIZE,
-  ]
+  // result is array of F elements when nOut > 1
+  return result.map((r: unknown) => F.toObject(r))
 }
 
 /**
  * Encrypt plaintext using Poseidon DuplexSponge.
  *
+ * Compatible with @zk-kit/poseidon-cipher and MACI circuits.
+ *
  * @param plaintext - Array of field elements to encrypt
- * @param sharedKey - ECDH shared key
+ * @param sharedKey - ECDH shared key [keyX, keyY] (2 elements)
  * @param nonce - Unique nonce for this message
- * @returns Array of ciphertext field elements (length = plaintext.length + 1 for tag)
+ * @returns Array of ciphertext field elements (padded to multiple of 3, + 1 auth tag)
  */
 export async function poseidonEncrypt(
   plaintext: bigint[],
-  sharedKey: bigint,
+  sharedKey: bigint[],
   nonce: bigint,
 ): Promise<bigint[]> {
   await init()
   const poseidon = poseidonInstance
-  const F = poseidon.F
 
   const length = plaintext.length
 
-  // Pad plaintext to even length (rate = 2)
+  // Pad plaintext to multiple of 3 (rate = 3)
   const padded = [...plaintext]
-  if (padded.length % 2 !== 0) {
+  while (padded.length % 3 !== 0) {
     padded.push(0n)
   }
 
-  // Initialize sponge state: [0, domain_tag, key]
-  // domain_tag encodes the original length
+  // Initial state: [0, key[0], key[1], nonce + length * 2^128]
   let state: bigint[] = [
     0n,
-    BigInt(length), // domain separator = original plaintext length
-    sharedKey,
+    sharedKey[0],
+    sharedKey[1],
+    (nonce + BigInt(length) * TWO128) % SNARK_FIELD_SIZE,
   ]
-
-  // Absorb nonce
-  state[0] = (state[0] + nonce) % SNARK_FIELD_SIZE
-
-  // Initial permutation
-  state = poseidonPermutation(poseidon, state)
 
   const ciphertext: bigint[] = []
 
-  // Process each 2-element block
-  for (let i = 0; i < padded.length; i += 2) {
-    // Absorb plaintext into rate portion
-    state[0] = (state[0] + padded[i]) % SNARK_FIELD_SIZE
-    state[1] = (state[1] + padded[i + 1]) % SNARK_FIELD_SIZE
-
-    // Squeeze ciphertext from rate portion (before permutation for MACI compat)
-    ciphertext.push(state[0])
-    ciphertext.push(state[1])
-
+  // Process each 3-element block
+  for (let i = 0; i < padded.length; i += 3) {
     // Permute
-    state = poseidonPermutation(poseidon, state)
+    state = poseidonPerm(poseidon, state)
+
+    // Absorb plaintext into rate portion (positions 1, 2, 3)
+    state[1] = (state[1] + padded[i]) % SNARK_FIELD_SIZE
+    state[2] = (state[2] + padded[i + 1]) % SNARK_FIELD_SIZE
+    state[3] = (state[3] + padded[i + 2]) % SNARK_FIELD_SIZE
+
+    // Squeeze ciphertext from rate portion
+    ciphertext.push(state[1])
+    ciphertext.push(state[2])
+    ciphertext.push(state[3])
   }
 
-  // Squeeze authentication tag from capacity
-  // tag = poseidon([state[0], state[1], sharedKey])
-  const tagInput = [F.e(state[0]), F.e(state[1]), F.e(sharedKey)]
-  const tag = F.toObject(poseidon(tagInput))
-  ciphertext.push(tag)
+  // Final permutation for authentication tag
+  state = poseidonPerm(poseidon, state)
+  ciphertext.push(state[1]) // auth tag
 
   return ciphertext
 }
@@ -129,8 +130,8 @@ export async function poseidonEncrypt(
 /**
  * Decrypt ciphertext using Poseidon DuplexSponge.
  *
- * @param ciphertext - Array of ciphertext field elements (includes tag at end)
- * @param sharedKey - ECDH shared key
+ * @param ciphertext - Array of ciphertext field elements (includes auth tag at end)
+ * @param sharedKey - ECDH shared key [keyX, keyY] (2 elements)
  * @param nonce - Same nonce used for encryption
  * @param length - Original plaintext length
  * @returns Array of plaintext field elements
@@ -138,54 +139,52 @@ export async function poseidonEncrypt(
  */
 export async function poseidonDecrypt(
   ciphertext: bigint[],
-  sharedKey: bigint,
+  sharedKey: bigint[],
   nonce: bigint,
   length: number,
 ): Promise<bigint[]> {
   await init()
   const poseidon = poseidonInstance
-  const F = poseidon.F
 
   // Last element is the authentication tag
   const tag = ciphertext[ciphertext.length - 1]
   const encrypted = ciphertext.slice(0, -1)
 
-  // Initialize sponge state (same as encryption)
+  // Initial state (same as encryption)
   let state: bigint[] = [
     0n,
-    BigInt(length),
-    sharedKey,
+    sharedKey[0],
+    sharedKey[1],
+    (nonce + BigInt(length) * TWO128) % SNARK_FIELD_SIZE,
   ]
-
-  // Absorb nonce
-  state[0] = (state[0] + nonce) % SNARK_FIELD_SIZE
-
-  // Initial permutation
-  state = poseidonPermutation(poseidon, state)
 
   const plaintext: bigint[] = []
 
-  // Process each 2-element block
-  for (let i = 0; i < encrypted.length; i += 2) {
-    // Recover plaintext: plaintext = ciphertext - state (mod p)
+  // Process each 3-element block
+  for (let i = 0; i < encrypted.length; i += 3) {
+    // Permute
+    state = poseidonPerm(poseidon, state)
+
+    // Recover plaintext: pt = ct - state (mod p)
     const p0 =
-      (encrypted[i] - state[0] + SNARK_FIELD_SIZE) % SNARK_FIELD_SIZE
+      (encrypted[i] - state[1] + SNARK_FIELD_SIZE) % SNARK_FIELD_SIZE
     const p1 =
-      (encrypted[i + 1] - state[1] + SNARK_FIELD_SIZE) % SNARK_FIELD_SIZE
+      (encrypted[i + 1] - state[2] + SNARK_FIELD_SIZE) % SNARK_FIELD_SIZE
+    const p2 =
+      (encrypted[i + 2] - state[3] + SNARK_FIELD_SIZE) % SNARK_FIELD_SIZE
     plaintext.push(p0)
     plaintext.push(p1)
+    plaintext.push(p2)
 
-    // Re-absorb (using ciphertext values = state + plaintext)
-    state[0] = encrypted[i]
-    state[1] = encrypted[i + 1]
-
-    // Permute
-    state = poseidonPermutation(poseidon, state)
+    // Set state rate portion to ciphertext values (for next permutation)
+    state[1] = encrypted[i]
+    state[2] = encrypted[i + 1]
+    state[3] = encrypted[i + 2]
   }
 
   // Verify authentication tag
-  const tagInput = [F.e(state[0]), F.e(state[1]), F.e(sharedKey)]
-  const expectedTag = F.toObject(poseidon(tagInput))
+  state = poseidonPerm(poseidon, state)
+  const expectedTag = state[1]
 
   if (expectedTag !== tag) {
     throw new Error('DuplexSponge decryption failed: invalid authentication tag')
