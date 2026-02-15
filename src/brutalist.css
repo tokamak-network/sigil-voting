@@ -10,7 +10,7 @@
   --accent-amber: #FFBF00;
   --grid-gray: #F2F2F2;
   --slate-50: #f8fafc;
-  --font-display: 'Space Grotesk', sans-serif;
+  --font-display: 'Sora', sans-serif;
   --font-sans: 'Inter', sans-serif;
 }
 
@@ -397,26 +397,13 @@ h1, h2, h3, h4, h5, h6 {
   border-bottom: 1px solid var(--stark-white);
 }
 
-.brutalist-hero-symbol {
-  position: relative;
-  z-index: 10;
-  display: flex;
-  justify-content: center;
-  margin-bottom: 16px;
-  user-select: none;
-}
-
-.brutalist-hero-symbol svg {
-  filter: drop-shadow(0 2px 8px rgba(0, 82, 255, 0.3));
-}
-
 .brutalist-hero-text {
   position: relative;
   z-index: 10;
   color: var(--stark-white);
   font-family: var(--font-display);
   font-weight: 900;
-  font-size: 64px;
+  font-size: 100px;
   line-height: 0.8;
   letter-spacing: -0.06em;
   text-transform: uppercase;
@@ -425,12 +412,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @media (min-width: 1024px) {
-  .brutalist-hero-symbol svg {
-    width: 240px;
-    height: 240px;
-  }
   .brutalist-hero-text {
-    font-size: 80px;
+    font-size: 192px;
   }
 }
 
@@ -5218,4 +5201,202 @@ textarea[aria-invalid="true"] {
 .vote-expired-notice .material-symbols-outlined {
   font-size: 2.5rem;
   color: #999;
+}
+
+/* ===== UX Improvements ===== */
+
+/* Tooltip buttons (inline help) */
+.tooltip-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  margin-left: 6px;
+  cursor: pointer;
+  vertical-align: middle;
+  color: #666;
+  transition: all 0.15s;
+}
+.tooltip-btn:hover {
+  border-color: var(--bold-blue);
+  color: var(--bold-blue);
+}
+.tooltip-btn .material-symbols-outlined {
+  font-size: 14px;
+}
+.tooltip-text {
+  display: none;
+  background: #f8f8f8;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #444;
+  font-weight: 400;
+}
+.tooltip-text.visible {
+  display: block;
+}
+
+/* Key active badge */
+.key-active-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 0.35rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid #c8e6c9;
+}
+.key-active-badge .material-symbols-outlined {
+  font-size: 1rem;
+}
+
+/* Retry button */
+.retry-btn {
+  background: var(--pure-black);
+  color: var(--stark-white);
+  border: 2px solid var(--pure-black);
+  padding: 0.4rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.retry-btn:hover {
+  background: var(--stark-white);
+  color: var(--pure-black);
+}
+.error-with-retry {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.error-banner .retry-btn {
+  background: transparent;
+  color: inherit;
+  border-color: currentColor;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+  margin-left: 0.5rem;
+}
+.error-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Signup description */
+.signup-desc {
+  font-size: 0.9rem;
+  color: #555;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+/* Success next steps */
+.success-next {
+  font-size: 0.85rem;
+  color: #555;
+  line-height: 1.5;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e0e0e0;
+}
+
+/* Form hint */
+.form-hint {
+  font-size: 0.8rem;
+  color: #888;
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
+/* Empty state hint */
+.proposals-empty-hint {
+  font-size: 0.85rem;
+  color: #888;
+  margin-top: 0.5rem;
+}
+
+/* Credit balance label with tooltip */
+.credit-balance-label {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  position: relative;
+}
+
+/* Weight section label with tooltip */
+.weight-section > label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  position: relative;
+}
+
+/* Mobile responsiveness improvements */
+@media (max-width: 768px) {
+  .proposals-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .proposal-card {
+    padding: 1rem !important;
+  }
+  .proposals-header {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .proposals-header-meta {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .choices {
+    flex-direction: column !important;
+  }
+  .choice-btn {
+    width: 100% !important;
+  }
+  .stepper {
+    gap: 0.25rem !important;
+  }
+  .stepper-label {
+    font-size: 0.7rem !important;
+  }
+  .stepper-line {
+    min-width: 20px !important;
+  }
+  .brutalist-card {
+    padding: 1rem !important;
+  }
+  .key-manager {
+    padding: 0.75rem !important;
+  }
+  .tx-progress-steps {
+    gap: 0.5rem !important;
+  }
+  .vote-form-desc {
+    font-size: 0.85rem;
+  }
+  .tooltip-text {
+    font-size: 0.8rem;
+  }
+  .back-to-list-btn {
+    font-size: 0.85rem;
+  }
 }

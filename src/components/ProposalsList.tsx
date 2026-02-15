@@ -211,11 +211,12 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
       {loading ? (
         <div className="loading-spinner" role="status" aria-busy="true">
           <span className="spinner" aria-hidden="true" />
-          <span>Loading proposals...</span>
+          <span>{t.proposals.loading}</span>
         </div>
       ) : polls.length === 0 ? (
         <div className="brutalist-card proposals-empty">
           <p>{t.proposals.empty}</p>
+          {isConnected && <p className="proposals-empty-hint">{t.proposals.emptyHint}</p>}
         </div>
       ) : (
         <div className="proposals-grid">

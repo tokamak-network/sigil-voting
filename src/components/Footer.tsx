@@ -9,7 +9,7 @@ export function Footer() {
         <div className="brutalist-footer-brand">
           <h2>SIGIL</h2>
           <p>{t.footer.desc}</p>
-          <p className="brutalist-footer-attribution">Built by <a href="https://tokamak.network" target="_blank" rel="noopener noreferrer">Tokamak Network</a></p>
+          <p className="brutalist-footer-attribution">{t.footer.builtBy} <a href="https://tokamak.network" target="_blank" rel="noopener noreferrer">Tokamak Network</a></p>
         </div>
         <div className="brutalist-footer-links">
           <h5>{t.footer.resources}</h5>

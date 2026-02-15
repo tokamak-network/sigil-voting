@@ -247,7 +247,18 @@ export function VoteFormV2({
 
       {/* Voice credit balance */}
       <div className="credit-balance">
-        <span className="credit-balance-label">{t.voteForm.myCredits}</span>
+        <span className="credit-balance-label">
+          {t.voteForm.myCredits}
+          <button
+            type="button"
+            className="tooltip-btn"
+            onClick={(e) => { const el = e.currentTarget.nextElementSibling; if (el) el.classList.toggle('visible'); }}
+            aria-label="Info"
+          >
+            <span className="material-symbols-outlined">help</span>
+          </button>
+          <span className="tooltip-text">{t.voteForm.creditsTooltip}</span>
+        </span>
         <span className="credit-balance-value">
           {creditsRemaining} / {voiceCredits}
           {creditsSpent > 0 && <span className="credits-spent"> ({t.voteHistory.creditsRemaining})</span>}
@@ -280,7 +291,18 @@ export function VoteFormV2({
 
       {/* Weight slider */}
       <div className="weight-section">
-        <label htmlFor="vote-weight">{t.voteForm.weightLabel}</label>
+        <label htmlFor="vote-weight">
+          {t.voteForm.weightLabel}
+          <button
+            type="button"
+            className="tooltip-btn"
+            onClick={(e) => { const el = e.currentTarget.nextElementSibling; if (el) el.classList.toggle('visible'); }}
+            aria-label="Info"
+          >
+            <span className="material-symbols-outlined">help</span>
+          </button>
+          <span className="tooltip-text">{t.voteForm.weightTooltip}</span>
+        </label>
         <div className="weight-slider-row">
           <input
             id="vote-weight"
@@ -329,7 +351,14 @@ export function VoteFormV2({
         />
       )}
 
-      {error && <p className="error" role="alert">{error}</p>}
+      {error && (
+        <div className="error-with-retry" role="alert">
+          <p className="error">{error}</p>
+          <button className="retry-btn" onClick={() => { setError(null); setTxStage('idle'); }}>
+            {t.voteForm.retry}
+          </button>
+        </div>
+      )}
       {txHash && txStage === 'done' && (
         <div className="vote-success" role="status">
           <span className="material-symbols-outlined" aria-hidden="true">check_circle</span>
@@ -337,6 +366,7 @@ export function VoteFormV2({
           <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer">
             {txHash.slice(0, 10)}...{txHash.slice(-6)}
           </a>
+          <p className="success-next">{t.voteForm.successNext}</p>
         </div>
       )}
     </div>

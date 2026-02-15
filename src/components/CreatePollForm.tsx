@@ -333,6 +333,7 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
             {durationHours} {t.createPoll.durationHours}
           </span>
         </div>
+        <p className="form-hint">{t.createPoll.durationHint}</p>
       </div>
 
       <button

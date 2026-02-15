@@ -37,14 +37,6 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
               <div className="bg-line"></div>
               <div className="bg-line"></div>
             </div>
-            <div className="brutalist-hero-symbol">
-              <svg width="180" height="180" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20 3 L34 12 L34 28 L20 37 L6 28 L6 12 Z" stroke="#000000" strokeWidth="2.8" fill="none" strokeLinejoin="round"/>
-                <path d="M20 8 L30.5 14 L30.5 26 L20 32 L9.5 26 L9.5 14 Z" stroke="#0052FF" strokeWidth="2.2" fill="none" strokeLinejoin="round"/>
-                <path d="M20 12 L27 20 L20 28 L13 20 Z" stroke="#000000" strokeWidth="2.8" fill="none" strokeLinejoin="round"/>
-                <circle cx="20" cy="20" r="3.2" fill="#0052FF"/>
-              </svg>
-            </div>
             <div className="brutalist-hero-text">
               SIGIL
             </div>

@@ -336,7 +336,12 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
           ))}
         </div>
 
-        {error && <div className="error-banner" role="alert">{error}</div>}
+        {error && (
+          <div className="error-banner" role="alert">
+            <span>{error}</span>
+            <button className="retry-btn" onClick={() => setError(null)}>{t.maci.signup.retry}</button>
+          </div>
+        )}
         {txHash && (
           <div className="tx-banner" role="status">
             {t.maci.lastTx}{' '}
@@ -363,6 +368,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
             </div>
           ) : (
             <div className="step-content">
+              <p className="signup-desc">{t.maci.signup.desc}</p>
               <button
                 onClick={handleSignUp}
                 disabled={isSigningUp || isPending}

@@ -186,11 +186,10 @@ export function KeyManager({
 
       {currentPubKey ? (
         <div className="current-key">
-          <label>{t.keyManager.currentKey}</label>
-          <code className="key-display">
-            ({currentPubKey[0].toString().slice(0, 12)}...,{' '}
-            {currentPubKey[1].toString().slice(0, 12)}...)
-          </code>
+          <span className="key-active-badge">
+            <span className="material-symbols-outlined" aria-hidden="true">verified_user</span>
+            {t.keyManager.keyActive}
+          </span>
         </div>
       ) : (
         <p className="no-key">{t.keyManager.noKey}</p>
