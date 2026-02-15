@@ -3696,66 +3696,310 @@ h1, h2, h3, h4, h5, h6 {
 
 /* VoteFormV2 Styles */
 .vote-form-v2 h3 {
-  font-size: 18px;
+  font-size: 20px;
   font-style: italic;
-  margin: 0 0 8px;
+  margin: 0 0 4px;
+}
+
+.vote-form-desc {
+  font-size: 13px;
+  color: #666;
+  margin: 0 0 16px;
+  line-height: 1.5;
 }
 
 .vote-form-v2 .choices {
   display: flex;
   gap: 12px;
-  margin: 16px 0;
+  margin: 0 0 20px;
 }
 
 .choice-btn {
   flex: 1;
-  padding: 16px;
+  padding: 20px 16px;
   background: var(--stark-white);
-  border: 2px solid var(--pure-black);
+  border: 3px solid var(--pure-black);
   font-weight: 900;
-  font-size: 14px;
+  font-size: 15px;
   text-transform: uppercase;
   cursor: pointer;
   transition: all 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.choice-icon {
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.choice-label {
+  font-size: 14px;
 }
 
 .choice-btn:hover:not(:disabled) {
-  background: var(--slate-50);
+  transform: translate(1px, 1px);
 }
 
-.choice-btn.selected {
-  background: var(--bold-blue);
+.choice-btn.choice-against:hover:not(:disabled) {
+  background: #fff5f5;
+  border-color: #e53e3e;
+}
+
+.choice-btn.choice-for:hover:not(:disabled) {
+  background: #f0fff4;
+  border-color: #38a169;
+}
+
+.choice-btn.choice-against.selected {
+  background: #e53e3e;
   color: var(--stark-white);
+  border-color: #c53030;
+  box-shadow: 3px 3px 0px 0px #9b2c2c;
 }
 
-.weight-input {
-  margin: 16px 0;
+.choice-btn.choice-for.selected {
+  background: #38a169;
+  color: var(--stark-white);
+  border-color: #2f855a;
+  box-shadow: 3px 3px 0px 0px #22543d;
 }
 
-.weight-input label {
+/* Weight slider section */
+.weight-section {
+  margin: 0 0 20px;
+  padding: 16px;
+  background: var(--grid-gray);
+  border: 2px solid var(--pure-black);
+}
+
+.weight-section label {
   display: block;
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  letter-spacing: 0.05em;
 }
 
-.weight-input input {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid var(--pure-black);
-  font-size: 16px;
-  font-weight: 700;
+.weight-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
-.weight-input .cost {
-  display: block;
+.weight-slider-row input[type="range"] {
+  flex: 1;
+  height: 8px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: #ddd;
+  border-radius: 4px;
+  outline: none;
+}
+
+.weight-slider-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bold-blue);
+  border: 3px solid var(--pure-black);
+  cursor: pointer;
+}
+
+.weight-slider-row input[type="range"]::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bold-blue);
+  border: 3px solid var(--pure-black);
+  cursor: pointer;
+}
+
+.weight-value {
+  font-size: 28px;
+  font-weight: 900;
+  min-width: 40px;
+  text-align: center;
+  font-family: var(--font-display);
+}
+
+.weight-cost-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
   font-size: 13px;
   font-weight: 700;
+}
+
+.cost-label {
+  color: #666;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.cost-value {
+  font-size: 16px;
   color: var(--bold-blue);
+}
+
+.cost-value.cost-medium {
+  color: #b45309;
+}
+
+.cost-value.cost-high {
+  color: #dc2626;
+}
+
+.cost-formula {
+  font-size: 12px;
+  color: #999;
+}
+
+.cost-warning {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #dc2626;
   margin-top: 8px;
 }
 
+/* Vote submit button - larger and more prominent */
+.vote-submit-btn {
+  width: 100%;
+  padding: 20px;
+  background: var(--bold-blue);
+  color: var(--stark-white);
+  border: 3px solid var(--pure-black);
+  font-weight: 900;
+  font-size: 16px;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 5px 5px 0px 0px var(--pure-black);
+  transition: all 0.15s;
+  letter-spacing: 0.05em;
+}
+
+.vote-submit-btn:hover:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 3px 3px 0px 0px var(--pure-black);
+}
+
+.vote-submit-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Transaction Progress Modal */
+.tx-progress-modal {
+  padding: 32px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.tx-progress-modal h3 {
+  font-size: 18px;
+  margin: 0;
+}
+
+.tx-progress-spinner {
+  margin-bottom: 8px;
+}
+
+.spinner-large {
+  display: block;
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e0e0e0;
+  border-top-color: var(--bold-blue);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.tx-stage-text {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
+}
+
+.tx-progress-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 280px;
+  text-align: left;
+  margin-top: 8px;
+}
+
+.tx-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #999;
+  transition: color 0.3s;
+}
+
+.tx-step.active {
+  color: var(--bold-blue);
+  font-weight: 700;
+}
+
+.tx-step.done {
+  color: #38a169;
+}
+
+.tx-step-icon {
+  font-size: 16px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.tx-patience {
+  font-size: 12px;
+  color: #999;
+  margin: 8px 0 0;
+  line-height: 1.4;
+}
+
+/* Vote success display */
+.vote-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  background: #f0fff4;
+  border: 2px solid #38a169;
+  color: #22543d;
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 16px;
+}
+
+.vote-success .material-symbols-outlined {
+  font-size: 20px;
+  color: #38a169;
+}
+
+.vote-success a {
+  color: var(--bold-blue);
+  text-decoration: underline;
+  margin-left: auto;
+}
+
+/* Legacy submit-btn kept for other forms */
 .submit-btn {
   width: 100%;
   padding: 16px;
@@ -4165,7 +4409,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============================================
-   COST WARNING COLORS
+   LEGACY COST WARNING COLORS (weight-input)
    ============================================ */
 .weight-input .cost.cost-medium {
   color: #b45309;
@@ -4173,14 +4417,6 @@ h1, h2, h3, h4, h5, h6 {
 
 .weight-input .cost.cost-high {
   color: #dc2626;
-}
-
-.cost-warning {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: #dc2626;
-  margin-top: 4px;
 }
 
 /* ============================================
@@ -4260,17 +4496,34 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .choice-btn {
-    padding: 12px 8px;
+    padding: 14px 8px;
     font-size: 13px;
   }
 
-  .weight-input input {
-    padding: 10px;
+  .choice-icon {
+    font-size: 20px;
+  }
+
+  .weight-section {
+    padding: 12px;
+  }
+
+  .weight-value {
+    font-size: 22px;
+  }
+
+  .vote-submit-btn {
+    padding: 16px;
+    font-size: 14px;
   }
 
   .submit-btn {
     padding: 14px;
     font-size: 13px;
+  }
+
+  .tx-progress-modal {
+    padding: 24px 16px;
   }
 
   .poll-info {

@@ -6,7 +6,7 @@
  *
  * Flow:
  *   1. User selects vote choice (For / Against)
- *   2. User picks vote weight (default 1)
+ *   2. User picks vote weight via slider (default 1)
  *   3. BLAKE512 key derivation -> ECDH -> DuplexSponge encryption
  *   4. EdDSA-Poseidon signature
  *   5. Binary command packing
@@ -27,6 +27,8 @@ interface VoteFormV2Props {
   onVoteSubmitted?: () => void;
 }
 
+type TxStage = 'idle' | 'encrypting' | 'signing' | 'confirming' | 'waiting' | 'done' | 'error';
+
 export function VoteFormV2({
   pollId,
   pollAddress,
@@ -36,28 +38,24 @@ export function VoteFormV2({
 }: VoteFormV2Props) {
   const { address } = useAccount();
   const [choice, setChoice] = useState<number | null>(null);
-  const [weight, setWeight] = useState<string>('1');
+  const [weight, setWeight] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [txStage, setTxStage] = useState<TxStage>('idle');
   const { t } = useTranslation();
 
   const { writeContractAsync } = useWriteContract();
 
-  const choices = [
-    { value: 0, label: t.voteForm.against },
-    { value: 1, label: t.voteForm.for },
-  ];
-
   const MAX_WEIGHT = 10;
-  const weightNum = Math.min(Math.max(Math.floor(Number(weight) || 1), 1), MAX_WEIGHT);
-  const cost = weightNum * weightNum;
+  const cost = weight * weight;
 
   const handleSubmit = async () => {
     if (choice === null || !address) return;
     setIsSubmitting(true);
     setError(null);
+    setTxStage('encrypting');
 
     try {
       const { generateEphemeralKeyPair, generateECDHSharedKey } = await import('../../crypto/ecdh');
@@ -65,21 +63,17 @@ export function VoteFormV2({
       const { eddsaSign, eddsaDerivePublicKey } = await import('../../crypto/eddsa');
       const { derivePrivateKey } = await import('../../crypto/blake512');
 
-      // 1. Get or create MACI keypair for this user
       const { sk: userSk, pubKey: userPubKey } = await getOrCreateMaciKeypair(
         address, pollId, derivePrivateKey, eddsaDerivePublicKey,
       );
 
-      // 2. Generate ephemeral key pair for ECDH
       const ephemeral = await generateEphemeralKeyPair();
 
-      // 3. ECDH shared key with coordinator (returns [x, y] point)
       const sharedKey = await generateECDHSharedKey(
         ephemeral.sk,
         [coordinatorPubKeyX, coordinatorPubKeyY],
       );
 
-      // 4. Pack command
       const nonce = BigInt(getNonce(address, pollId));
       const stateIndex = BigInt(getStateIndex(address, pollId));
       const packedCommand = packCommand(
@@ -90,8 +84,8 @@ export function VoteFormV2({
         BigInt(pollId),
       );
 
-      // 5. Compute command hash for EdDSA signature
-      // Hash: Poseidon(stateIndex, newPubKeyX, newPubKeyY, newVoteWeight, salt)
+      setTxStage('signing');
+
       const salt = BigInt(Math.floor(Math.random() * 2 ** 250));
 
       // @ts-expect-error - circomlibjs doesn't have types
@@ -107,10 +101,8 @@ export function VoteFormV2({
       ]);
       const cmdHash = F.toObject(cmdHashF);
 
-      // 6. EdDSA-Poseidon signature
       const signature = await eddsaSign(cmdHash, userSk);
 
-      // 7. Compose plaintext: [packedCmd, newPubKeyX, newPubKeyY, salt, sigR8x, sigR8y, sigS]
       const plaintext = [
         packedCommand,
         userPubKey[0],
@@ -121,16 +113,15 @@ export function VoteFormV2({
         signature.S,
       ];
 
-      // 8. DuplexSponge encrypt
       const ciphertext = await poseidonEncrypt(plaintext, sharedKey, nonce);
 
-      // Ciphertext should be exactly 10 fields (7 -> pad to 9, + 1 auth tag)
       const encMessage: bigint[] = new Array(10).fill(0n);
       for (let i = 0; i < Math.min(ciphertext.length, 10); i++) {
         encMessage[i] = ciphertext[i];
       }
 
-      // 9. Submit to Poll contract
+      setTxStage('confirming');
+
       const hash = await writeContractAsync({
         address: pollAddress,
         abi: POLL_ABI,
@@ -142,10 +133,15 @@ export function VoteFormV2({
         ],
       });
 
+      setTxStage('waiting');
       setTxHash(hash);
       incrementNonce(address, pollId);
+
+      // Wait a bit then mark done
+      setTimeout(() => setTxStage('done'), 3000);
       onVoteSubmitted?.();
     } catch (err) {
+      setTxStage('error');
       const msg = err instanceof Error ? err.message : '';
       if (msg.includes('insufficient funds') || msg.includes('gas')) {
         setError(t.voteForm.errorGas);
@@ -159,50 +155,111 @@ export function VoteFormV2({
     }
   };
 
+  const stageMessages: Record<TxStage, string> = {
+    idle: '',
+    encrypting: t.voteForm.stageEncrypting,
+    signing: t.voteForm.stageSigning,
+    confirming: t.voteForm.stageConfirming,
+    waiting: t.voteForm.stageWaiting,
+    done: t.voteForm.stageDone,
+    error: '',
+  };
+
+  // Transaction progress modal
+  if (txStage !== 'idle' && txStage !== 'done' && txStage !== 'error') {
+    return (
+      <div className="vote-form-v2">
+        <div className="tx-progress-modal">
+          <div className="tx-progress-spinner" aria-hidden="true">
+            <span className="spinner-large" />
+          </div>
+          <h3>{t.voteForm.processing}</h3>
+          <p className="tx-stage-text">{stageMessages[txStage]}</p>
+          <div className="tx-progress-steps">
+            <div className={`tx-step ${txStage === 'encrypting' ? 'active' : 'done'}`}>
+              <span className="tx-step-icon">{txStage === 'encrypting' ? '◉' : '✓'}</span>
+              <span>{t.voteForm.stageEncrypting}</span>
+            </div>
+            <div className={`tx-step ${txStage === 'signing' ? 'active' : txStage === 'encrypting' ? 'pending' : 'done'}`}>
+              <span className="tx-step-icon">{txStage === 'signing' ? '◉' : txStage === 'encrypting' ? '○' : '✓'}</span>
+              <span>{t.voteForm.stageSigning}</span>
+            </div>
+            <div className={`tx-step ${txStage === 'confirming' ? 'active' : ['encrypting', 'signing'].includes(txStage) ? 'pending' : 'done'}`}>
+              <span className="tx-step-icon">{txStage === 'confirming' ? '◉' : ['encrypting', 'signing'].includes(txStage) ? '○' : '✓'}</span>
+              <span>{t.voteForm.stageConfirming}</span>
+            </div>
+            <div className={`tx-step ${txStage === 'waiting' ? 'active' : 'pending'}`}>
+              <span className="tx-step-icon">{txStage === 'waiting' ? '◉' : '○'}</span>
+              <span>{t.voteForm.stageWaiting}</span>
+            </div>
+          </div>
+          <p className="tx-patience">{t.voteForm.patience}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="vote-form-v2">
       <h3>{t.voteForm.title}</h3>
-      <p className="text-sm text-gray-500">{t.voteForm.desc}</p>
+      <p className="vote-form-desc">{t.voteForm.desc}</p>
 
+      {/* Choice buttons - large, distinct */}
       <div className="choices" role="radiogroup" aria-label={t.voteForm.title}>
-        {choices.map((c) => (
-          <button
-            key={c.value}
-            className={`choice-btn ${choice === c.value ? 'selected' : ''}`}
-            onClick={() => setChoice(c.value)}
-            disabled={isSubmitting}
-            role="radio"
-            aria-checked={choice === c.value}
-            aria-label={c.label}
-          >
-            {c.label}
-          </button>
-        ))}
+        <button
+          className={`choice-btn choice-against ${choice === 0 ? 'selected' : ''}`}
+          onClick={() => setChoice(0)}
+          disabled={isSubmitting}
+          role="radio"
+          aria-checked={choice === 0}
+        >
+          <span className="choice-icon" aria-hidden="true">✕</span>
+          <span className="choice-label">{t.voteForm.against}</span>
+        </button>
+        <button
+          className={`choice-btn choice-for ${choice === 1 ? 'selected' : ''}`}
+          onClick={() => setChoice(1)}
+          disabled={isSubmitting}
+          role="radio"
+          aria-checked={choice === 1}
+        >
+          <span className="choice-icon" aria-hidden="true">✓</span>
+          <span className="choice-label">{t.voteForm.for}</span>
+        </button>
       </div>
 
-      <div className="weight-input">
+      {/* Weight slider */}
+      <div className="weight-section">
         <label htmlFor="vote-weight">{t.voteForm.weightLabel}</label>
-        <input
-          id="vote-weight"
-          type="number"
-          min="1"
-          max={MAX_WEIGHT}
-          step="1"
-          value={weight}
-          onChange={(e) => setWeight(e.target.value)}
-          disabled={isSubmitting}
-          aria-describedby="vote-cost"
-        />
-        <span id="vote-cost" className={`cost ${cost > 25 ? 'cost-high' : cost > 9 ? 'cost-medium' : ''}`}>
-          {t.voteForm.cost} {cost} {t.voteForm.credits}
-        </span>
+        <div className="weight-slider-row">
+          <input
+            id="vote-weight"
+            type="range"
+            min="1"
+            max={MAX_WEIGHT}
+            step="1"
+            value={weight}
+            onChange={(e) => setWeight(Number(e.target.value))}
+            disabled={isSubmitting}
+            aria-describedby="vote-cost"
+          />
+          <span className="weight-value">{weight}</span>
+        </div>
+        <div className="weight-cost-display" id="vote-cost">
+          <span className="cost-label">{t.voteForm.cost}</span>
+          <span className={`cost-value ${cost > 25 ? 'cost-high' : cost > 9 ? 'cost-medium' : ''}`}>
+            {cost} {t.voteForm.credits}
+          </span>
+          <span className="cost-formula">({weight} × {weight} = {cost})</span>
+        </div>
         {cost > 25 && <span className="cost-warning" role="alert">{t.voteForm.costWarning}</span>}
       </div>
 
+      {/* Submit button - prominent */}
       <button
         onClick={() => setShowConfirm(true)}
         disabled={choice === null || isSubmitting || !address}
-        className="submit-btn"
+        className="vote-submit-btn"
         aria-busy={isSubmitting}
       >
         {isSubmitting ? t.voteForm.submitting : t.voteForm.submit}
@@ -211,7 +268,7 @@ export function VoteFormV2({
       {showConfirm && choice !== null && (
         <VoteConfirmModal
           choice={choice}
-          weight={weightNum}
+          weight={weight}
           cost={cost}
           onConfirm={() => {
             setShowConfirm(false);
@@ -222,13 +279,14 @@ export function VoteFormV2({
       )}
 
       {error && <p className="error" role="alert">{error}</p>}
-      {txHash && (
-        <p className="success" role="status">
-          {t.voteForm.success}{' '}
+      {txHash && txStage === 'done' && (
+        <div className="vote-success" role="status">
+          <span className="material-symbols-outlined" aria-hidden="true">check_circle</span>
+          <span>{t.voteForm.success}</span>
           <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer">
-            {txHash.slice(0, 10)}...
+            {txHash.slice(0, 10)}...{txHash.slice(-6)}
           </a>
-        </p>
+        </div>
       )}
     </div>
   );
@@ -246,23 +304,16 @@ function incrementNonce(address: string, pollId: number): void {
   localStorage.setItem(key, String(current + 1));
 }
 
-// State index management (localStorage) — set after MACI signUp
-// stateIndex is global per address (not per poll), but we check both keys for compatibility
 function getStateIndex(address: string, _pollId: number): number {
-  // First check address-only key (set by MACIVotingDemo after signup)
   const globalKey = `maci-stateIndex-${address}`;
   const globalVal = localStorage.getItem(globalKey);
   if (globalVal) return parseInt(globalVal, 10);
-  // Fallback: poll-specific key
   const pollKey = `maci-stateIndex-${address}-${_pollId}`;
   const pollVal = localStorage.getItem(pollKey);
   if (pollVal) return parseInt(pollVal, 10);
-  // Default: 1 (index 0 is blank leaf in MACI state tree)
   return 1;
 }
 
-// MACI keypair management
-// Priority: poll-specific key (set by KeyManager after key change) > global key (set during signUp) > generate new
 async function getOrCreateMaciKeypair(
   address: string,
   pollId: number,
@@ -271,7 +322,6 @@ async function getOrCreateMaciKeypair(
 ): Promise<{ sk: bigint; pubKey: [bigint, bigint] }> {
   const { loadEncrypted, storeEncrypted } = await import('../../crypto/keyStore');
 
-  // 1. Check poll-specific key (set by KeyManager after key change)
   const pollSkKey = `maci-sk-${address}-${pollId}`;
   const pollPkKey = `maci-pubkey-${address}-${pollId}`;
   const storedPollSk = await loadEncrypted(pollSkKey, address);
@@ -287,7 +337,6 @@ async function getOrCreateMaciKeypair(
     return { sk, pubKey };
   }
 
-  // 2. Check global key (set during signUp in MACIVotingDemo)
   const globalSkKey = `maci-sk-${address}`;
   const globalPkKey = `maci-pk-${address}`;
   const storedGlobalSk = await loadEncrypted(globalSkKey, address);
@@ -303,7 +352,6 @@ async function getOrCreateMaciKeypair(
     return { sk, pubKey };
   }
 
-  // 3. Generate new keypair from deterministic seed (fallback)
   const encoder = new TextEncoder();
   const seedData = encoder.encode(`maci-keypair-${address}-${pollId}`);
   const hashBuffer = await crypto.subtle.digest('SHA-256', seedData);

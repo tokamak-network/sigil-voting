@@ -120,6 +120,13 @@ export interface Translations {
     error: string
     errorGas: string
     errorRejected: string
+    stageEncrypting: string
+    stageSigning: string
+    stageConfirming: string
+    stageWaiting: string
+    stageDone: string
+    processing: string
+    patience: string
   }
   keyManager: {
     title: string
