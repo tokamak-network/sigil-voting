@@ -295,7 +295,7 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
           aria-invalid={titleLen > 0 && !titleValid}
         />
         <span id="title-counter" className={`char-counter ${titleLen > 0 && !titleValid ? 'invalid' : ''}`}>
-          {titleLen}/200
+          {titleLen > 0 && titleLen < 3 ? t.createPoll.titleMin : `${titleLen}/200`}
         </span>
       </div>
 

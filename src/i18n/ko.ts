@@ -95,6 +95,7 @@ export const ko: Translations = {
   createPoll: {
     title: '새 제안 만들기',
     titleLabel: '제안 제목',
+    titleMin: '최소 3자 이상 입력하세요',
     titlePlaceholder: '예: 커뮤니티 펀드 배분안',
     descLabel: '설명 (선택)',
     descPlaceholder: '제안에 대한 설명을 입력하세요',
