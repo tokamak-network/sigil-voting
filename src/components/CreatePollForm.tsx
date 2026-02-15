@@ -9,7 +9,7 @@ import { useState, useCallback } from 'react'
 import { useAccount, useWriteContract, usePublicClient } from 'wagmi'
 import {
   MACI_V2_ADDRESS,
-  MOCK_VERIFIER_ADDRESS,
+  MSG_PROCESSOR_VERIFIER_ADDRESS,
   VK_REGISTRY_ADDRESS,
   MACI_ABI,
   DEFAULT_COORD_PUB_KEY_X,
@@ -50,7 +50,7 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
           durationSeconds,
           DEFAULT_COORD_PUB_KEY_X,
           DEFAULT_COORD_PUB_KEY_Y,
-          MOCK_VERIFIER_ADDRESS as `0x${string}`,
+          MSG_PROCESSOR_VERIFIER_ADDRESS as `0x${string}`,
           VK_REGISTRY_ADDRESS as `0x${string}`,
           2, // messageTreeDepth (dev: 2, production: 10)
         ],

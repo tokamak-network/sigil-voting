@@ -10,6 +10,7 @@ optimizer_runs = 10
 libraries = [
   "contracts/PoseidonT5.sol:PoseidonT5:0x555333f3f677Ca3930Bf7c56ffc75144c51D9767",
   "poseidon-solidity/PoseidonT3.sol:PoseidonT3:0x3333333C0A88F9BE4fd23ed0536F9B6c427e3B93",
+  "poseidon-solidity/PoseidonT4.sol:PoseidonT4:0x4443338EF595F44e0121df4C21102677B142ECF0",
   "poseidon-solidity/PoseidonT6.sol:PoseidonT6:0x666333F371685334CdD69bdDdaFBABc87CE7c7Db",
 ]
 

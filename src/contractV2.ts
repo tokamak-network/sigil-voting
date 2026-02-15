@@ -10,7 +10,6 @@ import config from './config.json';
 // V2 Contract addresses (loaded from config.json)
 const v2 = (config as any).v2 || {};
 export const MACI_V2_ADDRESS = (v2.maci || '0x0000000000000000000000000000000000000000') as `0x${string}`;
-export const MOCK_VERIFIER_ADDRESS = (v2.mockVerifier || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 export const MSG_PROCESSOR_VERIFIER_ADDRESS = (v2.msgProcessorVerifier || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 export const TALLY_VERIFIER_ADDRESS = (v2.tallyVerifier || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 export const VK_REGISTRY_ADDRESS = (v2.vkRegistry || '0x0000000000000000000000000000000000000000') as `0x${string}`;
