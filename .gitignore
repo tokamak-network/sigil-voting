@@ -23,6 +23,15 @@ dist-ssr
 *.sln
 *.sw?
 
+# Environment variables (contains private keys!)
+.env
+.env.*
+
+# Foundry build artifacts
+cache/
+out/
+broadcast/
+
 # Circuit build artifacts (large binary files)
 circuits/build_maci/
 circuits/build_test/
