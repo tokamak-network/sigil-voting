@@ -108,6 +108,16 @@ export const MACI_ABI = [
     stateMutability: 'view',
   },
   {
+    type: 'function',
+    name: 'proposalGates',
+    inputs: [{ name: '', type: 'uint256' }],
+    outputs: [
+      { name: 'token', type: 'address' },
+      { name: 'threshold', type: 'uint256' },
+    ],
+    stateMutability: 'view',
+  },
+  {
     type: 'event',
     name: 'DeployPoll',
     inputs: [

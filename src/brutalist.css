@@ -3944,6 +3944,121 @@ h1, h2, h3, h4, h5, h6 {
   gap: 20px;
 }
 
+/* Eligibility check states */
+.eligibility-check {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--grid-gray);
+  border: 2px solid var(--pure-black);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.eligibility-denied {
+  padding: 20px;
+  background: #FFF5F5;
+  border: 2px solid #E53E3E;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.eligibility-denied .material-symbols-outlined {
+  font-size: 32px;
+  color: #E53E3E;
+}
+
+.eligibility-denied h4 {
+  margin: 0;
+  font-size: 16px;
+  color: #E53E3E;
+  text-transform: uppercase;
+}
+
+.eligibility-denied p {
+  margin: 0;
+  font-size: 14px;
+  color: #333;
+}
+
+.eligibility-pass {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #F0FFF4;
+  border: 2px solid #38A169;
+  font-size: 13px;
+  font-weight: 700;
+  color: #22543D;
+}
+
+.eligibility-pass .material-symbols-outlined {
+  font-size: 20px;
+  color: #38A169;
+}
+
+.eligible-token {
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+/* Token gate list */
+.token-gate-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.token-gate-item {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 2px solid var(--pure-black);
+  background: var(--stark-white);
+  font-size: 13px;
+}
+
+.token-gate-item.not-eligible {
+  border-color: #E53E3E;
+  background: #FFF5F5;
+}
+
+.token-gate-item.eligible {
+  border-color: #38A169;
+  background: #F0FFF4;
+}
+
+.token-symbol {
+  font-weight: 900;
+  font-size: 15px;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+}
+
+.token-requirement,
+.token-balance {
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.token-status {
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.token-status.pass {
+  color: #38A169;
+}
+
+.token-status.fail {
+  color: #E53E3E;
+}
+
 .form-group {
   display: flex;
   flex-direction: column;
