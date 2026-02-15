@@ -7,6 +7,7 @@
 
 import { useReadContract } from 'wagmi';
 import { MESSAGE_PROCESSOR_ABI, MESSAGE_PROCESSOR_ADDRESS, TALLY_ABI, TALLY_V2_ADDRESS } from '../../contractV2';
+import { useTranslation } from '../../i18n';
 
 interface ProcessingStatusProps {
   messageProcessorAddress?: `0x${string}`;
@@ -19,6 +20,7 @@ export function ProcessingStatus({
 }: ProcessingStatusProps) {
   const mpAddress = messageProcessorAddress || MESSAGE_PROCESSOR_ADDRESS;
   const tAddress = tallyAddress || TALLY_V2_ADDRESS;
+  const { t } = useTranslation();
 
   const { data: processingComplete } = useReadContract({
     address: mpAddress,
@@ -38,34 +40,31 @@ export function ProcessingStatus({
 
   return (
     <div className="processing-status">
-      <h3>Vote Processing</h3>
-      <p className="text-sm text-gray-500">
-        The coordinator is processing encrypted votes and generating ZK proofs.
-        This may take several minutes.
-      </p>
+      <h3>{t.processing.title}</h3>
+      <p className="text-sm text-gray-500">{t.processing.desc}</p>
 
       <div className="processing-steps">
         <div className={`step ${!isProcessing ? 'complete' : 'active'}`}>
           <span className="step-num">1</span>
-          <span>Message Processing</span>
+          <span>{t.processing.step1}</span>
           <span className="status-text">
-            {isProcessing ? 'In progress...' : 'Complete'}
+            {isProcessing ? t.processing.inProgress : t.processing.complete}
           </span>
         </div>
 
         <div className={`step ${isFinalized ? 'complete' : isTallying ? 'active' : 'pending'}`}>
           <span className="step-num">2</span>
-          <span>Vote Tallying</span>
+          <span>{t.processing.step2}</span>
           <span className="status-text">
-            {isFinalized ? 'Complete' : isTallying ? 'In progress...' : 'Waiting'}
+            {isFinalized ? t.processing.complete : isTallying ? t.processing.inProgress : t.processing.waiting}
           </span>
         </div>
 
         <div className={`step ${isFinalized ? 'complete' : 'pending'}`}>
           <span className="step-num">3</span>
-          <span>Results Published</span>
+          <span>{t.processing.step3}</span>
           <span className="status-text">
-            {isFinalized ? 'Verified on-chain' : 'Waiting'}
+            {isFinalized ? t.processing.verified : t.processing.waiting}
           </span>
         </div>
       </div>

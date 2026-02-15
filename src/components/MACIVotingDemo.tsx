@@ -1,7 +1,7 @@
 /**
  * MACIVotingDemo - Integrated MACI V2 Voting UI
  *
- * Full flow: SignUp → Deploy Poll → Vote → Phase Status
+ * Full flow: SignUp -> Deploy Poll -> Vote -> Phase Status
  * Uses MACI contract for registration, Poll for encrypted voting.
  */
 
@@ -19,6 +19,7 @@ import { VoteFormV2 } from './voting/VoteFormV2'
 import { MergingStatus } from './voting/MergingStatus'
 import { ProcessingStatus } from './voting/ProcessingStatus'
 import { KeyManager } from './voting/KeyManager'
+import { useTranslation } from '../i18n'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
@@ -30,6 +31,7 @@ export function MACIVotingDemo() {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
   const { writeContractAsync, isPending } = useWriteContract()
+  const { t } = useTranslation()
 
   const [phase, setPhase] = useState<V2Phase>(V2Phase.Voting)
   const [signedUp, setSignedUp] = useState(false)
@@ -195,20 +197,26 @@ export function MACIVotingDemo() {
     }
   }, [address, writeContractAsync, publicClient])
 
+  // === Phase labels ===
+  const phaseLabels: Record<V2Phase, string> = {
+    [V2Phase.Voting]: t.header.vote,
+    [V2Phase.Merging]: t.merging.title,
+    [V2Phase.Processing]: t.processing.title,
+    [V2Phase.Finalized]: t.maci.results.title,
+  }
+
   // === Render ===
 
   if (!isConfigured) {
     return (
       <div className="maci-voting-demo">
         <div className="brutalist-card">
-          <h2>MACI V2 - Not Deployed</h2>
-          <p>
-            MACI V2 contracts have not been deployed yet. Run the deploy script:
-          </p>
+          <h2>{t.maci.title} - {t.maci.notDeployed}</h2>
+          <p>{t.maci.notDeployedDesc}</p>
           <code className="deploy-cmd">
             forge script script/DeployMACI.s.sol --rpc-url $SEPOLIA_RPC_URL --private-key $PRIVATE_KEY --broadcast
           </code>
-          <p>Then update <code>src/config.json</code> with the deployed addresses.</p>
+          <p>{t.maci.notDeployedHint}</p>
         </div>
       </div>
     )
@@ -218,8 +226,8 @@ export function MACIVotingDemo() {
     return (
       <div className="maci-voting-demo">
         <div className="brutalist-card">
-          <h2>MACI V2 - Anti-Collusion Voting</h2>
-          <p>Connect your wallet to participate in MACI voting.</p>
+          <h2>{t.maci.title}</h2>
+          <p>{t.maci.connectWallet}</p>
         </div>
       </div>
     )
@@ -228,11 +236,8 @@ export function MACIVotingDemo() {
   return (
     <div className="maci-voting-demo">
       <div className="brutalist-card">
-        <h2>MACI V2 - Anti-Collusion Voting</h2>
-        <p className="maci-description">
-          Minimal Anti-Collusion Infrastructure with D1 (Private) and D2 (Quadratic) voting modes.
-          Votes are encrypted and cannot be revealed. Key changes invalidate previous votes, preventing coercion.
-        </p>
+        <h2>{t.maci.title}</h2>
+        <p className="maci-description">{t.maci.description}</p>
 
         {/* Voting Mode Selector */}
         <div className="mode-selector">
@@ -240,19 +245,17 @@ export function MACIVotingDemo() {
             className={`mode-btn ${votingMode === 'd1' ? 'active' : ''}`}
             onClick={() => setVotingMode('d1')}
           >
-            D1: Private Voting
+            {t.maci.modeD1}
           </button>
           <button
             className={`mode-btn ${votingMode === 'd2' ? 'active' : ''}`}
             onClick={() => setVotingMode('d2')}
           >
-            D2: Quadratic Voting
+            {t.maci.modeD2}
           </button>
         </div>
         <p className="mode-description">
-          {votingMode === 'd1'
-            ? 'Standard private voting (For / Against / Abstain). Each token = 1 vote.'
-            : 'Quadratic voting (For / Against). Cost = weight\u00B2 credits.'}
+          {votingMode === 'd1' ? t.maci.modeD1Desc : t.maci.modeD2Desc}
         </p>
 
         {/* Phase Indicator */}
@@ -266,7 +269,7 @@ export function MACIVotingDemo() {
                   : ''
               }`}
             >
-              {p.charAt(0).toUpperCase() + p.slice(1)}
+              {phaseLabels[p]}
             </div>
           ))}
         </div>
@@ -274,23 +277,23 @@ export function MACIVotingDemo() {
         {/* Stats */}
         <div className="maci-stats">
           <div className="stat">
-            <span className="stat-label">Registered Voters</span>
+            <span className="stat-label">{t.maci.stats.registered}</span>
             <span className="stat-value">{numSignUps?.toString() || '0'}</span>
           </div>
           <div className="stat">
-            <span className="stat-label">Current Poll</span>
-            <span className="stat-value">{pollId !== null ? `#${pollId}` : 'None'}</span>
+            <span className="stat-label">{t.maci.stats.currentPoll}</span>
+            <span className="stat-value">{pollId !== null ? `#${pollId}` : t.maci.stats.none}</span>
           </div>
           <div className="stat">
-            <span className="stat-label">Phase</span>
-            <span className="stat-value">{phase}</span>
+            <span className="stat-label">{t.maci.stats.phase}</span>
+            <span className="stat-value">{phaseLabels[phase]}</span>
           </div>
         </div>
 
         {error && <div className="error-banner">{error}</div>}
         {txHash && (
           <div className="tx-banner">
-            Last Tx:{' '}
+            {t.maci.lastTx}{' '}
             <a
               href={`https://sepolia.etherscan.io/tx/${txHash}`}
               target="_blank"
@@ -303,10 +306,10 @@ export function MACIVotingDemo() {
 
         {/* Step 1: SignUp */}
         <section className="maci-section">
-          <h3>1. Register (SignUp)</h3>
+          <h3>{t.maci.signup.title}</h3>
           {signedUp ? (
             <div className="step-complete">
-              Registered with EdDSA key
+              {t.maci.signup.complete}
             </div>
           ) : (
             <button
@@ -314,17 +317,17 @@ export function MACIVotingDemo() {
               disabled={isSigningUp || isPending}
               className="brutalist-btn"
             >
-              {isSigningUp ? 'Generating Key & Signing Up...' : 'Sign Up with EdDSA Key'}
+              {isSigningUp ? t.maci.signup.loading : t.maci.signup.button}
             </button>
           )}
         </section>
 
         {/* Step 2: Deploy Poll */}
         <section className="maci-section">
-          <h3>2. Create Poll</h3>
+          <h3>{t.maci.poll.title}</h3>
           {pollId !== null ? (
             <div className="step-complete">
-              Poll #{pollId} active
+              {t.maci.poll.active.replace('{id}', String(pollId))}
               {pollAddress && (
                 <span className="poll-addr"> ({pollAddress.slice(0, 8)}...{pollAddress.slice(-6)})</span>
               )}
@@ -335,7 +338,7 @@ export function MACIVotingDemo() {
               disabled={!signedUp || isDeployingPoll || isPending}
               className="brutalist-btn"
             >
-              {isDeployingPoll ? 'Deploying Poll...' : 'Deploy New Poll (1 hour)'}
+              {isDeployingPoll ? t.maci.poll.loading : t.maci.poll.button}
             </button>
           )}
         </section>
@@ -343,7 +346,7 @@ export function MACIVotingDemo() {
         {/* Step 3: Vote (only during Voting phase) */}
         {pollId !== null && phase === V2Phase.Voting && pollAddress && (
           <section className="maci-section">
-            <h3>3. Cast Vote</h3>
+            <h3>{t.maci.vote.title}</h3>
             <VoteFormV2
               pollId={pollId}
               isD2={votingMode === 'd2'}
@@ -383,8 +386,8 @@ export function MACIVotingDemo() {
         {/* Finalized */}
         {phase === V2Phase.Finalized && (
           <section className="maci-section">
-            <h3>Results Finalized</h3>
-            <p>Vote tallying is complete. Results have been verified on-chain.</p>
+            <h3>{t.maci.results.title}</h3>
+            <p>{t.maci.results.desc}</p>
           </section>
         )}
       </div>

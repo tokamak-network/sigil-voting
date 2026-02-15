@@ -3,6 +3,8 @@ import { injected } from 'wagmi/connectors'
 import { sepolia } from '../wagmi'
 import type { Page } from '../types'
 import { shortenAddress } from '../utils'
+import { useTranslation } from '../i18n'
+import { LanguageSwitcher } from './LanguageSwitcher'
 
 interface HeaderProps {
   currentPage: Page
@@ -18,6 +20,7 @@ export function Header({
   const { connect, isPending: isConnecting } = useConnect()
   const { disconnect } = useDisconnect()
   const { switchChain, isPending: isSwitching } = useSwitchChain()
+  const { t } = useTranslation()
 
   const isCorrectChain = chainId === sepolia.id
 
@@ -63,26 +66,21 @@ export function Header({
         </div>
         <nav className="brutalist-nav">
           <button
-            className={`brutalist-nav-item ${currentPage === 'proposals' ? 'active' : ''}`}
-            onClick={() => setCurrentPage('proposals')}
-          >
-            Proposals
-          </button>
-          <button
             className={`brutalist-nav-item ${currentPage === 'maci-voting' ? 'active' : ''}`}
             onClick={() => setCurrentPage('maci-voting')}
           >
-            MACI V2
+            {t.header.vote}
           </button>
         </nav>
       </div>
 
       <div className="brutalist-header-right">
+        <LanguageSwitcher />
         {isConnected ? (
           <>
             {!isCorrectChain ? (
               <button className="brutalist-switch-btn" onClick={handleSwitchNetwork} disabled={isSwitching}>
-                {isSwitching ? 'Switching...' : 'Wrong Network'}
+                {isSwitching ? t.header.switching : t.header.wrongNetwork}
               </button>
             ) : (
               <div className="brutalist-wallet-info" onClick={() => disconnect()}>
@@ -92,7 +90,7 @@ export function Header({
           </>
         ) : (
           <button className="brutalist-connect-btn" onClick={handleConnect} disabled={isConnecting}>
-            {isConnecting ? '...' : 'Connect'}
+            {isConnecting ? t.header.connecting : t.header.connect}
           </button>
         )}
       </div>

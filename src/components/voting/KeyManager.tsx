@@ -3,7 +3,7 @@
  *
  * MACI Anti-Coercion: users can change their EdDSA key during voting.
  * After a key change, all previous messages signed with the old key
- * become invalid (processed in reverse order → automatically invalidated).
+ * become invalid (processed in reverse order -> automatically invalidated).
  *
  * This component:
  *   1. Displays current EdDSA public key
@@ -14,6 +14,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAccount, useWriteContract } from 'wagmi';
 import { POLL_ABI, POLL_V2_ADDRESS } from '../../contractV2';
+import { useTranslation } from '../../i18n';
 
 interface KeyManagerProps {
   pollId: number;
@@ -34,6 +35,7 @@ export function KeyManager({
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const { t } = useTranslation();
 
   const { writeContractAsync } = useWriteContract();
 
@@ -153,18 +155,18 @@ export function KeyManager({
 
   return (
     <div className="key-manager">
-      <h4>EdDSA Key Management</h4>
+      <h4>{t.keyManager.title}</h4>
 
       {currentPubKey ? (
         <div className="current-key">
-          <label>Current Public Key:</label>
+          <label>{t.keyManager.currentKey}</label>
           <code className="key-display">
             ({currentPubKey[0].toString().slice(0, 12)}...,{' '}
             {currentPubKey[1].toString().slice(0, 12)}...)
           </code>
         </div>
       ) : (
-        <p className="no-key">No key registered yet.</p>
+        <p className="no-key">{t.keyManager.noKey}</p>
       )}
 
       {!showConfirm ? (
@@ -173,33 +175,24 @@ export function KeyManager({
           disabled={isChanging}
           className="change-key-btn"
         >
-          Change Key (Anti-Coercion)
+          {t.keyManager.changeKey}
         </button>
       ) : (
         <div className="confirm-dialog">
-          <p className="warning">
-            Changing your key will invalidate ALL previous votes signed with
-            your current key. You will need to re-vote after the key change.
-            This is the MACI anti-coercion mechanism.
-          </p>
+          <p className="warning">{t.keyManager.warning}</p>
           <div className="confirm-actions">
             <button onClick={handleKeyChange} disabled={isChanging}>
-              {isChanging ? 'Changing Key...' : 'Confirm Key Change'}
+              {isChanging ? t.keyManager.changing : t.keyManager.confirm}
             </button>
             <button onClick={() => setShowConfirm(false)} disabled={isChanging}>
-              Cancel
+              {t.keyManager.cancel}
             </button>
           </div>
         </div>
       )}
 
       {error && <p className="error">{error}</p>}
-      {success && (
-        <p className="success">
-          Key changed successfully. Your previous votes are now invalid.
-          Please submit a new vote.
-        </p>
-      )}
+      {success && <p className="success">{t.keyManager.success}</p>}
     </div>
   );
 }

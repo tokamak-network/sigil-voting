@@ -1,21 +1,25 @@
+import { useTranslation } from '../i18n'
+
 export function Footer() {
+  const { t } = useTranslation()
+
   return (
     <footer className="brutalist-footer">
       <div className="brutalist-footer-grid">
         <div className="brutalist-footer-brand">
           <h2>ZK-VOTING</h2>
-          <p>High-end tech for decentralized governance. Privacy-first, Math-guaranteed, Community-led.</p>
+          <p>{t.footer.desc}</p>
         </div>
         <div className="brutalist-footer-links">
-          <h5>Resources</h5>
+          <h5>{t.footer.resources}</h5>
           <ul>
-            <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting#readme" target="_blank" rel="noopener noreferrer">Whitepaper</a></li>
-            <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting" target="_blank" rel="noopener noreferrer">Audit Reports</a></li>
-            <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting" target="_blank" rel="noopener noreferrer">SDK Guide</a></li>
+            <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting#readme" target="_blank" rel="noopener noreferrer">{t.footer.whitepaper}</a></li>
+            <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting" target="_blank" rel="noopener noreferrer">{t.footer.audit}</a></li>
+            <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting" target="_blank" rel="noopener noreferrer">{t.footer.sdk}</a></li>
           </ul>
         </div>
         <div className="brutalist-footer-links">
-          <h5>Social</h5>
+          <h5>{t.footer.social}</h5>
           <ul>
             <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting" target="_blank" rel="noopener noreferrer">GitHub</a></li>
             <li><a href="https://twitter.com/tokaboratory" target="_blank" rel="noopener noreferrer">X / Twitter</a></li>
@@ -24,8 +28,8 @@ export function Footer() {
         </div>
       </div>
       <div className="brutalist-footer-bottom">
-        <span>&copy; 2024 ZK-VOTING PROTOCOL</span>
-        <span>Secured by Mathematics + Distributed Ledger</span>
+        <span>{t.footer.copyright}</span>
+        <span>{t.footer.secured}</span>
       </div>
     </footer>
   )

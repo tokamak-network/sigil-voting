@@ -1,12 +1,13 @@
 import type { Page } from '../types'
-import { ProposalsCarousel } from './ProposalsCarousel'
+import { useTranslation } from '../i18n'
 
 interface LandingPageProps {
   setCurrentPage: (page: Page) => void
-  navigateToProposal: (proposalId: number) => void
 }
 
-export function LandingPage({ setCurrentPage, navigateToProposal }: LandingPageProps) {
+export function LandingPage({ setCurrentPage }: LandingPageProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="brutalist-landing">
       {/* Hero Section */}
@@ -14,17 +15,19 @@ export function LandingPage({ setCurrentPage, navigateToProposal }: LandingPageP
         <div className="brutalist-hero-content">
           <div className="brutalist-hero-left">
             <div className="brutalist-badge">
-              Powered by Zero-Knowledge Proofs
+              {t.landing.badge}
             </div>
             <h1 className="brutalist-title">
-              Your Vote.<br />Your Secret.
+              {t.landing.title.split('\n').map((line, i) => (
+                <span key={i}>{line}{i === 0 && <br />}</span>
+              ))}
             </h1>
             <p className="brutalist-subtitle">
-              No one sees your choice. No one can force you. Math guarantees it.
+              {t.landing.subtitle}
             </p>
             <div className="brutalist-cta-group">
-              <button className="brutalist-btn-primary" onClick={() => setCurrentPage('proposals')}>
-                Enter App <span className="material-symbols-outlined">arrow_forward</span>
+              <button className="brutalist-btn-primary" onClick={() => setCurrentPage('maci-voting')}>
+                {t.landing.enterApp} <span className="material-symbols-outlined">arrow_forward</span>
               </button>
             </div>
           </div>
@@ -39,7 +42,7 @@ export function LandingPage({ setCurrentPage, navigateToProposal }: LandingPageP
             </div>
             <div className="brutalist-hero-version">
               <span className="version-year">2026</span>
-              <span className="version-label">D1+D2 Integrated</span>
+              <span className="version-label">{t.landing.heroVersion}</span>
             </div>
           </div>
         </div>
@@ -50,29 +53,29 @@ export function LandingPage({ setCurrentPage, navigateToProposal }: LandingPageP
         <div className="brutalist-feature-card">
           <span className="material-symbols-outlined">shield_person</span>
           <div>
-            <h3>True Privacy</h3>
-            <p>Zero exposure.</p>
+            <h3>{t.landing.features.privacy.title}</h3>
+            <p>{t.landing.features.privacy.desc}</p>
           </div>
         </div>
         <div className="brutalist-feature-card">
           <span className="material-symbols-outlined">lock_open_right</span>
           <div>
-            <h3>No Coercion</h3>
-            <p>Anti-bribery tech.</p>
+            <h3>{t.landing.features.coercion.title}</h3>
+            <p>{t.landing.features.coercion.desc}</p>
           </div>
         </div>
         <div className="brutalist-feature-card">
           <span className="material-symbols-outlined">balance</span>
           <div>
-            <h3>Fair Influence</h3>
-            <p>Quadratic scaling.</p>
+            <h3>{t.landing.features.fairness.title}</h3>
+            <p>{t.landing.features.fairness.desc}</p>
           </div>
         </div>
         <div className="brutalist-feature-card">
           <span className="material-symbols-outlined">functions</span>
           <div>
-            <h3>Verified by Math</h3>
-            <p>Audit on-chain.</p>
+            <h3>{t.landing.features.verified.title}</h3>
+            <p>{t.landing.features.verified.desc}</p>
           </div>
         </div>
       </section>
@@ -80,33 +83,33 @@ export function LandingPage({ setCurrentPage, navigateToProposal }: LandingPageP
       {/* Voting Lifecycle Section */}
       <section className="brutalist-lifecycle" id="how-it-works">
         <div className="brutalist-section-header">
-          <h2>The Voting Lifecycle</h2>
-          <span className="brutalist-label">Commit-Reveal Flow</span>
+          <h2>{t.landing.lifecycle.title}</h2>
+          <span className="brutalist-label">{t.landing.lifecycle.label}</span>
         </div>
         <div className="brutalist-steps">
           <div className="brutalist-step">
             <span className="step-bg-number">1</span>
             <h3>
               <span className="step-number">1</span>
-              Commit
+              {t.landing.lifecycle.step1.title}
             </h3>
-            <p>Encrypt your vote choice and generate a ZK proof. Your selection is fully encrypted before being recorded on the blockchain.</p>
+            <p>{t.landing.lifecycle.step1.desc}</p>
           </div>
           <div className="brutalist-step">
             <span className="step-bg-number">2</span>
             <h3>
               <span className="step-number">2</span>
-              Reveal
+              {t.landing.lifecycle.step2.title}
             </h3>
-            <p>Reveal your vote after the commit period ends. Unrevealed votes are excluded from the final tally.</p>
+            <p>{t.landing.lifecycle.step2.desc}</p>
           </div>
           <div className="brutalist-step">
             <span className="step-bg-number">3</span>
             <h3>
               <span className="step-number">3</span>
-              Result
+              {t.landing.lifecycle.step3.title}
             </h3>
-            <p>Once all votes are revealed, quadratic weighting is applied and final results are cryptographically verified.</p>
+            <p>{t.landing.lifecycle.step3.desc}</p>
           </div>
         </div>
       </section>
@@ -114,55 +117,52 @@ export function LandingPage({ setCurrentPage, navigateToProposal }: LandingPageP
       {/* Quadratic Voting Section */}
       <section className="brutalist-qv" id="qv">
         <div className="brutalist-qv-left">
-          <h2>Plutocracy vs. Fairness</h2>
-          <p>Comparing Regular (Plutocratic) voting with Quadratic weighting. We ensure that a 100x wealth advantage only results in a 10x power advantage.</p>
+          <h2>{t.landing.qv.title}</h2>
+          <p>{t.landing.qv.desc}</p>
         </div>
         <div className="brutalist-qv-right">
           <table className="brutalist-table">
             <thead>
               <tr>
-                <th>Metric</th>
-                <th>Regular Voting</th>
-                <th className="highlight">Quadratic Voting</th>
+                <th>{t.landing.qv.metric}</th>
+                <th>{t.landing.qv.regular}</th>
+                <th className="highlight">{t.landing.qv.quadratic}</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td className="label">Token Cost</td>
+                <td className="label">{t.landing.qv.tokenCost}</td>
                 <td>100 Tokens</td>
                 <td>100 Tokens</td>
               </tr>
               <tr>
-                <td className="label">Voting Power</td>
+                <td className="label">{t.landing.qv.votingPower}</td>
                 <td className="bad">100 Votes</td>
                 <td className="good">10 Votes</td>
               </tr>
               <tr className="total-row">
-                <td className="label">Total Strength</td>
-                <td>100x Strength</td>
-                <td className="good bold">10x Strength</td>
+                <td className="label">{t.landing.qv.totalStrength}</td>
+                <td>100x</td>
+                <td className="good bold">10x</td>
               </tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      {/* Proposals Carousel */}
-      <ProposalsCarousel onProposalClick={navigateToProposal} />
-
       {/* CTA Section */}
       <section className="brutalist-cta">
-        <h2>Ready to Vote Privately?</h2>
+        <h2>{t.landing.cta.title}</h2>
         <button
           className="brutalist-cta-button"
-          onClick={() => setCurrentPage('proposals')}
+          onClick={() => setCurrentPage('maci-voting')}
         >
-          Try it on Sepolia Testnet
+          {t.landing.cta.button}
         </button>
         <div className="brutalist-cta-steps">
-          <span>Connect Wallet <span className="material-symbols-outlined">arrow_forward</span></span>
-          <span>Pick a Proposal <span className="material-symbols-outlined">arrow_forward</span></span>
-          <span className="highlight">Vote</span>
+          <span>{t.landing.cta.step1} <span className="material-symbols-outlined">arrow_forward</span></span>
+          <span>{t.landing.cta.step2} <span className="material-symbols-outlined">arrow_forward</span></span>
+          <span className="highlight">{t.landing.cta.step3}</span>
         </div>
       </section>
     </div>

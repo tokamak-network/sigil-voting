@@ -7,6 +7,7 @@
 
 import { useReadContract } from 'wagmi';
 import { POLL_ABI, POLL_V2_ADDRESS } from '../../contractV2';
+import { useTranslation } from '../../i18n';
 
 interface MergingStatusProps {
   pollAddress?: `0x${string}`;
@@ -14,6 +15,7 @@ interface MergingStatusProps {
 
 export function MergingStatus({ pollAddress }: MergingStatusProps) {
   const address = pollAddress || POLL_V2_ADDRESS;
+  const { t } = useTranslation();
 
   const { data: stateAqMerged } = useReadContract({
     address,
@@ -33,35 +35,28 @@ export function MergingStatus({ pollAddress }: MergingStatusProps) {
 
   return (
     <div className="merging-status">
-      <h3>AccQueue Merging</h3>
-      <p className="text-sm text-gray-500">
-        Voting has ended. The coordinator is merging on-chain data structures
-        before processing votes.
-      </p>
+      <h3>{t.merging.title}</h3>
+      <p className="text-sm text-gray-500">{t.merging.desc}</p>
 
       <div className="merge-progress">
         <div className={`merge-item ${stateComplete ? 'complete' : 'pending'}`}>
           <span className="status-icon">{stateComplete ? '\u2713' : '\u25CB'}</span>
-          <span>State AccQueue</span>
+          <span>{t.merging.stateQueue}</span>
           <span className="status-text">
-            {stateComplete ? 'Merged' : 'Pending...'}
+            {stateComplete ? t.merging.merged : t.merging.pending}
           </span>
         </div>
 
         <div className={`merge-item ${messageComplete ? 'complete' : 'pending'}`}>
           <span className="status-icon">{messageComplete ? '\u2713' : '\u25CB'}</span>
-          <span>Message AccQueue</span>
+          <span>{t.merging.messageQueue}</span>
           <span className="status-text">
-            {messageComplete ? 'Merged' : 'Pending...'}
+            {messageComplete ? t.merging.merged : t.merging.pending}
           </span>
         </div>
       </div>
 
-      {allMerged && (
-        <p className="all-merged">
-          All AccQueues merged. Coordinator can now begin processing votes.
-        </p>
-      )}
+      {allMerged && <p className="all-merged">{t.merging.allMerged}</p>}
     </div>
   );
 }

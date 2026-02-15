@@ -6,7 +6,7 @@
  *
  * Flow:
  *   1. User selects vote choice (D1: 3 options, D2: 2 options)
- *   2. BLAKE512 key derivation → ECDH → DuplexSponge encryption
+ *   2. BLAKE512 key derivation -> ECDH -> DuplexSponge encryption
  *   3. EdDSA-Poseidon signature
  *   4. Binary command packing
  *   5. Poll.publishMessage(encMessage, encPubKey)
@@ -15,6 +15,7 @@
 import { useState } from 'react';
 import { useWriteContract, useAccount } from 'wagmi';
 import { POLL_ABI, POLL_V2_ADDRESS } from '../../contractV2';
+import { useTranslation } from '../../i18n';
 
 interface VoteFormV2Props {
   pollId: number;
@@ -37,18 +38,19 @@ export function VoteFormV2({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const { writeContractAsync } = useWriteContract();
 
   const choices = isD2
     ? [
-        { value: 0, label: 'Against' },
-        { value: 1, label: 'For' },
+        { value: 0, label: t.voteForm.against },
+        { value: 1, label: t.voteForm.for },
       ]
     : [
-        { value: 0, label: 'Against' },
-        { value: 1, label: 'For' },
-        { value: 2, label: 'Abstain' },
+        { value: 0, label: t.voteForm.against },
+        { value: 1, label: t.voteForm.for },
+        { value: 2, label: t.voteForm.abstain },
       ];
 
   const handleSubmit = async () => {
@@ -121,7 +123,7 @@ export function VoteFormV2({
       // 8. DuplexSponge encrypt
       const ciphertext = await poseidonEncrypt(plaintext, sharedKey, nonce);
 
-      // Ciphertext should be exactly 10 fields (7 → pad to 9, + 1 auth tag)
+      // Ciphertext should be exactly 10 fields (7 -> pad to 9, + 1 auth tag)
       const encMessage: bigint[] = new Array(10).fill(0n);
       for (let i = 0; i < Math.min(ciphertext.length, 10); i++) {
         encMessage[i] = ciphertext[i];
@@ -143,7 +145,7 @@ export function VoteFormV2({
       incrementNonce(address, pollId);
       onVoteSubmitted?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Vote submission failed');
+      setError(err instanceof Error ? err.message : t.voteForm.error);
     } finally {
       setIsSubmitting(false);
     }
@@ -151,11 +153,8 @@ export function VoteFormV2({
 
   return (
     <div className="vote-form-v2">
-      <h3>Cast Your Vote (MACI V2)</h3>
-      <p className="text-sm text-gray-500">
-        Your vote is encrypted and cannot be revealed. No one, including the
-        coordinator, can link your identity to your vote choice.
-      </p>
+      <h3>{t.voteForm.title}</h3>
+      <p className="text-sm text-gray-500">{t.voteForm.desc}</p>
 
       <div className="choices">
         {choices.map((c) => (
@@ -172,7 +171,7 @@ export function VoteFormV2({
 
       {isD2 && (
         <div className="weight-input">
-          <label>Vote Weight (cost = weight²)</label>
+          <label>{t.voteForm.weightLabel}</label>
           <input
             type="number"
             min="1"
@@ -181,7 +180,7 @@ export function VoteFormV2({
             disabled={isSubmitting}
           />
           <span className="cost">
-            Cost: {BigInt(weight || '0') * BigInt(weight || '0')} credits
+            {t.voteForm.cost} {BigInt(weight || '0') * BigInt(weight || '0')} {t.voteForm.credits}
           </span>
         </div>
       )}
@@ -191,13 +190,13 @@ export function VoteFormV2({
         disabled={choice === null || isSubmitting || !address}
         className="submit-btn"
       >
-        {isSubmitting ? 'Encrypting & Submitting...' : 'Submit Encrypted Vote'}
+        {isSubmitting ? t.voteForm.submitting : t.voteForm.submit}
       </button>
 
       {error && <p className="error">{error}</p>}
       {txHash && (
         <p className="success">
-          Vote submitted! Tx: {txHash.slice(0, 10)}...
+          {t.voteForm.success} {txHash.slice(0, 10)}...
         </p>
       )}
     </div>

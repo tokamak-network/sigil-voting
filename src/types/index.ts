@@ -1,4 +1,4 @@
-export type Page = 'landing' | 'proposals' | 'proposal-detail' | 'create-proposal' | 'quadratic-voting' | 'maci-voting'
+export type Page = 'landing' | 'maci-voting'
 export type ProposalPhase = 'commit' | 'reveal' | 'ended'
 export type ProposalStatus = 'active' | 'reveal' | 'passed' | 'defeated'
 

@@ -166,6 +166,46 @@ h1, h2, h3, h4, h5, h6 {
   gap: 24px;
 }
 
+/* Language Switcher */
+.lang-switcher {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.lang-btn {
+  padding: 6px 10px;
+  background: transparent;
+  color: var(--pure-black);
+  border: 2px solid transparent;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 13px;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  opacity: 0.4;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+
+.lang-btn:hover {
+  opacity: 0.7;
+}
+
+.lang-btn.active {
+  opacity: 1;
+  border-bottom: 2px solid var(--pure-black);
+}
+
+.lang-divider {
+  opacity: 0.2;
+  font-weight: 400;
+  user-select: none;
+}
+
 .brutalist-connect-btn {
   padding: 12px 24px;
   background: var(--pure-black);
