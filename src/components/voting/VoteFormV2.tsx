@@ -25,6 +25,7 @@ interface VoteFormV2Props {
   coordinatorPubKeyX: bigint;
   coordinatorPubKeyY: bigint;
   voiceCredits?: number;
+  isExpired?: boolean;
   onVoteSubmitted?: () => void;
 }
 
@@ -36,6 +37,7 @@ export function VoteFormV2({
   coordinatorPubKeyX,
   coordinatorPubKeyY,
   voiceCredits = 100,
+  isExpired = false,
   onVoteSubmitted,
 }: VoteFormV2Props) {
   const { address } = useAccount();
@@ -50,9 +52,15 @@ export function VoteFormV2({
 
   const { writeContractAsync } = useWriteContract();
 
-  const MAX_WEIGHT = Math.floor(Math.sqrt(voiceCredits));
+  // Vote history detection
+  const hasVoted = address ? getNonce(address, pollId) > 1 : false;
+  const lastVote = address ? getLastVote(address, pollId) : null;
+  const creditsSpent = address ? getCreditsSpent(address, pollId) : 0;
+  const creditsRemaining = voiceCredits - creditsSpent;
+
+  const MAX_WEIGHT = Math.floor(Math.sqrt(Math.max(creditsRemaining, 0)));
   const cost = weight * weight;
-  const creditExceeded = cost > voiceCredits;
+  const creditExceeded = cost > creditsRemaining;
 
   const handleSubmit = async () => {
     if (choice === null || !address) return;
@@ -139,6 +147,8 @@ export function VoteFormV2({
       setTxStage('waiting');
       setTxHash(hash);
       incrementNonce(address, pollId);
+      saveLastVote(address, pollId, choice, weight, cost);
+      addCreditsSpent(address, pollId, cost);
 
       // Wait a bit then mark done
       setTimeout(() => setTxStage('done'), 3000);
@@ -202,15 +212,46 @@ export function VoteFormV2({
     );
   }
 
+  // Poll expired
+  if (isExpired) {
+    return (
+      <div className="vote-form-v2">
+        <div className="vote-expired-notice">
+          <span className="material-symbols-outlined" aria-hidden="true">timer_off</span>
+          <p>{t.timer.ended}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="vote-form-v2">
       <h3>{t.voteForm.title}</h3>
       <p className="vote-form-desc">{t.voteForm.desc}</p>
 
+      {/* Vote history banner */}
+      {hasVoted && lastVote && (
+        <div className="vote-history-banner">
+          <div className="vote-history-header">
+            <span className="material-symbols-outlined" aria-hidden="true">info</span>
+            <span>{t.voteHistory.alreadyVoted}</span>
+          </div>
+          <div className="vote-history-details">
+            <span>{t.voteHistory.lastChoice}: <strong>{lastVote.choice === 1 ? t.voteForm.for : t.voteForm.against}</strong></span>
+            <span>{t.voteHistory.lastWeight}: <strong>{lastVote.weight}</strong></span>
+            <span>{t.voteHistory.lastCost}: <strong>{lastVote.cost}</strong></span>
+          </div>
+          <p className="vote-history-warning">{t.voteHistory.overrideWarning}</p>
+        </div>
+      )}
+
       {/* Voice credit balance */}
       <div className="credit-balance">
         <span className="credit-balance-label">{t.voteForm.myCredits}</span>
-        <span className="credit-balance-value">{voiceCredits}</span>
+        <span className="credit-balance-value">
+          {creditsRemaining} / {voiceCredits}
+          {creditsSpent > 0 && <span className="credits-spent"> ({t.voteHistory.creditsRemaining})</span>}
+        </span>
       </div>
 
       {/* Choice buttons - large, distinct */}
@@ -312,6 +353,31 @@ function incrementNonce(address: string, pollId: number): void {
   const key = `maci-nonce-${address}-${pollId}`;
   const current = getNonce(address, pollId);
   localStorage.setItem(key, String(current + 1));
+}
+
+// Vote history (localStorage)
+function getLastVote(address: string, pollId: number): { choice: number; weight: number; cost: number } | null {
+  const key = `maci-lastVote-${address}-${pollId}`;
+  const stored = localStorage.getItem(key);
+  if (!stored) return null;
+  try { return JSON.parse(stored); } catch { return null; }
+}
+
+function saveLastVote(address: string, pollId: number, choice: number, weight: number, cost: number): void {
+  const key = `maci-lastVote-${address}-${pollId}`;
+  localStorage.setItem(key, JSON.stringify({ choice, weight, cost }));
+}
+
+// Credit tracking (localStorage)
+function getCreditsSpent(address: string, pollId: number): number {
+  const key = `maci-creditsSpent-${address}-${pollId}`;
+  return parseInt(localStorage.getItem(key) || '0', 10);
+}
+
+function addCreditsSpent(address: string, pollId: number, cost: number): void {
+  const key = `maci-creditsSpent-${address}-${pollId}`;
+  const current = getCreditsSpent(address, pollId);
+  localStorage.setItem(key, String(current + cost));
 }
 
 function getStateIndex(address: string, _pollId: number): number {

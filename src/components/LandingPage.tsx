@@ -26,7 +26,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
               {t.landing.subtitle}
             </p>
             <div className="brutalist-cta-group">
-              <button className="brutalist-btn-primary" onClick={() => setCurrentPage('maci-voting')}>
+              <button className="brutalist-btn-primary" onClick={() => setCurrentPage('proposals')}>
                 {t.landing.enterApp} <span className="material-symbols-outlined">arrow_forward</span>
               </button>
             </div>
@@ -143,7 +143,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
         <h2>{t.landing.cta.title}</h2>
         <button
           className="brutalist-cta-button"
-          onClick={() => setCurrentPage('maci-voting')}
+          onClick={() => setCurrentPage('proposals')}
         >
           {t.landing.cta.button}
         </button>
