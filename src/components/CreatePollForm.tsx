@@ -12,14 +12,13 @@ import {
   MOCK_VERIFIER_ADDRESS,
   VK_REGISTRY_ADDRESS,
   MACI_ABI,
+  DEFAULT_COORD_PUB_KEY_X,
+  DEFAULT_COORD_PUB_KEY_Y,
 } from '../contractV2'
 import { useTranslation } from '../i18n'
 
-const COORD_PUB_KEY_X = 111n
-const COORD_PUB_KEY_Y = 222n
-
 interface CreatePollFormProps {
-  onPollCreated: (pollId: number, pollAddress: `0x${string}`) => void
+  onPollCreated: (pollId: number, pollAddress: `0x${string}`, title?: string) => void
 }
 
 export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
@@ -49,8 +48,8 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
         args: [
           title.trim(),
           durationSeconds,
-          COORD_PUB_KEY_X,
-          COORD_PUB_KEY_Y,
+          DEFAULT_COORD_PUB_KEY_X,
+          DEFAULT_COORD_PUB_KEY_Y,
           MOCK_VERIFIER_ADDRESS as `0x${string}`,
           VK_REGISTRY_ADDRESS as `0x${string}`,
           2, // messageTreeDepth (dev: 2, production: 10)
@@ -73,7 +72,7 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
                 localStorage.setItem(`maci-poll-desc-${newPollId}`, description.trim())
               }
 
-              onPollCreated(newPollId, pollAddr)
+              onPollCreated(newPollId, pollAddr, title.trim())
             }
             break
           }
@@ -95,40 +94,60 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
     }
   }, [address, title, description, durationHours, writeContractAsync, publicClient, onPollCreated])
 
+  const titleLen = title.trim().length
+  const descLen = description.length
+  const titleValid = titleLen >= 3 && titleLen <= 200
+  const descValid = descLen <= 1000
+
   return (
     <div className="create-poll-form">
       <div className="form-group">
-        <label>{t.createPoll.titleLabel}</label>
+        <label htmlFor="poll-title">{t.createPoll.titleLabel}</label>
         <input
+          id="poll-title"
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={t.createPoll.titlePlaceholder}
           disabled={isSubmitting}
+          maxLength={200}
+          aria-describedby="title-counter"
+          aria-invalid={titleLen > 0 && !titleValid}
         />
+        <span id="title-counter" className={`char-counter ${titleLen > 0 && !titleValid ? 'invalid' : ''}`}>
+          {titleLen}/200
+        </span>
       </div>
 
       <div className="form-group">
-        <label>{t.createPoll.descLabel}</label>
+        <label htmlFor="poll-desc">{t.createPoll.descLabel}</label>
         <textarea
+          id="poll-desc"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder={t.createPoll.descPlaceholder}
           disabled={isSubmitting}
           rows={3}
+          maxLength={1000}
+          aria-describedby="desc-counter"
         />
+        <span id="desc-counter" className={`char-counter ${!descValid ? 'invalid' : ''}`}>
+          {descLen}/1000
+        </span>
       </div>
 
       <div className="form-group">
-        <label>{t.createPoll.durationLabel}</label>
+        <label htmlFor="poll-duration">{t.createPoll.durationLabel}</label>
         <div className="duration-input">
           <input
+            id="poll-duration"
             type="range"
             min="1"
             max="72"
             value={durationHours}
             onChange={(e) => setDurationHours(Number(e.target.value))}
             disabled={isSubmitting}
+            aria-valuetext={`${durationHours} ${t.createPoll.durationHours}`}
           />
           <span className="duration-value">
             {durationHours} {t.createPoll.durationHours}
@@ -138,13 +157,14 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
 
       <button
         onClick={handleSubmit}
-        disabled={!title.trim() || isSubmitting || isPending}
+        disabled={!titleValid || !descValid || isSubmitting || isPending}
         className="brutalist-btn submit-poll-btn"
+        aria-busy={isSubmitting}
       >
         {isSubmitting ? t.createPoll.submitting : t.createPoll.submit}
       </button>
 
-      {error && <div className="error-banner">{error}</div>}
+      {error && <div className="error-banner" role="alert">{error}</div>}
     </div>
   )
 }

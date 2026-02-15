@@ -4110,4 +4110,361 @@ h1, h2, h3, h4, h5, h6 {
   .brutalist-why-maci .why-maci-cards {
     grid-template-columns: 1fr;
   }
+
+  .poll-info-card {
+    padding: 12px;
+  }
+
+  .results-bars {
+    gap: 12px;
+  }
+
+  .result-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .modal-content {
+    margin: 16px;
+    padding: 20px;
+    max-height: calc(100vh - 32px);
+  }
+}
+
+/* ============================================
+   Results Display
+   ============================================ */
+
+.results-display {
+  padding: 24px 0;
+}
+
+.results-display h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.results-desc {
+  color: #666;
+  margin-bottom: 24px;
+}
+
+.results-verdict {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border: 3px solid;
+  margin-bottom: 24px;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.results-verdict.passed {
+  border-color: #00c853;
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+.results-verdict.rejected {
+  border-color: #ff1744;
+  background: #ffebee;
+  color: #b71c1c;
+}
+
+.verdict-icon {
+  font-size: 1.5rem;
+}
+
+.results-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.result-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.result-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 100px;
+}
+
+.result-choice {
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+}
+
+.result-choice.for { color: #0052ff; }
+.result-choice.against { color: #ff1744; }
+
+.result-count {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.result-bar-bg {
+  flex: 1;
+  height: 24px;
+  background: #f0f0f0;
+  border: 2px solid #000;
+  overflow: hidden;
+}
+
+.result-bar {
+  height: 100%;
+  transition: width 0.6s ease;
+}
+
+.result-bar.for { background: #0052ff; }
+.result-bar.against { background: #ff1744; }
+
+.result-pct {
+  font-weight: 700;
+  min-width: 48px;
+  text-align: right;
+}
+
+.results-meta {
+  display: flex;
+  gap: 24px;
+  font-size: 0.875rem;
+  color: #666;
+  margin-bottom: 16px;
+}
+
+.results-verified {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: #00c853;
+  font-weight: 600;
+}
+
+.verified-icon {
+  font-size: 1rem;
+}
+
+/* ============================================
+   Poll Timer
+   ============================================ */
+
+.poll-timer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  border: 2px solid;
+  margin-top: 8px;
+}
+
+.poll-timer.active {
+  border-color: #0052ff;
+  background: #e8eaf6;
+  color: #1a237e;
+}
+
+.poll-timer.ended {
+  border-color: #ff9800;
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.timer-icon {
+  font-size: 1rem;
+}
+
+.timer-countdown {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================
+   Poll Info Card
+   ============================================ */
+
+.poll-info-card {
+  padding: 16px;
+  border: 2px solid #e0e0e0;
+  margin-bottom: 16px;
+  background: #fafafa;
+}
+
+.poll-info-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.poll-title {
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+.poll-addr {
+  font-size: 0.75rem;
+  color: #999;
+  font-family: monospace;
+}
+
+/* ============================================
+   Vote Confirm Modal
+   ============================================ */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.modal-content {
+  background: #fff;
+  border: 3px solid #000;
+  padding: 32px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 6px 6px 0 #000;
+}
+
+.modal-content h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.confirm-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #f5f5f5;
+  border: 2px solid #e0e0e0;
+}
+
+.confirm-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.confirm-label {
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.confirm-value {
+  font-weight: 700;
+}
+
+.confirm-value.choice-for {
+  color: #0052ff;
+}
+
+.confirm-value.choice-against {
+  color: #ff1744;
+}
+
+.confirm-notice {
+  font-size: 0.8125rem;
+  color: #666;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.confirm-btn {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.cancel-btn {
+  width: 100%;
+  padding: 12px;
+  background: #fff;
+  border: 2px solid #ccc;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: border-color 0.2s;
+}
+
+.cancel-btn:hover {
+  border-color: #000;
+}
+
+/* ============================================
+   Loading Spinner
+   ============================================ */
+
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+  color: #666;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #e0e0e0;
+  border-top-color: #0052ff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner-inline {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #e0e0e0;
+  border-top-color: #0052ff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+}
+
+/* ============================================
+   Form Validation
+   ============================================ */
+
+.char-counter {
+  display: block;
+  text-align: right;
+  font-size: 0.75rem;
+  color: #999;
+  margin-top: 4px;
+}
+
+.char-counter.invalid {
+  color: #ff1744;
+  font-weight: 600;
+}
+
+input[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: #ff1744;
 }

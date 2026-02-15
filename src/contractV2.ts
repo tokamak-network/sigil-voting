@@ -15,6 +15,10 @@ export const MSG_PROCESSOR_VERIFIER_ADDRESS = (v2.msgProcessorVerifier || '0x000
 export const TALLY_VERIFIER_ADDRESS = (v2.tallyVerifier || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 export const VK_REGISTRY_ADDRESS = (v2.vkRegistry || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 
+// Default coordinator keys (from config.json, overridden by on-chain values when poll exists)
+export const DEFAULT_COORD_PUB_KEY_X = BigInt(v2.coordinatorPubKeyX || '111');
+export const DEFAULT_COORD_PUB_KEY_Y = BigInt(v2.coordinatorPubKeyY || '222');
+
 // Poll/MP/Tally are deployed dynamically via MACI.deployPoll()
 export const POLL_V2_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`;
 export const MESSAGE_PROCESSOR_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`;
@@ -111,6 +115,20 @@ export const POLL_ABI = [
     ],
     outputs: [],
     stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'coordinatorPubKeyX',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'coordinatorPubKeyY',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
   },
   {
     type: 'function',

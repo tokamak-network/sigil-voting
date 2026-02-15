@@ -17,6 +17,7 @@ import { useState } from 'react';
 import { useWriteContract, useAccount } from 'wagmi';
 import { POLL_ABI } from '../../contractV2';
 import { useTranslation } from '../../i18n';
+import { VoteConfirmModal } from './VoteConfirmModal';
 
 interface VoteFormV2Props {
   pollId: number;
@@ -39,6 +40,7 @@ export function VoteFormV2({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
   const { t } = useTranslation();
 
   const { writeContractAsync } = useWriteContract();
@@ -162,13 +164,16 @@ export function VoteFormV2({
       <h3>{t.voteForm.title}</h3>
       <p className="text-sm text-gray-500">{t.voteForm.desc}</p>
 
-      <div className="choices">
+      <div className="choices" role="radiogroup" aria-label={t.voteForm.title}>
         {choices.map((c) => (
           <button
             key={c.value}
             className={`choice-btn ${choice === c.value ? 'selected' : ''}`}
             onClick={() => setChoice(c.value)}
             disabled={isSubmitting}
+            role="radio"
+            aria-checked={choice === c.value}
+            aria-label={c.label}
           >
             {c.label}
           </button>
@@ -176,8 +181,9 @@ export function VoteFormV2({
       </div>
 
       <div className="weight-input">
-        <label>{t.voteForm.weightLabel}</label>
+        <label htmlFor="vote-weight">{t.voteForm.weightLabel}</label>
         <input
+          id="vote-weight"
           type="number"
           min="1"
           max={MAX_WEIGHT}
@@ -185,25 +191,43 @@ export function VoteFormV2({
           value={weight}
           onChange={(e) => setWeight(e.target.value)}
           disabled={isSubmitting}
+          aria-describedby="vote-cost"
         />
-        <span className={`cost ${cost > 25 ? 'cost-high' : cost > 9 ? 'cost-medium' : ''}`}>
+        <span id="vote-cost" className={`cost ${cost > 25 ? 'cost-high' : cost > 9 ? 'cost-medium' : ''}`}>
           {t.voteForm.cost} {cost} {t.voteForm.credits}
         </span>
-        {cost > 25 && <span className="cost-warning">{t.voteForm.costWarning}</span>}
+        {cost > 25 && <span className="cost-warning" role="alert">{t.voteForm.costWarning}</span>}
       </div>
 
       <button
-        onClick={handleSubmit}
+        onClick={() => setShowConfirm(true)}
         disabled={choice === null || isSubmitting || !address}
         className="submit-btn"
+        aria-busy={isSubmitting}
       >
         {isSubmitting ? t.voteForm.submitting : t.voteForm.submit}
       </button>
 
+      {showConfirm && choice !== null && (
+        <VoteConfirmModal
+          choice={choice}
+          weight={weightNum}
+          cost={cost}
+          onConfirm={() => {
+            setShowConfirm(false);
+            handleSubmit();
+          }}
+          onCancel={() => setShowConfirm(false)}
+        />
+      )}
+
       {error && <p className="error" role="alert">{error}</p>}
       {txHash && (
         <p className="success" role="status">
-          {t.voteForm.success} {txHash.slice(0, 10)}...
+          {t.voteForm.success}{' '}
+          <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer">
+            {txHash.slice(0, 10)}...
+          </a>
         </p>
       )}
     </div>

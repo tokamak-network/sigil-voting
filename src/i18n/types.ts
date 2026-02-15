@@ -143,6 +143,31 @@ export interface Translations {
     waiting: string
     verified: string
   }
+  results: {
+    title: string
+    desc: string
+    passed: string
+    rejected: string
+    totalVoters: string
+    totalVotes: string
+    verified: string
+  }
+  timer: {
+    remaining: string
+    ended: string
+    hours: string
+    minutes: string
+    seconds: string
+  }
+  confirm: {
+    title: string
+    choice: string
+    weight: string
+    cost: string
+    notice: string
+    submit: string
+    cancel: string
+  }
   footer: {
     desc: string
     resources: string
