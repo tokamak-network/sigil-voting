@@ -60,9 +60,14 @@ export function Header({
       <div className="brutalist-header-left">
         <div className="brutalist-logo" onClick={() => setCurrentPage('landing')}>
           <div className="brutalist-logo-icon">
-            <span className="material-symbols-outlined">fingerprint</span>
+            <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 2 L35.32 11 L35.32 29 L20 38 L4.68 29 L4.68 11 Z" stroke="#000000" strokeWidth="2.5" fill="none"/>
+              <path d="M20 6 L31.66 13 L31.66 27 L20 34 L8.34 27 L8.34 13 Z" stroke="#0052FF" strokeWidth="2" fill="none"/>
+              <path d="M20 10 L28 20 L20 30 L12 20 Z" stroke="#000000" strokeWidth="2.5" fill="none"/>
+              <circle cx="20" cy="20" r="3" fill="#0052FF"/>
+            </svg>
           </div>
-          <span className="brutalist-logo-text">ZK-VOTING</span>
+          <span className="brutalist-logo-text">SIGIL</span>
         </div>
         <nav className="brutalist-nav">
           <button

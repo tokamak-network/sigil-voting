@@ -184,7 +184,7 @@ export const ko: Translations = {
     audit: '감사 보고서',
     sdk: 'SDK 가이드',
     social: '소셜',
-    copyright: '\u00A9 2026 ZK-VOTING PROTOCOL',
-    secured: '수학 + 분산 원장으로 보안',
+    copyright: '\u00A9 2026 SIGIL — Built by Tokamak Network',
+    secured: '영지식 증명으로 봉인',
   },
 }

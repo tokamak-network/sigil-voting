@@ -184,7 +184,7 @@ export const en: Translations = {
     audit: 'Audit Reports',
     sdk: 'SDK Guide',
     social: 'Social',
-    copyright: '\u00A9 2026 ZK-VOTING PROTOCOL',
-    secured: 'Secured by Mathematics + Distributed Ledger',
+    copyright: '\u00A9 2026 SIGIL — Built by Tokamak Network',
+    secured: 'Sealed by Zero-Knowledge Proofs',
   },
 }

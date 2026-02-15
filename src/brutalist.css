@@ -3079,6 +3079,17 @@ h1, h2, h3, h4, h5, h6 {
   opacity: 0.6;
 }
 
+.brutalist-footer-attribution {
+  margin-top: 12px !important;
+  font-size: 13px;
+  opacity: 0.5;
+}
+
+.brutalist-footer-attribution a {
+  color: var(--pure-black);
+  text-decoration: underline;
+}
+
 .brutalist-footer-links {
   padding: 40px;
   border-bottom: 2px solid var(--pure-black);

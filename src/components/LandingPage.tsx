@@ -38,7 +38,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
               <div className="bg-line"></div>
             </div>
             <div className="brutalist-hero-text">
-              ZK<br />VOTE
+              SIGIL
             </div>
             <div className="brutalist-hero-version">
               <span className="version-year">2026</span>

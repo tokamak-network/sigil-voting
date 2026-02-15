@@ -7,8 +7,9 @@ export function Footer() {
     <footer className="brutalist-footer">
       <div className="brutalist-footer-grid">
         <div className="brutalist-footer-brand">
-          <h2>ZK-VOTING</h2>
+          <h2>SIGIL</h2>
           <p>{t.footer.desc}</p>
+          <p className="brutalist-footer-attribution">Built by <a href="https://tokamak.network" target="_blank" rel="noopener noreferrer">Tokamak Network</a></p>
         </div>
         <div className="brutalist-footer-links">
           <h5>{t.footer.resources}</h5>
