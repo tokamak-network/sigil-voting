@@ -1,7 +1,6 @@
 export { Header } from './Header'
 export { Footer } from './Footer'
 export { Toast } from './Toast'
-export { VoteConfirmModal } from './VoteConfirmModal'
 export { LandingPage } from './LandingPage'
 export { MACIVotingDemo } from './MACIVotingDemo'
 export { CreatePollForm } from './CreatePollForm'

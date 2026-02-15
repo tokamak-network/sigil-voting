@@ -2,8 +2,9 @@ import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi'
 import { injected } from 'wagmi/connectors'
 import { sepolia } from '../wagmi'
 import type { Page } from '../types'
-import { shortenAddress } from '../utils'
 import { useTranslation } from '../i18n'
+
+const shortenAddress = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-4)
 import { LanguageSwitcher } from './LanguageSwitcher'
 
 interface HeaderProps {
