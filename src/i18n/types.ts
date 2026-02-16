@@ -143,6 +143,7 @@ export interface Translations {
     patience: string
     successNext: string
     retry: string
+    autoRegisterNotice: string
   }
   keyManager: {
     title: string
@@ -151,6 +152,7 @@ export interface Translations {
     currentKey: string
     keyActive: string
     noKey: string
+    noKeyReason: string
     changeKey: string
     warning: string
     confirm: string

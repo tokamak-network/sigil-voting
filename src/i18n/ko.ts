@@ -152,6 +152,7 @@ export const ko: Translations = {
     patience: '보안을 위해 암호화 과정이 포함됩니다. 약 10~30초 정도 걸립니다.',
     successNext: '투표가 안전하게 기록되었습니다. 투표 기간이 끝나면 운영자가 결과를 집계합니다. 결과는 이 페이지에서 확인할 수 있습니다.',
     retry: '다시 시도',
+    autoRegisterNotice: '처음 투표하시면 자동으로 투표자 등록이 진행됩니다. 지갑 승인이 2번 필요합니다.',
   },
   keyManager: {
     title: '투표 보호',
@@ -160,6 +161,7 @@ export const ko: Translations = {
     keyActive: '보호 활성화됨',
     currentKey: '현재 키 상태:',
     noKey: '아직 등록된 키가 없습니다.',
+    noKeyReason: '첫 투표 시 자동으로 보호 키가 생성됩니다.',
     changeKey: '키 변경 (이전 투표 무효화)',
     warning: '키를 변경하면 이전에 제출한 모든 투표가 무효화됩니다. 변경 후 반드시 다시 투표해야 합니다.',
     confirm: '키 변경 확인',

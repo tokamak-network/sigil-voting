@@ -152,6 +152,7 @@ export const en: Translations = {
     patience: 'This includes encryption for your security. It may take 10-30 seconds.',
     successNext: 'Your vote has been securely recorded. When voting ends, the operator will tally results. You can check the results on this page.',
     retry: 'Try Again',
+    autoRegisterNotice: 'First-time voters are automatically registered. Your wallet will ask for approval twice.',
   },
   keyManager: {
     title: 'Vote Protection',
@@ -160,6 +161,7 @@ export const en: Translations = {
     currentKey: 'Current key status:',
     keyActive: 'Protection active',
     noKey: 'No key registered yet.',
+    noKeyReason: 'A protection key will be created automatically on your first vote.',
     changeKey: 'Change Key (Invalidate Previous Votes)',
     warning: 'Changing your key will invalidate ALL previous votes. You must re-vote after changing.',
     confirm: 'Confirm Key Change',
