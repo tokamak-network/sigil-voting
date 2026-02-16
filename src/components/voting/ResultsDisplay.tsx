@@ -20,18 +20,21 @@ export function ResultsDisplay({ tallyAddress }: ResultsDisplayProps) {
     address: tallyAddress,
     abi: TALLY_ABI,
     functionName: 'forVotes',
+    query: { refetchInterval: 10000 },
   });
 
   const { data: againstVotes } = useReadContract({
     address: tallyAddress,
     abi: TALLY_ABI,
     functionName: 'againstVotes',
+    query: { refetchInterval: 10000 },
   });
 
   const { data: totalVoters } = useReadContract({
     address: tallyAddress,
     abi: TALLY_ABI,
     functionName: 'totalVoters',
+    query: { refetchInterval: 10000 },
   });
 
   const forNum = Number(forVotes || 0n);

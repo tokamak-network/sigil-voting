@@ -21,14 +21,14 @@ export function MergingStatus({ pollAddress }: MergingStatusProps) {
     address,
     abi: POLL_ABI,
     functionName: 'stateAqMerged',
-    query: { refetchInterval: 15000 },
+    query: { refetchInterval: 5000 },
   });
 
   const { data: messageAqMerged, isPending: msgLoading } = useReadContract({
     address,
     abi: POLL_ABI,
     functionName: 'messageAqMerged',
-    query: { refetchInterval: 15000 },
+    query: { refetchInterval: 5000 },
   });
 
   const isLoading = stateLoading || msgLoading;

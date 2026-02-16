@@ -13,6 +13,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAccount, useWriteContract } from 'wagmi';
 import { POLL_ABI, POLL_V2_ADDRESS } from '../../contractV2';
 import { useTranslation } from '../../i18n';
+import { preloadCrypto } from '../../crypto/preload';
 
 interface KeyManagerProps {
   pollId: number;
@@ -57,26 +58,22 @@ export function KeyManager({
     setSuccess(false);
 
     try {
-      const { derivePrivateKey } = await import('../../crypto/blake512');
-      const { generateEphemeralKeyPair, generateECDHSharedKey } = await import('../../crypto/ecdh');
-      const { poseidonEncrypt } = await import('../../crypto/duplexSponge');
-      const { eddsaSign, eddsaDerivePublicKey } = await import('../../crypto/eddsa');
+      const cm = await preloadCrypto();
 
       // Generate new MACI keypair from random seed
       const seed = crypto.getRandomValues(new Uint8Array(32));
-      const newSk = derivePrivateKey(seed);
-      const newPubKey = await eddsaDerivePublicKey(newSk);
+      const newSk = cm.derivePrivateKey(seed);
+      const newPubKey = await cm.eddsaDerivePublicKey(newSk);
 
       // Get current sk for signing the key change command
       // Priority: poll-specific (after previous key change) > global (from signUp)
-      const { loadEncrypted, storeEncrypted: storeEnc } = await import('../../crypto/keyStore');
-      const pollSk = await loadEncrypted(`maci-sk-${address}-${pollId}`, address);
-      const globalSk = await loadEncrypted(`maci-sk-${address}`, address);
+      const pollSk = await cm.loadEncrypted(`maci-sk-${address}-${pollId}`, address);
+      const globalSk = await cm.loadEncrypted(`maci-sk-${address}`, address);
       const currentSk = pollSk ? BigInt(pollSk) : globalSk ? BigInt(globalSk) : newSk;
 
       // ECDH shared key with coordinator
-      const ephemeral = await generateEphemeralKeyPair();
-      const sharedKey = await generateECDHSharedKey(
+      const ephemeral = await cm.generateEphemeralKeyPair();
+      const sharedKey = await cm.generateECDHSharedKey(
         ephemeral.sk,
         [coordinatorPubKeyX, coordinatorPubKeyY],
       );
@@ -91,9 +88,7 @@ export function KeyManager({
 
       // Compute command hash for EdDSA signature
       const salt = BigInt(Math.floor(Math.random() * 2 ** 250));
-      // @ts-expect-error - circomlibjs doesn't have types
-      const { buildPoseidon } = await import('circomlibjs');
-      const poseidon = await buildPoseidon();
+      const poseidon = await cm.buildPoseidon();
       const F = poseidon.F;
       const cmdHashF = poseidon([
         F.e(stateIndex),
@@ -105,7 +100,7 @@ export function KeyManager({
       const cmdHash = F.toObject(cmdHashF);
 
       // Sign with current key
-      const signature = await eddsaSign(cmdHash, currentSk);
+      const signature = await cm.eddsaSign(cmdHash, currentSk);
 
       // Compose plaintext with real signature
       const plaintext = [
@@ -118,7 +113,7 @@ export function KeyManager({
         signature.S,
       ];
 
-      const ciphertext = await poseidonEncrypt(plaintext, sharedKey, nonce);
+      const ciphertext = await cm.poseidonEncrypt(plaintext, sharedKey, nonce);
 
       // Pad to 10 fields
       const encMessage: bigint[] = new Array(10).fill(0n);
@@ -143,7 +138,7 @@ export function KeyManager({
         `maci-pubkey-${address}-${pollId}`,
         JSON.stringify([newPubKey[0].toString(), newPubKey[1].toString()]),
       );
-      await storeEnc(
+      await cm.storeEncrypted(
         `maci-sk-${address}-${pollId}`,
         newSk.toString(),
         address,

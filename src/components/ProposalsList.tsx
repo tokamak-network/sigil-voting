@@ -40,6 +40,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   const [loading, setLoading] = useState(true)
   const [showCreatePoll, setShowCreatePoll] = useState(false)
   const [now, setNow] = useState(Math.floor(Date.now() / 1000))
+  const [refreshKey, setRefreshKey] = useState(0)
 
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
 
@@ -47,19 +48,25 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     address: MACI_V2_ADDRESS,
     abi: MACI_ABI,
     functionName: 'nextPollId',
-    query: { enabled: isConfigured },
+    query: { enabled: isConfigured, refetchInterval: 5000 },
   })
 
   const { data: numSignUps } = useReadContract({
     address: MACI_V2_ADDRESS,
     abi: MACI_ABI,
     functionName: 'numSignUps',
-    query: { enabled: isConfigured },
+    query: { enabled: isConfigured, refetchInterval: 10000 },
   })
 
   // Clock tick for timers
   useEffect(() => {
     const interval = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Refresh poll data every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => setRefreshKey(k => k + 1), 30000)
     return () => clearInterval(interval)
   }, [])
 
@@ -132,7 +139,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     }
 
     loadPolls()
-  }, [nextPollId, publicClient, address])
+  }, [nextPollId, publicClient, address, refreshKey])
 
   const getStatus = (poll: PollInfo): 'active' | 'ended' | 'finalized' => {
     if (poll.isOpen) return 'active'

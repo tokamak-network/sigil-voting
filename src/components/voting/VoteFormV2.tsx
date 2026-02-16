@@ -13,12 +13,13 @@
  *   6. Poll.publishMessage(encMessage, encPubKey)
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useWriteContract, useAccount } from 'wagmi';
 import { POLL_ABI } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 import { VoteConfirmModal } from './VoteConfirmModal';
 import { TransactionModal } from './TransactionModal';
+import { preloadCrypto } from '../../crypto/preload';
 
 interface VoteFormV2Props {
   pollId: number;
@@ -67,6 +68,9 @@ export function VoteFormV2({
   const cost = weight * weight;
   const creditExceeded = cost > creditsRemaining;
 
+  // Preload crypto modules in background on mount
+  useEffect(() => { preloadCrypto(); }, []);
+
   // Capture registration state at submit time (so it doesn't change mid-flow)
   const wasRegisteredRef = useRef(true);
 
@@ -84,18 +88,15 @@ export function VoteFormV2({
       }
 
       setTxStage('encrypting');
-      const { generateEphemeralKeyPair, generateECDHSharedKey } = await import('../../crypto/ecdh');
-      const { poseidonEncrypt } = await import('../../crypto/duplexSponge');
-      const { eddsaSign, eddsaDerivePublicKey } = await import('../../crypto/eddsa');
-      const { derivePrivateKey } = await import('../../crypto/blake512');
+      const crypto = await preloadCrypto();
 
       const { sk: userSk, pubKey: userPubKey } = await getOrCreateMaciKeypair(
-        address, pollId, derivePrivateKey, eddsaDerivePublicKey,
+        address, pollId, crypto.derivePrivateKey, crypto.eddsaDerivePublicKey, crypto.loadEncrypted, crypto.storeEncrypted,
       );
 
-      const ephemeral = await generateEphemeralKeyPair();
+      const ephemeral = await crypto.generateEphemeralKeyPair();
 
-      const sharedKey = await generateECDHSharedKey(
+      const sharedKey = await crypto.generateECDHSharedKey(
         ephemeral.sk,
         [coordinatorPubKeyX, coordinatorPubKeyY],
       );
@@ -114,9 +115,7 @@ export function VoteFormV2({
 
       const salt = BigInt(Math.floor(Math.random() * 2 ** 250));
 
-      // @ts-expect-error - circomlibjs doesn't have types
-      const { buildPoseidon } = await import('circomlibjs');
-      const poseidon = await buildPoseidon();
+      const poseidon = await crypto.buildPoseidon();
       const F = poseidon.F;
       const cmdHashF = poseidon([
         F.e(stateIndex),
@@ -127,7 +126,7 @@ export function VoteFormV2({
       ]);
       const cmdHash = F.toObject(cmdHashF);
 
-      const signature = await eddsaSign(cmdHash, userSk);
+      const signature = await crypto.eddsaSign(cmdHash, userSk);
 
       const plaintext = [
         packedCommand,
@@ -139,7 +138,7 @@ export function VoteFormV2({
         signature.S,
       ];
 
-      const ciphertext = await poseidonEncrypt(plaintext, sharedKey, nonce);
+      const ciphertext = await crypto.poseidonEncrypt(plaintext, sharedKey, nonce);
 
       const encMessage: bigint[] = new Array(10).fill(0n);
       for (let i = 0; i < Math.min(ciphertext.length, 10); i++) {
@@ -432,9 +431,9 @@ async function getOrCreateMaciKeypair(
   pollId: number,
   derivePrivateKey: (seed: Uint8Array) => bigint,
   eddsaDerivePublicKey: (sk: bigint) => Promise<[bigint, bigint]>,
+  loadEncrypted: (storageKey: string, address: string) => Promise<string | null>,
+  storeEncrypted: (storageKey: string, value: string, address: string) => Promise<void>,
 ): Promise<{ sk: bigint; pubKey: [bigint, bigint] }> {
-  const { loadEncrypted, storeEncrypted } = await import('../../crypto/keyStore');
-
   const pollSkKey = `maci-sk-${address}-${pollId}`;
   const pollPkKey = `maci-pubkey-${address}-${pollId}`;
   const storedPollSk = await loadEncrypted(pollSkKey, address);

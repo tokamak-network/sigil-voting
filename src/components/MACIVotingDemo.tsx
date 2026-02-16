@@ -28,6 +28,7 @@ import { KeyManager } from './voting/KeyManager'
 import { ResultsDisplay } from './voting/ResultsDisplay'
 import { PollTimer } from './voting/PollTimer'
 import { useTranslation } from '../i18n'
+import { preloadCrypto } from '../crypto/preload'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
 
@@ -221,7 +222,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
     }
 
     checkPhase()
-    const interval = setInterval(checkPhase, 15000)
+    const interval = setInterval(checkPhase, 5000)
     return () => clearInterval(interval)
   }, [pollAddress, publicClient, tallyAddress])
 
@@ -232,9 +233,9 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
     setIsSigningUp(true)
 
     try {
-      const { generateRandomPrivateKey, derivePublicKey } = await import('../crypto')
-      const sk = await generateRandomPrivateKey()
-      const pk = await derivePublicKey(sk)
+      const cm = await preloadCrypto()
+      const sk = cm.generateRandomPrivateKey()
+      const pk = await cm.derivePublicKey(sk)
 
       const hash = await writeContractAsync({
         address: MACI_V2_ADDRESS,
@@ -260,9 +261,8 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
         }
       }
 
-      const { storeEncrypted } = await import('../crypto/keyStore')
       localStorage.setItem(`maci-signup-${address}`, 'true')
-      await storeEncrypted(`maci-sk-${address}`, sk.toString(), address)
+      await cm.storeEncrypted(`maci-sk-${address}`, sk.toString(), address)
       localStorage.setItem(`maci-pk-${address}`, JSON.stringify([pk[0].toString(), pk[1].toString()]))
 
       setSignedUp(true)
