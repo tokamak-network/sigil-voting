@@ -51,7 +51,6 @@ export interface Translations {
     connectWallet: string
     description: string
     stepper: {
-      register: string
       createPoll: string
       vote: string
       result: string
@@ -107,6 +106,13 @@ export interface Translations {
     required: string
     yourBalance: string
     eligible: string
+    success: string
+    successDesc: string
+    viewProposal: string
+    close: string
+    stageSubmitting: string
+    stageConfirming: string
+    stageWaiting: string
   }
   voteForm: {
     title: string
@@ -127,6 +133,7 @@ export interface Translations {
     error: string
     errorGas: string
     errorRejected: string
+    stageRegistering: string
     stageEncrypting: string
     stageSigning: string
     stageConfirming: string
@@ -220,6 +227,10 @@ export interface Translations {
     lastWeight: string
     lastCost: string
     creditsRemaining: string
+  }
+  myVote: {
+    title: string
+    noVote: string
   }
   footer: {
     desc: string

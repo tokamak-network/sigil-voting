@@ -204,7 +204,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
 
       {showCreatePoll && (
         <div className="brutalist-card">
-          <CreatePollForm onPollCreated={handlePollCreated} />
+          <CreatePollForm onPollCreated={handlePollCreated} onSelectPoll={onSelectPoll} />
         </div>
       )}
 

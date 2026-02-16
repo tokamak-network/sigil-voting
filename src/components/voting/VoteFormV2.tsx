@@ -18,6 +18,7 @@ import { useWriteContract, useAccount } from 'wagmi';
 import { POLL_ABI } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 import { VoteConfirmModal } from './VoteConfirmModal';
+import { TransactionModal } from './TransactionModal';
 
 interface VoteFormV2Props {
   pollId: number;
@@ -26,10 +27,12 @@ interface VoteFormV2Props {
   coordinatorPubKeyY: bigint;
   voiceCredits?: number;
   isExpired?: boolean;
+  isRegistered?: boolean;
+  onSignUp?: () => Promise<void>;
   onVoteSubmitted?: () => void;
 }
 
-type TxStage = 'idle' | 'encrypting' | 'signing' | 'confirming' | 'waiting' | 'done' | 'error';
+type TxStage = 'idle' | 'registering' | 'encrypting' | 'signing' | 'confirming' | 'waiting' | 'done' | 'error';
 
 export function VoteFormV2({
   pollId,
@@ -38,6 +41,8 @@ export function VoteFormV2({
   coordinatorPubKeyY,
   voiceCredits = 100,
   isExpired = false,
+  isRegistered = true,
+  onSignUp,
   onVoteSubmitted,
 }: VoteFormV2Props) {
   const { address } = useAccount();
@@ -66,9 +71,15 @@ export function VoteFormV2({
     if (choice === null || !address) return;
     setIsSubmitting(true);
     setError(null);
-    setTxStage('encrypting');
 
     try {
+      // Auto-register if not yet registered
+      if (!isRegistered && onSignUp) {
+        setTxStage('registering');
+        await onSignUp();
+      }
+
+      setTxStage('encrypting');
       const { generateEphemeralKeyPair, generateECDHSharedKey } = await import('../../crypto/ecdh');
       const { poseidonEncrypt } = await import('../../crypto/duplexSponge');
       const { eddsaSign, eddsaDerivePublicKey } = await import('../../crypto/eddsa');
@@ -170,6 +181,7 @@ export function VoteFormV2({
 
   const stageMessages: Record<TxStage, string> = {
     idle: '',
+    registering: t.voteForm.stageRegistering,
     encrypting: t.voteForm.stageEncrypting,
     signing: t.voteForm.stageSigning,
     confirming: t.voteForm.stageConfirming,
@@ -180,34 +192,22 @@ export function VoteFormV2({
 
   // Transaction progress modal
   if (txStage !== 'idle' && txStage !== 'done' && txStage !== 'error') {
+    const txSteps = [
+      ...(!isRegistered ? [{ key: 'registering', label: t.voteForm.stageRegistering }] : []),
+      { key: 'encrypting', label: t.voteForm.stageEncrypting },
+      { key: 'signing', label: t.voteForm.stageSigning },
+      { key: 'confirming', label: t.voteForm.stageConfirming },
+      { key: 'waiting', label: t.voteForm.stageWaiting },
+    ];
+
     return (
       <div className="vote-form-v2">
-        <div className="tx-progress-modal">
-          <div className="tx-progress-spinner" aria-hidden="true">
-            <span className="spinner-large" />
-          </div>
-          <h3>{t.voteForm.processing}</h3>
-          <p className="tx-stage-text">{stageMessages[txStage]}</p>
-          <div className="tx-progress-steps">
-            <div className={`tx-step ${txStage === 'encrypting' ? 'active' : 'done'}`}>
-              <span className="tx-step-icon">{txStage === 'encrypting' ? '◉' : '✓'}</span>
-              <span>{t.voteForm.stageEncrypting}</span>
-            </div>
-            <div className={`tx-step ${txStage === 'signing' ? 'active' : txStage === 'encrypting' ? 'pending' : 'done'}`}>
-              <span className="tx-step-icon">{txStage === 'signing' ? '◉' : txStage === 'encrypting' ? '○' : '✓'}</span>
-              <span>{t.voteForm.stageSigning}</span>
-            </div>
-            <div className={`tx-step ${txStage === 'confirming' ? 'active' : ['encrypting', 'signing'].includes(txStage) ? 'pending' : 'done'}`}>
-              <span className="tx-step-icon">{txStage === 'confirming' ? '◉' : ['encrypting', 'signing'].includes(txStage) ? '○' : '✓'}</span>
-              <span>{t.voteForm.stageConfirming}</span>
-            </div>
-            <div className={`tx-step ${txStage === 'waiting' ? 'active' : 'pending'}`}>
-              <span className="tx-step-icon">{txStage === 'waiting' ? '◉' : '○'}</span>
-              <span>{t.voteForm.stageWaiting}</span>
-            </div>
-          </div>
-          <p className="tx-patience">{t.voteForm.patience}</p>
-        </div>
+        <TransactionModal
+          title={t.voteForm.processing}
+          steps={txSteps}
+          currentStep={txStage}
+          subtitle={stageMessages[txStage]}
+        />
       </div>
     );
   }
