@@ -160,12 +160,19 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
     query: { enabled: isConfigured },
   })
 
-  // Check if user already signed up (localStorage)
+  // Check if user already signed up (multiple signals)
   useEffect(() => {
     if (!address) return
-    const stored = localStorage.getItem(`maci-signup-${address}`)
-    if (stored) setSignedUp(true)
-  }, [address])
+    const hasSignupFlag = localStorage.getItem(`maci-signup-${address}`)
+    const hasGlobalKey = localStorage.getItem(`maci-pk-${address}`)
+    const hasPollKey = localStorage.getItem(`maci-pubkey-${address}-${propPollId}`)
+    const hasVoted = parseInt(localStorage.getItem(`maci-nonce-${address}-${propPollId}`) || '1', 10) > 1
+    if (hasSignupFlag || hasGlobalKey || hasPollKey || hasVoted) {
+      setSignedUp(true)
+      // Ensure signup flag is set for future checks
+      if (!hasSignupFlag) localStorage.setItem(`maci-signup-${address}`, 'true')
+    }
+  }, [address, propPollId])
 
   // Determine phase from poll state (with Finalized detection)
   useEffect(() => {
