@@ -19,9 +19,11 @@ import {
   DEFAULT_COORD_PUB_KEY_Y,
 } from '../contractV2'
 import { useTranslation } from '../i18n'
+import { TransactionModal } from './voting/TransactionModal'
 
 interface CreatePollFormProps {
   onPollCreated: (pollId: number, pollAddress: `0x${string}`, title?: string) => void
+  onSelectPoll?: (pollId: number) => void
 }
 
 interface TokenGateInfo {
@@ -56,7 +58,7 @@ const ERC20_BALANCE_ABI = [
   },
 ] as const
 
-export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
+export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormProps) {
   const { address } = useAccount()
   const publicClient = usePublicClient()
   const { writeContractAsync, isPending } = useWriteContract()
@@ -67,6 +69,10 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
   const [durationHours, setDurationHours] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [txStage, setTxStage] = useState<'idle' | 'submitting' | 'confirming' | 'waiting'>('idle')
+  const [isCreated, setIsCreated] = useState(false)
+  const [createdPollId, setCreatedPollId] = useState<number | null>(null)
+  const [createdTitle, setCreatedTitle] = useState('')
 
   // Eligibility state
   const [isCheckingEligibility, setIsCheckingEligibility] = useState(true)
@@ -159,10 +165,12 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
     if (!address || !title.trim() || !canCreate) return
     setIsSubmitting(true)
     setError(null)
+    setTxStage('submitting')
 
     try {
       const durationSeconds = BigInt(durationHours * 3600)
 
+      setTxStage('confirming')
       const hash = await writeContractAsync({
         address: MACI_V2_ADDRESS as `0x${string}`,
         abi: MACI_ABI,
@@ -179,6 +187,8 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
         gas: 15000000n,
       })
 
+      setTxStage('waiting')
+
       if (publicClient) {
         const receipt = await publicClient.waitForTransactionReceipt({ hash })
         for (const log of receipt.logs) {
@@ -194,6 +204,9 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
                 localStorage.setItem(`maci-poll-desc-${newPollId}`, description.trim())
               }
 
+              setCreatedPollId(newPollId)
+              setCreatedTitle(title.trim())
+              setIsCreated(true)
               onPollCreated(newPollId, pollAddr, title.trim())
             }
             break
@@ -213,6 +226,7 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
       }
     } finally {
       setIsSubmitting(false)
+      setTxStage('idle')
     }
   }, [address, title, description, durationHours, canCreate, writeContractAsync, publicClient, onPollCreated, t])
 
@@ -220,6 +234,62 @@ export function CreatePollForm({ onPollCreated }: CreatePollFormProps) {
   const descLen = description.length
   const titleValid = titleLen >= 3 && titleLen <= 200
   const descValid = descLen <= 1000
+
+  // Transaction progress modal
+  if (txStage !== 'idle') {
+    const txSteps = [
+      { key: 'submitting', label: t.createPoll.stageSubmitting },
+      { key: 'confirming', label: t.createPoll.stageConfirming },
+      { key: 'waiting', label: t.createPoll.stageWaiting },
+    ]
+    return (
+      <div className="create-poll-form">
+        <TransactionModal
+          title={t.createPoll.submitting}
+          steps={txSteps}
+          currentStep={txStage}
+        />
+      </div>
+    )
+  }
+
+  // Success screen
+  if (isCreated && createdPollId !== null) {
+    return (
+      <div className="create-poll-form">
+        <div className="poll-created-success">
+          <span className="material-symbols-outlined success-icon" aria-hidden="true">check_circle</span>
+          <h3>{t.createPoll.success}</h3>
+          <p>{t.createPoll.successDesc}</p>
+          <div className="poll-created-info">
+            <span className="poll-created-title">{createdTitle}</span>
+            <span className="poll-created-duration">{durationHours} {t.createPoll.durationHours}</span>
+          </div>
+          <div className="poll-created-actions">
+            {onSelectPoll && (
+              <button
+                className="brutalist-btn"
+                onClick={() => onSelectPoll(createdPollId)}
+              >
+                {t.createPoll.viewProposal}
+              </button>
+            )}
+            <button
+              className="brutalist-btn secondary"
+              onClick={() => {
+                setIsCreated(false)
+                setCreatedPollId(null)
+                setTitle('')
+                setDescription('')
+              }}
+            >
+              {t.createPoll.close}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // Loading state
   if (isCheckingEligibility) {

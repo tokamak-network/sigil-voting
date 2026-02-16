@@ -1,13 +1,11 @@
 /**
  * MACIVotingDemo - Integrated MACI V2 Voting UI
  *
- * 3-step flow for all users:
- *   Step 0: Register (SignUp)
- *   Step 1: Vote (with optional poll creation if none exists)
- *   Step 2: Result (Merging / Processing / Finalized)
+ * 2-step flow (auto-registration on first vote):
+ *   Step 0: Vote (auto-registers if needed)
+ *   Step 1: Result (Merging / Processing / Finalized)
  *
- * Poll creation is NOT a mandatory step — voters can skip it
- * if an active poll already exists on-chain.
+ * Unregistered users can still view results for ended proposals.
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -16,6 +14,7 @@ import {
   MACI_V2_ADDRESS,
   MACI_ABI,
   POLL_ABI,
+  TALLY_ABI,
   VOICE_CREDIT_PROXY_ADDRESS,
   VOICE_CREDIT_PROXY_ABI,
   V2Phase,
@@ -147,8 +146,9 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
     return () => clearTimeout(timer)
   }, [txHash])
 
-  // 3 steps: 0=Register, 1=Vote, 2=Result
-  const currentStep = !signedUp ? 0 : (hasPoll && phase !== V2Phase.Voting) ? 2 : 1
+  // 2 steps: 0=Vote, 1=Result
+  // Ended proposals → always show result (step 1), regardless of registration
+  const currentStep = (hasPoll && phase !== V2Phase.Voting) ? 1 : 0
 
   // Read numSignUps from MACI
   const { data: _numSignUps, refetch: refetchSignUps } = useReadContract({
@@ -165,7 +165,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
     if (stored) setSignedUp(true)
   }, [address])
 
-  // Determine phase from poll state
+  // Determine phase from poll state (with Finalized detection)
   useEffect(() => {
     if (!pollAddress || !publicClient) return
 
@@ -197,6 +197,23 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
           return
         }
 
+        // Both queues merged — check if tally is verified
+        if (tallyAddress && tallyAddress !== ZERO_ADDRESS) {
+          try {
+            const verified = await publicClient.readContract({
+              address: tallyAddress,
+              abi: TALLY_ABI,
+              functionName: 'tallyVerified',
+            })
+            if (verified) {
+              setPhase(V2Phase.Finalized)
+              return
+            }
+          } catch {
+            // Tally contract might not support tallyVerified
+          }
+        }
+
         setPhase(V2Phase.Processing)
       } catch {
         // Poll might not exist yet or read failed
@@ -206,9 +223,9 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
     checkPhase()
     const interval = setInterval(checkPhase, 15000)
     return () => clearInterval(interval)
-  }, [pollAddress, publicClient])
+  }, [pollAddress, publicClient, tallyAddress])
 
-  // === SignUp ===
+  // === SignUp (called by VoteFormV2 via callback) ===
   const handleSignUp = useCallback(async () => {
     if (!address) return
     setError(null)
@@ -254,23 +271,25 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
       if (msg.includes('insufficient funds') || msg.includes('gas')) {
-        setError(t.voteForm.errorGas)
+        throw new Error(t.voteForm.errorGas)
       } else if (msg.includes('rejected') || msg.includes('denied')) {
-        setError(t.voteForm.errorRejected)
+        throw new Error(t.voteForm.errorRejected)
       } else {
-        setError(t.maci.signup.error)
+        throw new Error(t.maci.signup.error)
       }
     } finally {
       setIsSigningUp(false)
     }
   }, [address, writeContractAsync, refetchSignUps, publicClient, t])
 
-  // === Stepper labels (3 steps) ===
+  // === Stepper labels (2 steps) ===
   const steps = [
-    t.maci.stepper.register,
     t.maci.stepper.vote,
     t.maci.stepper.result,
   ]
+
+  // My vote info (for ended proposals)
+  const myVote = address ? getLastVote(address, propPollId) : null
 
   // === Not configured ===
   if (!isConfigured) {
@@ -310,7 +329,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
         <h2>{pollTitle || `${t.maci.poll.active.replace('{id}', String(propPollId))}`}</h2>
         <p className="maci-description">{t.maci.description}</p>
 
-        {/* Stepper - 3 steps */}
+        {/* Stepper - 2 steps */}
         <div className="stepper" role="navigation" aria-label="Voting steps">
           {steps.map((label, i) => (
             <div key={i} className="stepper-item-wrapper">
@@ -357,85 +376,82 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
 
         {/* === Step Cards === */}
 
-        {/* Step 0: Register */}
+        {/* Step 0: Vote (with auto-registration) */}
         <section
-          className={`step-card ${currentStep === 0 ? 'active' : currentStep > 0 ? 'complete' : 'pending'}`}
-          aria-label={t.maci.stepper.register}
+          className={`step-card ${currentStep === 0 ? 'active' : 'complete'}`}
+          aria-label={t.maci.stepper.vote}
         >
-          {currentStep > 0 ? (
-            <div className="step-summary">
-              <span className="step-check" aria-hidden="true">&#10003;</span> {t.maci.signup.complete}
+          {currentStep === 0 ? (
+            <div className="step-content">
+              {isLoadingPoll ? (
+                <div className="loading-spinner" role="status" aria-busy="true">
+                  <span className="spinner" aria-hidden="true" />
+                  <span>{t.maci.waiting.processing}</span>
+                </div>
+              ) : hasPoll && phase === V2Phase.Voting ? (
+                <>
+                  <div className="poll-info-card">
+                    <div className="poll-info-header">
+                      <span className="poll-addr">({pollAddress!.slice(0, 8)}...{pollAddress!.slice(-6)})</span>
+                    </div>
+                    <PollTimer pollAddress={pollAddress!} onExpired={() => setIsPollExpired(true)} />
+                  </div>
+                  <VoteFormV2
+                    pollId={propPollId}
+                    pollAddress={pollAddress!}
+                    coordinatorPubKeyX={coordPubKeyX}
+                    coordinatorPubKeyY={coordPubKeyY}
+                    voiceCredits={voiceCredits}
+                    isExpired={isPollExpired}
+                    isRegistered={signedUp}
+                    onSignUp={handleSignUp}
+                    onVoteSubmitted={() => setTxHash(null)}
+                  />
+                  <KeyManager
+                    pollId={propPollId}
+                    coordinatorPubKeyX={coordPubKeyX}
+                    coordinatorPubKeyY={coordPubKeyY}
+                    pollAddress={pollAddress!}
+                  />
+                </>
+              ) : !hasPoll && !isLoadingPoll ? (
+                <div className="no-poll-notice">
+                  <p>{t.maci.stats.currentPoll}: {t.maci.stats.none}</p>
+                </div>
+              ) : null}
             </div>
           ) : (
-            <div className="step-content">
-              <p className="signup-desc">{t.maci.signup.desc}</p>
-              <button
-                onClick={handleSignUp}
-                disabled={isSigningUp || isPending}
-                className="brutalist-btn"
-                aria-busy={isSigningUp}
-              >
-                {isSigningUp ? t.maci.signup.loading : t.maci.signup.button}
-              </button>
+            <div className="step-summary">
+              <span className="step-check" aria-hidden="true">&#10003;</span> {t.maci.waiting.merging}
             </div>
           )}
         </section>
 
-        {/* Step 1: Vote (+ optional poll creation) */}
+        {/* Step 1: Results */}
         {currentStep >= 1 && (
-          <section
-            className={`step-card ${currentStep === 1 ? 'active' : 'complete'}`}
-            aria-label={t.maci.stepper.vote}
-          >
-            {currentStep === 1 ? (
-              <div className="step-content">
-                {isLoadingPoll ? (
-                  <div className="loading-spinner" role="status" aria-busy="true">
-                    <span className="spinner" aria-hidden="true" />
-                    <span>{t.maci.waiting.processing}</span>
-                  </div>
-                ) : hasPoll && phase === V2Phase.Voting ? (
-                  <>
-                    <div className="poll-info-card">
-                      <div className="poll-info-header">
-                        <span className="poll-addr">({pollAddress!.slice(0, 8)}...{pollAddress!.slice(-6)})</span>
-                      </div>
-                      <PollTimer pollAddress={pollAddress!} onExpired={() => setIsPollExpired(true)} />
-                    </div>
-                    <VoteFormV2
-                      pollId={propPollId}
-                      pollAddress={pollAddress!}
-                      coordinatorPubKeyX={coordPubKeyX}
-                      coordinatorPubKeyY={coordPubKeyY}
-                      voiceCredits={voiceCredits}
-                      isExpired={isPollExpired}
-                      onVoteSubmitted={() => setTxHash(null)}
-                    />
-                    <KeyManager
-                      pollId={propPollId}
-                      coordinatorPubKeyX={coordPubKeyX}
-                      coordinatorPubKeyY={coordPubKeyY}
-                      pollAddress={pollAddress!}
-                    />
-                  </>
-                ) : !hasPoll && !isLoadingPoll ? (
-                  <div className="no-poll-notice">
-                    <p>{t.maci.stats.currentPoll}: {t.maci.stats.none}</p>
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <div className="step-summary">
-                <span className="step-check" aria-hidden="true">&#10003;</span> {t.maci.waiting.merging}
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* Step 2: Results */}
-        {currentStep >= 2 && (
           <section className="step-card active" aria-label={t.maci.stepper.result}>
             <div className="step-content">
+              {/* My Vote summary */}
+              {myVote && (
+                <div className="my-vote-banner">
+                  <div className="my-vote-header">
+                    <span className="material-symbols-outlined" aria-hidden="true">how_to_vote</span>
+                    <span>{t.myVote.title}</span>
+                  </div>
+                  <div className="my-vote-details">
+                    <span>{t.voteHistory.lastChoice}: <strong>{myVote.choice === 1 ? t.voteForm.for : t.voteForm.against}</strong></span>
+                    <span>{t.voteHistory.lastWeight}: <strong>{myVote.weight}</strong></span>
+                    <span>{t.voteHistory.lastCost}: <strong>{myVote.cost} {t.voteForm.credits}</strong></span>
+                  </div>
+                </div>
+              )}
+              {!myVote && address && (
+                <div className="my-vote-banner my-vote-none">
+                  <span className="material-symbols-outlined" aria-hidden="true">info</span>
+                  <span>{t.myVote.noVote}</span>
+                </div>
+              )}
+
               {phase === V2Phase.Merging && pollAddress && (
                 <MergingStatus pollAddress={pollAddress} />
               )}
@@ -456,4 +472,12 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
       </div>
     </div>
   )
+}
+
+// Read last vote from localStorage
+function getLastVote(address: string, pollId: number): { choice: number; weight: number; cost: number } | null {
+  const key = `maci-lastVote-${address}-${pollId}`
+  const stored = localStorage.getItem(key)
+  if (!stored) return null
+  try { return JSON.parse(stored) } catch { return null }
 }

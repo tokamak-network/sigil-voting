@@ -60,7 +60,6 @@ export const ko: Translations = {
     connectWallet: '투표에 참여하려면 지갑을 연결하세요.',
     description: '투표는 암호화되어 누구도 열람할 수 없습니다. 키 변경으로 이전 투표를 무효화할 수 있어, 강압을 방지합니다.',
     stepper: {
-      register: '등록',
       createPoll: '제안 생성',
       vote: '투표',
       result: '결과',
@@ -116,6 +115,13 @@ export const ko: Translations = {
     required: '필요 수량',
     yourBalance: '내 보유량',
     eligible: '자격 확인됨',
+    success: '제안이 생성되었습니다!',
+    successDesc: '제안이 등록되었습니다. 커뮤니티 멤버가 투표를 시작할 수 있습니다.',
+    viewProposal: '제안 보기',
+    close: '닫기',
+    stageSubmitting: '제안 등록 중...',
+    stageConfirming: '지갑에서 승인해주세요...',
+    stageWaiting: '처리 확인 대기 중...',
   },
   voteForm: {
     title: '투표하기',
@@ -136,6 +142,7 @@ export const ko: Translations = {
     error: '투표 제출에 실패했습니다. 네트워크 상태를 확인해주세요.',
     errorGas: 'ETH 잔액이 부족합니다. Sepolia ETH를 충전해주세요.',
     errorRejected: '지갑에서 거부되었습니다. 다시 시도해주세요.',
+    stageRegistering: '투표자 등록 중...',
     stageEncrypting: '투표를 암호화하는 중...',
     stageSigning: '보안 서명을 생성하는 중...',
     stageConfirming: '지갑에서 승인해주세요...',
@@ -229,6 +236,10 @@ export const ko: Translations = {
     lastWeight: '가중치',
     lastCost: '사용 크레딧',
     creditsRemaining: '남은 크레딧',
+  },
+  myVote: {
+    title: '내 투표',
+    noVote: '이 제안에 투표하지 않았습니다.',
   },
   footer: {
     desc: '이더리움 기반 오픈소스 거버넌스 프로토콜. Tokamak Network가 만들었습니다.',

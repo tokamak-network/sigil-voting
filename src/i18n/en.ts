@@ -60,7 +60,6 @@ export const en: Translations = {
     connectWallet: 'Connect your wallet to participate in voting.',
     description: 'Votes are encrypted and cannot be revealed. Key changes invalidate previous votes, preventing coercion.',
     stepper: {
-      register: 'Register',
       createPoll: 'Create Proposal',
       vote: 'Vote',
       result: 'Result',
@@ -116,6 +115,13 @@ export const en: Translations = {
     required: 'Required',
     yourBalance: 'Your balance',
     eligible: 'Eligible',
+    success: 'Proposal Created!',
+    successDesc: 'Your proposal is now live. Community members can start voting.',
+    viewProposal: 'View Proposal',
+    close: 'Close',
+    stageSubmitting: 'Submitting proposal...',
+    stageConfirming: 'Please approve in your wallet...',
+    stageWaiting: 'Waiting for confirmation...',
   },
   voteForm: {
     title: 'Cast Your Vote',
@@ -136,6 +142,7 @@ export const en: Translations = {
     error: 'Vote submission failed. Please check your network.',
     errorGas: 'Insufficient ETH. Please top up your Sepolia ETH.',
     errorRejected: 'Rejected in your wallet. Please try again.',
+    stageRegistering: 'Registering as voter...',
     stageEncrypting: 'Encrypting your vote...',
     stageSigning: 'Generating secure signature...',
     stageConfirming: 'Please approve in your wallet...',
@@ -229,6 +236,10 @@ export const en: Translations = {
     lastWeight: 'Weight',
     lastCost: 'Credits spent',
     creditsRemaining: 'Credits remaining',
+  },
+  myVote: {
+    title: 'My Vote',
+    noVote: 'You did not vote on this proposal.',
   },
   footer: {
     desc: 'Open-source governance protocol on Ethereum. Built by Tokamak Network.',
