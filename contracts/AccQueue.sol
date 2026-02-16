@@ -12,6 +12,15 @@ import {PoseidonT6} from "poseidon-solidity/PoseidonT6.sol";
 ///      2. mergeSubRoots() - merges subtree roots into a mid-level tree
 ///      3. merge() - produces the final main root
 contract AccQueue {
+    // ============ Errors ============
+    error LeafTooLarge();
+    error AlreadyMerged();
+    error SubRootsAlreadyMerged();
+    error SubRootsNotMerged();
+    error NoSubtrees();
+    error IndexOutOfBounds();
+    error NotMerged();
+
     // ============ Constants ============
 
     uint256 internal constant SNARK_SCALAR_FIELD =
@@ -82,18 +91,24 @@ contract AccQueue {
 
         // Compute leaves per subtree: 5^subDepth
         uint256 lps = 1;
-        for (uint256 i = 0; i < _subDepth; i++) {
+        for (uint256 i = 0; i < _subDepth;) {
             lps *= _arity;
+            unchecked {
+                ++i;
+            }
         }
         LEAVES_PER_SUBTREE = lps;
 
         // Precompute zero values for each level
         // zeros[0] = 0 (empty leaf)
         zeros[0] = 0;
-        for (uint256 i = 1; i <= _subDepth + 10; i++) {
-            // zero[level] = hash(zero[level-1], zero[level-1], zero[level-1], zero[level-1], zero[level-1])
+        uint256 limit = _subDepth + 10;
+        for (uint256 i = 1; i <= limit;) {
             uint256 z = zeros[i - 1];
             zeros[i] = PoseidonT6.hash([z, z, z, z, z]);
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -103,8 +118,8 @@ contract AccQueue {
     /// @param _leaf The leaf value to enqueue
     /// @return leafIndex The global index of the enqueued leaf
     function enqueue(uint256 _leaf) external returns (uint256 leafIndex) {
-        require(_leaf < SNARK_SCALAR_FIELD, "Leaf too large");
-        require(!merged, "Already merged");
+        if (_leaf >= SNARK_SCALAR_FIELD) revert LeafTooLarge();
+        if (merged) revert AlreadyMerged();
 
         leafIndex = numLeaves;
         leaves.push(_leaf);
@@ -139,16 +154,20 @@ contract AccQueue {
 
         // Copy level 0 leaves
         uint256[] memory currentLevel = new uint256[](levelSize);
-        for (uint256 i = 0; i < levelSize; i++) {
+        for (uint256 i = 0; i < levelSize;) {
             currentLevel[i] = currentSubtree[0][i];
+            unchecked {
+                ++i;
+            }
         }
 
         // Hash up the tree
-        for (uint256 level = 0; level < SUB_DEPTH; level++) {
+        uint256 subDepth = SUB_DEPTH;
+        for (uint256 level = 0; level < subDepth;) {
             uint256 nextLevelSize = levelSize / ARITY;
             uint256[] memory nextLevel = new uint256[](nextLevelSize);
 
-            for (uint256 i = 0; i < nextLevelSize; i++) {
+            for (uint256 i = 0; i < nextLevelSize;) {
                 uint256 baseIdx = i * ARITY;
                 nextLevel[i] = PoseidonT6.hash(
                     [
@@ -159,10 +178,16 @@ contract AccQueue {
                         currentLevel[baseIdx + 4]
                     ]
                 );
+                unchecked {
+                    ++i;
+                }
             }
 
             currentLevel = nextLevel;
             levelSize = nextLevelSize;
+            unchecked {
+                ++level;
+            }
         }
 
         return currentLevel[0];
@@ -170,8 +195,12 @@ contract AccQueue {
 
     /// @notice Reset current subtree state for the next subtree
     function _resetCurrentSubtree() internal {
-        for (uint256 i = 0; i < LEAVES_PER_SUBTREE; i++) {
+        uint256 lps = LEAVES_PER_SUBTREE;
+        for (uint256 i = 0; i < lps;) {
             delete currentSubtree[0][i];
+            unchecked {
+                ++i;
+            }
         }
         currentSubtreeLeafCount = 0;
         delete currentSubtreeLevelCount[0];
@@ -182,8 +211,8 @@ contract AccQueue {
     /// @notice Merge sub-tree roots into the main tree
     /// @param _numSrQueueOps Number of operations (0 = all at once)
     function mergeSubRoots(uint256 _numSrQueueOps) external {
-        require(!merged, "Already merged");
-        require(!subRootsMerged, "SubRoots already merged");
+        if (merged) revert AlreadyMerged();
+        if (subRootsMerged) revert SubRootsAlreadyMerged();
 
         // If there are remaining leaves in an incomplete subtree, finalize it
         if (currentSubtreeLeafCount > 0) {
@@ -191,7 +220,7 @@ contract AccQueue {
         }
 
         uint256 total = subRoots.length;
-        require(total > 0, "No subtrees to merge");
+        if (total == 0) revert NoSubtrees();
 
         if (_numSrQueueOps == 0) {
             // Process all remaining at once
@@ -213,8 +242,11 @@ contract AccQueue {
     function _padAndFinalizeCurrentSubtree() internal {
         // Pad remaining positions with zero
         uint256 remaining = LEAVES_PER_SUBTREE - currentSubtreeLeafCount;
-        for (uint256 i = 0; i < remaining; i++) {
+        for (uint256 i = 0; i < remaining;) {
             currentSubtree[0][currentSubtreeLeafCount + i] = zeros[0];
+            unchecked {
+                ++i;
+            }
         }
         currentSubtreeLeafCount = LEAVES_PER_SUBTREE;
 
@@ -226,11 +258,11 @@ contract AccQueue {
 
     /// @notice Compute the final main root from all subtree roots
     function merge() external {
-        require(subRootsMerged, "SubRoots not merged yet");
-        require(!merged, "Already merged");
+        if (!subRootsMerged) revert SubRootsNotMerged();
+        if (merged) revert AlreadyMerged();
 
         uint256 numSubRoots = subRoots.length;
-        require(numSubRoots > 0, "No subtrees to merge");
+        if (numSubRoots == 0) revert NoSubtrees();
 
         // Build a tree from subtree roots using quinary hashing
         mainRoot = _buildTreeFromRoots();
@@ -240,35 +272,45 @@ contract AccQueue {
 
     /// @notice Build a quinary tree from subtree roots
     function _buildTreeFromRoots() internal view returns (uint256) {
-        uint256[] memory currentLevel = new uint256[](subRoots.length);
-        for (uint256 i = 0; i < subRoots.length; i++) {
+        uint256 len = subRoots.length;
+        uint256[] memory currentLevel = new uint256[](len);
+        for (uint256 i = 0; i < len;) {
             currentLevel[i] = subRoots[i];
+            unchecked {
+                ++i;
+            }
         }
 
         // Pad to multiple of ARITY
-        uint256 levelSize = currentLevel.length;
+        uint256 levelSize = len;
+        uint256 arity = ARITY;
+        uint256 zeroVal = zeros[SUB_DEPTH];
         while (levelSize > 1) {
             // Pad with zero roots if not multiple of ARITY
-            uint256 remainder = levelSize % ARITY;
+            uint256 remainder = levelSize % arity;
             uint256 paddedSize = levelSize;
             if (remainder != 0) {
-                paddedSize = levelSize + (ARITY - remainder);
+                paddedSize = levelSize + (arity - remainder);
             }
 
             uint256[] memory padded = new uint256[](paddedSize);
-            for (uint256 i = 0; i < levelSize; i++) {
+            for (uint256 i = 0; i < levelSize;) {
                 padded[i] = currentLevel[i];
+                unchecked {
+                    ++i;
+                }
             }
-            // Fill rest with appropriate zero values
-            uint256 zeroVal = zeros[SUB_DEPTH];
-            for (uint256 i = levelSize; i < paddedSize; i++) {
+            for (uint256 i = levelSize; i < paddedSize;) {
                 padded[i] = zeroVal;
+                unchecked {
+                    ++i;
+                }
             }
 
-            uint256 nextSize = paddedSize / ARITY;
+            uint256 nextSize = paddedSize / arity;
             uint256[] memory nextLevel = new uint256[](nextSize);
-            for (uint256 i = 0; i < nextSize; i++) {
-                uint256 baseIdx = i * ARITY;
+            for (uint256 i = 0; i < nextSize;) {
+                uint256 baseIdx = i * arity;
                 nextLevel[i] = PoseidonT6.hash(
                     [
                         padded[baseIdx],
@@ -278,6 +320,9 @@ contract AccQueue {
                         padded[baseIdx + 4]
                     ]
                 );
+                unchecked {
+                    ++i;
+                }
             }
 
             currentLevel = nextLevel;
@@ -291,7 +336,7 @@ contract AccQueue {
 
     /// @notice Get the main root (only valid after merge)
     function getMainRoot() external view returns (uint256) {
-        require(merged, "Not merged yet");
+        if (!merged) revert NotMerged();
         return mainRoot;
     }
 
@@ -302,7 +347,7 @@ contract AccQueue {
 
     /// @notice Get a subtree root by index
     function getSubRoot(uint256 _index) external view returns (uint256) {
-        require(_index < subRoots.length, "Index out of bounds");
+        if (_index >= subRoots.length) revert IndexOutOfBounds();
         return subRoots[_index];
     }
 

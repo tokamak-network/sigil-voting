@@ -10,12 +10,16 @@ import {PoseidonT6} from "poseidon-solidity/PoseidonT6.sol";
 /// @notice Handles encrypted message submission and AccQueue merge operations
 /// @dev No revealVote - votes are encrypted with DuplexSponge and never revealed on-chain
 contract Poll is DomainObjs {
+    // ============ Errors ============
+    error VotingEnded();
+    error VotingNotEnded();
+
     // ============ Config ============
     string public title;
     uint256 public immutable deployTime;
     uint256 public immutable duration;
-    uint256 public coordinatorPubKeyX;
-    uint256 public coordinatorPubKeyY;
+    uint256 public immutable coordinatorPubKeyX;
+    uint256 public immutable coordinatorPubKeyY;
 
     // ============ AccQueues ============
     AccQueue public messageAq;
@@ -59,7 +63,7 @@ contract Poll is DomainObjs {
     /// @param _encPubKeyX Ephemeral public key X (for ECDH)
     /// @param _encPubKeyY Ephemeral public key Y
     function publishMessage(uint256[10] calldata _encMessage, uint256 _encPubKeyX, uint256 _encPubKeyY) external {
-        require(block.timestamp <= deployTime + duration, "Voting ended");
+        if (block.timestamp > deployTime + duration) revert VotingEnded();
 
         // Hash message + pubkey into a single leaf
         uint256 leaf = hashMessageAndEncPubKey(_encMessage, _encPubKeyX, _encPubKeyY);
@@ -75,24 +79,26 @@ contract Poll is DomainObjs {
 
     /// @notice Merge State AccQueue subtree roots
     function mergeMaciStateAqSubRoots(uint256 _numSrQueueOps) external {
-        require(block.timestamp > deployTime + duration, "Voting not ended");
+        if (block.timestamp <= deployTime + duration) revert VotingNotEnded();
         AccQueue(stateAqAddr).mergeSubRoots(_numSrQueueOps);
     }
 
     /// @notice Finalize State AccQueue main root
     function mergeMaciStateAq() external {
-        require(block.timestamp > deployTime + duration, "Voting not ended");
+        if (block.timestamp <= deployTime + duration) revert VotingNotEnded();
         AccQueue(stateAqAddr).merge();
         stateAqMerged = true;
     }
 
     /// @notice Merge Message AccQueue subtree roots
     function mergeMessageAqSubRoots(uint256 _numSrQueueOps) external {
+        if (block.timestamp <= deployTime + duration) revert VotingNotEnded();
         messageAq.mergeSubRoots(_numSrQueueOps);
     }
 
     /// @notice Finalize Message AccQueue main root
     function mergeMessageAq() external {
+        if (block.timestamp <= deployTime + duration) revert VotingNotEnded();
         messageAq.merge();
         messageAqMerged = true;
     }

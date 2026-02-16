@@ -23,9 +23,7 @@ contract ERC20VoiceCreditProxy is IVoiceCreditProxy {
     /// @notice Returns the user's token balance as voice credits (whole tokens)
     /// @dev 1000.5 TON → 1000 credits (floor division)
     function getVoiceCredits(address _user, bytes memory) external view override returns (uint256) {
-        (bool ok, bytes memory data) = token.staticcall(
-            abi.encodeWithSignature("balanceOf(address)", _user)
-        );
+        (bool ok, bytes memory data) = token.staticcall(abi.encodeWithSignature("balanceOf(address)", _user));
         require(ok && data.length >= 32, "balance check failed");
         uint256 rawBalance = abi.decode(data, (uint256));
         return rawBalance / (10 ** tokenDecimals);
