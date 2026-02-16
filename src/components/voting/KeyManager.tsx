@@ -20,6 +20,7 @@ interface KeyManagerProps {
   coordinatorPubKeyX: bigint;
   coordinatorPubKeyY: bigint;
   pollAddress?: `0x${string}`;
+  isRegistered?: boolean;
 }
 
 export function KeyManager({
@@ -27,6 +28,7 @@ export function KeyManager({
   coordinatorPubKeyX,
   coordinatorPubKeyY,
   pollAddress,
+  isRegistered,
 }: KeyManagerProps) {
   const { address } = useAccount();
   const [currentPubKey, setCurrentPubKey] = useState<[bigint, bigint] | null>(null);
@@ -49,7 +51,7 @@ export function KeyManager({
       const parsed = JSON.parse(stored);
       setCurrentPubKey([BigInt(parsed[0]), BigInt(parsed[1])]);
     }
-  }, [address, pollId]);
+  }, [address, pollId, isRegistered]);
 
   const handleKeyChange = useCallback(async () => {
     if (!address) return;

@@ -51,7 +51,7 @@ export function PollTimer({ pollAddress, onExpired }: PollTimerProps) {
   if (expired) {
     return (
       <div className="poll-timer ended" role="timer" aria-label={t.timer.ended}>
-        <span className="timer-icon">\u23F0</span>
+        <span className="timer-icon">{'\u23F0'}</span>
         <span className="timer-text">{t.timer.ended}</span>
       </div>
     );
@@ -65,7 +65,7 @@ export function PollTimer({ pollAddress, onExpired }: PollTimerProps) {
 
   return (
     <div className="poll-timer active" role="timer" aria-live="polite">
-      <span className="timer-icon">\u23F3</span>
+      <span className="timer-icon">{'\u23F3'}</span>
       <span className="timer-text">{t.timer.remaining}</span>
       <span className="timer-countdown">
         {hours > 0 && `${hours}${t.timer.hours} `}

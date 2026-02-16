@@ -102,7 +102,7 @@ export function ResultsDisplay({ tallyAddress }: ResultsDisplayProps) {
       </div>
 
       <p className="results-verified">
-        <span className="verified-icon">\u2713</span> {t.results.verified}
+        <span className="verified-icon">{'\u2713'}</span> {t.results.verified}
       </p>
     </div>
   );

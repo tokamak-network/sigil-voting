@@ -409,6 +409,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
                     coordinatorPubKeyX={coordPubKeyX}
                     coordinatorPubKeyY={coordPubKeyY}
                     pollAddress={pollAddress!}
+                    isRegistered={signedUp}
                   />
                 </>
               ) : !hasPoll && !isLoadingPoll ? (
