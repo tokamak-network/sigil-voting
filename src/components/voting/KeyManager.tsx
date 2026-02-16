@@ -161,40 +161,38 @@ export function KeyManager({
   }, [address, pollId, coordinatorPubKeyX, coordinatorPubKeyY, pollAddress, writeContractAsync]);
 
   return (
-    <div className="key-manager key-manager-visible">
-      <div className="key-manager-header">
-        <h4>
-          <span className="material-symbols-outlined key-manager-icon" aria-hidden="true">shield</span>
+    <div className="border-t-2 border-slate-200 pt-6">
+      <div className="flex items-center justify-between mb-4">
+        <h4 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider">
+          <span className="material-symbols-outlined text-lg" aria-hidden="true">shield</span>
           {t.keyManager.title}
         </h4>
         <button
-          className="key-manager-info-btn"
           onClick={() => setShowTooltip(!showTooltip)}
+          className="text-slate-400 hover:text-black transition-colors"
           type="button"
           aria-label="Info"
           aria-expanded={showTooltip}
         >
-          <span className="material-symbols-outlined">help</span>
+          <span className="material-symbols-outlined text-lg">help</span>
         </button>
       </div>
 
       {showTooltip && (
-        <div className="key-manager-tooltip" role="tooltip">
+        <p className="text-xs text-slate-500 mb-4 p-3 bg-slate-50 border border-slate-200" role="tooltip">
           {t.keyManager.tooltip}
-        </div>
+        </p>
       )}
 
       {currentPubKey ? (
-        <div className="current-key">
-          <span className="key-active-badge">
-            <span className="material-symbols-outlined" aria-hidden="true">verified_user</span>
-            {t.keyManager.keyActive}
-          </span>
+        <div className="flex items-center gap-2 text-sm text-green-600 mb-3">
+          <span className="material-symbols-outlined text-sm" aria-hidden="true">verified_user</span>
+          <span className="font-bold">{t.keyManager.keyActive}</span>
         </div>
       ) : (
-        <div className="no-key">
-          <p>{t.keyManager.noKey}</p>
-          {!isRegistered && <p className="no-key-reason">{t.keyManager.noKeyReason}</p>}
+        <div className="mb-3">
+          <p className="text-xs text-slate-500">{t.keyManager.noKey}</p>
+          {!isRegistered && <p className="text-xs text-slate-400">{t.keyManager.noKeyReason}</p>}
         </div>
       )}
 
@@ -202,26 +200,34 @@ export function KeyManager({
         <button
           onClick={() => setShowConfirm(true)}
           disabled={isChanging}
-          className="change-key-btn"
+          className="text-xs font-bold text-slate-500 uppercase tracking-wider hover:text-black transition-colors underline underline-offset-4"
         >
           {t.keyManager.changeKey}
         </button>
       ) : (
-        <div className="confirm-dialog">
-          <p className="warning">{t.keyManager.warning}</p>
-          <div className="confirm-actions">
-            <button onClick={handleKeyChange} disabled={isChanging}>
+        <div className="border-2 border-amber-400 bg-amber-50 p-4 space-y-3">
+          <p className="text-xs text-amber-700">{t.keyManager.warning}</p>
+          <div className="flex gap-2">
+            <button
+              onClick={handleKeyChange}
+              disabled={isChanging}
+              className="bg-black text-white px-4 py-2 text-xs font-bold uppercase hover:bg-slate-800 transition-colors"
+            >
               {isChanging ? t.keyManager.changing : t.keyManager.confirm}
             </button>
-            <button onClick={() => setShowConfirm(false)} disabled={isChanging}>
+            <button
+              onClick={() => setShowConfirm(false)}
+              disabled={isChanging}
+              className="border-2 border-black px-4 py-2 text-xs font-bold uppercase hover:bg-slate-50 transition-colors"
+            >
               {t.keyManager.cancel}
             </button>
           </div>
         </div>
       )}
 
-      {error && <p className="error">{error}</p>}
-      {success && <p className="success">{t.keyManager.success}</p>}
+      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      {success && <p className="mt-2 text-xs text-green-600 font-bold">{t.keyManager.success}</p>}
     </div>
   );
 }

@@ -27,34 +27,29 @@ export function VoteConfirmModal({
   const choiceLabel = choice === 1 ? t.voteForm.for : t.voteForm.against;
 
   return (
-    <div className="modal-overlay" onClick={onCancel} role="dialog" aria-modal="true" aria-label={t.confirm.title}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h3>{t.confirm.title}</h3>
-
-        <div className="confirm-details">
-          <div className="confirm-row">
-            <span className="confirm-label">{t.confirm.choice}</span>
-            <span className={`confirm-value choice-${choice === 1 ? 'for' : 'against'}`}>
-              {choiceLabel}
-            </span>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onCancel} role="dialog" aria-modal="true">
+      <div className="bg-white border-4 border-black p-8 max-w-md w-full" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }} onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-display text-2xl font-black uppercase tracking-tight mb-6">{t.confirm.title}</h3>
+        <div className="space-y-4 mb-6">
+          <div className="flex justify-between items-center p-3 border-2 border-slate-200">
+            <span className="text-xs font-bold text-slate-500 uppercase">{t.confirm.choice}</span>
+            <span className={`font-display font-black text-lg uppercase ${choice === 1 ? 'text-primary' : 'text-black'}`}>{choiceLabel}</span>
           </div>
-          <div className="confirm-row">
-            <span className="confirm-label">{t.confirm.weight}</span>
-            <span className="confirm-value">{weight}</span>
+          <div className="flex justify-between items-center p-3 border-2 border-slate-200">
+            <span className="text-xs font-bold text-slate-500 uppercase">{t.confirm.weight}</span>
+            <span className="font-mono font-bold text-lg">{weight}</span>
           </div>
-          <div className="confirm-row">
-            <span className="confirm-label">{t.confirm.cost}</span>
-            <span className="confirm-value">{cost} {t.voteForm.credits}</span>
+          <div className="flex justify-between items-center p-3 border-2 border-slate-200">
+            <span className="text-xs font-bold text-slate-500 uppercase">{t.confirm.cost}</span>
+            <span className="font-mono font-bold text-lg text-primary">{cost} {t.voteForm.credits}</span>
           </div>
         </div>
-
-        <p className="confirm-notice">{t.confirm.notice}</p>
-
-        <div className="confirm-actions">
-          <button onClick={onConfirm} className="brutalist-btn confirm-btn">
+        <p className="text-xs text-slate-500 mb-6 leading-relaxed">{t.confirm.notice}</p>
+        <div className="flex flex-col gap-3">
+          <button onClick={onConfirm} className="w-full bg-primary text-white py-4 font-display font-black uppercase text-lg border-2 border-black hover:bg-blue-600 transition-colors" style={{ boxShadow: '4px 4px 0px 0px rgba(0, 82, 255, 1)' }}>
             {t.confirm.submit}
           </button>
-          <button onClick={onCancel} className="cancel-btn">
+          <button onClick={onCancel} className="w-full bg-white text-black py-3 font-bold uppercase text-sm border-2 border-black hover:bg-slate-50 transition-colors">
             {t.confirm.cancel}
           </button>
         </div>

@@ -1,4 +1,4 @@
-export type Page = 'landing' | 'proposals' | 'proposal-detail'
+export type Page = 'landing' | 'proposals' | 'proposal-detail' | 'create-proposal' | 'vote-submitted'
 
 declare global {
   interface Window {
