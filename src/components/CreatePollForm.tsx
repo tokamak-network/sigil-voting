@@ -72,6 +72,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
   const [txStage, setTxStage] = useState<'idle' | 'submitting' | 'confirming' | 'waiting'>('idle')
   const [isCreated, setIsCreated] = useState(false)
   const [createdPollId, setCreatedPollId] = useState<number | null>(null)
+  const [createdPollAddr, setCreatedPollAddr] = useState<`0x${string}` | null>(null)
   const [createdTitle, setCreatedTitle] = useState('')
 
   // Eligibility state
@@ -205,9 +206,9 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               }
 
               setCreatedPollId(newPollId)
+              setCreatedPollAddr(pollAddr)
               setCreatedTitle(title.trim())
               setIsCreated(true)
-              onPollCreated(newPollId, pollAddr, title.trim())
             }
             break
           }
@@ -269,7 +270,10 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
             {onSelectPoll && (
               <button
                 className="brutalist-btn"
-                onClick={() => onSelectPoll(createdPollId)}
+                onClick={() => {
+                  if (createdPollAddr) onPollCreated(createdPollId, createdPollAddr, createdTitle)
+                  onSelectPoll(createdPollId)
+                }}
               >
                 {t.createPoll.viewProposal}
               </button>
@@ -277,8 +281,10 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
             <button
               className="brutalist-btn secondary"
               onClick={() => {
+                if (createdPollAddr) onPollCreated(createdPollId!, createdPollAddr, createdTitle)
                 setIsCreated(false)
                 setCreatedPollId(null)
+                setCreatedPollAddr(null)
                 setTitle('')
                 setDescription('')
               }}

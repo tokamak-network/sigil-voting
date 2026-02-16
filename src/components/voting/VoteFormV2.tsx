@@ -13,7 +13,7 @@
  *   6. Poll.publishMessage(encMessage, encPubKey)
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useWriteContract, useAccount } from 'wagmi';
 import { POLL_ABI } from '../../contractV2';
 import { useTranslation } from '../../i18n';
@@ -67,8 +67,12 @@ export function VoteFormV2({
   const cost = weight * weight;
   const creditExceeded = cost > creditsRemaining;
 
+  // Capture registration state at submit time (so it doesn't change mid-flow)
+  const wasRegisteredRef = useRef(true);
+
   const handleSubmit = async () => {
     if (choice === null || !address) return;
+    wasRegisteredRef.current = isRegistered;
     setIsSubmitting(true);
     setError(null);
 
@@ -167,7 +171,10 @@ export function VoteFormV2({
     } catch (err) {
       setTxStage('error');
       const msg = err instanceof Error ? err.message : '';
-      if (msg.includes('insufficient funds') || msg.includes('gas')) {
+      // Signup errors come pre-translated with 'signup:' prefix
+      if (msg.startsWith('signup:')) {
+        setError(msg.slice(7));
+      } else if (msg.includes('insufficient funds') || msg.includes('gas')) {
         setError(t.voteForm.errorGas);
       } else if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
         setError(t.voteForm.errorRejected);
@@ -193,7 +200,7 @@ export function VoteFormV2({
   // Transaction progress modal
   if (txStage !== 'idle' && txStage !== 'done' && txStage !== 'error') {
     const txSteps = [
-      ...(!isRegistered ? [{ key: 'registering', label: t.voteForm.stageRegistering }] : []),
+      ...(!wasRegisteredRef.current ? [{ key: 'registering', label: t.voteForm.stageRegistering }] : []),
       { key: 'encrypting', label: t.voteForm.stageEncrypting },
       { key: 'signing', label: t.voteForm.stageSigning },
       { key: 'confirming', label: t.voteForm.stageConfirming },
@@ -386,7 +393,7 @@ function incrementNonce(address: string, pollId: number): void {
 }
 
 // Vote history (localStorage)
-function getLastVote(address: string, pollId: number): { choice: number; weight: number; cost: number } | null {
+export function getLastVote(address: string, pollId: number): { choice: number; weight: number; cost: number } | null {
   const key = `maci-lastVote-${address}-${pollId}`;
   const stored = localStorage.getItem(key);
   if (!stored) return null;

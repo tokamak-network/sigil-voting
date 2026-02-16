@@ -21,7 +21,7 @@ import {
   DEFAULT_COORD_PUB_KEY_X,
   DEFAULT_COORD_PUB_KEY_Y,
 } from '../contractV2'
-import { VoteFormV2 } from './voting/VoteFormV2'
+import { VoteFormV2, getLastVote } from './voting/VoteFormV2'
 import { MergingStatus } from './voting/MergingStatus'
 import { ProcessingStatus } from './voting/ProcessingStatus'
 import { KeyManager } from './voting/KeyManager'
@@ -39,7 +39,7 @@ interface MACIVotingDemoProps {
 export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoProps) {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
-  const { writeContractAsync, isPending } = useWriteContract()
+  const { writeContractAsync } = useWriteContract()
   const { t } = useTranslation()
 
   const [phase, setPhase] = useState<V2Phase>(V2Phase.Voting)
@@ -271,11 +271,11 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
       if (msg.includes('insufficient funds') || msg.includes('gas')) {
-        throw new Error(t.voteForm.errorGas)
+        throw new Error('signup:' + t.voteForm.errorGas)
       } else if (msg.includes('rejected') || msg.includes('denied')) {
-        throw new Error(t.voteForm.errorRejected)
+        throw new Error('signup:' + t.voteForm.errorRejected)
       } else {
-        throw new Error(t.maci.signup.error)
+        throw new Error('signup:' + t.maci.signup.error)
       }
     } finally {
       setIsSigningUp(false)
@@ -472,12 +472,4 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
       </div>
     </div>
   )
-}
-
-// Read last vote from localStorage
-function getLastVote(address: string, pollId: number): { choice: number; weight: number; cost: number } | null {
-  const key = `maci-lastVote-${address}-${pollId}`
-  const stored = localStorage.getItem(key)
-  if (!stored) return null
-  try { return JSON.parse(stored) } catch { return null }
 }
