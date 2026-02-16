@@ -272,7 +272,7 @@ export function VoteFormV2({
       </div>
 
       {/* Auto-register notice for first-time voters */}
-      {!isRegistered && (
+      {!isRegistered && !hasVoted && (
         <div className="auto-register-notice">
           <span className="material-symbols-outlined" aria-hidden="true">info</span>
           <span>{t.voteForm.autoRegisterNotice}</span>
