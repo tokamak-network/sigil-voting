@@ -79,8 +79,8 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
               type: 'event',
               name: 'DeployPoll',
               inputs: [
-                { name: '_pollId', type: 'uint256', indexed: false },
-                { name: 'pollAddr', type: 'address', indexed: true },
+                { name: 'pollId', type: 'uint256', indexed: true },
+                { name: 'pollAddr', type: 'address', indexed: false },
                 { name: 'messageProcessorAddr', type: 'address', indexed: false },
                 { name: 'tallyAddr', type: 'address', indexed: false },
               ],
@@ -141,7 +141,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
   })
   const voiceCredits = voiceCreditsRaw !== undefined ? Number(voiceCreditsRaw) : 0
 
-  // Auto-dismiss tx banner after 8 seconds
+  // Auto-dismiss tx banner after 30 seconds
   useEffect(() => {
     if (!txHash) return
     const timer = setTimeout(() => setTxHash(null), 30000)

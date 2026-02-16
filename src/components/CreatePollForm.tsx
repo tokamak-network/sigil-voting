@@ -245,6 +245,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               setCreatedPollAddr(pollAddr)
               setCreatedTitle(title.trim())
               setIsCreated(true)
+              onPollCreated(newPollId, pollAddr, title.trim())
             }
             break
           }

@@ -86,10 +86,13 @@ export function KeyManager({
       const globalIdx = localStorage.getItem(`maci-stateIndex-${address}`);
       const pollIdx = localStorage.getItem(`maci-stateIndex-${address}-${pollId}`);
       const stateIndex = globalIdx ? BigInt(globalIdx) : pollIdx ? BigInt(pollIdx) : 1n;
-      const packedCommand = stateIndex; // Key change: only stateIndex matters, weight=0
+      // Pack command with full bit-packing: stateIndex | (voteOption << 50) | (weight << 100) | (nonce << 150) | (pollId << 200)
+      // Key change: voteOption=0, weight=0, but nonce and pollId must be included
+      const packedCommand = stateIndex | (0n << 50n) | (0n << 100n) | (nonce << 150n) | (BigInt(pollId) << 200n);
 
       // Compute command hash for EdDSA signature
-      const salt = BigInt(Math.floor(Math.random() * 2 ** 250));
+      const saltBytes = crypto.getRandomValues(new Uint8Array(31));
+      const salt = BigInt('0x' + Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join(''));
       const poseidon = await cm.buildPoseidon();
       const F = poseidon.F;
       const cmdHashF = poseidon([

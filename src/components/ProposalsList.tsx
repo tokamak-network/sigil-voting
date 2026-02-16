@@ -52,9 +52,8 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
   const { t } = useTranslation()
-  const cached = loadCachedPolls()
-  const [polls, setPolls] = useState<PollInfo[]>(cached)
-  const [loading, setLoading] = useState(cached.length === 0)
+  const [polls, setPolls] = useState<PollInfo[]>(() => loadCachedPolls())
+  const [loading, setLoading] = useState(() => loadCachedPolls().length === 0)
   const [showCreatePoll, setShowCreatePoll] = useState(false)
   const [now, setNow] = useState(Math.floor(Date.now() / 1000))
   const [refreshKey, setRefreshKey] = useState(0)
@@ -170,7 +169,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
       const details = await Promise.all(detailPromises)
       const results = details.filter((d): d is PollInfo => d !== null)
 
-      const sorted = results.reverse() // newest first
+      const sorted = [...results].reverse() // newest first
       setPolls(sorted)
       saveCachedPolls(sorted)
       setLoading(false)

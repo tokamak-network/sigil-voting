@@ -14,7 +14,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { useWriteContract, useAccount } from 'wagmi';
+import { useWriteContract, useAccount, usePublicClient } from 'wagmi';
 import { POLL_ABI } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 import { VoteConfirmModal } from './VoteConfirmModal';
@@ -47,6 +47,7 @@ export function VoteFormV2({
   onVoteSubmitted,
 }: VoteFormV2Props) {
   const { address } = useAccount();
+  const publicClient = usePublicClient();
   const [choice, setChoice] = useState<number | null>(null);
   const [weight, setWeight] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -113,7 +114,8 @@ export function VoteFormV2({
 
       setTxStage('signing');
 
-      const salt = BigInt(Math.floor(Math.random() * 2 ** 250));
+      const saltBytes = crypto.getRandomValues(new Uint8Array(31));
+      const salt = BigInt('0x' + Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join(''));
 
       const poseidon = await crypto.buildPoseidon();
       const F = poseidon.F;
@@ -160,12 +162,17 @@ export function VoteFormV2({
 
       setTxStage('waiting');
       setTxHash(hash);
+
+      // Wait for on-chain confirmation before saving state
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash });
+      }
+
       incrementNonce(address, pollId);
       saveLastVote(address, pollId, choice, weight, cost);
       addCreditsSpent(address, pollId, cost);
 
-      // Wait a bit then mark done
-      setTimeout(() => setTxStage('done'), 3000);
+      setTxStage('done');
       onVoteSubmitted?.();
     } catch (err) {
       setTxStage('error');
