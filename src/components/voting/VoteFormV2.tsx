@@ -271,6 +271,14 @@ export function VoteFormV2({
         </span>
       </div>
 
+      {/* Auto-register notice for first-time voters */}
+      {!isRegistered && (
+        <div className="auto-register-notice">
+          <span className="material-symbols-outlined" aria-hidden="true">info</span>
+          <span>{t.voteForm.autoRegisterNotice}</span>
+        </div>
+      )}
+
       {/* Choice buttons - large, distinct */}
       <div className="choices" role="radiogroup" aria-label={t.voteForm.title}>
         <button

@@ -189,7 +189,10 @@ export function KeyManager({
           </span>
         </div>
       ) : (
-        <p className="no-key">{t.keyManager.noKey}</p>
+        <div className="no-key">
+          <p>{t.keyManager.noKey}</p>
+          {!isRegistered && <p className="no-key-reason">{t.keyManager.noKeyReason}</p>}
+        </div>
       )}
 
       {!showConfirm ? (

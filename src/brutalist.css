@@ -4153,6 +4153,31 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: 16px;
 }
 
+.no-key-reason {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-top: 4px;
+  color: #6366f1;
+}
+
+.auto-register-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 13px;
+  color: #92400e;
+}
+
+.auto-register-notice .material-symbols-outlined {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
 .change-key-btn {
   padding: 12px 24px;
   background: var(--pure-black);
