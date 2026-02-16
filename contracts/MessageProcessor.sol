@@ -13,13 +13,19 @@ contract MessageProcessor is DomainObjs {
     address public immutable poll;
     address public immutable verifier;
     address public immutable vkRegistry;
-    address public coordinator;
+    address public immutable coordinator;
 
     uint256 public processedBatchCount;
     uint256 public currentStateCommitment;
     bool public processingComplete;
 
     error NotCoordinator();
+    error VotingStillOpen();
+    error StateAqNotMerged();
+    error MessageAqNotMerged();
+    error AlreadyComplete();
+    error NoBatchesProcessed();
+    error InvalidProcessProof();
 
     modifier onlyCoordinator() {
         if (msg.sender != coordinator) revert NotCoordinator();
@@ -47,28 +53,30 @@ contract MessageProcessor is DomainObjs {
         uint256[2][2] calldata _pB,
         uint256[2] calldata _pC
     ) external onlyCoordinator {
+        // Cache Poll reference
+        Poll _poll = Poll(poll);
+
         // 1. Voting must be over
-        require(!Poll(poll).isVotingOpen(), "Voting still open");
+        if (_poll.isVotingOpen()) revert VotingStillOpen();
 
         // 2. AccQueues must be merged
-        require(Poll(poll).stateAqMerged(), "State AQ not merged");
-        require(Poll(poll).messageAqMerged(), "Message AQ not merged");
+        if (!_poll.stateAqMerged()) revert StateAqNotMerged();
+        if (!_poll.messageAqMerged()) revert MessageAqNotMerged();
 
         // 3. Not already complete
-        require(!processingComplete, "Already complete");
+        if (processingComplete) revert AlreadyComplete();
 
-        // 4. SHA256 public input hash
-        uint256 messageRoot = AccQueue(address(Poll(poll).messageAq())).mainRoot();
+        // 4. SHA256 public input hash (cached external calls)
+        uint256 messageRoot = AccQueue(address(_poll.messageAq())).mainRoot();
         uint256 publicInputHash = uint256(
-            sha256(abi.encodePacked(currentStateCommitment, _newStateCommitment, messageRoot, Poll(poll).numMessages()))
+            sha256(abi.encodePacked(currentStateCommitment, _newStateCommitment, messageRoot, _poll.numMessages()))
         ) % SNARK_SCALAR_FIELD;
 
         // 5. Groth16 verification
         uint256[] memory pubSignals = new uint256[](1);
         pubSignals[0] = publicInputHash;
 
-        bool valid = IVerifier(verifier).verifyProof(_pA, _pB, _pC, pubSignals);
-        require(valid, "Invalid process proof");
+        if (!IVerifier(verifier).verifyProof(_pA, _pB, _pC, pubSignals)) revert InvalidProcessProof();
 
         // 6. Update state
         currentStateCommitment = _newStateCommitment;
@@ -79,8 +87,8 @@ contract MessageProcessor is DomainObjs {
 
     /// @notice Mark processing as complete (called after all batches processed)
     function completeProcessing() external onlyCoordinator {
-        require(!processingComplete, "Already complete");
-        require(processedBatchCount > 0, "No batches processed");
+        if (processingComplete) revert AlreadyComplete();
+        if (processedBatchCount == 0) revert NoBatchesProcessed();
         processingComplete = true;
         emit ProcessingCompleted(currentStateCommitment);
     }

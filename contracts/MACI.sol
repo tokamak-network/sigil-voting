@@ -118,13 +118,17 @@ contract MACI is DomainObjs {
 
     /// @notice Check if an address can create a poll
     function canCreatePoll(address _user) public view returns (bool) {
-        if (proposalGates.length == 0) return _user == owner;
-        for (uint256 i = 0; i < proposalGates.length; i++) {
+        uint256 len = proposalGates.length;
+        if (len == 0) return _user == owner;
+        for (uint256 i = 0; i < len;) {
             (bool ok, bytes memory data) =
                 proposalGates[i].token.staticcall(abi.encodeWithSignature("balanceOf(address)", _user));
             if (ok && data.length >= 32) {
                 uint256 balance = abi.decode(data, (uint256));
                 if (balance >= proposalGates[i].threshold) return true;
+            }
+            unchecked {
+                ++i;
             }
         }
         return false;

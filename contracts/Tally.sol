@@ -15,7 +15,7 @@ contract Tally is DomainObjs {
     address public immutable messageProcessor;
     address public immutable verifier;
     address public immutable vkRegistry;
-    address public coordinator;
+    address public immutable coordinator;
 
     // Tally commitment: poseidon_3([votesRoot, totalSpentVoiceCredits, perVoteOptionSpentRoot])
     uint256 public tallyCommitment;
@@ -28,6 +28,11 @@ contract Tally is DomainObjs {
     uint256 public totalVoters;
 
     error NotCoordinator();
+    error ProcessingNotDone();
+    error InvalidTallyProof();
+    error TallyNotComputed();
+    error TallyCommitmentMismatch();
+    error AlreadyTallied();
 
     modifier onlyCoordinator() {
         if (msg.sender != coordinator) revert NotCoordinator();
@@ -58,24 +63,23 @@ contract Tally is DomainObjs {
         uint256[2][2] calldata _pB,
         uint256[2] calldata _pC
     ) external onlyCoordinator {
-        // 1. Processing must be complete
-        require(MessageProcessor(messageProcessor).processingComplete(), "Processing not done");
+        // 0. Prevent double tally
+        if (tallyVerified) revert AlreadyTallied();
+
+        // 1. Processing must be complete (cache external call)
+        MessageProcessor _mp = MessageProcessor(messageProcessor);
+        if (!_mp.processingComplete()) revert ProcessingNotDone();
 
         // 2. SHA256 public input hash
         uint256 publicInputHash = uint256(
-            sha256(
-                abi.encodePacked(
-                    MessageProcessor(messageProcessor).currentStateCommitment(), tallyCommitment, _newTallyCommitment
-                )
-            )
+            sha256(abi.encodePacked(_mp.currentStateCommitment(), tallyCommitment, _newTallyCommitment))
         ) % SNARK_SCALAR_FIELD;
 
         // 3. Groth16 verification
         uint256[] memory pubSignals = new uint256[](1);
         pubSignals[0] = publicInputHash;
 
-        bool valid = IVerifier(verifier).verifyProof(_pA, _pB, _pC, pubSignals);
-        require(valid, "Invalid tally proof");
+        if (!IVerifier(verifier).verifyProof(_pA, _pB, _pC, pubSignals)) revert InvalidTallyProof();
 
         // 4. Update tally commitment
         tallyCommitment = _newTallyCommitment;
@@ -100,10 +104,10 @@ contract Tally is DomainObjs {
         uint256 _totalSpent,
         uint256 _perOptionSpentRoot
     ) external onlyCoordinator {
-        require(tallyCommitment != 0, "Tally not computed");
+        if (tallyCommitment == 0) revert TallyNotComputed();
         // Verify: poseidon_3(tallyResultsRoot, totalSpent, perOptionSpentRoot) == tallyCommitment
         uint256 computedCommitment = PoseidonT4.hash([_tallyResultsRoot, _totalSpent, _perOptionSpentRoot]);
-        require(computedCommitment == tallyCommitment, "Tally commitment mismatch");
+        if (computedCommitment != tallyCommitment) revert TallyCommitmentMismatch();
 
         forVotes = _forVotes;
         againstVotes = _againstVotes;

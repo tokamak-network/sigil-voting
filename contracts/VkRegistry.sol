@@ -4,13 +4,17 @@ pragma solidity ^0.8.24;
 /// @title VkRegistry - Verification Key Registry
 /// @notice Stores verification keys for different circuit configurations
 contract VkRegistry {
-    address public owner;
+    address public immutable owner;
 
     // Keyed by keccak256(stateTreeDepth, messageTreeDepth)
     mapping(bytes32 => uint256[]) public processVks;
     mapping(bytes32 => uint256[]) public tallyVks;
     mapping(bytes32 => bool) public isProcessVkSet;
     mapping(bytes32 => bool) public isTallyVkSet;
+
+    error NotOwner();
+    error ProcessVkNotSet();
+    error TallyVkNotSet();
 
     event ProcessVkSet(uint256 stateTreeDepth, uint256 messageTreeDepth);
     event TallyVkSet(uint256 stateTreeDepth, uint256 messageTreeDepth);
@@ -20,7 +24,7 @@ contract VkRegistry {
     }
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Only owner");
+        if (msg.sender != owner) revert NotOwner();
         _;
     }
 
@@ -35,16 +39,24 @@ contract VkRegistry {
 
         // Store process VK
         delete processVks[key];
-        for (uint256 i = 0; i < _processVk.length; i++) {
+        uint256 pLen = _processVk.length;
+        for (uint256 i = 0; i < pLen;) {
             processVks[key].push(_processVk[i]);
+            unchecked {
+                ++i;
+            }
         }
         isProcessVkSet[key] = true;
         emit ProcessVkSet(_stateTreeDepth, _messageTreeDepth);
 
         // Store tally VK
         delete tallyVks[key];
-        for (uint256 i = 0; i < _tallyVk.length; i++) {
+        uint256 tLen = _tallyVk.length;
+        for (uint256 i = 0; i < tLen;) {
             tallyVks[key].push(_tallyVk[i]);
+            unchecked {
+                ++i;
+            }
         }
         isTallyVkSet[key] = true;
         emit TallyVkSet(_stateTreeDepth, _messageTreeDepth);
@@ -53,14 +65,14 @@ contract VkRegistry {
     /// @notice Get the process verification key
     function getProcessVk(uint256 _stateTreeDepth, uint256 _messageTreeDepth) external view returns (uint256[] memory) {
         bytes32 key = keccak256(abi.encodePacked(_stateTreeDepth, _messageTreeDepth));
-        require(isProcessVkSet[key], "Process VK not set");
+        if (!isProcessVkSet[key]) revert ProcessVkNotSet();
         return processVks[key];
     }
 
     /// @notice Get the tally verification key
     function getTallyVk(uint256 _stateTreeDepth, uint256 _messageTreeDepth) external view returns (uint256[] memory) {
         bytes32 key = keccak256(abi.encodePacked(_stateTreeDepth, _messageTreeDepth));
-        require(isTallyVkSet[key], "Tally VK not set");
+        if (!isTallyVkSet[key]) revert TallyVkNotSet();
         return tallyVks[key];
     }
 }

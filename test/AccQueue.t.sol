@@ -85,7 +85,7 @@ contract AccQueueTest is Test {
 
     function test_Enqueue_RevertsLeafTooLarge() public {
         uint256 tooLarge = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
-        vm.expectRevert("Leaf too large");
+        vm.expectRevert(AccQueue.LeafTooLarge.selector);
         aq.enqueue(tooLarge);
     }
 
@@ -94,7 +94,7 @@ contract AccQueueTest is Test {
         aq.mergeSubRoots(0);
         aq.merge();
 
-        vm.expectRevert("Already merged");
+        vm.expectRevert(AccQueue.AlreadyMerged.selector);
         aq.enqueue(2);
     }
 
@@ -129,7 +129,7 @@ contract AccQueueTest is Test {
 
     function test_Merge_RevertsWithoutMergeSubRoots() public {
         aq.enqueue(1);
-        vm.expectRevert("SubRoots not merged yet");
+        vm.expectRevert(AccQueue.SubRootsNotMerged.selector);
         aq.merge();
     }
 
@@ -138,13 +138,13 @@ contract AccQueueTest is Test {
         aq.mergeSubRoots(0);
         aq.merge();
 
-        vm.expectRevert("Already merged");
+        vm.expectRevert(AccQueue.AlreadyMerged.selector);
         aq.merge();
     }
 
     function test_GetMainRoot_RevertsBeforeMerge() public {
         aq.enqueue(1);
-        vm.expectRevert("Not merged yet");
+        vm.expectRevert(AccQueue.NotMerged.selector);
         aq.getMainRoot();
     }
 

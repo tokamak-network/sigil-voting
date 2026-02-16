@@ -153,7 +153,7 @@ contract MACITest is Test {
         vm.warp(block.timestamp + POLL_DURATION + 1);
 
         uint256[10] memory encMsg;
-        vm.expectRevert("Voting ended");
+        vm.expectRevert(Poll.VotingEnded.selector);
         poll.publishMessage(encMsg, 333, 444);
     }
 
@@ -265,7 +265,7 @@ contract MACITest is Test {
         uint256[2][2] memory pB;
         uint256[2] memory pC;
 
-        vm.expectRevert("Invalid process proof");
+        vm.expectRevert(MessageProcessor.InvalidProcessProof.selector);
         mp.processMessages(12345, pA, pB, pC);
     }
 
@@ -292,7 +292,7 @@ contract MACITest is Test {
         uint256[2][2] memory pB;
         uint256[2] memory pC;
 
-        vm.expectRevert("State AQ not merged");
+        vm.expectRevert(MessageProcessor.StateAqNotMerged.selector);
         mp.processMessages(12345, pA, pB, pC);
     }
 
@@ -369,7 +369,7 @@ contract MACITest is Test {
         verifier.setReturnValue(false);
         Tally tally = new Tally(address(poll), address(mp), address(verifier), address(vkRegistry), address(this));
 
-        vm.expectRevert("Invalid tally proof");
+        vm.expectRevert(Tally.InvalidTallyProof.selector);
         tally.tallyVotes(67890, pA, pB, pC);
     }
 

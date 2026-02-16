@@ -168,23 +168,59 @@ async function initCrypto(): Promise<CryptoKit> {
   }
 
   // Poseidon DuplexSponge decryption (t=4, rate=3)
-  function duplexDecrypt(ct: bigint[], key: bigint[], nonce: bigint): bigint[] {
-    const rate = 3;
-    let state = [F.e(key[0]), F.e(key[1]), F.e(nonce), F.zero];
-    state = poseidon.permute(state);
+  // Must match src/crypto/duplexSponge.ts poseidonEncrypt exactly
+  const SNARK_FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+  const TWO128 = 2n ** 128n;
 
-    const pt: bigint[] = [];
-    for (let i = 0; i < ct.length; i += rate) {
-      for (let j = 0; j < rate && i + j < ct.length; j++) {
-        const plain = F.sub(F.e(ct[i + j]), state[j]);
-        pt.push(BigInt(F.toString(plain)));
-        state[j] = F.e(ct[i + j]);
-      }
-      if (i + rate < ct.length) {
-        state = poseidon.permute(state);
-      }
+  // Full Poseidon permutation via circomlibjs 3-arg form:
+  // poseidon([s1,s2,s3], s0, 4) constructs state [s0,s1,s2,s3], permutes, returns all 4
+  function poseidonPerm(state: bigint[]): bigint[] {
+    const inputs = state.slice(1).map(s => F.e(s));
+    const initState = F.e(state[0]);
+    const result = poseidon(inputs, initState, 4);
+    return result.map((r: any) => BigInt(F.toString(r)));
+  }
+
+  function duplexDecrypt(ct: bigint[], key: bigint[], nonce: bigint): bigint[] {
+    // ct format: [encrypted[0..N-2], authTag] where N = ct.length
+    // MACI messages: plaintext length = 7, padded to 9, + 1 auth tag = 10 elements
+    const tag = ct[ct.length - 1];
+    const encrypted = ct.slice(0, -1);
+    const length = 7; // MACI command plaintext length
+
+    // Initial state must match poseidonEncrypt: [0, key[0], key[1], nonce + length * 2^128]
+    let state: bigint[] = [
+      0n,
+      key[0],
+      key[1],
+      (nonce + BigInt(length) * TWO128) % SNARK_FIELD,
+    ];
+
+    const plaintext: bigint[] = [];
+
+    for (let i = 0; i < encrypted.length; i += 3) {
+      // Permute
+      state = poseidonPerm(state);
+
+      // Recover plaintext: pt = ct - state (mod p) at rate positions [1,2,3]
+      const p0 = (encrypted[i] - state[1] + SNARK_FIELD) % SNARK_FIELD;
+      const p1 = (encrypted[i + 1] - state[2] + SNARK_FIELD) % SNARK_FIELD;
+      const p2 = (encrypted[i + 2] - state[3] + SNARK_FIELD) % SNARK_FIELD;
+      plaintext.push(p0, p1, p2);
+
+      // Set state rate portion to ciphertext values (for next permutation)
+      state[1] = encrypted[i];
+      state[2] = encrypted[i + 1];
+      state[3] = encrypted[i + 2];
     }
-    return pt;
+
+    // Verify authentication tag
+    state = poseidonPerm(state);
+    if (state[1] !== tag) {
+      log(`  ⚠ DuplexSponge auth tag mismatch (message may be corrupted)`);
+    }
+
+    return plaintext.slice(0, length);
   }
 
   function verifyEdDSAFn(msg: bigint, sig: { R8: bigint[]; S: bigint }, pk: bigint[]): boolean {
