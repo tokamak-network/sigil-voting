@@ -12,6 +12,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAccount, useWriteContract, useReadContract, usePublicClient } from 'wagmi'
 import {
   MACI_V2_ADDRESS,
+  MACI_DEPLOY_BLOCK,
   MACI_ABI,
   POLL_ABI,
   TALLY_ABI,
@@ -64,22 +65,15 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
 
     const loadPoll = async () => {
       try {
-        const addr = await publicClient.readContract({
-          address: MACI_V2_ADDRESS,
-          abi: MACI_ABI,
-          functionName: 'polls',
-          args: [BigInt(propPollId)],
-        })
-        const pollAddr = addr as `0x${string}`
-        if (pollAddr && pollAddr !== ZERO_ADDRESS) {
-          setPollAddress(pollAddr)
-        }
-        const title = localStorage.getItem(`maci-poll-title-${propPollId}`)
-        if (title) setPollTitle(title)
-
-        // Try to get tally address from DeployPoll event logs
-        try {
-          const logs = await publicClient.getLogs({
+        // Parallel: fetch poll address + event logs simultaneously
+        const [addr, logs] = await Promise.all([
+          publicClient.readContract({
+            address: MACI_V2_ADDRESS,
+            abi: MACI_ABI,
+            functionName: 'polls',
+            args: [BigInt(propPollId)],
+          }),
+          publicClient.getLogs({
             address: MACI_V2_ADDRESS,
             event: {
               type: 'event',
@@ -91,18 +85,24 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
                 { name: 'tallyAddr', type: 'address', indexed: false },
               ],
             },
-            fromBlock: 0n,
+            fromBlock: MACI_DEPLOY_BLOCK,
             toBlock: 'latest',
-          })
-          for (const log of logs) {
-            const args = log.args as { _pollId?: bigint; tallyAddr?: `0x${string}` }
-            if (args._pollId !== undefined && Number(args._pollId) === propPollId && args.tallyAddr) {
-              setTallyAddress(args.tallyAddr)
-              break
-            }
+          }).catch(() => [] as any[]),
+        ])
+
+        const pollAddr = addr as `0x${string}`
+        if (pollAddr && pollAddr !== ZERO_ADDRESS) {
+          setPollAddress(pollAddr)
+        }
+        const title = localStorage.getItem(`maci-poll-title-${propPollId}`)
+        if (title) setPollTitle(title)
+
+        for (const log of logs) {
+          const args = log.args as { _pollId?: bigint; tallyAddr?: `0x${string}` }
+          if (args._pollId !== undefined && Number(args._pollId) === propPollId && args.tallyAddr) {
+            setTallyAddress(args.tallyAddr)
+            break
           }
-        } catch {
-          // Event reading may fail on some RPCs
         }
       } catch {
         // Poll doesn't exist
@@ -172,26 +172,29 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
 
     const checkPhase = async () => {
       try {
-        const isOpen = await publicClient.readContract({
-          address: pollAddress,
-          abi: POLL_ABI,
-          functionName: 'isVotingOpen',
-        })
+        // Parallel: fetch all poll state in one batch
+        const [isOpen, stateMerged, msgMerged] = await Promise.all([
+          publicClient.readContract({
+            address: pollAddress,
+            abi: POLL_ABI,
+            functionName: 'isVotingOpen',
+          }),
+          publicClient.readContract({
+            address: pollAddress,
+            abi: POLL_ABI,
+            functionName: 'stateAqMerged',
+          }),
+          publicClient.readContract({
+            address: pollAddress,
+            abi: POLL_ABI,
+            functionName: 'messageAqMerged',
+          }),
+        ])
+
         if (isOpen) {
           setPhase(V2Phase.Voting)
           return
         }
-
-        const stateMerged = await publicClient.readContract({
-          address: pollAddress,
-          abi: POLL_ABI,
-          functionName: 'stateAqMerged',
-        })
-        const msgMerged = await publicClient.readContract({
-          address: pollAddress,
-          abi: POLL_ABI,
-          functionName: 'messageAqMerged',
-        })
 
         if (!stateMerged || !msgMerged) {
           setPhase(V2Phase.Merging)
@@ -296,12 +299,8 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
     return (
       <div className="maci-voting-demo">
         <div className="brutalist-card">
-          <h2>{t.maci.title} - {t.maci.notDeployed}</h2>
+          <h2>{t.maci.title}</h2>
           <p>{t.maci.notDeployedDesc}</p>
-          <code className="deploy-cmd">
-            forge script script/DeployMACI.s.sol --rpc-url $SEPOLIA_RPC_URL --private-key $PRIVATE_KEY --broadcast
-          </code>
-          <p>{t.maci.notDeployedHint}</p>
         </div>
       </div>
     )
@@ -391,9 +390,6 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
               ) : hasPoll && phase === V2Phase.Voting ? (
                 <>
                   <div className="poll-info-card">
-                    <div className="poll-info-header">
-                      <span className="poll-addr">({pollAddress!.slice(0, 8)}...{pollAddress!.slice(-6)})</span>
-                    </div>
                     <PollTimer pollAddress={pollAddress!} onExpired={() => setIsPollExpired(true)} />
                   </div>
                   <VoteFormV2

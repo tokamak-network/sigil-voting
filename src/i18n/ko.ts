@@ -55,7 +55,7 @@ export const ko: Translations = {
   maci: {
     title: '비밀 투표',
     notDeployed: '컨트랙트 미배포',
-    notDeployedDesc: 'MACI V2 컨트랙트가 아직 배포되지 않았습니다. 배포 스크립트를 실행하세요:',
+    notDeployedDesc: '투표 시스템이 아직 준비되지 않았습니다. 관리자에게 문의하세요.',
     notDeployedHint: '배포 후 src/config.json에 주소를 업데이트하세요.',
     connectWallet: '투표에 참여하려면 지갑을 연결하세요.',
     description: '투표는 암호화되어 누구도 열람할 수 없습니다. 키 변경으로 이전 투표를 무효화할 수 있어, 강압을 방지합니다.',

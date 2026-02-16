@@ -9,6 +9,7 @@ import config from './config.json';
 
 // V2 Contract addresses (loaded from config.json)
 const v2 = (config as any).v2 || {};
+export const MACI_DEPLOY_BLOCK = BigInt((config as any).deployBlock || 0);
 export const MACI_V2_ADDRESS = (v2.maci || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 export const VOICE_CREDIT_PROXY_ADDRESS = (v2.voiceCreditProxy || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 export const MSG_PROCESSOR_VERIFIER_ADDRESS = (v2.msgProcessorVerifier || '0x0000000000000000000000000000000000000000') as `0x${string}`;

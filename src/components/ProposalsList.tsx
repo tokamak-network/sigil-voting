@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react'
 import { useAccount, useReadContract, usePublicClient } from 'wagmi'
 import {
   MACI_V2_ADDRESS,
+  MACI_DEPLOY_BLOCK,
   MACI_ABI,
   POLL_ABI,
   TALLY_ABI,
@@ -106,7 +107,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
               { name: 'tallyAddr', type: 'address', indexed: false },
             ],
           },
-          fromBlock: 0n,
+          fromBlock: MACI_DEPLOY_BLOCK,
           toBlock: 'latest',
         })
         for (const log of logs) {
@@ -119,76 +120,55 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
         // Event reading may fail on some RPCs
       }
 
-      const results: PollInfo[] = []
+      // Parallel: fetch all poll addresses at once
+      const addrPromises = Array.from({ length: count }, (_, i) =>
+        publicClient.readContract({
+          address: MACI_V2_ADDRESS,
+          abi: MACI_ABI,
+          functionName: 'polls',
+          args: [BigInt(i)],
+        }).catch(() => ZERO_ADDRESS)
+      )
+      const addrs = await Promise.all(addrPromises)
 
-      for (let i = 0; i < count; i++) {
-        try {
-          const pollAddr = await publicClient.readContract({
-            address: MACI_V2_ADDRESS,
-            abi: MACI_ABI,
-            functionName: 'polls',
-            args: [BigInt(i)],
-          }) as `0x${string}`
+      // Parallel: fetch details for all valid polls at once
+      const detailPromises = addrs.map((addr, i) => {
+        const pollAddr = addr as `0x${string}`
+        if (!pollAddr || pollAddr === ZERO_ADDRESS) return null
 
-          if (!pollAddr || pollAddr === ZERO_ADDRESS) continue
-
-          const [isOpen, timeData, numMsgs] = await Promise.all([
-            publicClient.readContract({
-              address: pollAddr,
-              abi: POLL_ABI,
-              functionName: 'isVotingOpen',
-            }),
-            publicClient.readContract({
-              address: pollAddr,
-              abi: POLL_ABI,
-              functionName: 'getDeployTimeAndDuration',
-            }),
-            publicClient.readContract({
-              address: pollAddr,
-              abi: POLL_ABI,
-              functionName: 'numMessages',
-            }),
-          ])
-
-          // Check finalized status via tally contract
+        return Promise.all([
+          publicClient.readContract({ address: pollAddr, abi: POLL_ABI, functionName: 'isVotingOpen' }),
+          publicClient.readContract({ address: pollAddr, abi: POLL_ABI, functionName: 'getDeployTimeAndDuration' }),
+          publicClient.readContract({ address: pollAddr, abi: POLL_ABI, functionName: 'numMessages' }),
+        ]).then(async ([isOpen, timeData, numMsgs]) => {
           let isFinalized = false
           const tallyAddr = tallyMap.get(i)
           if (tallyAddr && tallyAddr !== ZERO_ADDRESS && !(isOpen as boolean)) {
             try {
               const verified = await publicClient.readContract({
-                address: tallyAddr,
-                abi: TALLY_ABI,
-                functionName: 'tallyVerified',
+                address: tallyAddr, abi: TALLY_ABI, functionName: 'tallyVerified',
               })
               isFinalized = verified === true
-            } catch {
-              // Tally contract might not support tallyVerified
-            }
+            } catch { /* skip */ }
           }
 
           const td = timeData as [bigint, bigint]
-          const title = localStorage.getItem(`maci-poll-title-${i}`) || `Proposal #${i + 1}`
-
-          // Check if user voted on this poll
-          const hasVoted = address
-            ? parseInt(localStorage.getItem(`maci-nonce-${address}-${i}`) || '1', 10) > 1
-            : false
-
-          results.push({
+          return {
             id: i,
             address: pollAddr,
-            title,
+            title: localStorage.getItem(`maci-poll-title-${i}`) || `Proposal #${i + 1}`,
             isOpen: isOpen as boolean,
             isFinalized,
             deployTime: Number(td[0]),
             duration: Number(td[1]),
             numMessages: Number(numMsgs),
-            hasVoted,
-          })
-        } catch {
-          // Skip polls that fail to read
-        }
-      }
+            hasVoted: address ? parseInt(localStorage.getItem(`maci-nonce-${address}-${i}`) || '1', 10) > 1 : false,
+          } as PollInfo
+        }).catch(() => null)
+      })
+
+      const details = await Promise.all(detailPromises)
+      const results = details.filter((d): d is PollInfo => d !== null)
 
       setPolls(results.reverse()) // newest first
       setLoading(false)

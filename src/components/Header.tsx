@@ -28,8 +28,7 @@ export function Header({
   const handleSwitchNetwork = async () => {
     try {
       await switchChain({ chainId: sepolia.id })
-    } catch (error) {
-      console.error('Network switch failed:', error)
+    } catch {
       if (window.ethereum) {
         try {
           await window.ethereum.request({

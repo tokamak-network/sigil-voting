@@ -55,7 +55,7 @@ export const en: Translations = {
   maci: {
     title: 'Private Voting',
     notDeployed: 'Not Deployed',
-    notDeployedDesc: 'MACI V2 contracts have not been deployed yet. Run the deploy script:',
+    notDeployedDesc: 'The voting system is not ready yet. Please contact the administrator.',
     notDeployedHint: 'Then update src/config.json with the deployed addresses.',
     connectWallet: 'Connect your wallet to participate in voting.',
     description: 'Votes are encrypted and cannot be revealed. Key changes invalidate previous votes, preventing coercion.',

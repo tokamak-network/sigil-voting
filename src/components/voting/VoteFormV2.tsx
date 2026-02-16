@@ -325,13 +325,12 @@ export function VoteFormV2({
         </div>
         <div className="weight-cost-display" id="vote-cost">
           <span className="cost-label">{t.voteForm.cost}</span>
-          <span className={`cost-value ${cost > 25 ? 'cost-high' : cost > 9 ? 'cost-medium' : ''}`}>
+          <span className="cost-value">
             {cost} {t.voteForm.credits}
           </span>
           <span className="cost-formula">({weight} × {weight} = {cost})</span>
         </div>
         {creditExceeded && <span className="cost-warning cost-exceeded" role="alert">{t.voteForm.creditExceeded}</span>}
-        {!creditExceeded && cost > 25 && <span className="cost-warning" role="alert">{t.voteForm.costWarning}</span>}
       </div>
 
       {/* Submit button - prominent */}
