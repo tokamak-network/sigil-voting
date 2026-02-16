@@ -32,6 +32,10 @@ cache/
 out/
 broadcast/
 
+# Hardhat build artifacts
+artifacts/
+cache_hardhat/
+
 # Circuit build artifacts (large binary files)
 circuits/build_maci/
 circuits/build_test/
