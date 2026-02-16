@@ -35,12 +35,26 @@ interface ProposalsListProps {
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
 
+const POLLS_CACHE_KEY = 'maci-polls-cache'
+
+function loadCachedPolls(): PollInfo[] {
+  try {
+    const raw = localStorage.getItem(POLLS_CACHE_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
+
+function saveCachedPolls(polls: PollInfo[]): void {
+  try { localStorage.setItem(POLLS_CACHE_KEY, JSON.stringify(polls)) } catch { /* quota */ }
+}
+
 export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
   const { t } = useTranslation()
-  const [polls, setPolls] = useState<PollInfo[]>([])
-  const [loading, setLoading] = useState(true)
+  const cached = loadCachedPolls()
+  const [polls, setPolls] = useState<PollInfo[]>(cached)
+  const [loading, setLoading] = useState(cached.length === 0)
   const [showCreatePoll, setShowCreatePoll] = useState(false)
   const [now, setNow] = useState(Math.floor(Date.now() / 1000))
   const [refreshKey, setRefreshKey] = useState(0)
@@ -84,9 +98,11 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
 
   // Load all polls
   useEffect(() => {
-    if (!nextPollId || !publicClient) return
+    if (nextPollId === undefined || !publicClient) return
     const count = Number(nextPollId)
     if (count === 0) {
+      setPolls([])
+      saveCachedPolls([])
       setLoading(false)
       return
     }
@@ -170,7 +186,9 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
       const details = await Promise.all(detailPromises)
       const results = details.filter((d): d is PollInfo => d !== null)
 
-      setPolls(results.reverse()) // newest first
+      const sorted = results.reverse() // newest first
+      setPolls(sorted)
+      saveCachedPolls(sorted)
       setLoading(false)
     }
 
