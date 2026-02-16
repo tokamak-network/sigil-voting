@@ -16,4 +16,18 @@ export default defineConfig({
   worker: {
     format: 'es',
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Heavy crypto libraries - loaded on demand via preload.ts
+          'circomlibjs': ['circomlibjs'],
+          // wagmi + viem (Web3 stack)
+          'web3': ['wagmi', 'viem', '@tanstack/react-query'],
+          // React core
+          'react-vendor': ['react', 'react-dom'],
+        },
+      },
+    },
+  },
 })

@@ -1,28 +1,18 @@
 import { http, createConfig } from 'wagmi'
-import { mainnet, sepolia, localhost } from 'wagmi/chains'
+import { sepolia } from 'wagmi/chains'
 import { injected } from 'wagmi/connectors'
 
-// Custom localhost chain for Hardhat
-const hardhatLocalhost = {
-  ...localhost,
-  id: 31337,
-  name: 'Hardhat',
-  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-  rpcUrls: {
-    default: { http: ['http://127.0.0.1:8545'] },
-  },
-}
+// Sepolia RPC: use Vercel env var if available, otherwise public fallback
+const sepoliaRpcUrl = import.meta.env.VITE_SEPOLIA_RPC_URL || undefined
 
 export const config = createConfig({
-  chains: [hardhatLocalhost, sepolia, mainnet],
+  chains: [sepolia],
   connectors: [
     injected(),
   ],
   transports: {
-    [hardhatLocalhost.id]: http('http://127.0.0.1:8545'),
-    [sepolia.id]: http(),
-    [mainnet.id]: http(),
+    [sepolia.id]: http(sepoliaRpcUrl),
   },
 })
 
-export { sepolia, hardhatLocalhost }
+export { sepolia }

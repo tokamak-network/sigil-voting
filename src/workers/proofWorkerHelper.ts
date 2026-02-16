@@ -161,7 +161,5 @@ export async function generateProofWithFallback(
   onProgress?: ProofProgressCallback
 ): Promise<ProofResult> {
   // Run on main thread directly (avoiding Worker issues)
-  // Worker has snarkjs dynamic import issues, using main thread for stability
-  console.log('[ZK] Generating proof on main thread for stability')
   return await generateProofOnMainThread(circuitInputs, wasmUrl, zkeyUrl, onProgress)
 }

@@ -11,6 +11,7 @@ import {
   MACI_V2_ADDRESS,
   MACI_ABI,
   POLL_ABI,
+  TALLY_ABI,
 } from '../contractV2'
 import { useTranslation } from '../i18n'
 import { CreatePollForm } from './CreatePollForm'
@@ -20,6 +21,7 @@ interface PollInfo {
   address: `0x${string}`
   title: string
   isOpen: boolean
+  isFinalized: boolean
   deployTime: number
   duration: number
   numMessages: number
@@ -58,6 +60,15 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     query: { enabled: isConfigured, refetchInterval: 10000 },
   })
 
+  // Pre-check if user can create polls (hide button for ineligible users)
+  const { data: canCreatePoll } = useReadContract({
+    address: MACI_V2_ADDRESS,
+    abi: MACI_ABI,
+    functionName: 'canCreatePoll',
+    args: address ? [address] : undefined,
+    query: { enabled: isConfigured && !!address },
+  })
+
   // Clock tick for timers
   useEffect(() => {
     const interval = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
@@ -80,6 +91,34 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     }
 
     const loadPolls = async () => {
+      // Pre-fetch DeployPoll events to get tally addresses
+      const tallyMap = new Map<number, `0x${string}`>()
+      try {
+        const logs = await publicClient.getLogs({
+          address: MACI_V2_ADDRESS,
+          event: {
+            type: 'event',
+            name: 'DeployPoll',
+            inputs: [
+              { name: 'pollId', type: 'uint256', indexed: true },
+              { name: 'pollAddr', type: 'address', indexed: false },
+              { name: 'messageProcessorAddr', type: 'address', indexed: false },
+              { name: 'tallyAddr', type: 'address', indexed: false },
+            ],
+          },
+          fromBlock: 0n,
+          toBlock: 'latest',
+        })
+        for (const log of logs) {
+          const args = log.args as { pollId?: bigint; tallyAddr?: `0x${string}` }
+          if (args.pollId !== undefined && args.tallyAddr) {
+            tallyMap.set(Number(args.pollId), args.tallyAddr)
+          }
+        }
+      } catch {
+        // Event reading may fail on some RPCs
+      }
+
       const results: PollInfo[] = []
 
       for (let i = 0; i < count; i++) {
@@ -111,6 +150,22 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
             }),
           ])
 
+          // Check finalized status via tally contract
+          let isFinalized = false
+          const tallyAddr = tallyMap.get(i)
+          if (tallyAddr && tallyAddr !== ZERO_ADDRESS && !(isOpen as boolean)) {
+            try {
+              const verified = await publicClient.readContract({
+                address: tallyAddr,
+                abi: TALLY_ABI,
+                functionName: 'tallyVerified',
+              })
+              isFinalized = verified === true
+            } catch {
+              // Tally contract might not support tallyVerified
+            }
+          }
+
           const td = timeData as [bigint, bigint]
           const title = localStorage.getItem(`maci-poll-title-${i}`) || `Proposal #${i + 1}`
 
@@ -124,6 +179,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
             address: pollAddr,
             title,
             isOpen: isOpen as boolean,
+            isFinalized,
             deployTime: Number(td[0]),
             duration: Number(td[1]),
             numMessages: Number(numMsgs),
@@ -143,7 +199,8 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
 
   const getStatus = (poll: PollInfo): 'active' | 'ended' | 'finalized' => {
     if (poll.isOpen) return 'active'
-    return 'ended' // TODO: detect finalized from tally
+    if (poll.isFinalized) return 'finalized'
+    return 'ended'
   }
 
   const getRemaining = (poll: PollInfo): number => {
@@ -169,6 +226,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
       address: newPollAddress,
       title: title || `Proposal #${newPollId + 1}`,
       isOpen: true,
+      isFinalized: false,
       deployTime: Math.floor(Date.now() / 1000),
       duration: 3600, // default, will be overridden on next load
       numMessages: 0,
@@ -195,7 +253,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
           {numSignUps !== undefined && (
             <span className="voter-count">{t.maci.stats.registered}: {Number(numSignUps)}</span>
           )}
-          {isConnected && (
+          {isConnected && canCreatePoll && (
             <button className="brutalist-btn" onClick={() => setShowCreatePoll(!showCreatePoll)}>
               {showCreatePoll ? t.confirm.cancel : t.proposals.createNew}
             </button>
