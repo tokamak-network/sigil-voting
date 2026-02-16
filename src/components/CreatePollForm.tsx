@@ -17,6 +17,8 @@ import {
   MACI_ABI,
   DEFAULT_COORD_PUB_KEY_X,
   DEFAULT_COORD_PUB_KEY_Y,
+  TON_TOKEN_ADDRESS,
+  DEPLOYER_ADDRESS,
 } from '../contractV2'
 import { useTranslation } from '../i18n'
 import { TransactionModal } from './voting/TransactionModal'
@@ -80,6 +82,10 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
   const [canCreate, setCanCreate] = useState(false)
   const [gateInfo, setGateInfo] = useState<TokenGateInfo[]>([])
   const [isOwnerOnly, setIsOwnerOnly] = useState(false)
+  const [isEnablingGate, setIsEnablingGate] = useState(false)
+  const [gateEnabled, setGateEnabled] = useState(false)
+
+  const isOwner = address?.toLowerCase() === DEPLOYER_ADDRESS.toLowerCase()
 
   // Read canCreatePoll from contract
   const { data: canCreateRaw } = useReadContract({
@@ -161,6 +167,36 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
 
     loadGates()
   }, [publicClient, address, gateCountRaw, canCreateRaw])
+
+  // Enable community proposal creation (owner adds TON token gate)
+  const handleEnableGate = useCallback(async () => {
+    if (!address || !isOwner) return
+    setIsEnablingGate(true)
+    setError(null)
+    try {
+      const hash = await writeContractAsync({
+        address: MACI_V2_ADDRESS as `0x${string}`,
+        abi: MACI_ABI,
+        functionName: 'addProposalGate',
+        args: [TON_TOKEN_ADDRESS, 1n],
+      })
+      if (publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash })
+      }
+      setGateEnabled(true)
+      setIsOwnerOnly(false)
+      setCanCreate(true)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
+        setError(t.voteForm.errorRejected)
+      } else {
+        setError(t.createPoll.error)
+      }
+    } finally {
+      setIsEnablingGate(false)
+    }
+  }, [address, isOwner, writeContractAsync, publicClient, t])
 
   const handleSubmit = useCallback(async () => {
     if (!address || !title.trim() || !canCreate) return
@@ -340,6 +376,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
             </>
           )}
         </div>
+        {error && <div className="error-banner" role="alert">{error}</div>}
       </div>
     )
   }
@@ -347,6 +384,29 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
   // Eligible — show form with token info banner
   return (
     <div className="create-poll-form">
+      {isOwner && isOwnerOnly && !gateEnabled && (
+        <div className="admin-enable-gate">
+          <span className="material-symbols-outlined" aria-hidden="true">group_add</span>
+          <div className="admin-enable-content">
+            <p>{t.createPoll.enableCommunityDesc}</p>
+            <button
+              className="brutalist-btn"
+              onClick={handleEnableGate}
+              disabled={isEnablingGate}
+            >
+              {isEnablingGate ? t.createPoll.enabling : t.createPoll.enableCommunity}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {gateEnabled && (
+        <div className="eligibility-pass">
+          <span className="material-symbols-outlined" aria-hidden="true">check_circle</span>
+          <span>{t.createPoll.gateEnabledSuccess}</span>
+        </div>
+      )}
+
       {gateInfo.length > 0 && (
         <div className="eligibility-pass">
           <span className="material-symbols-outlined" aria-hidden="true">check_circle</span>

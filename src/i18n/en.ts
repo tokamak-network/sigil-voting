@@ -122,6 +122,10 @@ export const en: Translations = {
     stageSubmitting: 'Submitting proposal...',
     stageConfirming: 'Please approve in your wallet...',
     stageWaiting: 'Waiting for confirmation...',
+    enableCommunity: 'Allow Community Proposals',
+    enableCommunityDesc: 'Currently only you (admin) can create proposals. Click the button below to allow any token holder to create proposals.',
+    enabling: 'Setting up...',
+    gateEnabledSuccess: 'Community proposals are now enabled!',
   },
   voteForm: {
     title: 'Cast Your Vote',

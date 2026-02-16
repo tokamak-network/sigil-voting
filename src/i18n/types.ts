@@ -113,6 +113,10 @@ export interface Translations {
     stageSubmitting: string
     stageConfirming: string
     stageWaiting: string
+    enableCommunity: string
+    enableCommunityDesc: string
+    enabling: string
+    gateEnabledSuccess: string
   }
   voteForm: {
     title: string

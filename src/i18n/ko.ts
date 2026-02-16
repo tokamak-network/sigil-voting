@@ -122,6 +122,10 @@ export const ko: Translations = {
     stageSubmitting: '제안 등록 중...',
     stageConfirming: '지갑에서 승인해주세요...',
     stageWaiting: '처리 확인 대기 중...',
+    enableCommunity: '커뮤니티 제안 생성 허용하기',
+    enableCommunityDesc: '현재 관리자만 제안을 만들 수 있습니다. 아래 버튼을 누르면 토큰 보유자 누구나 제안을 만들 수 있게 됩니다.',
+    enabling: '설정 중...',
+    gateEnabledSuccess: '커뮤니티 제안 생성이 활성화되었습니다!',
   },
   voteForm: {
     title: '투표하기',
