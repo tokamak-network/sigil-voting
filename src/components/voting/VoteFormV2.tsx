@@ -114,7 +114,7 @@ export function VoteFormV2({
 
       setTxStage('signing');
 
-      const saltBytes = crypto.getRandomValues(new Uint8Array(31));
+      const saltBytes = globalThis.crypto.getRandomValues(new Uint8Array(31));
       const salt = BigInt('0x' + Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join(''));
 
       const poseidon = await crypto.buildPoseidon();
