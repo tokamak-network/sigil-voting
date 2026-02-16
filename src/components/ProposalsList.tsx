@@ -68,15 +68,6 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     query: { enabled: isConfigured, refetchInterval: 5000 },
   })
 
-  // Pre-check if user can create polls (hide button for ineligible users)
-  const { data: canCreatePoll } = useReadContract({
-    address: MACI_V2_ADDRESS,
-    abi: MACI_ABI,
-    functionName: 'canCreatePoll',
-    args: address ? [address] : undefined,
-    query: { enabled: isConfigured && !!address },
-  })
-
   // Clock tick for timers
   useEffect(() => {
     const interval = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
@@ -241,7 +232,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
       <div className="proposals-header">
         <h2>{t.proposals.title}</h2>
         <div className="proposals-header-meta">
-          {isConnected && canCreatePoll && (
+          {isConnected && (
             <button className="brutalist-btn" onClick={() => setShowCreatePoll(!showCreatePoll)}>
               {showCreatePoll ? t.confirm.cancel : t.proposals.createNew}
             </button>
