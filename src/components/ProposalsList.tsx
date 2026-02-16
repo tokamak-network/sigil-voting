@@ -68,13 +68,6 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     query: { enabled: isConfigured, refetchInterval: 5000 },
   })
 
-  const { data: numSignUps } = useReadContract({
-    address: MACI_V2_ADDRESS,
-    abi: MACI_ABI,
-    functionName: 'numSignUps',
-    query: { enabled: isConfigured, refetchInterval: 10000 },
-  })
-
   // Pre-check if user can create polls (hide button for ineligible users)
   const { data: canCreatePoll } = useReadContract({
     address: MACI_V2_ADDRESS,
@@ -248,9 +241,6 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
       <div className="proposals-header">
         <h2>{t.proposals.title}</h2>
         <div className="proposals-header-meta">
-          {numSignUps !== undefined && (
-            <span className="voter-count">{t.maci.stats.registered}: {Number(numSignUps)}</span>
-          )}
           {isConnected && canCreatePoll && (
             <button className="brutalist-btn" onClick={() => setShowCreatePoll(!showCreatePoll)}>
               {showCreatePoll ? t.confirm.cancel : t.proposals.createNew}
