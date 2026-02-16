@@ -313,8 +313,8 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
   if (!canCreate) {
     return (
       <div className="create-poll-form">
-        <div className="eligibility-denied" role="alert">
-          <span className="material-symbols-outlined" aria-hidden="true">block</span>
+        <div className="eligibility-info" role="status">
+          <span className="material-symbols-outlined" aria-hidden="true">info</span>
           <h4>{t.createPoll.notEligible}</h4>
           {isOwnerOnly ? (
             <p>{t.createPoll.ownerOnly}</p>

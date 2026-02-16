@@ -4285,31 +4285,35 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
 }
 
-.eligibility-denied {
+.eligibility-denied,
+.eligibility-info {
   padding: 20px;
-  background: #FFF5F5;
-  border: 2px solid #E53E3E;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
-.eligibility-denied .material-symbols-outlined {
-  font-size: 32px;
-  color: #E53E3E;
+.eligibility-denied .material-symbols-outlined,
+.eligibility-info .material-symbols-outlined {
+  font-size: 24px;
+  color: #6c757d;
 }
 
-.eligibility-denied h4 {
+.eligibility-denied h4,
+.eligibility-info h4 {
   margin: 0;
-  font-size: 16px;
-  color: #E53E3E;
-  text-transform: uppercase;
+  font-size: 15px;
+  color: #495057;
 }
 
-.eligibility-denied p {
+.eligibility-denied p,
+.eligibility-info p {
   margin: 0;
   font-size: 14px;
-  color: #333;
+  color: #6c757d;
 }
 
 .eligibility-pass {

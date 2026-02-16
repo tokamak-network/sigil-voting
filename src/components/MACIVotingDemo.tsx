@@ -144,7 +144,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
   // Auto-dismiss tx banner after 8 seconds
   useEffect(() => {
     if (!txHash) return
-    const timer = setTimeout(() => setTxHash(null), 8000)
+    const timer = setTimeout(() => setTxHash(null), 30000)
     return () => clearTimeout(timer)
   }, [txHash])
 
@@ -427,7 +427,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
             </div>
           ) : (
             <div className="step-summary">
-              <span className="step-check" aria-hidden="true">&#10003;</span> {t.maci.waiting.merging}
+              <span className="material-symbols-outlined step-check" aria-hidden="true">check</span> {t.maci.waiting.merging}
             </div>
           )}
         </section>
