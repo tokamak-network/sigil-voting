@@ -131,14 +131,15 @@ export function MACIVotingDemo({ pollId: propPollId, onBack }: MACIVotingDemoPro
   const coordPubKeyX = coordPubKeyXRaw ? BigInt(coordPubKeyXRaw as any) : DEFAULT_COORD_PUB_KEY_X
   const coordPubKeyY = coordPubKeyYRaw ? BigInt(coordPubKeyYRaw as any) : DEFAULT_COORD_PUB_KEY_Y
 
-  // Read voice credits from VoiceCreditProxy
+  // Read voice credits from VoiceCreditProxy (user's token balance = credits)
   const { data: voiceCreditsRaw } = useReadContract({
     address: VOICE_CREDIT_PROXY_ADDRESS,
     abi: VOICE_CREDIT_PROXY_ABI,
-    functionName: 'creditAmount',
-    query: { enabled: isConfigured && VOICE_CREDIT_PROXY_ADDRESS !== ZERO_ADDRESS },
+    functionName: 'getVoiceCredits',
+    args: address ? [address, '0x'] : undefined,
+    query: { enabled: isConfigured && VOICE_CREDIT_PROXY_ADDRESS !== ZERO_ADDRESS && !!address, refetchInterval: 30000 },
   })
-  const voiceCredits = voiceCreditsRaw ? Number(voiceCreditsRaw) : 100
+  const voiceCredits = voiceCreditsRaw !== undefined ? Number(voiceCreditsRaw) : 0
 
   // Auto-dismiss tx banner after 8 seconds
   useEffect(() => {
