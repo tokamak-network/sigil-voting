@@ -1,0 +1,41 @@
+{
+  "name": "@sigil/sdk",
+  "version": "0.1.0",
+  "description": "SIGIL — Private, fair, collusion-resistant governance SDK for DAOs",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./widget": {
+      "types": "./dist/widget.d.ts",
+      "import": "./dist/widget.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "governance",
+    "dao",
+    "voting",
+    "privacy",
+    "zk",
+    "maci",
+    "quadratic-voting",
+    "anti-collusion",
+    "ethereum"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "ethers": "^6.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "ethers": "^6.13.0"
+  }
+}
