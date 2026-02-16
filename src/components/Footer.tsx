@@ -1,37 +1,17 @@
-import { useTranslation } from '../i18n'
-
 export function Footer() {
-  const { t } = useTranslation()
-
   return (
-    <footer className="brutalist-footer">
-      <div className="brutalist-footer-grid">
-        <div className="brutalist-footer-brand">
-          <h2>SIGIL</h2>
-          <p>{t.footer.desc}</p>
-          <p className="brutalist-footer-attribution">{t.footer.builtBy} <a href="https://tokamak.network" target="_blank" rel="noopener noreferrer">Tokamak Network</a></p>
+    <footer className="max-w-7xl mx-auto w-full px-6 py-8 border-t-2 border-black flex flex-col md:flex-row justify-between items-center gap-6">
+      <div className="flex items-center gap-6 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+        <div className="flex items-center gap-2 text-black">
+          <span className="w-2 h-2 bg-emerald-500"></span>
+          SYSTEM OPERATIONAL
         </div>
-        <div className="brutalist-footer-links">
-          <h5>{t.footer.resources}</h5>
-          <ul>
-            <li><a href="https://maci.pse.dev" target="_blank" rel="noopener noreferrer">{t.footer.whitepaper} <span aria-hidden="true">&#8599;</span></a></li>
-            <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting" target="_blank" rel="noopener noreferrer">{t.footer.audit} <span aria-hidden="true">&#8599;</span></a></li>
-            <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting#readme" target="_blank" rel="noopener noreferrer">{t.footer.sdk} <span aria-hidden="true">&#8599;</span></a></li>
-          </ul>
-        </div>
-        <div className="brutalist-footer-links">
-          <h5>{t.footer.social}</h5>
-          <ul>
-            <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting" target="_blank" rel="noopener noreferrer">GitHub</a></li>
-            <li><a href="https://twitter.com/tokaboratory" target="_blank" rel="noopener noreferrer">X / Twitter</a></li>
-            <li><a href="https://discord.gg/tokamaknetwork" target="_blank" rel="noopener noreferrer">Discord</a></li>
-          </ul>
-        </div>
+        <span className="hidden md:block w-1 h-1 bg-slate-300"></span>
+        <span className="hidden md:block">MACI PROTOCOL V2.4</span>
+        <span className="hidden md:block w-1 h-1 bg-slate-300"></span>
+        <span className="hidden md:block">NODE: SIGIL-01-AMS</span>
       </div>
-      <div className="brutalist-footer-bottom">
-        <span>{t.footer.copyright}</span>
-        <span>{t.footer.secured}</span>
-      </div>
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">&copy; 2024 SIGIL FOUNDATION // TRUSTLESS GOVERNANCE</p>
     </footer>
   )
 }

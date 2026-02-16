@@ -50,9 +50,9 @@ export function PollTimer({ pollAddress, onExpired }: PollTimerProps) {
 
   if (expired) {
     return (
-      <div className="poll-timer ended" role="timer" aria-label={t.timer.ended}>
-        <span className="timer-icon">{'\u23F0'}</span>
-        <span className="timer-text">{t.timer.ended}</span>
+      <div className="text-center py-4" role="timer" aria-label={t.timer.ended}>
+        <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">timer_off</span>
+        <p className="font-display font-bold text-lg uppercase text-slate-500">{t.timer.ended}</p>
       </div>
     );
   }
@@ -64,13 +64,24 @@ export function PollTimer({ pollAddress, onExpired }: PollTimerProps) {
   const pad = (n: number) => String(n).padStart(2, '0');
 
   return (
-    <div className="poll-timer active" role="timer" aria-live="polite">
-      <span className="timer-icon">{'\u23F3'}</span>
-      <span className="timer-text">{t.timer.remaining}</span>
-      <span className="timer-countdown">
-        {hours > 0 && `${hours}${t.timer.hours} `}
-        {pad(minutes)}{t.timer.minutes} {pad(seconds)}{t.timer.seconds}
-      </span>
+    <div role="timer" aria-live="polite">
+      <h4 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 mb-8 text-center">TIME REMAINING UNTIL TALLY</h4>
+      <div className="flex justify-center items-center gap-8">
+        <div className="text-center">
+          <span className="text-7xl lg:text-8xl font-mono font-bold text-primary tracking-tighter">{pad(hours)}</span>
+          <span className="block text-[10px] font-bold text-slate-400 uppercase mt-2">Hours</span>
+        </div>
+        <span className="text-6xl font-mono font-bold text-slate-300 mb-6">:</span>
+        <div className="text-center">
+          <span className="text-7xl lg:text-8xl font-mono font-bold text-primary tracking-tighter">{pad(minutes)}</span>
+          <span className="block text-[10px] font-bold text-slate-400 uppercase mt-2">Minutes</span>
+        </div>
+        <span className="text-6xl font-mono font-bold text-slate-300 mb-6">:</span>
+        <div className="text-center">
+          <span className="text-7xl lg:text-8xl font-mono font-bold text-primary tracking-tighter">{pad(seconds)}</span>
+          <span className="block text-[10px] font-bold text-slate-400 uppercase mt-2">Seconds</span>
+        </div>
+      </div>
     </div>
   );
 }

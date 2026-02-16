@@ -214,7 +214,7 @@ export function VoteFormV2({
     ];
 
     return (
-      <div className="vote-form-v2">
+      <div className="bg-white p-8 border-4 border-black" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>
         <TransactionModal
           title={t.voteForm.processing}
           steps={txSteps}
@@ -228,135 +228,174 @@ export function VoteFormV2({
   // Poll expired
   if (isExpired) {
     return (
-      <div className="vote-form-v2">
-        <div className="vote-expired-notice">
-          <span className="material-symbols-outlined" aria-hidden="true">timer_off</span>
-          <p>{t.timer.ended}</p>
+      <div className="bg-white p-8 border-4 border-black flex flex-col gap-10" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>
+        <div className="p-12 text-center">
+          <span className="material-symbols-outlined text-6xl text-slate-300">timer_off</span>
+          <p className="font-display font-bold text-xl uppercase mt-4">{t.timer.ended}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="vote-form-v2">
-      <h3>{t.voteForm.title}</h3>
-      <p className="vote-form-desc">{t.voteForm.desc}</p>
+    <div className="bg-white p-8 border-4 border-black flex flex-col gap-10 sticky top-32" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>
 
       {/* Vote history banner */}
       {hasVoted && lastVote && (
-        <div className="vote-history-banner">
-          <div className="vote-history-header">
-            <span className="material-symbols-outlined" aria-hidden="true">info</span>
-            <span>{t.voteHistory.alreadyVoted}</span>
+        <div className="flex flex-col gap-2 px-4 py-3 bg-slate-50 border-2 border-black/10">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[16px] text-slate-500" aria-hidden="true">info</span>
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">{t.voteHistory.alreadyVoted}</span>
           </div>
-          <div className="vote-history-details">
-            <span>{t.voteHistory.lastChoice}: <strong>{lastVote.choice === 1 ? t.voteForm.for : t.voteForm.against}</strong></span>
-            <span>{t.voteHistory.lastWeight}: <strong>{lastVote.weight}</strong></span>
-            <span>{t.voteHistory.lastCost}: <strong>{lastVote.cost}</strong></span>
+          <div className="flex flex-wrap gap-4 text-[11px] font-mono text-slate-600">
+            <span>{t.voteHistory.lastChoice}: <strong className="text-black">{lastVote.choice === 1 ? t.voteForm.for : t.voteForm.against}</strong></span>
+            <span>{t.voteHistory.lastWeight}: <strong className="text-black">{lastVote.weight}</strong></span>
+            <span>{t.voteHistory.lastCost}: <strong className="text-black">{lastVote.cost}</strong></span>
           </div>
-          <p className="vote-history-warning">{t.voteHistory.overrideWarning}</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase">{t.voteHistory.overrideWarning}</p>
         </div>
       )}
-
-      {/* Voice credit balance */}
-      <div className="credit-balance">
-        <span className="credit-balance-label">
-          {t.voteForm.myCredits}
-          <button
-            type="button"
-            className="tooltip-btn"
-            onClick={(e) => { const el = e.currentTarget.nextElementSibling; if (el) el.classList.toggle('visible'); }}
-            aria-label="Info"
-          >
-            <span className="material-symbols-outlined">help</span>
-          </button>
-          <span className="tooltip-text">{t.voteForm.creditsTooltip}</span>
-        </span>
-        <span className="credit-balance-value">
-          {creditsRemaining} / {voiceCredits}
-          {creditsSpent > 0 && <span className="credits-spent"> ({t.voteHistory.creditsRemaining})</span>}
-        </span>
-      </div>
 
       {/* Auto-register notice for first-time voters */}
       {!isRegistered && !hasVoted && (
-        <div className="auto-register-notice">
-          <span className="material-symbols-outlined" aria-hidden="true">info</span>
-          <span>{t.voteForm.autoRegisterNotice}</span>
+        <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-2 border-blue-200">
+          <span className="material-symbols-outlined text-[16px] text-blue-500" aria-hidden="true">info</span>
+          <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wide">{t.voteForm.autoRegisterNotice}</span>
         </div>
       )}
 
-      {/* Choice buttons - large, distinct */}
-      <div className="choices" role="radiogroup" aria-label={t.voteForm.title}>
-        <button
-          className={`choice-btn choice-against ${choice === 0 ? 'selected' : ''}`}
-          onClick={() => setChoice(0)}
-          disabled={isSubmitting}
-          role="radio"
-          aria-checked={choice === 0}
-        >
-          <span className="choice-icon" aria-hidden="true">✕</span>
-          <span className="choice-label">{t.voteForm.against}</span>
-        </button>
-        <button
-          className={`choice-btn choice-for ${choice === 1 ? 'selected' : ''}`}
-          onClick={() => setChoice(1)}
-          disabled={isSubmitting}
-          role="radio"
-          aria-checked={choice === 1}
-        >
-          <span className="choice-icon" aria-hidden="true">✓</span>
-          <span className="choice-label">{t.voteForm.for}</span>
-        </button>
+      {/* CHOOSE DIRECTION */}
+      <div>
+        <h3 className="text-xs font-bold uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+          <span className="w-2 h-2 bg-[#0052FF]"></span>
+          {t.voteForm.title}
+        </h3>
+        <div className="grid grid-cols-2 gap-4" role="radiogroup" aria-label={t.voteForm.title}>
+          <button
+            className={`border-2 border-black py-6 font-black text-lg uppercase tracking-widest flex flex-col items-center justify-center gap-1 transition-all ${
+              choice === 1
+                ? 'bg-[#0052FF] text-white'
+                : 'bg-white text-black hover:bg-slate-50'
+            }`}
+            style={{ boxShadow: choice === 1 ? '4px 4px 0px 0px rgba(0, 82, 255, 1)' : '4px 4px 0px 0px rgba(0, 0, 0, 1)' }}
+            onClick={() => setChoice(1)}
+            disabled={isSubmitting}
+            role="radio"
+            aria-checked={choice === 1}
+          >
+            <span className="material-symbols-outlined text-3xl">add_circle</span>
+            {t.voteForm.for}
+          </button>
+          <button
+            className={`border-2 border-black py-6 font-black text-lg uppercase tracking-widest flex flex-col items-center justify-center gap-1 transition-all ${
+              choice === 0
+                ? 'bg-black text-white'
+                : 'bg-white text-black hover:bg-slate-50'
+            }`}
+            style={{ boxShadow: choice === 0 ? '4px 4px 0px 0px rgba(0, 0, 0, 1)' : '4px 4px 0px 0px rgba(0, 0, 0, 1)' }}
+            onClick={() => setChoice(0)}
+            disabled={isSubmitting}
+            role="radio"
+            aria-checked={choice === 0}
+          >
+            <span className="material-symbols-outlined text-3xl">remove_circle</span>
+            {t.voteForm.against}
+          </button>
+        </div>
       </div>
 
-      {/* Weight slider */}
-      <div className="weight-section">
-        <label htmlFor="vote-weight">
-          {t.voteForm.weightLabel}
+      {/* VOTE INTENSITY */}
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xs font-bold uppercase tracking-[0.2em] flex items-center gap-2">
+            <span className="w-2 h-2 bg-[#0052FF]"></span>
+            {t.voteForm.weightLabel}
+          </h3>
+          <span className="text-[10px] font-mono font-bold bg-black text-white px-2 py-1 uppercase">Quadratic Scaling</span>
+        </div>
+        <div className="flex items-center gap-4 mb-8">
           <button
-            type="button"
-            className="tooltip-btn"
-            onClick={(e) => { const el = e.currentTarget.nextElementSibling; if (el) el.classList.toggle('visible'); }}
-            aria-label="Info"
+            className="w-16 h-16 border-2 border-black flex items-center justify-center font-bold text-2xl hover:bg-slate-100 transition-colors"
+            onClick={() => setWeight(Math.max(1, weight - 1))}
+            disabled={isSubmitting || weight <= 1}
           >
-            <span className="material-symbols-outlined">help</span>
+            -
           </button>
-          <span className="tooltip-text">{t.voteForm.weightTooltip}</span>
-        </label>
-        <div className="weight-slider-row">
+          <div className="flex-1 h-16 border-2 border-black flex items-center justify-center font-mono font-bold text-4xl bg-slate-50">
+            {weight}
+          </div>
+          <button
+            className="w-16 h-16 border-2 border-black flex items-center justify-center font-bold text-2xl hover:bg-slate-100 transition-colors"
+            onClick={() => setWeight(Math.min(MAX_WEIGHT, weight + 1))}
+            disabled={isSubmitting || weight >= MAX_WEIGHT}
+          >
+            +
+          </button>
+        </div>
+        <div className="px-2">
           <input
             id="vote-weight"
+            className="w-full h-1 bg-black appearance-none cursor-pointer"
             type="range"
             min="1"
-            max={MAX_WEIGHT}
+            max={MAX_WEIGHT * MAX_WEIGHT}
             step="1"
-            value={weight}
-            onChange={(e) => setWeight(Number(e.target.value))}
+            value={cost}
+            onChange={(e) => {
+              const newCost = Number(e.target.value);
+              setWeight(Math.max(1, Math.round(Math.sqrt(newCost))));
+            }}
             disabled={isSubmitting}
             aria-describedby="vote-cost"
           />
-          <span className="weight-value">{weight}</span>
+          <div className="flex justify-between mt-4 text-[10px] font-bold text-slate-400 font-mono">
+            <span>MIN: 1 CREDIT</span>
+            <span>MAX: {MAX_WEIGHT * MAX_WEIGHT} CREDITS</span>
+          </div>
         </div>
-        <div className="weight-cost-display" id="vote-cost">
-          <span className="cost-label">{t.voteForm.cost}</span>
-          <span className="cost-value">
-            {cost} {t.voteForm.credits}
-          </span>
-          <span className="cost-formula">({weight} × {weight} = {cost})</span>
-        </div>
-        {creditExceeded && <span className="cost-warning cost-exceeded" role="alert">{t.voteForm.creditExceeded}</span>}
       </div>
 
-      {/* Submit button - prominent */}
-      <button
-        onClick={() => setShowConfirm(true)}
-        disabled={choice === null || isSubmitting || !address || creditExceeded}
-        className="vote-submit-btn"
-        aria-busy={isSubmitting}
-      >
-        {isSubmitting ? t.voteForm.submitting : t.voteForm.submit}
-      </button>
+      {/* Cost / Remaining grid */}
+      <div className="grid grid-cols-2 gap-px bg-black border-2 border-black">
+        <div className="bg-slate-50 p-6 flex flex-col">
+          <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">{t.voteForm.cost}</h3>
+          <span className="text-xs font-bold text-slate-500 mb-1">{t.voteForm.weightLabel}: {weight}&sup2;</span>
+          <span className="text-2xl font-mono font-bold text-[#0052FF]">{cost}</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase mt-1">{t.voteForm.credits}</span>
+        </div>
+        <div className="bg-slate-50 p-6 flex flex-col">
+          <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">{t.voteForm.myCredits}</h3>
+          <span className="text-xs font-bold text-slate-500 mb-1">{creditsRemaining} / {voiceCredits}</span>
+          <span className="text-2xl font-mono font-bold text-black">{creditsRemaining - cost}</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase mt-1">{t.voteHistory.creditsRemaining}</span>
+        </div>
+      </div>
+
+      {/* Credit exceeded warning */}
+      {creditExceeded && (
+        <p className="text-sm font-bold text-red-600 uppercase tracking-wide text-center" role="alert">
+          {t.voteForm.creditExceeded}
+        </p>
+      )}
+
+      {/* Submit */}
+      <div className="pt-4">
+        <button
+          onClick={() => setShowConfirm(true)}
+          disabled={choice === null || isSubmitting || !address || creditExceeded}
+          className="w-full bg-[#0052FF] text-white py-6 font-display font-black uppercase italic text-2xl tracking-widest border-2 border-black hover:translate-y-[-2px] hover:translate-x-[-2px] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:translate-x-0"
+          style={{ boxShadow: '4px 4px 0px 0px rgba(0, 82, 255, 1)' }}
+          aria-busy={isSubmitting}
+        >
+          {isSubmitting ? t.voteForm.submitting : t.voteForm.submit}
+        </button>
+        <div className="flex items-center justify-center gap-2 mt-6 py-3 bg-slate-50 border border-black/10">
+          <span className="material-symbols-outlined text-[16px] text-green-600">lock</span>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+            {t.voteForm.desc}
+          </p>
+        </div>
+      </div>
 
       {showConfirm && choice !== null && (
         <VoteConfirmModal
@@ -372,21 +411,30 @@ export function VoteFormV2({
       )}
 
       {error && (
-        <div className="error-with-retry" role="alert">
-          <p className="error">{error}</p>
-          <button className="retry-btn" onClick={() => { setError(null); setTxStage('idle'); }}>
+        <div className="flex flex-col items-center gap-3 p-6 bg-red-50 border-2 border-red-300" role="alert">
+          <p className="text-sm font-bold text-red-700">{error}</p>
+          <button
+            className="px-6 py-2 bg-black text-white font-bold uppercase text-xs tracking-widest border-2 border-black hover:bg-slate-800 transition-colors"
+            onClick={() => { setError(null); setTxStage('idle'); }}
+          >
             {t.voteForm.retry}
           </button>
         </div>
       )}
+
       {txHash && txStage === 'done' && (
-        <div className="vote-success" role="status">
-          <span className="material-symbols-outlined" aria-hidden="true">check_circle</span>
-          <span>{t.voteForm.success}</span>
-          <a href={`https://sepolia.etherscan.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer">
+        <div className="flex flex-col items-center gap-3 p-6 bg-green-50 border-2 border-green-300" role="status">
+          <span className="material-symbols-outlined text-4xl text-green-600" aria-hidden="true">check_circle</span>
+          <span className="font-bold text-green-800 uppercase tracking-wide">{t.voteForm.success}</span>
+          <a
+            href={`https://sepolia.etherscan.io/tx/${txHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-xs text-[#0052FF] underline"
+          >
             {txHash.slice(0, 10)}...{txHash.slice(-6)}
           </a>
-          <p className="success-next">{t.voteForm.successNext}</p>
+          <p className="text-[11px] font-bold text-slate-500 text-center">{t.voteForm.successNext}</p>
         </div>
       )}
     </div>

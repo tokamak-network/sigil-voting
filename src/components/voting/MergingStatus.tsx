@@ -37,35 +37,63 @@ export function MergingStatus({ pollAddress }: MergingStatusProps) {
   const allMerged = stateComplete && messageComplete;
 
   return (
-    <div className="merging-status" role="status" aria-live="polite">
-      <h3>{t.merging.title}</h3>
-      <p className="text-sm text-gray-500">{t.merging.desc}</p>
+    <div role="status" aria-live="polite">
+      <h3 className="font-display text-xl font-black uppercase tracking-tight mb-2">
+        {t.merging.title}
+      </h3>
+      <p className="text-sm text-slate-500 mb-6">{t.merging.desc}</p>
 
-      <div className="merge-progress">
-        <div className={`merge-item ${stateComplete ? 'complete' : 'pending'}`}>
-          <span className="status-icon" aria-hidden="true">
-            {isLoading ? '' : stateComplete ? '\u2713' : '\u25CB'}
-            {isLoading && <span className="spinner-inline" />}
+      <div className="space-y-3">
+        <div
+          className={`flex items-center gap-3 p-4 border-2 ${
+            stateComplete ? 'border-green-500 bg-green-50' : 'border-slate-200'
+          }`}
+        >
+          <span
+            className={`material-symbols-outlined ${
+              stateComplete ? 'text-green-600' : 'text-slate-400'
+            }`}
+            aria-hidden="true"
+          >
+            {isLoading ? 'pending' : stateComplete ? 'check_circle' : 'circle'}
           </span>
-          <span>{t.merging.stateQueue}</span>
-          <span className="status-text">
+          <span className="text-sm font-bold flex-1">{t.merging.stateQueue}</span>
+          <span
+            className={`text-xs font-mono font-bold uppercase ${
+              stateComplete ? 'text-green-600' : 'text-slate-400'
+            }`}
+          >
             {isLoading ? '...' : stateComplete ? t.merging.merged : t.merging.pending}
           </span>
         </div>
 
-        <div className={`merge-item ${messageComplete ? 'complete' : 'pending'}`}>
-          <span className="status-icon" aria-hidden="true">
-            {isLoading ? '' : messageComplete ? '\u2713' : '\u25CB'}
-            {isLoading && <span className="spinner-inline" />}
+        <div
+          className={`flex items-center gap-3 p-4 border-2 ${
+            messageComplete ? 'border-green-500 bg-green-50' : 'border-slate-200'
+          }`}
+        >
+          <span
+            className={`material-symbols-outlined ${
+              messageComplete ? 'text-green-600' : 'text-slate-400'
+            }`}
+            aria-hidden="true"
+          >
+            {isLoading ? 'pending' : messageComplete ? 'check_circle' : 'circle'}
           </span>
-          <span>{t.merging.messageQueue}</span>
-          <span className="status-text">
+          <span className="text-sm font-bold flex-1">{t.merging.messageQueue}</span>
+          <span
+            className={`text-xs font-mono font-bold uppercase ${
+              messageComplete ? 'text-green-600' : 'text-slate-400'
+            }`}
+          >
             {isLoading ? '...' : messageComplete ? t.merging.merged : t.merging.pending}
           </span>
         </div>
       </div>
 
-      {allMerged && <p className="all-merged">{t.merging.allMerged}</p>}
+      {allMerged && (
+        <p className="mt-4 text-sm font-bold text-green-600">{t.merging.allMerged}</p>
+      )}
     </div>
   );
 }

@@ -3,9 +3,11 @@
  *
  * Reads all deployed polls from the MACI contract and displays them
  * as cards with real-time status (active/ended/finalized).
+ *
+ * UI: Brutalist / technical card design with Tailwind CSS.
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAccount, useReadContract, usePublicClient } from 'wagmi'
 import {
   MACI_V2_ADDRESS,
@@ -33,6 +35,8 @@ interface ProposalsListProps {
   onSelectPoll: (pollId: number) => void
 }
 
+type FilterTab = 'all' | 'voting' | 'processing' | 'ended'
+
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
 
 const POLLS_CACHE_KEY = 'maci-polls-cache'
@@ -57,6 +61,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   const [showCreatePoll, setShowCreatePoll] = useState(false)
   const [now, setNow] = useState(Math.floor(Date.now() / 1000))
   const [refreshKey, setRefreshKey] = useState(0)
+  const [filter, setFilter] = useState<FilterTab>('all')
 
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
 
@@ -215,83 +220,209 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     }, ...prev])
   }
 
+  // Map internal status to filter category
+  const getFilterCategory = (poll: PollInfo): FilterTab => {
+    const status = getStatus(poll)
+    if (status === 'active') return 'voting'
+    if (status === 'ended') return 'processing' // ended but not finalized = processing/revealing
+    return 'ended' // finalized = ended
+  }
+
+  // Compute counts for filter tabs
+  const counts = useMemo(() => {
+    const result = { all: polls.length, voting: 0, processing: 0, ended: 0 }
+    for (const poll of polls) {
+      const cat = getFilterCategory(poll)
+      result[cat]++
+    }
+    return result
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [polls, now])
+
+  // Filtered polls
+  const filteredPolls = useMemo(() => {
+    if (filter === 'all') return polls
+    return polls.filter(poll => getFilterCategory(poll) === filter)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [polls, filter, now])
+
+  // Status badge styling
+  const getStatusBadge = (poll: PollInfo) => {
+    const status = getStatus(poll)
+    if (status === 'active') {
+      return { label: 'VOTING', className: 'bg-primary text-white' }
+    }
+    if (status === 'ended') {
+      return { label: 'PROCESSING', className: 'bg-amber-100 text-amber-800 border border-amber-300' }
+    }
+    return { label: 'ENDED', className: 'bg-slate-200 text-slate-600' }
+  }
+
+  // Not configured fallback
   if (!isConfigured) {
     return (
-      <div className="proposals-list">
-        <div className="brutalist-card">
-          <h2>{t.maci.notDeployed}</h2>
-          <p>{t.maci.notDeployedDesc}</p>
+      <div className="max-w-6xl mx-auto px-4 py-16">
+        <div className="bg-white p-8 technical-card">
+          <h2 className="text-2xl font-display font-bold uppercase">{t.maci.notDeployed}</h2>
+          <p className="mt-2 text-slate-600">{t.maci.notDeployedDesc}</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="proposals-list">
-      <div className="proposals-header">
-        <h2>{t.proposals.title}</h2>
-        <div className="proposals-header-meta">
-          {isConnected && (
-            <button className="brutalist-btn" onClick={() => setShowCreatePoll(!showCreatePoll)}>
-              {showCreatePoll ? t.confirm.cancel : t.proposals.createNew}
-            </button>
-          )}
+    <div className="max-w-6xl mx-auto px-4 py-12">
+      {/* ── Header Section ── */}
+      <div className="mb-12">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
+          <h1 className="text-5xl md:text-6xl font-display font-black uppercase italic tracking-tight">
+            PROPOSALS
+          </h1>
+          <span className="inline-block bg-primary text-white text-xs font-mono font-bold uppercase tracking-widest px-3 py-1 border-2 border-black self-start sm:self-center">
+            DAO GOVERNANCE
+          </span>
         </div>
+        <p className="text-lg text-slate-500 font-sans max-w-xl">
+          Participate in a ZK-Proof based anonymous voting system.
+        </p>
       </div>
 
+      {/* ── Connect Wallet Notice ── */}
       {!isConnected && (
-        <div className="brutalist-card">
-          <p>{t.maci.connectWallet}</p>
+        <div className="bg-white p-6 technical-card mb-8">
+          <p className="text-slate-600 font-sans">{t.maci.connectWallet}</p>
+        </div>
+      )}
+
+      {/* ── Create Proposal Toggle ── */}
+      {isConnected && (
+        <div className="mb-8">
+          <button
+            onClick={() => setShowCreatePoll(!showCreatePoll)}
+            className={`px-6 py-3 font-display font-bold uppercase text-sm tracking-wide border-2 border-black transition-all duration-100 ${
+              showCreatePoll
+                ? 'bg-slate-200 text-black'
+                : 'bg-black text-white hover:bg-primary'
+            } sharp-button`}
+          >
+            {showCreatePoll ? t.confirm.cancel : `+ ${t.proposals.createNew}`}
+          </button>
         </div>
       )}
 
       {showCreatePoll && (
-        <div className="brutalist-card">
+        <div className="bg-white p-8 technical-card mb-8">
           <CreatePollForm onPollCreated={handlePollCreated} onSelectPoll={onSelectPoll} />
         </div>
       )}
 
+      {/* ── Filter Tabs ── */}
+      <div className="flex flex-wrap gap-0 mb-10">
+        {([
+          { key: 'all' as FilterTab, label: 'ALL' },
+          { key: 'voting' as FilterTab, label: 'VOTING' },
+          { key: 'processing' as FilterTab, label: 'PROCESSING' },
+          { key: 'ended' as FilterTab, label: 'ENDED' },
+        ]).map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setFilter(key)}
+            className={`px-5 py-2.5 font-mono text-sm font-bold uppercase tracking-wide border-2 border-black -ml-[2px] first:ml-0 transition-colors duration-100 ${
+              filter === key
+                ? 'bg-black text-white'
+                : 'bg-white text-black hover:bg-slate-100'
+            }`}
+          >
+            {label} ({counts[key]})
+          </button>
+        ))}
+      </div>
+
+      {/* ── Content ── */}
       {loading ? (
-        <div className="loading-spinner" role="status" aria-busy="true">
+        <div className="flex items-center justify-center py-20 gap-3">
           <span className="spinner" aria-hidden="true" />
-          <span>{t.proposals.loading}</span>
+          <span className="font-mono text-sm text-slate-500">{t.proposals.loading}</span>
         </div>
-      ) : polls.length === 0 ? (
-        <div className="brutalist-card proposals-empty">
-          <p>{t.proposals.empty}</p>
-          {isConnected && <p className="proposals-empty-hint">{t.proposals.emptyHint}</p>}
+      ) : filteredPolls.length === 0 ? (
+        <div className="bg-white p-12 technical-card text-center">
+          <p className="text-xl font-display font-bold text-slate-400 uppercase">
+            {filter === 'all' ? t.proposals.empty : `No ${filter} proposals`}
+          </p>
+          {isConnected && filter === 'all' && (
+            <p className="mt-2 text-sm text-slate-400 font-sans">{t.proposals.emptyHint}</p>
+          )}
         </div>
       ) : (
-        <div className="proposals-grid">
-          {polls.map((poll) => {
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {filteredPolls.map((poll) => {
             const status = getStatus(poll)
             const remaining = getRemaining(poll)
+            const badge = getStatusBadge(poll)
+
             return (
               <button
                 key={poll.id}
-                className={`proposal-card ${status}`}
                 onClick={() => onSelectPoll(poll.id)}
+                className="bg-white p-8 technical-card min-h-[320px] relative flex flex-col justify-between text-left group hover:shadow-[6px_6px_0px_0px_rgba(0,82,255,0.35)] transition-shadow duration-150 cursor-pointer"
               >
-                <div className="proposal-card-header">
-                  <span className={`proposal-status ${status}`}>
-                    {t.proposals.status[status]}
-                  </span>
-                  {poll.hasVoted && (
-                    <span className="proposal-voted-badge">{t.proposals.voted}</span>
-                  )}
+                {/* ── Card Top Row ── */}
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <span className={`px-3 py-1 text-xs font-mono font-bold uppercase tracking-wider ${badge.className}`}>
+                      {badge.label}
+                    </span>
+                    {poll.hasVoted && (
+                      <span className="text-primary text-sm font-mono font-bold flex items-center gap-1">
+                        <span>&#10003;</span> {t.proposals.voted}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* ── Title ── */}
+                  <h3 className="text-2xl md:text-3xl font-display font-bold uppercase leading-tight pr-14">
+                    {poll.title}
+                  </h3>
                 </div>
-                <h3 className="proposal-card-title">{poll.title}</h3>
-                <div className="proposal-card-meta">
-                  <span className="proposal-messages">
-                    {poll.numMessages} {t.proposals.messages}
-                  </span>
-                  {status === 'active' && remaining > 0 && (
-                    <span className="proposal-timer">{formatTime(remaining)}</span>
-                  )}
-                  {status === 'ended' && (
-                    <span className="proposal-timer ended">{t.timer.ended}</span>
-                  )}
+
+                {/* ── Card Bottom Row ── */}
+                <div className="flex items-end justify-between mt-auto pt-6">
+                  <div className="flex flex-col gap-1">
+                    {/* Participants */}
+                    <span className="text-sm text-slate-500 font-sans">
+                      {poll.numMessages} {t.proposals.messages}
+                    </span>
+
+                    {/* Timer or Status */}
+                    {status === 'active' && remaining > 0 && (
+                      <span className="font-mono text-primary font-bold text-sm">
+                        {formatTime(remaining)}
+                      </span>
+                    )}
+                    {status === 'ended' && (
+                      <span className="font-mono text-amber-600 font-bold text-sm">
+                        {t.maci.waiting.processing}
+                      </span>
+                    )}
+                    {status === 'finalized' && (
+                      <span className="font-mono text-slate-400 font-bold text-sm">
+                        {t.timer.ended}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Arrow Button */}
+                  <div className="w-12 h-12 bg-black text-white flex items-center justify-center flex-shrink-0 group-hover:bg-primary transition-colors duration-150">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M4 10H16M16 10L11 5M16 10L11 15" stroke="currentColor" strokeWidth="2" strokeLinecap="square"/>
+                    </svg>
+                  </div>
                 </div>
+
+                {/* ── Proposal # (absolute bottom-left) ── */}
+                <span className="absolute bottom-2 left-3 text-[10px] font-mono text-slate-300 uppercase tracking-wider">
+                  Proposal #{poll.id}
+                </span>
               </button>
             )
           })}

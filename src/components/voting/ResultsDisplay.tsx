@@ -47,63 +47,72 @@ export function ResultsDisplay({ tallyAddress }: ResultsDisplayProps) {
   const passed = forNum > againstNum;
 
   return (
-    <div className="results-display" role="region" aria-label={t.results.title}>
-      <h3>{t.results.title}</h3>
-      <p className="results-desc">{t.results.desc}</p>
-
-      <div className={`results-verdict ${passed ? 'passed' : 'rejected'}`}>
-        <span className="verdict-icon">{passed ? '\u2713' : '\u2717'}</span>
-        <span className="verdict-text">
+    <div role="region" aria-label={t.results.title}>
+      <div className="flex items-start justify-between mb-6">
+        <h3 className="font-display text-xl font-black uppercase">{t.results.title}</h3>
+        <div
+          className={`px-4 py-2 font-display font-black text-sm uppercase ${
+            passed ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+          }`}
+        >
           {passed ? t.results.passed : t.results.rejected}
-        </span>
-      </div>
-
-      <div className="results-bars">
-        <div className="result-row">
-          <div className="result-label">
-            <span className="result-choice for">{t.voteForm.for}</span>
-            <span className="result-count">{forNum}</span>
-          </div>
-          <div className="result-bar-bg">
-            <div
-              className="result-bar for"
-              style={{ width: `${forPct}%` }}
-              role="progressbar"
-              aria-valuenow={forPct}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            />
-          </div>
-          <span className="result-pct">{forPct}%</span>
-        </div>
-
-        <div className="result-row">
-          <div className="result-label">
-            <span className="result-choice against">{t.voteForm.against}</span>
-            <span className="result-count">{againstNum}</span>
-          </div>
-          <div className="result-bar-bg">
-            <div
-              className="result-bar against"
-              style={{ width: `${againstPct}%` }}
-              role="progressbar"
-              aria-valuenow={againstPct}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            />
-          </div>
-          <span className="result-pct">{againstPct}%</span>
         </div>
       </div>
 
-      <div className="results-meta">
+      {/* FOR bar */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <span className="material-symbols-outlined text-primary">thumb_up</span>
+            <span className="text-sm font-bold uppercase text-primary">For</span>
+            <span className="text-2xl font-display font-black">{forPct}%</span>
+          </div>
+          <span className="text-sm font-mono text-slate-500">{forNum} credits</span>
+        </div>
+        <div className="w-full h-4 bg-slate-100">
+          <div
+            className="h-full bg-primary transition-all duration-700"
+            style={{ width: `${forPct}%` }}
+            role="progressbar"
+            aria-valuenow={forPct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          />
+        </div>
+      </div>
+
+      {/* AGAINST bar */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <span className="material-symbols-outlined text-black">thumb_down</span>
+            <span className="text-sm font-bold uppercase">Against</span>
+            <span className="text-2xl font-display font-black">{againstPct}%</span>
+          </div>
+          <span className="text-sm font-mono text-slate-500">{againstNum} credits</span>
+        </div>
+        <div className="w-full h-4 bg-slate-100">
+          <div
+            className="h-full bg-black transition-all duration-700"
+            style={{ width: `${againstPct}%` }}
+            role="progressbar"
+            aria-valuenow={againstPct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          />
+        </div>
+      </div>
+
+      {/* Meta */}
+      <div className="border-t-2 border-slate-200 pt-4 flex items-center justify-between text-sm text-slate-500">
         <span>{t.results.totalVoters}: {votersNum}</span>
         <span>{t.results.totalVotes}: {totalNum}</span>
       </div>
 
-      <p className="results-verified">
-        <span className="verified-icon">{'\u2713'}</span> {t.results.verified}
-      </p>
+      <div className="mt-4 flex items-center gap-2 text-green-600">
+        <span className="material-symbols-outlined text-sm">verified</span>
+        <span className="text-xs font-bold uppercase">{t.results.verified}</span>
+      </div>
     </div>
   );
 }
