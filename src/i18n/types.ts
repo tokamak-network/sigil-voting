@@ -9,6 +9,8 @@ export interface Translations {
     disconnect: string
     wrongNetwork: string
     switching: string
+    balance: string
+    newProposal: string
   }
   landing: {
     badge: string
@@ -230,6 +232,14 @@ export interface Translations {
     filterVoting: string
     filterProcessing: string
     filterEnded: string
+    daoGovernance: string
+    subtitle: string
+    participants: string
+    calculating: string
+    result: string
+    statusVoting: string
+    statusRevealing: string
+    statusEnded: string
   }
   voteHistory: {
     alreadyVoted: string
@@ -253,5 +263,65 @@ export interface Translations {
     copyright: string
     secured: string
     builtBy: string
+    systemOperational: string
+    protocolVersion: string
+    node: string
+  }
+  proposalDetail: {
+    currentStatus: string
+    votingOpen: string
+    proposalDesc: string
+    totalParticipants: string
+    users: string
+    currentWeight: string
+    alreadyVotedBanner: string
+    reVote: string
+    voteSubmitted: string
+    receiptId: string
+    yourSelection: string
+    intensity: string
+    totalCost: string
+    changedMind: string
+    encryptedProof: string
+  }
+  completedResults: {
+    title: string
+    votingBreakdown: string
+    quadraticCredits: string
+    finalTally: string
+    uniqueAddresses: string
+    quadraticMagnitude: string
+    zkVerified: string
+    viewOnExplorer: string
+    proposalDetails: string
+    titleLabel: string
+    author: string
+    description: string
+    readFull: string
+    defaultDesc: string
+    votingStrategy: string
+    shieldedVoting: string
+  }
+  voteSubmittedPage: {
+    title: string
+    txHash: string
+    proposal: string
+    myChoice: string
+    votingStats: string
+    intensity: string
+    used: string
+    votes: string
+    viewOnExplorer: string
+    txConfirmed: string
+    returnToList: string
+    privacyStatus: string
+    maciShield: string
+    proofs: string
+    zkProofGenerated: string
+  }
+  voteFormExtra: {
+    quadraticScaling: string
+    minCredit: string
+    maxCredits: string
   }
 }

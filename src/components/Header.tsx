@@ -80,7 +80,7 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
             <span className="font-display font-bold text-2xl tracking-tighter uppercase italic">SIGIL</span>
           </button>
           {(currentPage === 'proposals' || currentPage === 'proposal-detail') && (
-            <span className="hidden md:block ml-4 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 border border-primary/20">PROPOSALS</span>
+            <span className="hidden md:block ml-4 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 border border-primary/20">{t.proposals.title}</span>
           )}
         </div>
 
@@ -93,8 +93,8 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
               {/* Balance + New Proposal */}
               <div className="hidden lg:flex items-center border-2 border-black bg-white p-2 gap-4">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase leading-none">Available Balance</span>
-                  <span className="text-sm font-mono font-bold">{voiceCredits.toLocaleString()} Credits</span>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase leading-none">{t.header.balance}</span>
+                  <span className="text-sm font-mono font-bold">{voiceCredits.toLocaleString()} {t.voteForm.credits}</span>
                 </div>
                 {showNewProposal && (
                   <>
@@ -104,7 +104,7 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
                       className="bg-black text-white px-4 py-2 text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors"
                     >
                       <span className="material-symbols-outlined text-sm">add</span>
-                      NEW PROPOSAL
+                      {t.header.newProposal}
                     </button>
                   </>
                 )}

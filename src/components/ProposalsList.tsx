@@ -250,12 +250,12 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   const getStatusBadge = (poll: PollInfo) => {
     const status = getStatus(poll)
     if (status === 'active') {
-      return { label: 'VOTING', className: 'bg-primary text-white' }
+      return { label: t.proposals.statusVoting, className: 'bg-primary text-white' }
     }
     if (status === 'ended') {
-      return { label: 'REVEALING', className: 'bg-amber-400 text-black' }
+      return { label: t.proposals.statusRevealing, className: 'bg-amber-400 text-black' }
     }
-    return { label: 'ENDED', className: 'bg-slate-200 text-slate-600' }
+    return { label: t.proposals.statusEnded, className: 'bg-emerald-500 text-white' }
   }
 
   // Not configured fallback
@@ -277,14 +277,14 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
         <div>
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-6xl font-display font-black uppercase italic leading-none tracking-tighter">
-              PROPOSALS
+              {t.proposals.title}
             </h1>
             <span className="bg-primary text-white text-xs font-bold px-3 py-1 uppercase tracking-widest">
-              DAO GOVERNANCE
+              {t.proposals.daoGovernance}
             </span>
           </div>
           <p className="text-slate-500 font-medium text-lg">
-            Participate in a ZK-Proof based anonymous voting system.
+            {t.proposals.subtitle}
           </p>
         </div>
 
@@ -398,27 +398,30 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
                   <div className="flex gap-12">
                     {/* Participants */}
                     <div>
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Participants</span>
-                      <span className="text-2xl font-display font-bold">{poll.numMessages}</span>
+                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposals.participants}</span>
+                      <span className="text-2xl font-display font-bold">{poll.numMessages} <span className="text-sm font-normal text-slate-400">{t.proposals.messages}</span></span>
                     </div>
 
                     {/* Timer or Status */}
                     {status === 'active' && remaining > 0 && (
                       <div>
-                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Time Left</span>
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{t.timer.remaining}</span>
                         <span className="text-2xl font-mono font-bold text-primary">{formatTime(remaining)}</span>
                       </div>
                     )}
                     {status === 'ended' && (
                       <div>
-                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Current</span>
-                        <span className="text-2xl font-display font-bold">Calculating...</span>
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
+                        <span className="text-2xl font-display font-bold">{t.proposals.calculating}</span>
                       </div>
                     )}
                     {status === 'finalized' && (
                       <div>
-                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Result</span>
-                        <span className="text-2xl font-display font-bold text-green-600">PASSED</span>
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposals.result}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-emerald-500 text-xl">check_circle</span>
+                          <span className="text-2xl font-display font-bold text-emerald-500">{t.proposals.statusEnded}</span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -431,7 +434,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
 
                 {/* ── Proposal # (absolute bottom-left) ── */}
                 <div className="absolute bottom-4 left-8 text-[9px] font-bold text-slate-300 uppercase">
-                  Proposal #{poll.id}
+                  {t.proposals.title} #{poll.id}
                 </div>
               </button>
             )

@@ -70,15 +70,15 @@ export function ResultsDisplay({ tallyAddress }: ResultsDisplayProps) {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary">thumb_up</span>
-            <span className="text-sm font-bold uppercase text-primary">For</span>
+            <span className="material-symbols-outlined text-emerald-500">thumb_up</span>
+            <span className="text-sm font-bold uppercase text-emerald-500">For</span>
             <span className="text-2xl font-display font-black">{forPct}%</span>
           </div>
           <span className="text-sm font-mono text-slate-500">{forNum} credits</span>
         </div>
         <div className="w-full h-4 bg-slate-100">
           <div
-            className="h-full bg-primary transition-all duration-700"
+            className="h-full bg-emerald-500 transition-all duration-700"
             style={{ width: `${forPct}%` }}
             role="progressbar"
             aria-valuenow={forPct}
@@ -92,7 +92,7 @@ export function ResultsDisplay({ tallyAddress }: ResultsDisplayProps) {
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-black">thumb_down</span>
+            <span className="material-symbols-outlined text-red-500">thumb_down</span>
             <span className="text-sm font-bold uppercase">Against</span>
             <span className="text-2xl font-display font-black">{againstPct}%</span>
           </div>
@@ -100,7 +100,7 @@ export function ResultsDisplay({ tallyAddress }: ResultsDisplayProps) {
         </div>
         <div className="w-full h-4 bg-slate-100">
           <div
-            className="h-full bg-black transition-all duration-700"
+            className="h-full bg-red-500 transition-all duration-700"
             style={{ width: `${againstPct}%` }}
             role="progressbar"
             aria-valuenow={againstPct}

@@ -274,10 +274,10 @@ export function VoteFormV2({
           <button
             className={`border-2 border-black py-6 font-black text-lg uppercase tracking-widest flex flex-col items-center justify-center gap-1 transition-all ${
               choice === 1
-                ? 'bg-[#0052FF] text-white'
+                ? 'bg-emerald-500 text-white'
                 : 'bg-white text-black hover:bg-slate-50'
             }`}
-            style={{ boxShadow: choice === 1 ? '4px 4px 0px 0px rgba(0, 82, 255, 1)' : '4px 4px 0px 0px rgba(0, 0, 0, 1)' }}
+            style={{ boxShadow: choice === 1 ? '4px 4px 0px 0px rgba(16, 185, 129, 1)' : '4px 4px 0px 0px rgba(0, 0, 0, 1)' }}
             onClick={() => setChoice(1)}
             disabled={isSubmitting}
             role="radio"
@@ -289,10 +289,10 @@ export function VoteFormV2({
           <button
             className={`border-2 border-black py-6 font-black text-lg uppercase tracking-widest flex flex-col items-center justify-center gap-1 transition-all ${
               choice === 0
-                ? 'bg-black text-white'
+                ? 'bg-red-500 text-white'
                 : 'bg-white text-black hover:bg-slate-50'
             }`}
-            style={{ boxShadow: choice === 0 ? '4px 4px 0px 0px rgba(0, 0, 0, 1)' : '4px 4px 0px 0px rgba(0, 0, 0, 1)' }}
+            style={{ boxShadow: choice === 0 ? '4px 4px 0px 0px rgba(239, 68, 68, 1)' : '4px 4px 0px 0px rgba(0, 0, 0, 1)' }}
             onClick={() => setChoice(0)}
             disabled={isSubmitting}
             role="radio"
@@ -311,7 +311,7 @@ export function VoteFormV2({
             <span className="w-2 h-2 bg-[#0052FF]"></span>
             {t.voteForm.weightLabel}
           </h3>
-          <span className="text-[10px] font-mono font-bold bg-black text-white px-2 py-1 uppercase">Quadratic Scaling</span>
+          <span className="text-[10px] font-mono font-bold bg-black text-white px-2 py-1 uppercase">{t.voteFormExtra.quadraticScaling}</span>
         </div>
         <div className="flex items-center gap-4 mb-8">
           <button
@@ -349,8 +349,8 @@ export function VoteFormV2({
             aria-describedby="vote-cost"
           />
           <div className="flex justify-between mt-4 text-[10px] font-bold text-slate-400 font-mono">
-            <span>MIN: 1 CREDIT</span>
-            <span>MAX: {MAX_WEIGHT * MAX_WEIGHT} CREDITS</span>
+            <span>{t.voteFormExtra.minCredit}</span>
+            <span>{t.voteFormExtra.maxCredits.replace('{n}', String(MAX_WEIGHT * MAX_WEIGHT))}</span>
           </div>
         </div>
       </div>
@@ -360,7 +360,7 @@ export function VoteFormV2({
         <div className="bg-slate-50 p-6 flex flex-col">
           <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">{t.voteForm.cost}</h3>
           <span className="text-xs font-bold text-slate-500 mb-1">{t.voteForm.weightLabel}: {weight}&sup2;</span>
-          <span className="text-2xl font-mono font-bold text-[#0052FF]">{cost}</span>
+          <span className="text-2xl font-mono font-bold text-emerald-500">{cost}</span>
           <span className="text-[10px] font-bold text-slate-400 uppercase mt-1">{t.voteForm.credits}</span>
         </div>
         <div className="bg-slate-50 p-6 flex flex-col">

@@ -33,7 +33,7 @@ export function VoteConfirmModal({
         <div className="space-y-4 mb-6">
           <div className="flex justify-between items-center p-3 border-2 border-slate-200">
             <span className="text-xs font-bold text-slate-500 uppercase">{t.confirm.choice}</span>
-            <span className={`font-display font-black text-lg uppercase ${choice === 1 ? 'text-primary' : 'text-black'}`}>{choiceLabel}</span>
+            <span className={`font-display font-black text-lg uppercase ${choice === 1 ? 'text-emerald-500' : 'text-red-500'}`}>{choiceLabel}</span>
           </div>
           <div className="flex justify-between items-center p-3 border-2 border-slate-200">
             <span className="text-xs font-bold text-slate-500 uppercase">{t.confirm.weight}</span>

@@ -8,6 +8,7 @@
 
 import { useReadContract } from 'wagmi'
 import { TALLY_ABI, DEPLOYER_ADDRESS } from '../contractV2'
+import { useTranslation } from '../i18n'
 
 interface CompletedResultsProps {
   pollId: number
@@ -22,6 +23,8 @@ export function CompletedResults({
   pollTitle,
   onBack,
 }: CompletedResultsProps) {
+  const { t } = useTranslation()
+
   // --- Read tally data from contract ---
 
   const { data: forVotes } = useReadContract({
@@ -78,7 +81,7 @@ export function CompletedResults({
           className="inline-flex items-center gap-2 text-sm font-mono text-slate-500 hover:text-black transition-colors mb-6"
         >
           <span className="material-symbols-outlined text-base">arrow_back</span>
-          Back to Proposals
+          {t.proposals.backToList}
         </button>
 
         {/* Badges */}
@@ -93,13 +96,13 @@ export function CompletedResults({
                 : 'bg-red-500 text-white'
             }`}
           >
-            {passed ? 'Passed' : 'Rejected'}
+            {passed ? t.results.passed : t.results.rejected}
           </span>
         </div>
 
         {/* Title */}
         <h1 className="text-5xl font-display font-black uppercase italic text-black mb-8 leading-tight">
-          Completed Results
+          {t.completedResults.title}
         </h1>
       </div>
 
@@ -112,11 +115,11 @@ export function CompletedResults({
             <div className="technical-border bg-white p-8">
               <div className="flex items-start justify-between mb-8">
                 <h2 className="text-2xl font-display font-bold text-black uppercase">
-                  Voting Breakdown
+                  {t.completedResults.votingBreakdown}
                 </h2>
                 <div className="text-right">
                   <p className="text-xs font-mono text-slate-400 uppercase tracking-wider">
-                    Total Participants
+                    {t.proposalDetail.totalParticipants}
                   </p>
                   <p className="text-3xl font-display font-black text-black">
                     {votersNum}
@@ -130,14 +133,14 @@ export function CompletedResults({
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-primary">thumb_up</span>
-                      <span className="font-bold uppercase tracking-widest text-sm">FOR</span>
+                      <span className="material-symbols-outlined text-emerald-500">thumb_up</span>
+                      <span className="font-bold uppercase tracking-widest text-sm">{t.voteForm.for}</span>
                     </div>
-                    <span className="text-3xl font-mono font-bold text-primary">{forPct}%</span>
+                    <span className="text-3xl font-mono font-bold text-emerald-500">{forPct}%</span>
                   </div>
                   <div className="w-full h-12 bg-slate-100 technical-border">
                     <div
-                      className="h-full bg-primary transition-all duration-700 ease-out"
+                      className="h-full bg-emerald-500 transition-all duration-700 ease-out"
                       style={{ width: `${forPct}%` }}
                       role="progressbar"
                       aria-valuenow={forPct}
@@ -147,7 +150,7 @@ export function CompletedResults({
                     />
                   </div>
                   <div className="mt-2 text-[10px] font-mono font-bold text-slate-500 text-right uppercase">
-                    {forNum.toLocaleString()} Quadratic Credits
+                    {forNum.toLocaleString()} {t.completedResults.quadraticCredits}
                   </div>
                 </div>
 
@@ -156,13 +159,13 @@ export function CompletedResults({
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-2 text-slate-400">
                       <span className="material-symbols-outlined">thumb_down</span>
-                      <span className="font-bold uppercase tracking-widest text-sm">AGAINST</span>
+                      <span className="font-bold uppercase tracking-widest text-sm">{t.voteForm.against}</span>
                     </div>
                     <span className="text-3xl font-mono font-bold">{againstPct}%</span>
                   </div>
                   <div className="w-full h-12 bg-slate-100 technical-border">
                     <div
-                      className="h-full bg-black transition-all duration-700 ease-out"
+                      className="h-full bg-red-500 transition-all duration-700 ease-out"
                       style={{ width: `${againstPct}%` }}
                       role="progressbar"
                       aria-valuenow={againstPct}
@@ -172,7 +175,7 @@ export function CompletedResults({
                     />
                   </div>
                   <div className="mt-2 text-[10px] font-mono font-bold text-slate-500 text-right uppercase">
-                    {againstNum.toLocaleString()} Quadratic Credits
+                    {againstNum.toLocaleString()} {t.completedResults.quadraticCredits}
                   </div>
                 </div>
               </div>
@@ -180,12 +183,12 @@ export function CompletedResults({
               {/* Divider */}
               <div className="border-t-2 border-black mt-12 pt-8">
                 <h3 className="text-sm font-bold uppercase tracking-widest mb-4">
-                  Final Tally Detailed
+                  {t.completedResults.finalTally}
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-slate-50 p-4 border border-slate-200">
                     <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                      Unique Addresses
+                      {t.completedResults.uniqueAddresses}
                     </span>
                     <span className="font-mono font-bold">
                       {votersNum}
@@ -193,10 +196,10 @@ export function CompletedResults({
                   </div>
                   <div className="bg-slate-50 p-4 border border-slate-200">
                     <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                      Quadratic Magnitude
+                      {t.completedResults.quadraticMagnitude}
                     </span>
                     <span className="font-mono font-bold">
-                      {totalCredits.toLocaleString()} Credits
+                      {totalCredits.toLocaleString()} {t.voteForm.credits}
                     </span>
                   </div>
                 </div>
@@ -211,7 +214,7 @@ export function CompletedResults({
                 </div>
                 <div>
                   <h4 className="font-bold uppercase italic text-sm">
-                    ZK-Proof Verified on Ethereum
+                    {t.completedResults.zkVerified}
                   </h4>
                   <p className="text-[10px] text-slate-400 font-mono">
                     TX: {shortTallyAddr}
@@ -224,7 +227,7 @@ export function CompletedResults({
                 rel="noopener noreferrer"
                 className="bg-white text-black px-6 py-2 text-xs font-bold uppercase tracking-widest hover:bg-primary hover:text-white transition-colors flex items-center gap-2"
               >
-                View on Explorer
+                {t.completedResults.viewOnExplorer}
                 <span className="material-symbols-outlined text-sm">open_in_new</span>
               </a>
             </div>
@@ -235,13 +238,13 @@ export function CompletedResults({
             {/* Proposal Details Card */}
             <div className="technical-border bg-white p-8 h-fit">
               <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-400 mb-8 border-b-2 border-slate-100 pb-2">
-                Proposal Details
+                {t.completedResults.proposalDetails}
               </h2>
 
               <div className="space-y-4 mb-6">
                 <div>
                   <p className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-1">
-                    Title
+                    {t.completedResults.titleLabel}
                   </p>
                   <p className="text-base font-display font-bold text-black">
                     {pollTitle}
@@ -250,7 +253,7 @@ export function CompletedResults({
 
                 <div>
                   <p className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-1">
-                    Author
+                    {t.completedResults.author}
                   </p>
                   <p className="text-sm font-mono text-black">
                     {authorAddress}
@@ -259,7 +262,7 @@ export function CompletedResults({
 
                 <div>
                   <p className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-1">
-                    Finalized
+                    {t.proposals.status.finalized}
                   </p>
                   <p className="text-sm font-mono text-black">
                     {finalizedDate}
@@ -270,27 +273,24 @@ export function CompletedResults({
               {/* Description */}
               <div className="mb-6">
                 <p className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">
-                  Description
+                  {t.completedResults.description}
                 </p>
                 <p className="text-sm text-slate-600 leading-relaxed">
-                  This proposal was created through SIGIL governance protocol
-                  with ZK-proof verified private voting. All votes were encrypted
-                  using MACI anti-collusion infrastructure and tallied with
-                  Groth16 zero-knowledge proofs on Ethereum.
+                  {t.completedResults.defaultDesc}
                 </p>
               </div>
 
               {/* Full Description Button */}
               <button className="w-full bg-black text-white px-4 py-3 text-sm font-mono font-bold uppercase tracking-wider hover:bg-slate-800 transition-colors">
-                Read Full Proposal Description
+                {t.completedResults.readFull}
               </button>
             </div>
 
             {/* Metadata Box */}
             <div className="border-2 border-slate-200 p-4 font-mono text-[10px] text-slate-400 uppercase leading-relaxed">
               <p>IPFS Hash: QmXoyp...7821</p>
-              <p>Voting Strategy: Quadratic v2</p>
-              <p>Shielded Voting: Enabled</p>
+              <p>{t.completedResults.votingStrategy}</p>
+              <p>{t.completedResults.shieldedVoting}</p>
             </div>
           </div>
         </div>
