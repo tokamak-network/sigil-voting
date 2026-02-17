@@ -4,6 +4,10 @@
  * Generates Groth16 proofs for message processing and vote tallying
  * using snarkjs. Creates circuit inputs and generates proofs from
  * .wasm and .zkey files.
+ *
+ * IMPORTANT: Circuit input names MUST match the signal names in the .circom files exactly.
+ * - MessageProcessor.circom: does in-circuit DuplexSponge decryption (no cmd* inputs)
+ * - TallyVotes.circom: batch-based tally with full private inputs
  */
 
 export interface ProofResult {
@@ -15,9 +19,14 @@ export interface ProofResult {
   publicSignals: string[];
 }
 
+// ─── MessageProcessor Proof ──────────────────────────────────────────
+
 export interface ProcessProofInput {
   wasmPath: string;
   zkeyPath: string;
+  // Public input (SHA256 compressed)
+  inputHash: bigint;
+  // Values inside SHA256 hash
   inputStateRoot: bigint;
   outputStateRoot: bigint;
   inputBallotRoot: bigint;
@@ -26,39 +35,26 @@ export interface ProcessProofInput {
   coordinatorPubKeyHash: bigint;
   batchStartIndex: bigint;
   batchEndIndex: bigint;
-  inputHash: bigint;
   // Per-message private inputs
-  messages: bigint[][];
-  encPubKeys: bigint[][];
+  messages: bigint[][];       // [batchSize][10]
+  encPubKeys: bigint[][];     // [batchSize][2]
   coordinatorSk: bigint;
-  cmdStateIndex: bigint[];
-  cmdNewPubKeyX: bigint[];
-  cmdNewPubKeyY: bigint[];
-  cmdVoteOptionIndex: bigint[];
-  cmdNewVoteWeight: bigint[];
-  cmdNonce: bigint[];
-  cmdPollId: bigint[];
-  cmdSalt: bigint[];
-  cmdSigR8x: bigint[];
-  cmdSigR8y: bigint[];
-  cmdSigS: bigint[];
-  stateLeaves: bigint[][];
-  ballots: bigint[][];
-  ballotVoteWeights: bigint[];
-  stateProofs: bigint[][][];
-  statePathIndices: bigint[][];
-  ballotProofs: bigint[][][];
-  ballotPathIndices: bigint[][];
-  msgProofs: bigint[][][];
-  msgPathIndices: bigint[][];
+  msgNonces: bigint[];        // [batchSize] — DuplexSponge nonces
+  stateLeaves: bigint[][];    // [batchSize][4]
+  ballots: bigint[][];        // [batchSize][2]
+  ballotVoteWeights: bigint[];// [batchSize]
+  stateProofs: bigint[][][];  // [batchSize][depth][4]
+  statePathIndices: bigint[][]; // [batchSize][depth]
+  ballotProofs: bigint[][][]; // [batchSize][depth][4]
+  ballotPathIndices: bigint[][]; // [batchSize][depth]
+  msgProofs: bigint[][][];    // [batchSize][depth][4]
+  msgPathIndices: bigint[][];  // [batchSize][depth]
 }
 
-/**
- * Generate processMessages proof
- */
 export async function generateProcessProof(input: ProcessProofInput): Promise<ProofResult> {
   const snarkjs = await import('snarkjs');
 
+  // Circuit input names must exactly match MessageProcessor.circom signal names
   const circuitInputs = {
     inputHash: input.inputHash.toString(),
     inputStateRoot: input.inputStateRoot.toString(),
@@ -72,17 +68,7 @@ export async function generateProcessProof(input: ProcessProofInput): Promise<Pr
     messages: input.messages.map((m) => m.map((v) => v.toString())),
     encPubKeys: input.encPubKeys.map((pk) => pk.map((v) => v.toString())),
     coordinatorSk: input.coordinatorSk.toString(),
-    cmdStateIndex: input.cmdStateIndex.map((v) => v.toString()),
-    cmdNewPubKeyX: input.cmdNewPubKeyX.map((v) => v.toString()),
-    cmdNewPubKeyY: input.cmdNewPubKeyY.map((v) => v.toString()),
-    cmdVoteOptionIndex: input.cmdVoteOptionIndex.map((v) => v.toString()),
-    cmdNewVoteWeight: input.cmdNewVoteWeight.map((v) => v.toString()),
-    cmdNonce: input.cmdNonce.map((v) => v.toString()),
-    cmdPollId: input.cmdPollId.map((v) => v.toString()),
-    cmdSalt: input.cmdSalt.map((v) => v.toString()),
-    cmdSigR8x: input.cmdSigR8x.map((v) => v.toString()),
-    cmdSigR8y: input.cmdSigR8y.map((v) => v.toString()),
-    cmdSigS: input.cmdSigS.map((v) => v.toString()),
+    msgNonces: input.msgNonces.map((v) => v.toString()),
     stateLeaves: input.stateLeaves.map((sl) => sl.map((v) => v.toString())),
     ballots: input.ballots.map((b) => b.map((v) => v.toString())),
     ballotVoteWeights: input.ballotVoteWeights.map((v) => v.toString()),
@@ -103,29 +89,64 @@ export async function generateProcessProof(input: ProcessProofInput): Promise<Pr
   return { proof, publicSignals };
 }
 
+// ─── TallyVotes Proof ────────────────────────────────────────────────
+
 export interface TallyProofInput {
   wasmPath: string;
   zkeyPath: string;
+  // Public input (SHA256 compressed)
   inputHash: bigint;
+  // Values inside SHA256 hash
   stateCommitment: bigint;
   tallyCommitment: bigint;
   newTallyCommitment: bigint;
   batchNum: bigint;
-  // Private inputs omitted for brevity - similar structure to TallyVotes circuit
+  // Private inputs (per voter in batch)
+  stateLeaves: bigint[][];      // [batchSize][4]
+  ballotNonces: bigint[];       // [batchSize]
+  voteWeights: bigint[][];      // [batchSize][numVoteOptions]
+  voteOptionRoots: bigint[];    // [batchSize]
+  stateProofs: bigint[][][];    // [batchSize][depth][4]
+  statePathIndices: bigint[][]; // [batchSize][depth]
+  // Tally accumulators
+  currentTally: bigint[];       // [numVoteOptions]
+  newTally: bigint[];           // [numVoteOptions]
+  currentTotalSpent: bigint;
+  newTotalSpent: bigint;
+  currentPerOptionSpent: bigint[];  // [numVoteOptions]
+  newPerOptionSpent: bigint[];      // [numVoteOptions]
+  currentTallyResultsRoot: bigint;
+  newTallyResultsRoot: bigint;
+  currentPerOptionSpentRoot: bigint;
+  newPerOptionSpentRoot: bigint;
 }
 
-/**
- * Generate tallyVotes proof
- */
 export async function generateTallyProof(input: TallyProofInput): Promise<ProofResult> {
   const snarkjs = await import('snarkjs');
 
+  // Circuit input names must exactly match TallyVotes.circom signal names
   const circuitInputs = {
     inputHash: input.inputHash.toString(),
     stateCommitment: input.stateCommitment.toString(),
     tallyCommitment: input.tallyCommitment.toString(),
     newTallyCommitment: input.newTallyCommitment.toString(),
     batchNum: input.batchNum.toString(),
+    stateLeaves: input.stateLeaves.map((sl) => sl.map((v) => v.toString())),
+    ballotNonces: input.ballotNonces.map((v) => v.toString()),
+    voteWeights: input.voteWeights.map((vw) => vw.map((v) => v.toString())),
+    voteOptionRoots: input.voteOptionRoots.map((v) => v.toString()),
+    stateProofs: input.stateProofs.map((p) => p.map((l) => l.map((v) => v.toString()))),
+    statePathIndices: input.statePathIndices.map((pi) => pi.map((v) => v.toString())),
+    currentTally: input.currentTally.map((v) => v.toString()),
+    newTally: input.newTally.map((v) => v.toString()),
+    currentTotalSpent: input.currentTotalSpent.toString(),
+    newTotalSpent: input.newTotalSpent.toString(),
+    currentPerOptionSpent: input.currentPerOptionSpent.map((v) => v.toString()),
+    newPerOptionSpent: input.newPerOptionSpent.map((v) => v.toString()),
+    currentTallyResultsRoot: input.currentTallyResultsRoot.toString(),
+    newTallyResultsRoot: input.newTallyResultsRoot.toString(),
+    currentPerOptionSpentRoot: input.currentPerOptionSpentRoot.toString(),
+    newPerOptionSpentRoot: input.newPerOptionSpentRoot.toString(),
   };
 
   const { proof, publicSignals } = await snarkjs.groth16.fullProve(
@@ -137,9 +158,8 @@ export async function generateTallyProof(input: TallyProofInput): Promise<ProofR
   return { proof, publicSignals };
 }
 
-/**
- * Compute SHA256 public input hash (matching on-chain computation)
- */
+// ─── SHA256 Public Input Hash ────────────────────────────────────────
+
 export async function computePublicInputHash(values: bigint[]): Promise<bigint> {
   const { createHash } = await import('crypto');
   const hash = createHash('sha256');
@@ -161,7 +181,6 @@ export async function computePublicInputHash(values: bigint[]): Promise<bigint> 
     result = (result << 8n) | BigInt(digest[i]);
   }
 
-  // mod SNARK_SCALAR_FIELD
-  const SNARK_SCALAR_FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
-  return result % SNARK_SCALAR_FIELD;
+  // Take lower 253 bits (matching in-circuit Sha256Hasher which uses Bits2Num(253))
+  return result & ((1n << 253n) - 1n);
 }

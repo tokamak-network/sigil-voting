@@ -13,6 +13,7 @@ import { useAccount, useWriteContract, usePublicClient, useReadContract } from '
 import {
   MACI_V2_ADDRESS,
   MSG_PROCESSOR_VERIFIER_ADDRESS,
+  TALLY_VERIFIER_ADDRESS,
   VK_REGISTRY_ADDRESS,
   MACI_ABI,
   DEFAULT_COORD_PUB_KEY_X,
@@ -228,6 +229,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
           DEFAULT_COORD_PUB_KEY_X,
           DEFAULT_COORD_PUB_KEY_Y,
           MSG_PROCESSOR_VERIFIER_ADDRESS as `0x${string}`,
+          TALLY_VERIFIER_ADDRESS as `0x${string}`,
           VK_REGISTRY_ADDRESS as `0x${string}`,
           2,
         ],

@@ -35,8 +35,10 @@ const PROJECT_ROOT = resolve(__dirname, '../..');
 
 const POLL_CHECK_INTERVAL = 30_000; // 30s between checks
 const STATE_TREE_DEPTH = 2;        // Dev params (5^2 = 25 leaves)
-const BATCH_SIZE = 2;              // Dev params
-const MAX_VOTE_OPTIONS = 25;       // 5^stateTreeDepth
+const BATCH_SIZE = 2;              // Dev params (messages per batch)
+const TALLY_BATCH_SIZE = 2;        // Dev params (voters per tally batch)
+const MAX_VOTE_OPTIONS = 25;       // 5^stateTreeDepth (for MessageProcessor)
+const TALLY_NUM_OPTIONS = 5;       // 5^voteOptionTreeDepth (for TallyVotes, depth=1)
 
 const MP_WASM = resolve(PROJECT_ROOT, 'circuits/build_maci/MessageProcessor_js/MessageProcessor.wasm');
 const MP_ZKEY = resolve(PROJECT_ROOT, 'circuits/build_maci/MessageProcessor_final.zkey');
@@ -50,6 +52,7 @@ interface Config {
   coordinatorSk: bigint;
   rpcUrl: string;
   maciAddress: string;
+  deployBlock: number;
 }
 
 function loadConfig(): Config {
@@ -80,6 +83,7 @@ function loadConfig(): Config {
     coordinatorSk: BigInt(`0x${coordKey.replace(/^0x/, '')}`),
     rpcUrl,
     maciAddress,
+    deployBlock: configJson.deployBlock || 0,
   };
 }
 
@@ -117,8 +121,9 @@ const MP_ABI = [
 
 const TALLY_ABI = [
   'function tallyVotes(uint256 _newTallyCommitment, uint256[2] _pA, uint256[2][2] _pB, uint256[2] _pC)',
-  'function publishResults(uint256 _forVotes, uint256 _againstVotes, uint256 _abstainVotes, uint256 _totalVoters, uint256 _tallyResultsHash)',
+  'function publishResults(uint256 _forVotes, uint256 _againstVotes, uint256 _abstainVotes, uint256 _totalVoters, uint256 _tallyResultsRoot, uint256 _totalSpent, uint256 _perOptionSpentRoot)',
   'function tallyVerified() view returns (bool)',
+  'function tallyCommitment() view returns (uint256)',
 ];
 
 // ─── Crypto Adapter ───────────────────────────────────────────────────
@@ -297,25 +302,41 @@ async function mergeAccQueues(
   const msgM = await pollRead.messageAqMerged();
 
   if (!stateM) {
-    log('  Merging State AccQueue sub-roots...');
-    const tx1 = await poll.mergeMaciStateAqSubRoots(0);
-    await tx1.wait();
-    log('  Merging State AccQueue...');
-    const tx2 = await poll.mergeMaciStateAq();
-    await tx2.wait();
-    log('  State AccQueue merged');
+    try {
+      log('  Merging State AccQueue sub-roots...');
+      const tx1 = await poll.mergeMaciStateAqSubRoots(0);
+      await tx1.wait();
+    } catch (e) {
+      log(`  State sub-roots: ${(e as Error).message?.includes('Already') ? 'already merged' : (e as Error).message?.slice(0, 80)}`);
+    }
+    try {
+      log('  Merging State AccQueue...');
+      const tx2 = await poll.mergeMaciStateAq();
+      await tx2.wait();
+      log('  State AccQueue merged');
+    } catch (e) {
+      log(`  State AQ merge: ${(e as Error).message?.slice(0, 80)}`);
+    }
   } else {
     log('  State AccQueue: already merged');
   }
 
   if (!msgM) {
-    log('  Merging Message AccQueue sub-roots...');
-    const tx3 = await poll.mergeMessageAqSubRoots(0);
-    await tx3.wait();
-    log('  Merging Message AccQueue...');
-    const tx4 = await poll.mergeMessageAq();
-    await tx4.wait();
-    log('  Message AccQueue merged');
+    try {
+      log('  Merging Message AccQueue sub-roots...');
+      const tx3 = await poll.mergeMessageAqSubRoots(0);
+      await tx3.wait();
+    } catch (e) {
+      log(`  Message sub-roots: ${(e as Error).message?.includes('Already') ? 'already merged' : (e as Error).message?.slice(0, 80)}`);
+    }
+    try {
+      log('  Merging Message AccQueue...');
+      const tx4 = await poll.mergeMessageAq();
+      await tx4.wait();
+      log('  Message AccQueue merged');
+    } catch (e) {
+      log(`  Message AQ merge: ${(e as Error).message?.slice(0, 80)}`);
+    }
   } else {
     log('  Message AccQueue: already merged');
   }
@@ -326,10 +347,11 @@ async function fetchEvents(
   maciContract: ethers.Contract,
   pollAddr: string,
   provider: ethers.Provider,
+  deployBlock: number,
 ): Promise<{ stateLeaves: StateLeaf[]; messages: EncryptedMessage[] }> {
-  // SignUp events
+  // SignUp events (from deploy block to avoid RPC block range limit)
   const suFilter = maciContract.filters.SignUp();
-  const suEvents = await maciContract.queryFilter(suFilter);
+  const suEvents = await maciContract.queryFilter(suFilter, deployBlock);
   const stateLeaves: StateLeaf[] = [];
   for (const ev of suEvents) {
     if (!('args' in ev)) continue;
@@ -345,7 +367,7 @@ async function fetchEvents(
   // MessagePublished events
   const pollContract = new ethers.Contract(pollAddr, POLL_ABI, provider);
   const msgFilter = pollContract.filters.MessagePublished();
-  const msgEvents = await pollContract.queryFilter(msgFilter);
+  const msgEvents = await pollContract.queryFilter(msgFilter, deployBlock);
   const messages: EncryptedMessage[] = [];
   for (const ev of msgEvents) {
     if (!('args' in ev)) continue;
@@ -370,7 +392,7 @@ async function processAndSubmitProofs(
   coordinatorSk: bigint,
   signer: ethers.Wallet,
   crypto: CryptoKit,
-): Promise<{ newStateRoot: bigint; newBallotRoot: bigint; stateMap: Map<number, StateLeaf>; ballotMap: Map<number, Ballot> }> {
+): Promise<{ newStateRoot: bigint; newBallotRoot: bigint; stateMap: Map<number, StateLeaf>; ballotMap: Map<number, Ballot>; stateTree: QuinaryMerkleTree; ballotTree: QuinaryMerkleTree }> {
   // Initialize trees
   const stateTree = new QuinaryMerkleTree(STATE_TREE_DEPTH);
   await stateTree.init();
@@ -434,20 +456,10 @@ async function processAndSubmitProofs(
     const inputBallotRoot = ballotTree.root;
     const inputMessageRoot = msgTree.root;
 
-    // Prepare batch circuit inputs
+    // Prepare batch circuit inputs (matching MessageProcessor.circom signals)
     const batchMsgs: bigint[][] = [];
     const batchEncPubKeys: bigint[][] = [];
-    const batchCmdStateIndex: bigint[] = [];
-    const batchCmdNewPubKeyX: bigint[] = [];
-    const batchCmdNewPubKeyY: bigint[] = [];
-    const batchCmdVoteOptionIndex: bigint[] = [];
-    const batchCmdNewVoteWeight: bigint[] = [];
-    const batchCmdNonce: bigint[] = [];
-    const batchCmdPollId: bigint[] = [];
-    const batchCmdSalt: bigint[] = [];
-    const batchCmdSigR8x: bigint[] = [];
-    const batchCmdSigR8y: bigint[] = [];
-    const batchCmdSigS: bigint[] = [];
+    const batchMsgNonces: bigint[] = [];
     const batchStateLeaves: bigint[][] = [];
     const batchBallots: bigint[][] = [];
     const batchBallotVoteWeights: bigint[] = [];
@@ -492,20 +504,10 @@ async function processAndSubmitProofs(
 
       const currentBallot = ballotMap.get(stateIdx) ?? { ...blankBallot, votes: [...blankBallot.votes] };
 
-      // Collect circuit inputs
+      // Collect circuit inputs (the circuit decrypts in-circuit, no cmd* needed)
       batchMsgs.push(msg.data);
       batchEncPubKeys.push([msg.encPubKeyX, msg.encPubKeyY]);
-      batchCmdStateIndex.push(cmd.stateIndex);
-      batchCmdNewPubKeyX.push(cmd.newPubKeyX);
-      batchCmdNewPubKeyY.push(cmd.newPubKeyY);
-      batchCmdVoteOptionIndex.push(cmd.voteOptionIndex);
-      batchCmdNewVoteWeight.push(cmd.newVoteWeight);
-      batchCmdNonce.push(cmd.nonce);
-      batchCmdPollId.push(cmd.pollId);
-      batchCmdSalt.push(cmd.salt);
-      batchCmdSigR8x.push(sig.R8[0]);
-      batchCmdSigR8y.push(sig.R8[1]);
-      batchCmdSigS.push(sig.S);
+      batchMsgNonces.push(0n); // DuplexSponge nonce (always 0 in our protocol)
       batchStateLeaves.push([currentLeaf.pubKeyX, currentLeaf.pubKeyY, currentLeaf.voiceCreditBalance, currentLeaf.timestamp]);
       batchBallots.push([currentBallot.nonce, currentBallot.voteOptionRoot]);
       const voteOptIdx = Number(cmd.voteOptionIndex);
@@ -602,17 +604,7 @@ async function processAndSubmitProofs(
         messages: batchMsgs,
         encPubKeys: batchEncPubKeys,
         coordinatorSk,
-        cmdStateIndex: batchCmdStateIndex,
-        cmdNewPubKeyX: batchCmdNewPubKeyX,
-        cmdNewPubKeyY: batchCmdNewPubKeyY,
-        cmdVoteOptionIndex: batchCmdVoteOptionIndex,
-        cmdNewVoteWeight: batchCmdNewVoteWeight,
-        cmdNonce: batchCmdNonce,
-        cmdPollId: batchCmdPollId,
-        cmdSalt: batchCmdSalt,
-        cmdSigR8x: batchCmdSigR8x,
-        cmdSigR8y: batchCmdSigR8y,
-        cmdSigS: batchCmdSigS,
+        msgNonces: batchMsgNonces,
         stateLeaves: batchStateLeaves,
         ballots: batchBallots,
         ballotVoteWeights: batchBallotVoteWeights,
@@ -663,102 +655,173 @@ async function processAndSubmitProofs(
     newBallotRoot: ballotTree.root,
     stateMap,
     ballotMap,
+    stateTree,
+    ballotTree,
   };
 }
 
-/** Step 6-7: Tally votes and publish results */
+/** Step 6-7: Tally votes and publish results (batch-based with full circuit inputs) */
 async function tallyAndPublish(
   pollId: number,
   addrs: PollAddresses,
-  stateLeaves: StateLeaf[],
+  numSignUps: number,
   stateMap: Map<number, StateLeaf>,
   ballotMap: Map<number, Ballot>,
+  stateTree: QuinaryMerkleTree,
+  newStateRoot: bigint,
+  newBallotRoot: bigint,
   signer: ethers.Wallet,
   crypto: CryptoKit,
 ): Promise<void> {
   log('  [6/7] Tallying votes...');
 
-  const numSignUps = stateLeaves.length + 1;
-  const perOptionTally = new Array(MAX_VOTE_OPTIONS).fill(0n);
-  const perOptionSpent = new Array(MAX_VOTE_OPTIONS).fill(0n);
-  let totalSpent = 0n;
-  let totalVoters = 0;
+  const stateCommitment = crypto.hash(newStateRoot, newBallotRoot);
+  const numBatches = Math.ceil(numSignUps / TALLY_BATCH_SIZE);
 
-  for (let i = 1; i < numSignUps; i++) {
-    const ballot = ballotMap.get(i);
-    if (!ballot) continue;
-    let hasVoted = false;
+  // Running accumulators
+  let currentTally = new Array(TALLY_NUM_OPTIONS).fill(0n) as bigint[];
+  let currentTotalSpent = 0n;
+  let currentPerOptionSpent = new Array(TALLY_NUM_OPTIONS).fill(0n) as bigint[];
+  let currentTallyResultsRoot = crypto.hash(...currentTally);
+  let currentPerOptionSpentRoot = crypto.hash(...currentPerOptionSpent);
+  let prevTallyCommitment = 0n; // First batch has no previous
 
-    for (let j = 0; j < MAX_VOTE_OPTIONS; j++) {
-      const weight = ballot.votes[j] ?? 0n;
-      if (weight > 0n) {
-        hasVoted = true;
-        perOptionTally[j] += weight;
-        const spent = weight * weight;
-        perOptionSpent[j] += spent;
-        totalSpent += spent;
+  const blank: StateLeaf = { pubKeyX: 0n, pubKeyY: 0n, voiceCreditBalance: 2n ** 32n, timestamp: 0n };
+
+  for (let batchNum = 0; batchNum < numBatches; batchNum++) {
+    const batchStart = batchNum * TALLY_BATCH_SIZE;
+
+    const batchStateLeaves: bigint[][] = [];
+    const batchBallotNonces: bigint[] = [];
+    const batchVoteWeights: bigint[][] = [];
+    const batchVoteOptionRoots: bigint[] = [];
+    const batchStateProofs: bigint[][][] = [];
+    const batchStatePathIndices: bigint[][] = [];
+
+    const newTally = [...currentTally];
+    let newTotalSpent = currentTotalSpent;
+    const newPerOptionSpent = [...currentPerOptionSpent];
+
+    for (let i = 0; i < TALLY_BATCH_SIZE; i++) {
+      const voterIdx = batchStart + i;
+
+      if (voterIdx < numSignUps) {
+        const leaf = stateMap.get(voterIdx) ?? blank;
+        const defaultBallot: Ballot = { nonce: 0n, votes: new Array<bigint>(MAX_VOTE_OPTIONS).fill(0n), voteOptionRoot: 0n };
+        const ballot = ballotMap.get(voterIdx) ?? defaultBallot;
+
+        batchStateLeaves.push([leaf.pubKeyX, leaf.pubKeyY, leaf.voiceCreditBalance, leaf.timestamp]);
+        batchBallotNonces.push(ballot.nonce);
+        batchVoteWeights.push(ballot.votes.slice(0, TALLY_NUM_OPTIONS));
+        batchVoteOptionRoots.push(ballot.voteOptionRoot);
+
+        const proof = stateTree.getProof(voterIdx);
+        batchStateProofs.push(proof.pathElements);
+        batchStatePathIndices.push(proof.pathIndices.map(BigInt));
+
+        // Accumulate vote weights (skip index 0 blank leaf for voter count)
+        for (let j = 0; j < TALLY_NUM_OPTIONS; j++) {
+          const weight = ballot.votes[j] ?? 0n;
+          newTally[j] += weight;
+          const spent = weight * weight;
+          newPerOptionSpent[j] += spent;
+          newTotalSpent += spent;
+        }
+      } else {
+        // Padding: use blank values with valid Merkle proof
+        batchStateLeaves.push([blank.pubKeyX, blank.pubKeyY, blank.voiceCreditBalance, blank.timestamp]);
+        batchBallotNonces.push(0n);
+        batchVoteWeights.push(new Array(TALLY_NUM_OPTIONS).fill(0n));
+        batchVoteOptionRoots.push(0n);
+
+        const proof = stateTree.getProof(0); // Use blank leaf proof
+        batchStateProofs.push(proof.pathElements);
+        batchStatePathIndices.push(proof.pathIndices.map(BigInt));
       }
     }
-    if (hasVoted) totalVoters++;
+
+    const newTallyResultsRoot = crypto.hash(...newTally);
+    const newPerOptionSpentRoot = crypto.hash(...newPerOptionSpent);
+    const newTallyCommitment = crypto.hash(newTallyResultsRoot, newTotalSpent, newPerOptionSpentRoot);
+
+    const inputHash = await computePublicInputHash([
+      stateCommitment, prevTallyCommitment, newTallyCommitment, BigInt(batchNum),
+    ]);
+
+    log(`  Tally batch ${batchNum + 1}/${numBatches}: generating proof...`);
+    try {
+      const tallyInput: TallyProofInput = {
+        wasmPath: TV_WASM,
+        zkeyPath: TV_ZKEY,
+        inputHash,
+        stateCommitment,
+        tallyCommitment: prevTallyCommitment,
+        newTallyCommitment,
+        batchNum: BigInt(batchNum),
+        stateLeaves: batchStateLeaves,
+        ballotNonces: batchBallotNonces,
+        voteWeights: batchVoteWeights,
+        voteOptionRoots: batchVoteOptionRoots,
+        stateProofs: batchStateProofs,
+        statePathIndices: batchStatePathIndices,
+        currentTally,
+        newTally,
+        currentTotalSpent,
+        newTotalSpent,
+        currentPerOptionSpent,
+        newPerOptionSpent,
+        currentTallyResultsRoot,
+        newTallyResultsRoot,
+        currentPerOptionSpentRoot,
+        newPerOptionSpentRoot,
+      };
+
+      const proofResult = await generateTallyProof(tallyInput);
+      const { pi_a, pi_b, pi_c } = proofResult.proof;
+      const pA: [bigint, bigint] = [BigInt(pi_a[0]), BigInt(pi_a[1])];
+      const pB: [[bigint, bigint], [bigint, bigint]] = [
+        [BigInt(pi_b[0][1]), BigInt(pi_b[0][0])],
+        [BigInt(pi_b[1][1]), BigInt(pi_b[1][0])],
+      ];
+      const pC: [bigint, bigint] = [BigInt(pi_c[0]), BigInt(pi_c[1])];
+
+      const tallyContract = new ethers.Contract(addrs.tally, TALLY_ABI, signer);
+      const tx = await tallyContract.tallyVotes(newTallyCommitment, pA, pB, pC);
+      await tx.wait();
+      log(`  Tally batch ${batchNum + 1} proof submitted`);
+    } catch (err) {
+      log(`  Tally batch ${batchNum + 1} failed: ${(err as Error).message?.slice(0, 120)}`);
+    }
+
+    // Update running accumulators for next batch
+    currentTally = newTally;
+    currentTotalSpent = newTotalSpent;
+    currentPerOptionSpent = newPerOptionSpent;
+    currentTallyResultsRoot = newTallyResultsRoot;
+    currentPerOptionSpentRoot = newPerOptionSpentRoot;
+    prevTallyCommitment = newTallyCommitment;
   }
 
-  // Convention: option 0 = against, 1 = for, 2 = abstain (D1)
-  const againstVotes = perOptionTally[0] ?? 0n;
-  const forVotes = perOptionTally[1] ?? 0n;
-  const abstainVotes = perOptionTally[2] ?? 0n;
+  // Final results
+  const againstVotes = currentTally[0] ?? 0n;
+  const forVotes = currentTally[1] ?? 0n;
+  const abstainVotes = currentTally[2] ?? 0n;
+  const totalVoters = numSignUps - 1; // Exclude blank leaf
 
   log(`  Results: FOR=${forVotes}, AGAINST=${againstVotes}, ABSTAIN=${abstainVotes}, voters=${totalVoters}`);
 
-  // Compute tally commitment
-  const tallyResultsRoot = crypto.hash(...perOptionTally.slice(0, 5));
-  const perOptionSpentRoot = crypto.hash(...perOptionSpent.slice(0, 5));
-  const tallyCommitment = crypto.hash(tallyResultsRoot, totalSpent, perOptionSpentRoot);
-
-  // Generate tally proof
-  log('  [6/7] Generating tally ZK proof...');
-  try {
-    const tallyInput: TallyProofInput = {
-      wasmPath: TV_WASM,
-      zkeyPath: TV_ZKEY,
-      inputHash: await computePublicInputHash([tallyCommitment]),
-      stateCommitment: 0n, // Will be set from on-chain
-      tallyCommitment: 0n,
-      newTallyCommitment: tallyCommitment,
-      batchNum: 0n,
-    };
-
-    const tallyProof = await generateTallyProof(tallyInput);
-    const { pi_a, pi_b, pi_c } = tallyProof.proof;
-    const pA: [bigint, bigint] = [BigInt(pi_a[0]), BigInt(pi_a[1])];
-    const pB: [[bigint, bigint], [bigint, bigint]] = [
-      [BigInt(pi_b[0][1]), BigInt(pi_b[0][0])],
-      [BigInt(pi_b[1][1]), BigInt(pi_b[1][0])],
-    ];
-    const pC: [bigint, bigint] = [BigInt(pi_c[0]), BigInt(pi_c[1])];
-
-    const tallyContract = new ethers.Contract(addrs.tally, TALLY_ABI, signer);
-
-    log('  Submitting tally proof...');
-    const tx1 = await tallyContract.tallyVotes(tallyCommitment, pA, pB, pC);
-    await tx1.wait();
-    log('  Tally proof submitted');
-  } catch (err) {
-    log(`  Tally proof failed: ${(err as Error).message?.slice(0, 120)}`);
-    log('  Attempting direct result publication...');
-  }
-
-  // Publish results
+  // Publish results on-chain
   log('  [7/7] Publishing results on-chain...');
   try {
     const tallyContract = new ethers.Contract(addrs.tally, TALLY_ABI, signer);
-    const tallyResultsHash = crypto.hash(forVotes, againstVotes, abstainVotes, BigInt(totalVoters));
-
     const tx = await tallyContract.publishResults(
       forVotes,
       againstVotes,
       abstainVotes,
       BigInt(totalVoters),
-      tallyResultsHash,
+      currentTallyResultsRoot,
+      currentTotalSpent,
+      currentPerOptionSpentRoot,
     );
     await tx.wait();
     log(`  Results published! FOR=${forVotes} AGAINST=${againstVotes} ABSTAIN=${abstainVotes}`);
@@ -781,6 +844,7 @@ async function processPoll(
   signer: ethers.Wallet,
   coordinatorSk: bigint,
   crypto: CryptoKit,
+  deployBlock: number,
 ): Promise<void> {
   log(`\n  ★ Processing Poll ${pollId}`);
 
@@ -790,30 +854,55 @@ async function processPoll(
 
   // Step 2: Fetch events
   log('  [2/7] Fetching on-chain events...');
-  const { stateLeaves, messages } = await fetchEvents(maci, addrs.poll, provider);
+  const { stateLeaves, messages } = await fetchEvents(maci, addrs.poll, provider, deployBlock);
   log(`  Found ${stateLeaves.length} signups, ${messages.length} messages`);
 
-  if (messages.length === 0) {
-    log('  No messages to process. Publishing zero results...');
-    try {
-      const tallyContract = new ethers.Contract(addrs.tally, TALLY_ABI, signer);
-      const tx = await tallyContract.publishResults(0n, 0n, 0n, 0n, 0n);
-      await tx.wait();
-      log('  Zero results published');
-    } catch (err) {
-      log(`  Zero result publish failed: ${(err as Error).message?.slice(0, 80)}`);
+  // Initialize trees (needed for both message processing and tally)
+  const initTrees = async () => {
+    const stTree = new QuinaryMerkleTree(STATE_TREE_DEPTH);
+    await stTree.init();
+    const blTree = new QuinaryMerkleTree(STATE_TREE_DEPTH);
+    await blTree.init();
+
+    const blank: StateLeaf = { pubKeyX: 0n, pubKeyY: 0n, voiceCreditBalance: 2n ** 32n, timestamp: 0n };
+    const blankBallot: Ballot = { nonce: 0n, votes: new Array(MAX_VOTE_OPTIONS).fill(0n), voteOptionRoot: 0n };
+
+    const stMap = new Map<number, StateLeaf>();
+    const blMap = new Map<number, Ballot>();
+
+    stMap.set(0, blank);
+    stTree.insert(0, crypto.hashStateLeaf(blank));
+    blMap.set(0, blankBallot);
+    blTree.insert(0, crypto.hashBallot(blankBallot));
+
+    for (let i = 0; i < stateLeaves.length; i++) {
+      stMap.set(i + 1, { ...stateLeaves[i] });
+      stTree.insert(i + 1, crypto.hashStateLeaf(stateLeaves[i]));
+      const ballot: Ballot = { nonce: 0n, votes: new Array(MAX_VOTE_OPTIONS).fill(0n), voteOptionRoot: 0n };
+      blMap.set(i + 1, ballot);
+      blTree.insert(i + 1, crypto.hashBallot(ballot));
     }
+
+    return { stateTree: stTree, ballotTree: blTree, stateMap: stMap, ballotMap: blMap };
+  };
+
+  const numSignUps = stateLeaves.length + 1; // Including blank
+
+  if (messages.length === 0) {
+    log('  No messages to process. Skipping to tally with zero results...');
+    const { stateTree, ballotTree, stateMap, ballotMap } = await initTrees();
+    await tallyAndPublish(pollId, addrs, numSignUps, stateMap, ballotMap, stateTree, stateTree.root, ballotTree.root, signer, crypto);
     return;
   }
 
   // Steps 3-5: Process + prove
   log('  [3/7] Reconstructing state...');
-  const { stateMap, ballotMap } = await processAndSubmitProofs(
+  const { stateMap, ballotMap, stateTree, newStateRoot, newBallotRoot } = await processAndSubmitProofs(
     pollId, addrs, stateLeaves, messages, coordinatorSk, signer, crypto,
   );
 
   // Steps 6-7: Tally + publish
-  await tallyAndPublish(pollId, addrs, stateLeaves, stateMap, ballotMap, signer, crypto);
+  await tallyAndPublish(pollId, addrs, numSignUps, stateMap, ballotMap, stateTree, newStateRoot, newBallotRoot, signer, crypto);
 
   log(`  ★ Poll ${pollId} processing complete!`);
 }
@@ -852,7 +941,7 @@ async function main() {
 
   // Fetch DeployPoll events once (cache)
   const deployFilter = maci.filters.DeployPoll();
-  let deployEvents = await maci.queryFilter(deployFilter);
+  let deployEvents = await maci.queryFilter(deployFilter, config.deployBlock);
   let lastDeployFetch = Date.now();
 
   // Track processed polls to avoid re-processing
@@ -866,7 +955,7 @@ async function main() {
       } else {
         // Refresh deploy events periodically
         if (Date.now() - lastDeployFetch > 60_000) {
-          deployEvents = await maci.queryFilter(deployFilter);
+          deployEvents = await maci.queryFilter(deployFilter, config.deployBlock);
           lastDeployFetch = Date.now();
         }
 
@@ -925,7 +1014,7 @@ async function main() {
 
           // This poll needs processing!
           try {
-            await processPoll(i, addrs, maci, provider, signer, config.coordinatorSk, crypto);
+            await processPoll(i, addrs, maci, provider, signer, config.coordinatorSk, crypto, config.deployBlock);
             processedPolls.add(i);
           } catch (err) {
             log(`  ✗ Poll ${i} failed: ${(err as Error).message?.slice(0, 150)}`);

@@ -118,6 +118,7 @@ contract MACITest is Test {
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
             address(verifier),
+            address(verifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
         );
@@ -143,6 +144,7 @@ contract MACITest is Test {
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
             address(verifier),
+            address(verifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
         );
@@ -166,6 +168,7 @@ contract MACITest is Test {
             POLL_DURATION,
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
+            address(verifier),
             address(verifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
@@ -201,6 +204,7 @@ contract MACITest is Test {
             POLL_DURATION,
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
+            address(verifier),
             address(verifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
@@ -242,6 +246,7 @@ contract MACITest is Test {
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
             address(verifier),
+            address(verifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
         );
@@ -279,6 +284,7 @@ contract MACITest is Test {
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
             address(verifier),
+            address(verifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
         );
@@ -306,6 +312,7 @@ contract MACITest is Test {
             POLL_DURATION,
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
+            address(verifier),
             address(verifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
@@ -345,6 +352,7 @@ contract MACITest is Test {
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
             address(verifier),
+            address(verifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
         );
@@ -382,6 +390,7 @@ contract MACITest is Test {
             POLL_DURATION,
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
+            address(verifier),
             address(verifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
@@ -468,6 +477,7 @@ contract MACITest is Test {
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
             address(verifier),
+            address(verifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
         );
@@ -490,6 +500,7 @@ contract MACITest is Test {
             POLL_DURATION,
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
+            address(verifier),
             address(verifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
@@ -562,6 +573,7 @@ contract MACITest is Test {
             POLL_DURATION,
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
+            address(verifier),
             address(verifier),
             address(vkRegistry),
             MSG_TREE_DEPTH

@@ -152,7 +152,8 @@ contract MACI is DomainObjs {
         uint256 _duration,
         uint256 _coordinatorPubKeyX,
         uint256 _coordinatorPubKeyY,
-        address _verifier,
+        address _mpVerifier,
+        address _tallyVerifier,
         address _vkRegistry,
         uint8 _messageTreeDepth
     ) external returns (uint256 pollId) {
@@ -163,8 +164,8 @@ contract MACI is DomainObjs {
             _title, _duration, _coordinatorPubKeyX, _coordinatorPubKeyY, address(stateAq), numSignUps, _messageTreeDepth
         );
 
-        MessageProcessor mp = new MessageProcessor(address(poll), _verifier, _vkRegistry, msg.sender);
-        Tally tally = new Tally(address(poll), address(mp), _verifier, _vkRegistry, msg.sender);
+        MessageProcessor mp = new MessageProcessor(address(poll), _mpVerifier, _vkRegistry, msg.sender);
+        Tally tally = new Tally(address(poll), address(mp), _tallyVerifier, _vkRegistry, msg.sender);
 
         polls[pollId] = address(poll);
 

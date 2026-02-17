@@ -73,7 +73,7 @@ contract Tally is DomainObjs {
         // 2. SHA256 public input hash
         uint256 publicInputHash = uint256(
             sha256(abi.encodePacked(_mp.currentStateCommitment(), tallyCommitment, _newTallyCommitment))
-        ) % SNARK_SCALAR_FIELD;
+        ) & ((1 << 253) - 1);
 
         // 3. Groth16 verification
         uint256[] memory pubSignals = new uint256[](1);

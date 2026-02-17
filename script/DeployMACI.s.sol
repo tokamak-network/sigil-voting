@@ -39,8 +39,8 @@ contract DeployMACIScript is Script {
         AccQueue stateAq = new AccQueue(5, 2);
         console.log("AccQueue:", address(stateAq));
 
-        // 5. MACI (stateTreeDepth = 10, ERC20 voice credits)
-        MACI maci = new MACI(GATEKEEPER, address(voiceCreditProxy), 10, address(stateAq));
+        // 5. MACI (stateTreeDepth = 2 for dev circuits)
+        MACI maci = new MACI(GATEKEEPER, address(voiceCreditProxy), 2, address(stateAq));
         console.log("MACI:", address(maci));
 
         vm.stopBroadcast();
