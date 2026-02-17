@@ -79,8 +79,16 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
             <img src="/assets/symbol.svg" alt="SIGIL" className="w-8 h-8" />
             <span className="font-display font-bold text-2xl tracking-tighter uppercase italic">SIGIL</span>
           </button>
+          <button
+            onClick={() => setCurrentPage('technology')}
+            className={`hidden md:block ml-4 text-xs font-bold uppercase tracking-wider transition-colors ${
+              currentPage === 'technology' ? 'text-primary' : 'text-slate-500 hover:text-black'
+            }`}
+          >
+            {t.technology.nav}
+          </button>
           {(currentPage === 'proposals' || currentPage === 'proposal-detail') && (
-            <span className="hidden md:block ml-4 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 border border-primary/20">{t.proposals.title}</span>
+            <span className="hidden md:block ml-2 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 border border-primary/20">{t.proposals.title}</span>
           )}
         </div>
 

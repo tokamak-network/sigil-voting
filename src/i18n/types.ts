@@ -324,4 +324,60 @@ export interface Translations {
     minCredit: string
     maxCredits: string
   }
+  technology: {
+    nav: string
+    title: string
+    subtitle: string
+    zkVoting: {
+      title: string
+      badge: string
+      desc: string
+      howTitle: string
+      howDesc: string
+      point1: string
+      point2: string
+      point3: string
+    }
+    quadratic: {
+      title: string
+      badge: string
+      desc: string
+      howTitle: string
+      howDesc: string
+      example: string
+      vote1: string
+      vote2: string
+      vote3: string
+    }
+    antiCollusion: {
+      title: string
+      badge: string
+      desc: string
+      howTitle: string
+      howDesc: string
+      scenario: string
+      step1: string
+      step2: string
+      step3: string
+    }
+    combined: {
+      title: string
+      desc: string
+    }
+    properties: {
+      title: string
+      subtitle: string
+      collusion: { title: string; desc: string }
+      receipt: { title: string; desc: string }
+      privacy: { title: string; desc: string }
+      uncensor: { title: string; desc: string }
+      unforge: { title: string; desc: string }
+      nonrepud: { title: string; desc: string }
+      correct: { title: string; desc: string }
+    }
+    cta: {
+      title: string
+      button: string
+    }
+  }
 }

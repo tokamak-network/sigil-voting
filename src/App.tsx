@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Header, Footer, Toast, LandingPage, MACIVotingDemo, ProposalsList, VoteSubmitted } from './components'
+import { Header, Footer, Toast, LandingPage, MACIVotingDemo, ProposalsList, VoteSubmitted, TechnologyPage } from './components'
 import { CreatePollForm } from './components/CreatePollForm'
 import { LanguageProvider } from './i18n'
 import type { Page } from './types'
@@ -86,6 +86,10 @@ function App() {
               </header>
               <CreatePollForm onPollCreated={handlePollCreated} onSelectPoll={handleSelectPoll} />
             </div>
+          )}
+
+          {currentPage === 'technology' && (
+            <TechnologyPage setCurrentPage={setCurrentPage} />
           )}
 
           {currentPage === 'vote-submitted' && voteSubmittedData && (
