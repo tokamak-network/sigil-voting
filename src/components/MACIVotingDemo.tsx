@@ -404,13 +404,13 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
             <div className="p-4 border-2 border-black bg-slate-900 text-white flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-primary" aria-hidden="true">info</span>
-                <span className="text-sm font-bold uppercase tracking-wider">You have already voted on this proposal. Changed your mind?</span>
+                <span className="text-sm font-bold uppercase tracking-wider">{t.proposalDetail.alreadyVotedBanner}</span>
               </div>
               <button
                 onClick={() => setShowReVoteForm(true)}
-                className="bg-primary text-white px-6 py-2 text-[10px] font-bold uppercase tracking-widest border-2 border-black hover:bg-blue-600 transition-colors whitespace-nowrap"
+                className="bg-white text-black px-6 py-2 text-[10px] font-bold uppercase tracking-widest border-2 border-black hover:bg-slate-100 transition-colors whitespace-nowrap"
               >
-                RE-VOTE
+                {t.proposalDetail.reVote}
               </button>
             </div>
           </div>
@@ -464,8 +464,8 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
               </h1>
             </div>
             <div className="flex flex-col items-end shrink-0">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Current Status</span>
-              <span className="px-6 py-3 bg-white text-black border-4 border-black font-black text-xl italic uppercase tracking-tighter">VOTING OPEN</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
+              <span className="px-6 py-3 bg-white text-black border-4 border-black font-black text-xl italic uppercase tracking-tighter">{t.proposalDetail.votingOpen}</span>
             </div>
           </div>
 
@@ -477,7 +477,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
               {pollDescription && (
                 <div className="prose prose-slate max-w-none">
                   <h4 className="text-xs font-bold uppercase tracking-widest text-primary mb-6 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-primary"></span> PROPOSAL DESCRIPTION
+                    <span className="w-2 h-2 bg-primary"></span> {t.proposalDetail.proposalDesc}
                   </h4>
                   <p className="text-slate-600 leading-relaxed text-lg">{pollDescription}</p>
                 </div>
@@ -491,26 +491,30 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
               {/* Stats */}
               <div className="grid grid-cols-2 gap-6">
                 <div className="p-8 border-2 border-black bg-white flex flex-col justify-between aspect-video">
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Total Participants</span>
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">{t.proposalDetail.totalParticipants}</span>
                   <div className="flex items-baseline gap-2">
                     <span className="text-6xl font-display font-black italic">{numMessages}</span>
-                    <span className="text-sm font-bold text-slate-400">USERS</span>
+                    <span className="text-sm font-bold text-slate-400">{t.proposalDetail.users}</span>
                   </div>
                 </div>
                 <div className="p-8 border-2 border-black bg-white flex flex-col justify-between aspect-video">
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Current Weight</span>
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">{t.proposalDetail.currentWeight}</span>
                   <div className="flex items-baseline gap-2">
                     <span className="text-6xl font-display font-black italic">{voiceCredits.toLocaleString()}</span>
-                    <span className="text-sm font-bold text-slate-400">CREDITS</span>
+                    <span className="text-sm font-bold text-slate-400">{t.voteForm.credits}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Protocol Info */}
-              <div className="border-t-2 border-slate-200 pt-6">
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  {t.maci.description}
-                </p>
+              {/* Privacy Trust Badge */}
+              <div className="border-2 border-emerald-200 bg-emerald-50 p-6 flex items-start gap-4">
+                <span className="material-symbols-outlined text-emerald-600 text-2xl shrink-0">verified_user</span>
+                <div>
+                  <h4 className="text-sm font-bold text-emerald-800 uppercase tracking-wider mb-1">{t.footer.secured}</h4>
+                  <p className="text-xs text-emerald-700 leading-relaxed">
+                    {t.maci.description}
+                  </p>
+                </div>
               </div>
 
               {/* Key Manager (advanced, collapsible) */}
@@ -563,7 +567,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                     <div className="p-8 border-b-2 border-black bg-slate-50 flex items-center justify-between">
                       <h3 className="text-xl font-display font-black text-primary tracking-tight italic flex items-center gap-2">
                         <span className="material-symbols-outlined font-bold" aria-hidden="true">check_circle</span>
-                        VOTE SUBMITTED
+                        {t.proposalDetail.voteSubmitted}
                       </h3>
                       {receiptId && (
                         <span className="text-[10px] font-mono font-bold bg-black text-white px-2 py-1 uppercase">
@@ -577,8 +581,8 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                       <div className="space-y-6">
                         {/* Your Selection */}
                         <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">Your Selection</span>
-                          <div className="text-4xl font-display font-black italic text-black">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">{t.proposalDetail.yourSelection}</span>
+                          <div className={`text-4xl font-display font-black italic ${myVote!.choice === 1 ? 'text-emerald-500' : 'text-red-500'}`}>
                             {myVote!.choice === 1 ? t.voteForm.for : t.voteForm.against}
                           </div>
                         </div>
@@ -586,11 +590,11 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                         {/* Intensity + Cost */}
                         <div className="grid grid-cols-2 gap-8 pt-6 border-t border-black/10">
                           <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">Intensity</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">{t.proposalDetail.intensity}</span>
                             <div className="text-3xl font-mono font-bold text-black">{myVote!.weight}</div>
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">Total Cost</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">{t.proposalDetail.totalCost}</span>
                             <div className="text-3xl font-mono font-bold text-primary">{myVote!.cost}</div>
                             <span className="text-[10px] font-bold text-slate-400 uppercase mt-1">{t.voteForm.credits}</span>
                           </div>
@@ -600,13 +604,13 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                       {/* Re-vote Section */}
                       <div className="pt-8 border-t-2 border-black">
                         <div className="flex flex-col items-center gap-4 text-center">
-                          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Changed your mind?</p>
+                          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t.proposalDetail.changedMind}</p>
                           <button
                             onClick={() => setShowReVoteForm(true)}
                             className="w-full bg-white text-black py-4 font-display font-black uppercase italic text-lg tracking-widest border-2 border-black hover:bg-slate-50 transition-all"
                             style={{ boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)' }}
                           >
-                            RE-VOTE
+                            {t.proposalDetail.reVote}
                           </button>
                         </div>
                       </div>
@@ -615,7 +619,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                     {/* Bottom Encrypted Bar */}
                     <div className="p-4 bg-slate-900 flex items-center justify-center gap-2">
                       <span className="material-symbols-outlined text-[16px] text-primary" aria-hidden="true">lock</span>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">ENCRYPTED ON-CHAIN PROOF GENERATED</p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{t.proposalDetail.encryptedProof}</p>
                     </div>
                   </div>
                 )}
@@ -678,13 +682,18 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
             </h1>
           </div>
           <div className="flex flex-col items-end shrink-0">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Current Status</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
             <span className={`px-6 py-3 bg-white border-4 border-black font-black text-xl italic uppercase tracking-tighter ${
               phase === V2Phase.Finalized ? 'text-green-600' : 'text-amber-600'
             }`}>
               {phase === V2Phase.Merging && t.merging.title.toUpperCase()}
               {phase === V2Phase.Processing && t.processing.title.toUpperCase()}
-              {phase === V2Phase.Finalized && 'FINALIZED'}
+              {phase === V2Phase.Finalized && (
+                <span className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg">check_circle</span>
+                  {t.proposals.status.finalized.toUpperCase()}
+                </span>
+              )}
             </span>
           </div>
         </div>
@@ -697,7 +706,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
               <div>
                 <span className="font-display font-bold uppercase text-sm">{t.myVote.title}</span>
                 <div className="flex items-center gap-4 mt-1 text-sm text-slate-600">
-                  <span>{t.voteHistory.lastChoice}: <strong className={myVote.choice === 1 ? 'text-primary' : 'text-red-600'}>{myVote.choice === 1 ? t.voteForm.for : t.voteForm.against}</strong></span>
+                  <span>{t.voteHistory.lastChoice}: <strong className={myVote.choice === 1 ? 'text-emerald-500' : 'text-red-500'}>{myVote.choice === 1 ? t.voteForm.for : t.voteForm.against}</strong></span>
                   <span>{t.voteHistory.lastWeight}: <strong>{myVote.weight}</strong></span>
                   <span>{t.voteHistory.lastCost}: <strong>{myVote.cost} {t.voteForm.credits}</strong></span>
                 </div>
