@@ -139,6 +139,13 @@ export const MACI_ABI = [
     stateMutability: 'nonpayable',
   },
   {
+    type: 'function',
+    name: 'transferOwnership',
+    inputs: [{ name: '_newOwner', type: 'address' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
     type: 'event',
     name: 'DeployPoll',
     inputs: [
