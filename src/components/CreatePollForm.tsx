@@ -79,8 +79,6 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
   const [description, setDescription] = useState('')
   const [durationHours, setDurationHours] = useState(168) // default 7 days
   const [durationPreset, setDurationPreset] = useState<DurationPreset>('7d')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [txStage, setTxStage] = useState<'idle' | 'submitting' | 'confirming' | 'waiting'>('idle')
@@ -578,42 +576,6 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
                 <p className="text-xs font-mono text-slate-400 mt-1">{t.createPoll.durationHint}</p>
               </div>
             )}
-          </div>
-
-          {/* Start / End Date */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label
-                htmlFor="start-date"
-                className="block font-display font-black text-xs uppercase tracking-widest mb-2 text-slate-500"
-              >
-                Start Date
-              </label>
-              <input
-                id="start-date"
-                type="datetime-local"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                disabled={isSubmitting}
-                className="technical-input w-full h-12 px-4 font-mono text-sm"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="end-date"
-                className="block font-display font-black text-xs uppercase tracking-widest mb-2 text-slate-500"
-              >
-                End Date
-              </label>
-              <input
-                id="end-date"
-                type="datetime-local"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                disabled={isSubmitting}
-                className="technical-input w-full h-12 px-4 font-mono text-sm"
-              />
-            </div>
           </div>
 
           {/* Proposal Description */}

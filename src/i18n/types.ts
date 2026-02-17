@@ -225,6 +225,11 @@ export interface Translations {
     backToList: string
     voted: string
     notVoted: string
+    noFiltered: string
+    filterAll: string
+    filterVoting: string
+    filterProcessing: string
+    filterEnded: string
   }
   voteHistory: {
     alreadyVoted: string

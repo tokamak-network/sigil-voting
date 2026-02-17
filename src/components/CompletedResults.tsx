@@ -7,7 +7,7 @@
  */
 
 import { useReadContract } from 'wagmi'
-import { TALLY_ABI } from '../contractV2'
+import { TALLY_ABI, DEPLOYER_ADDRESS } from '../contractV2'
 
 interface CompletedResultsProps {
   pollId: number
@@ -67,8 +67,7 @@ export function CompletedResults({
     day: 'numeric',
   })
 
-  // Shortened deployer placeholder
-  const authorAddress = '0x68E0...0AFA3'
+  const authorAddress = `${DEPLOYER_ADDRESS.slice(0, 6)}...${DEPLOYER_ADDRESS.slice(-4)}`
 
   return (
     <div>

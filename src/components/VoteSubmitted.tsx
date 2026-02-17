@@ -25,11 +25,12 @@ export function VoteSubmitted({
   txHash,
   onBackToList,
 }: VoteSubmittedProps) {
-  const shortHash = txHash.length > 16
+  const hasTxHash = txHash && txHash.length >= 10
+  const shortHash = hasTxHash
     ? `${txHash.slice(0, 10)}...${txHash.slice(-8)}`
-    : txHash
+    : ''
 
-  const explorerUrl = `https://sepolia.etherscan.io/tx/${txHash}`
+  const explorerUrl = hasTxHash ? `https://sepolia.etherscan.io/tx/${txHash}` : ''
 
   const choiceLabel = choice === 1 ? 'FOR' : 'AGAINST'
   const choiceIcon = choice === 1 ? 'thumb_up' : 'thumb_down'
@@ -49,9 +50,11 @@ export function VoteSubmitted({
         </h1>
 
         {/* Transaction Hash */}
-        <p className="font-mono text-sm text-slate-500 text-center break-all uppercase tracking-widest">
-          Transaction Hash: {shortHash}
-        </p>
+        {hasTxHash && (
+          <p className="font-mono text-sm text-slate-500 text-center break-all uppercase tracking-widest">
+            Transaction Hash: {shortHash}
+          </p>
+        )}
 
         {/* Receipt Card */}
         <div className="technical-border bg-white p-8 w-full relative overflow-hidden">
@@ -99,17 +102,25 @@ export function VoteSubmitted({
           </div>
 
           {/* View on Explorer - centered bordered box */}
-          <div className="technical-border bg-slate-50 p-4">
-            <a
-              href={explorerUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 text-sm font-mono text-black font-bold uppercase tracking-wider hover:text-primary transition-colors"
-            >
-              <span className="material-symbols-outlined text-base">open_in_new</span>
-              View on Explorer
-            </a>
-          </div>
+          {hasTxHash ? (
+            <div className="technical-border bg-slate-50 p-4">
+              <a
+                href={explorerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 text-sm font-mono text-black font-bold uppercase tracking-wider hover:text-primary transition-colors"
+              >
+                <span className="material-symbols-outlined text-base">open_in_new</span>
+                View on Explorer
+              </a>
+            </div>
+          ) : (
+            <div className="technical-border bg-slate-50 p-4 text-center">
+              <p className="text-sm font-mono text-slate-400 uppercase tracking-wider">
+                Transaction confirmed on-chain
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Return Button */}

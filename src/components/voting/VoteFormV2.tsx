@@ -30,7 +30,7 @@ interface VoteFormV2Props {
   isExpired?: boolean;
   isRegistered?: boolean;
   onSignUp?: () => Promise<void>;
-  onVoteSubmitted?: () => void;
+  onVoteSubmitted?: (txHash: string) => void;
 }
 
 type TxStage = 'idle' | 'registering' | 'encrypting' | 'signing' | 'confirming' | 'waiting' | 'done' | 'error';
@@ -173,7 +173,7 @@ export function VoteFormV2({
       addCreditsSpent(address, pollId, cost);
 
       setTxStage('done');
-      onVoteSubmitted?.();
+      onVoteSubmitted?.(hash);
     } catch (err) {
       setTxStage('error');
       const msg = err instanceof Error ? err.message : '';
@@ -503,8 +503,12 @@ async function getOrCreateMaciKeypair(
     const sk = BigInt(storedPollSk);
     const storedPk = localStorage.getItem(pollPkKey);
     if (storedPk) {
-      const parsed = JSON.parse(storedPk);
-      return { sk, pubKey: [BigInt(parsed[0]), BigInt(parsed[1])] };
+      try {
+        const parsed = JSON.parse(storedPk);
+        return { sk, pubKey: [BigInt(parsed[0]), BigInt(parsed[1])] };
+      } catch {
+        localStorage.removeItem(pollPkKey);
+      }
     }
     const pubKey = await eddsaDerivePublicKey(sk);
     localStorage.setItem(pollPkKey, JSON.stringify([pubKey[0].toString(), pubKey[1].toString()]));
@@ -518,8 +522,12 @@ async function getOrCreateMaciKeypair(
     const sk = BigInt(storedGlobalSk);
     const storedPk = localStorage.getItem(globalPkKey);
     if (storedPk) {
-      const parsed = JSON.parse(storedPk);
-      return { sk, pubKey: [BigInt(parsed[0]), BigInt(parsed[1])] };
+      try {
+        const parsed = JSON.parse(storedPk);
+        return { sk, pubKey: [BigInt(parsed[0]), BigInt(parsed[1])] };
+      } catch {
+        localStorage.removeItem(globalPkKey);
+      }
     }
     const pubKey = await eddsaDerivePublicKey(sk);
     localStorage.setItem(globalPkKey, JSON.stringify([pubKey[0].toString(), pubKey[1].toString()]));

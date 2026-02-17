@@ -537,8 +537,8 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                     isExpired={isPollExpired}
                     isRegistered={signedUp}
                     onSignUp={handleSignUp}
-                    onVoteSubmitted={() => {
-                      setTxHash(null)
+                    onVoteSubmitted={(voteTxHash) => {
+                      setTxHash(voteTxHash)
                       setShowReVoteForm(false)
                       // Notify parent with vote data
                       if (onVoteSubmitted && address) {
@@ -550,7 +550,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                             choice: vote.choice,
                             weight: vote.weight,
                             cost: vote.cost,
-                            txHash: txHash || '',
+                            txHash: voteTxHash,
                           })
                         }
                       }

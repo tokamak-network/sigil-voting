@@ -13,22 +13,25 @@ interface MergingStatusProps {
   pollAddress?: `0x${string}`;
 }
 
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
 export function MergingStatus({ pollAddress }: MergingStatusProps) {
   const address = pollAddress || POLL_V2_ADDRESS;
+  const hasValidAddress = address !== ZERO_ADDRESS;
   const { t } = useTranslation();
 
   const { data: stateAqMerged, isPending: stateLoading } = useReadContract({
     address,
     abi: POLL_ABI,
     functionName: 'stateAqMerged',
-    query: { refetchInterval: 5000 },
+    query: { enabled: hasValidAddress, refetchInterval: 5000 },
   });
 
   const { data: messageAqMerged, isPending: msgLoading } = useReadContract({
     address,
     abi: POLL_ABI,
     functionName: 'messageAqMerged',
-    query: { refetchInterval: 5000 },
+    query: { enabled: hasValidAddress, refetchInterval: 5000 },
   });
 
   const isLoading = stateLoading || msgLoading;

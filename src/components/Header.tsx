@@ -22,7 +22,7 @@ interface HeaderProps {
 export function Header({ currentPage, setCurrentPage }: HeaderProps) {
   const { address, isConnected, chainId } = useAccount()
   const { connect, isPending: isConnecting } = useConnect()
-  const { disconnect: _disconnect } = useDisconnect()
+  const { disconnect } = useDisconnect()
   const { switchChain, isPending: isSwitching } = useSwitchChain()
   const { t } = useTranslation()
 
@@ -110,10 +110,14 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
                 )}
               </div>
 
-              {/* Wallet Address */}
-              <div className="flex items-center border-2 border-black">
-                <div className="px-3 py-1 bg-black text-white text-[10px] font-bold">{shortenAddress(address!)}</div>
-              </div>
+              {/* Wallet Address + Disconnect */}
+              <button
+                onClick={() => disconnect()}
+                className="flex items-center border-2 border-black hover:border-red-500 transition-colors group"
+                title={t.header.disconnect}
+              >
+                <div className="px-3 py-1 bg-black text-white text-[10px] font-bold group-hover:bg-red-500 transition-colors">{shortenAddress(address!)}</div>
+              </button>
             </>
           )}
 

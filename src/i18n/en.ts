@@ -234,6 +234,11 @@ export const en: Translations = {
     backToList: 'All Proposals',
     voted: 'Voted',
     notVoted: 'Not voted',
+    noFiltered: 'No matching proposals',
+    filterAll: 'All',
+    filterVoting: 'Voting',
+    filterProcessing: 'Processing',
+    filterEnded: 'Ended',
   },
   voteHistory: {
     alreadyVoted: 'You have already voted on this proposal.',

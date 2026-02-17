@@ -234,6 +234,11 @@ export const ko: Translations = {
     backToList: '목록으로',
     voted: '투표함',
     notVoted: '미투표',
+    noFiltered: '해당하는 제안이 없습니다',
+    filterAll: '전체',
+    filterVoting: '투표 중',
+    filterProcessing: '처리 중',
+    filterEnded: '종료',
   },
   voteHistory: {
     alreadyVoted: '이 제안에 이미 투표하셨습니다.',

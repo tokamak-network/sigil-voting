@@ -48,8 +48,14 @@ export function KeyManager({
     const globalPk = localStorage.getItem(`maci-pk-${address}`);
     const stored = pollPk || globalPk;
     if (stored) {
-      const parsed = JSON.parse(stored);
-      setCurrentPubKey([BigInt(parsed[0]), BigInt(parsed[1])]);
+      try {
+        const parsed = JSON.parse(stored);
+        setCurrentPubKey([BigInt(parsed[0]), BigInt(parsed[1])]);
+      } catch {
+        // Corrupted key data, remove it
+        localStorage.removeItem(`maci-pubkey-${address}-${pollId}`);
+        localStorage.removeItem(`maci-pk-${address}`);
+      }
     }
   }, [address, pollId, isRegistered]);
 

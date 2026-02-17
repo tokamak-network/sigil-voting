@@ -44,19 +44,26 @@ export function ResultsDisplay({ tallyAddress }: ResultsDisplayProps) {
 
   const forPct = totalNum > 0 ? Math.round((forNum / totalNum) * 100) : 0;
   const againstPct = totalNum > 0 ? 100 - forPct : 0;
-  const passed = forNum > againstNum;
+  const hasVotes = totalNum > 0;
+  const passed = hasVotes && forNum > againstNum;
 
   return (
     <div role="region" aria-label={t.results.title}>
       <div className="flex items-start justify-between mb-6">
         <h3 className="font-display text-xl font-black uppercase">{t.results.title}</h3>
-        <div
-          className={`px-4 py-2 font-display font-black text-sm uppercase ${
-            passed ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-          }`}
-        >
-          {passed ? t.results.passed : t.results.rejected}
-        </div>
+        {hasVotes ? (
+          <div
+            className={`px-4 py-2 font-display font-black text-sm uppercase ${
+              passed ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+            }`}
+          >
+            {passed ? t.results.passed : t.results.rejected}
+          </div>
+        ) : (
+          <div className="px-4 py-2 font-display font-black text-sm uppercase bg-slate-300 text-white">
+            No votes
+          </div>
+        )}
       </div>
 
       {/* FOR bar */}

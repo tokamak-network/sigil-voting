@@ -291,10 +291,10 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
         {/* ── Filter Tabs (desktop: inline with header) ── */}
         <div className="flex border-2 border-black font-bold text-sm bg-white overflow-hidden">
           {([
-            { key: 'all' as FilterTab, label: 'All', dot: null },
-            { key: 'voting' as FilterTab, label: 'Voting', dot: 'bg-primary' },
-            { key: 'processing' as FilterTab, label: 'Revealing', dot: 'bg-amber-400' },
-            { key: 'ended' as FilterTab, label: 'Ended', dot: null },
+            { key: 'all' as FilterTab, label: t.proposals.filterAll, dot: null },
+            { key: 'voting' as FilterTab, label: t.proposals.filterVoting, dot: 'bg-primary' },
+            { key: 'processing' as FilterTab, label: t.proposals.filterProcessing, dot: 'bg-amber-400' },
+            { key: 'ended' as FilterTab, label: t.proposals.filterEnded, dot: null },
           ]).map(({ key, label, dot }, idx) => (
             <button
               key={key}
@@ -354,7 +354,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
       ) : filteredPolls.length === 0 ? (
         <div className="bg-white p-12 technical-card text-center">
           <p className="text-xl font-display font-bold text-slate-400 uppercase">
-            {filter === 'all' ? t.proposals.empty : `No ${filter} proposals`}
+            {filter === 'all' ? t.proposals.empty : t.proposals.noFiltered}
           </p>
           {isConnected && filter === 'all' && (
             <p className="mt-2 text-sm text-slate-400 font-sans">{t.proposals.emptyHint}</p>
