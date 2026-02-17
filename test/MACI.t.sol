@@ -508,7 +508,37 @@ contract MACITest is Test {
         assertTrue(maci.canCreatePoll(address(this)));
     }
 
-    // ============ 13. test_NoRevealFunction ============
+    // ============ 13. test_TransferOwnership ============
+
+    function test_TransferOwnership() public {
+        address newOwner = address(0xBEEF);
+        assertEq(maci.owner(), address(this));
+
+        maci.transferOwnership(newOwner);
+        assertEq(maci.owner(), newOwner);
+
+        // Old owner can no longer add gates
+        vm.expectRevert(MACI.NotOwner.selector);
+        maci.addProposalGate(address(0x1), 100);
+
+        // New owner can
+        vm.prank(newOwner);
+        maci.addProposalGate(address(0x1), 100);
+        assertEq(maci.proposalGateCount(), 1);
+    }
+
+    function test_TransferOwnership_ZeroAddress_Reverts() public {
+        vm.expectRevert(MACI.ZeroAddress.selector);
+        maci.transferOwnership(address(0));
+    }
+
+    function test_TransferOwnership_NotOwner_Reverts() public {
+        vm.prank(address(0xCAFE));
+        vm.expectRevert(MACI.NotOwner.selector);
+        maci.transferOwnership(address(0xBEEF));
+    }
+
+    // ============ 14. test_NoRevealFunction ============
 
     function test_NoRevealFunction() public pure {
         // MACI.sol has no revealVote function
