@@ -152,7 +152,7 @@ export async function processMessages(input: ProcessBatchInput): Promise<Process
     if (!validSig) isValid = false;
 
     // 5b. State index range
-    if (stateIndex >= numSignUps || stateIndex < 0) isValid = false;
+    if (stateIndex >= numSignUps || stateIndex <= 0) isValid = false;
 
     // 5c. Nonce check
     if (command.nonce !== ballot.nonce + 1n) isValid = false;

@@ -39,11 +39,14 @@ contract MACI is DomainObjs {
     error NotOwner();
     error InsufficientTokens();
     error NoProposalGates();
+    error ZeroAddress();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
         _;
     }
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     // ============ Events ============
     event SignUp(
@@ -114,6 +117,14 @@ contract MACI is DomainObjs {
     /// @notice Get number of proposal gates
     function proposalGateCount() external view returns (uint256) {
         return proposalGates.length;
+    }
+
+    /// @notice Transfer ownership to a new address
+    /// @param _newOwner The address of the new owner
+    function transferOwnership(address _newOwner) external onlyOwner {
+        if (_newOwner == address(0)) revert ZeroAddress();
+        emit OwnershipTransferred(owner, _newOwner);
+        owner = _newOwner;
     }
 
     /// @notice Check if an address can create a poll
