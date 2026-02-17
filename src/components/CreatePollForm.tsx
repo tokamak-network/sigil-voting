@@ -546,13 +546,20 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
                   type="button"
                   onClick={() => handlePresetSelect(preset.key)}
                   disabled={isSubmitting}
-                  className={`h-12 border-2 border-black font-display font-bold text-sm uppercase tracking-wide transition-colors ${
+                  className={`h-14 border-2 border-black font-display font-bold text-sm uppercase tracking-wide transition-colors ${
                     durationPreset === preset.key
                       ? 'bg-black text-white'
                       : 'bg-white text-black hover:bg-slate-50'
                   }`}
                 >
-                  {preset.label}
+                  {preset.key === 'custom' ? (
+                    <span className="flex items-center justify-center gap-1">
+                      <span className="material-symbols-outlined text-sm">calendar_today</span>
+                      {preset.label}
+                    </span>
+                  ) : (
+                    preset.label
+                  )}
                 </button>
               ))}
             </div>
@@ -661,7 +668,8 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
         {/* ── Right Column: Guidelines Sidebar ── */}
         <div className="lg:col-span-4">
           <div className="guideline-box bg-white p-8 sticky top-32">
-            <h3 className="font-display font-black text-lg uppercase tracking-tight mb-8">
+            <h3 className="flex items-center gap-2 text-xl font-display font-bold uppercase italic mb-8">
+              <span className="material-symbols-outlined text-primary">gavel</span>
               Proposal Guidelines
             </h3>
 
@@ -669,8 +677,9 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               <div className="flex gap-4">
                 <span className="text-2xl font-display font-black text-primary leading-none">01</span>
                 <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">STAKING REQUIREMENT</p>
                   <p className="text-sm text-slate-700 leading-relaxed">
-                    Title should clearly describe the proposal intent. Aim for concise, action-oriented language.
+                    Minimum <strong>100 TON</strong> balance required to submit a governance proposal.
                   </p>
                 </div>
               </div>
@@ -678,8 +687,9 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               <div className="flex gap-4">
                 <span className="text-2xl font-display font-black text-primary leading-none">02</span>
                 <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">MACI PRIVACY</p>
                   <p className="text-sm text-slate-700 leading-relaxed">
-                    Include sufficient context in the description so voters can make an informed decision.
+                    All voting is end-to-end encrypted using MACI protocol. Ensure technical specifications are clear.
                   </p>
                 </div>
               </div>
@@ -687,8 +697,9 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               <div className="flex gap-4">
                 <span className="text-2xl font-display font-black text-primary leading-none">03</span>
                 <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">VOTING WINDOW</p>
                   <p className="text-sm text-slate-700 leading-relaxed">
-                    Choose a voting duration that gives the community enough time to review and participate.
+                    Proposals must have a minimum duration of 72 hours for community review.
                   </p>
                 </div>
               </div>
@@ -696,8 +707,9 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               <div className="flex gap-4">
                 <span className="text-2xl font-display font-black text-primary leading-none">04</span>
                 <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">QUORUM</p>
                   <p className="text-sm text-slate-700 leading-relaxed">
-                    Once created, the proposal cannot be edited. All votes are encrypted via MACI.
+                    A minimum participation rate of 15% is required for a proposal to be considered valid.
                   </p>
                 </div>
               </div>
@@ -708,7 +720,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               <div className="flex items-center gap-2">
                 <div className={`w-2.5 h-2.5 ${networkOnline ? 'bg-green-500' : 'bg-red-500'}`} />
                 <span className="text-xs font-mono text-slate-500 uppercase tracking-widest">
-                  {networkOnline ? 'Sepolia Connected' : 'Network Offline'}
+                  {networkOnline ? 'Network Status: Optimal' : 'Network Offline'}
                 </span>
               </div>
             </div>

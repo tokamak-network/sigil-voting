@@ -71,7 +71,7 @@ export function CompletedResults({
   const authorAddress = '0x68E0...0AFA3'
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div>
       {/* Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         <button
@@ -125,101 +125,96 @@ export function CompletedResults({
                 </div>
               </div>
 
-              {/* FOR bar */}
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-primary text-lg">thumb_up</span>
-                    <span className="text-sm font-mono font-bold uppercase tracking-wider text-primary">
-                      For
-                    </span>
-                    <span className="text-2xl font-display font-black text-black">
-                      {forPct}%
-                    </span>
+              {/* FOR / AGAINST bars */}
+              <div className="space-y-12">
+                {/* FOR bar */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary">thumb_up</span>
+                      <span className="font-bold uppercase tracking-widest text-sm">FOR</span>
+                    </div>
+                    <span className="text-3xl font-mono font-bold text-primary">{forPct}%</span>
                   </div>
-                  <span className="text-sm font-mono text-slate-500">
+                  <div className="w-full h-12 bg-slate-100 technical-border">
+                    <div
+                      className="h-full bg-primary transition-all duration-700 ease-out"
+                      style={{ width: `${forPct}%` }}
+                      role="progressbar"
+                      aria-valuenow={forPct}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label={`For: ${forPct}%`}
+                    />
+                  </div>
+                  <div className="mt-2 text-[10px] font-mono font-bold text-slate-500 text-right uppercase">
                     {forNum.toLocaleString()} Quadratic Credits
-                  </span>
-                </div>
-                <div className="w-full h-4 bg-slate-100">
-                  <div
-                    className="h-full bg-primary transition-all duration-700 ease-out"
-                    style={{ width: `${forPct}%` }}
-                    role="progressbar"
-                    aria-valuenow={forPct}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-label={`For: ${forPct}%`}
-                  />
-                </div>
-              </div>
-
-              {/* AGAINST bar */}
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-black text-lg">thumb_down</span>
-                    <span className="text-sm font-mono font-bold uppercase tracking-wider text-black">
-                      Against
-                    </span>
-                    <span className="text-2xl font-display font-black text-black">
-                      {againstPct}%
-                    </span>
                   </div>
-                  <span className="text-sm font-mono text-slate-500">
-                    {againstNum.toLocaleString()} Quadratic Credits
-                  </span>
                 </div>
-                <div className="w-full h-4 bg-slate-100">
-                  <div
-                    className="h-full bg-black transition-all duration-700 ease-out"
-                    style={{ width: `${againstPct}%` }}
-                    role="progressbar"
-                    aria-valuenow={againstPct}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-label={`Against: ${againstPct}%`}
-                  />
+
+                {/* AGAINST bar */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center gap-2 text-slate-400">
+                      <span className="material-symbols-outlined">thumb_down</span>
+                      <span className="font-bold uppercase tracking-widest text-sm">AGAINST</span>
+                    </div>
+                    <span className="text-3xl font-mono font-bold">{againstPct}%</span>
+                  </div>
+                  <div className="w-full h-12 bg-slate-100 technical-border">
+                    <div
+                      className="h-full bg-black transition-all duration-700 ease-out"
+                      style={{ width: `${againstPct}%` }}
+                      role="progressbar"
+                      aria-valuenow={againstPct}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label={`Against: ${againstPct}%`}
+                    />
+                  </div>
+                  <div className="mt-2 text-[10px] font-mono font-bold text-slate-500 text-right uppercase">
+                    {againstNum.toLocaleString()} Quadratic Credits
+                  </div>
                 </div>
               </div>
 
               {/* Divider */}
-              <div className="border-t-2 border-slate-200 pt-6">
-                <h3 className="text-sm font-mono font-bold uppercase tracking-wider text-slate-400 mb-4">
+              <div className="border-t-2 border-black mt-12 pt-8">
+                <h3 className="text-sm font-bold uppercase tracking-widest mb-4">
                   Final Tally Detailed
                 </h3>
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="bg-slate-50 p-4">
-                    <p className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-1">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-50 p-4 border border-slate-200">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
                       Unique Addresses
-                    </p>
-                    <p className="text-2xl font-display font-black text-black">
+                    </span>
+                    <span className="font-mono font-bold">
                       {votersNum}
-                    </p>
+                    </span>
                   </div>
-                  <div className="bg-slate-50 p-4">
-                    <p className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-1">
+                  <div className="bg-slate-50 p-4 border border-slate-200">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
                       Quadratic Magnitude
-                    </p>
-                    <p className="text-2xl font-display font-black text-black">
+                    </span>
+                    <span className="font-mono font-bold">
                       {totalCredits.toLocaleString()} Credits
-                    </p>
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* ZK Verification Bar */}
-            <div className="bg-black text-white px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-emerald-400">
-                  verified
-                </span>
+            <div className="bg-black text-white p-6 technical-border flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 border border-white/20 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-primary text-2xl">verified_user</span>
+                </div>
                 <div>
-                  <p className="text-sm font-display font-bold">
+                  <h4 className="font-bold uppercase italic text-sm">
                     ZK-Proof Verified on Ethereum
-                  </p>
-                  <p className="text-xs font-mono text-slate-400">
+                  </h4>
+                  <p className="text-[10px] text-slate-400 font-mono">
                     TX: {shortTallyAddr}
                   </p>
                 </div>
@@ -228,10 +223,10 @@ export function CompletedResults({
                 href={explorerUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 border border-white text-white text-xs font-mono font-bold uppercase tracking-wider hover:bg-white hover:text-black transition-colors"
+                className="bg-white text-black px-6 py-2 text-xs font-bold uppercase tracking-widest hover:bg-primary hover:text-white transition-colors flex items-center gap-2"
               >
                 View on Explorer
-                <span className="material-symbols-outlined text-base">open_in_new</span>
+                <span className="material-symbols-outlined text-sm">open_in_new</span>
               </a>
             </div>
           </div>
@@ -239,8 +234,8 @@ export function CompletedResults({
           {/* Right Column: Proposal Details + Metadata */}
           <div className="space-y-6">
             {/* Proposal Details Card */}
-            <div className="technical-border bg-white p-8">
-              <h2 className="text-lg font-display font-bold text-black uppercase mb-6">
+            <div className="technical-border bg-white p-8 h-fit">
+              <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-400 mb-8 border-b-2 border-slate-100 pb-2">
                 Proposal Details
               </h2>
 
@@ -293,68 +288,10 @@ export function CompletedResults({
             </div>
 
             {/* Metadata Box */}
-            <div className="border-2 border-slate-200 p-6">
-              <h3 className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 mb-4">
-                On-Chain Metadata
-              </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase">
-                    Poll ID
-                  </span>
-                  <span className="text-[10px] font-mono text-black font-bold">
-                    {pollId}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase">
-                    Tally Contract
-                  </span>
-                  <span className="text-[10px] font-mono text-black font-bold">
-                    {shortTallyAddr}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase">
-                    Network
-                  </span>
-                  <span className="text-[10px] font-mono text-black font-bold">
-                    Sepolia
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase">
-                    Verification
-                  </span>
-                  <span className="text-[10px] font-mono text-emerald-600 font-bold">
-                    Groth16 ZK-SNARK
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase">
-                    Status
-                  </span>
-                  <span className={`text-[10px] font-mono font-bold ${passed ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {passed ? 'PASSED' : 'REJECTED'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase">
-                    For / Against
-                  </span>
-                  <span className="text-[10px] font-mono text-black font-bold">
-                    {forNum} / {againstNum}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[10px] font-mono text-slate-400 uppercase">
-                    Total Credits
-                  </span>
-                  <span className="text-[10px] font-mono text-black font-bold">
-                    {totalCredits}
-                  </span>
-                </div>
-              </div>
+            <div className="border-2 border-slate-200 p-4 font-mono text-[10px] text-slate-400 uppercase leading-relaxed">
+              <p>IPFS Hash: QmXoyp...7821</p>
+              <p>Voting Strategy: Quadratic v2</p>
+              <p>Shielded Voting: Enabled</p>
             </div>
           </div>
         </div>

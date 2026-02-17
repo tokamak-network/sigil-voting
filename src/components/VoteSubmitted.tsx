@@ -54,16 +54,14 @@ export function VoteSubmitted({
         </p>
 
         {/* Receipt Card */}
-        <div className="technical-border bg-white p-8 w-full relative">
+        <div className="technical-border bg-white p-8 w-full relative overflow-hidden">
           {/* Receipt ID Badge */}
-          <div className="absolute -top-3 right-6 bg-slate-100 technical-border px-3 py-1">
-            <span className="font-mono text-xs text-slate-500 uppercase tracking-widest">
-              Receipt #{pollId}-ZK
-            </span>
+          <div className="absolute top-0 right-0 p-4 border-l-2 border-b-2 border-black bg-slate-50">
+            <span className="font-mono text-[10px] font-bold">RECEIPT #{pollId}-ZK</span>
           </div>
 
           {/* Proposal Title */}
-          <div className="border-l-4 border-primary pl-4 mb-8 mt-2">
+          <div className="border-l-4 border-black pl-4 mb-8 mt-2">
             <p className="text-xs font-mono text-slate-400 uppercase tracking-widest mb-1">Proposal</p>
             <p className="text-lg font-display font-bold leading-snug">{pollTitle}</p>
           </div>
@@ -74,18 +72,18 @@ export function VoteSubmitted({
               <p className="text-xs font-mono text-slate-400 uppercase tracking-widest mb-3">My Choice</p>
               <div className="flex items-center gap-3">
                 <span
-                  className={`material-symbols-outlined text-3xl ${choice === 1 ? 'text-primary' : 'text-black'}`}
+                  className={`material-symbols-outlined text-4xl ${choice === 1 ? 'text-primary' : 'text-black'}`}
                 >
                   {choiceIcon}
                 </span>
                 <span
-                  className={`text-2xl font-display font-black uppercase tracking-tight ${choice === 1 ? 'text-primary' : 'text-black'}`}
+                  className={`text-3xl font-display font-black uppercase tracking-tight ${choice === 1 ? 'text-primary' : 'text-black'}`}
                 >
                   {choiceLabel}
                 </span>
               </div>
             </div>
-            <div className="bg-slate-50 technical-border p-5">
+            <div className="bg-slate-50 technical-border border-dashed p-5">
               <p className="text-xs font-mono text-slate-400 uppercase tracking-widest mb-3">Voting Stats</p>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -117,7 +115,7 @@ export function VoteSubmitted({
         {/* Return Button */}
         <button
           onClick={onBackToList}
-          className="sharp-button w-full h-14 bg-black text-white font-display font-black text-lg uppercase tracking-tight flex items-center justify-center gap-3 hover:bg-slate-900 transition-colors"
+          className="sharp-button w-full py-6 bg-black text-white font-display font-bold text-xl uppercase italic tracking-[0.2em] mb-12 flex items-center justify-center gap-3 hover:bg-slate-900 transition-colors"
         >
           <span className="material-symbols-outlined">arrow_back</span>
           Return to Proposal List
@@ -126,17 +124,17 @@ export function VoteSubmitted({
         {/* Privacy Badges */}
         <div className="grid grid-cols-2 gap-4 w-full">
           <div className="technical-border bg-slate-50 p-4 flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary text-xl">shield</span>
+            <span className="material-symbols-outlined text-primary text-xl">shield_with_heart</span>
             <div>
               <p className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">Privacy Status</p>
-              <p className="text-sm font-display font-bold uppercase tracking-wider">MACI Shield Active</p>
+              <p className="text-[10px] font-display font-bold uppercase tracking-wider">MACI Shield Active</p>
             </div>
           </div>
           <div className="technical-border bg-slate-50 p-4 flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary text-xl">bar_chart</span>
+            <span className="material-symbols-outlined text-primary text-xl">analytics</span>
             <div>
               <p className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">Proofs</p>
-              <p className="text-sm font-display font-bold uppercase tracking-wider">ZK-Proof Generated</p>
+              <p className="text-[10px] font-display font-bold uppercase tracking-wider">ZK-Proof Generated</p>
             </div>
           </div>
         </div>

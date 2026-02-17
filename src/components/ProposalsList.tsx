@@ -253,7 +253,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
       return { label: 'VOTING', className: 'bg-primary text-white' }
     }
     if (status === 'ended') {
-      return { label: 'PROCESSING', className: 'bg-amber-100 text-amber-800 border border-amber-300' }
+      return { label: 'REVEALING', className: 'bg-amber-400 text-black' }
     }
     return { label: 'ENDED', className: 'bg-slate-200 text-slate-600' }
   }
@@ -273,18 +273,45 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">
       {/* ── Header Section ── */}
-      <div className="mb-12">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
-          <h1 className="text-5xl md:text-6xl font-display font-black uppercase italic tracking-tight">
-            PROPOSALS
-          </h1>
-          <span className="inline-block bg-primary text-white text-xs font-mono font-bold uppercase tracking-widest px-3 py-1 border-2 border-black self-start sm:self-center">
-            DAO GOVERNANCE
-          </span>
+      <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-6xl font-display font-black uppercase italic leading-none tracking-tighter">
+              PROPOSALS
+            </h1>
+            <span className="bg-primary text-white text-xs font-bold px-3 py-1 uppercase tracking-widest">
+              DAO GOVERNANCE
+            </span>
+          </div>
+          <p className="text-slate-500 font-medium text-lg">
+            Participate in a ZK-Proof based anonymous voting system.
+          </p>
         </div>
-        <p className="text-lg text-slate-500 font-sans max-w-xl">
-          Participate in a ZK-Proof based anonymous voting system.
-        </p>
+
+        {/* ── Filter Tabs (desktop: inline with header) ── */}
+        <div className="flex border-2 border-black font-bold text-sm bg-white overflow-hidden">
+          {([
+            { key: 'all' as FilterTab, label: 'All', dot: null },
+            { key: 'voting' as FilterTab, label: 'Voting', dot: 'bg-primary' },
+            { key: 'processing' as FilterTab, label: 'Revealing', dot: 'bg-amber-400' },
+            { key: 'ended' as FilterTab, label: 'Ended', dot: null },
+          ]).map(({ key, label, dot }, idx) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
+              className={`px-6 py-3 uppercase tracking-wider flex items-center gap-2 transition-colors duration-100 ${
+                idx > 0 ? 'border-l-2 border-black' : ''
+              } ${
+                filter === key
+                  ? 'bg-black text-white'
+                  : 'hover:bg-slate-50'
+              }`}
+            >
+              {dot && <span className={`w-2 h-2 rounded-full ${dot}`}></span>}
+              {label} ({counts[key]})
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── Connect Wallet Notice ── */}
@@ -316,27 +343,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
         </div>
       )}
 
-      {/* ── Filter Tabs ── */}
-      <div className="flex flex-wrap gap-0 mb-10">
-        {([
-          { key: 'all' as FilterTab, label: 'ALL' },
-          { key: 'voting' as FilterTab, label: 'VOTING' },
-          { key: 'processing' as FilterTab, label: 'PROCESSING' },
-          { key: 'ended' as FilterTab, label: 'ENDED' },
-        ]).map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setFilter(key)}
-            className={`px-5 py-2.5 font-mono text-sm font-bold uppercase tracking-wide border-2 border-black -ml-[2px] first:ml-0 transition-colors duration-100 ${
-              filter === key
-                ? 'bg-black text-white'
-                : 'bg-white text-black hover:bg-slate-100'
-            }`}
-          >
-            {label} ({counts[key]})
-          </button>
-        ))}
-      </div>
+      {/* Filter tabs are now in the header section above */}
 
       {/* ── Content ── */}
       {loading ? (
@@ -368,61 +375,64 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
               >
                 {/* ── Card Top Row ── */}
                 <div>
-                  <div className="flex items-center justify-between mb-6">
-                    <span className={`px-3 py-1 text-xs font-mono font-bold uppercase tracking-wider ${badge.className}`}>
+                  <div className="flex justify-between items-start mb-6">
+                    <span className={`text-[10px] font-bold px-3 py-1.5 uppercase tracking-widest ${badge.className}`}>
                       {badge.label}
                     </span>
                     {poll.hasVoted && (
-                      <span className="text-primary text-sm font-mono font-bold flex items-center gap-1">
-                        <span>&#10003;</span> {t.proposals.voted}
-                      </span>
+                      <div className="flex items-center gap-1.5 text-primary">
+                        <span className="material-symbols-outlined text-sm font-bold">check</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest">{t.proposals.voted}</span>
+                      </div>
                     )}
                   </div>
 
                   {/* ── Title ── */}
-                  <h3 className="text-2xl md:text-3xl font-display font-bold uppercase leading-tight pr-14">
+                  <h3 className="text-3xl font-display font-bold uppercase leading-tight mb-8">
                     {poll.title}
                   </h3>
                 </div>
 
                 {/* ── Card Bottom Row ── */}
-                <div className="flex items-end justify-between mt-auto pt-6">
-                  <div className="flex flex-col gap-1">
+                <div className="flex items-end justify-between">
+                  <div className="flex gap-12">
                     {/* Participants */}
-                    <span className="text-sm text-slate-500 font-sans">
-                      {poll.numMessages} {t.proposals.messages}
-                    </span>
+                    <div>
+                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Participants</span>
+                      <span className="text-2xl font-display font-bold">{poll.numMessages}</span>
+                    </div>
 
                     {/* Timer or Status */}
                     {status === 'active' && remaining > 0 && (
-                      <span className="font-mono text-primary font-bold text-sm">
-                        {formatTime(remaining)}
-                      </span>
+                      <div>
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Time Left</span>
+                        <span className="text-2xl font-mono font-bold text-primary">{formatTime(remaining)}</span>
+                      </div>
                     )}
                     {status === 'ended' && (
-                      <span className="font-mono text-amber-600 font-bold text-sm">
-                        {t.maci.waiting.processing}
-                      </span>
+                      <div>
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Current</span>
+                        <span className="text-2xl font-display font-bold">Calculating...</span>
+                      </div>
                     )}
                     {status === 'finalized' && (
-                      <span className="font-mono text-slate-400 font-bold text-sm">
-                        {t.timer.ended}
-                      </span>
+                      <div>
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Result</span>
+                        <span className="text-2xl font-display font-bold text-green-600">PASSED</span>
+                      </div>
                     )}
                   </div>
 
                   {/* Arrow Button */}
-                  <div className="w-12 h-12 bg-black text-white flex items-center justify-center flex-shrink-0 group-hover:bg-primary transition-colors duration-150">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M4 10H16M16 10L11 5M16 10L11 15" stroke="currentColor" strokeWidth="2" strokeLinecap="square"/>
-                    </svg>
-                  </div>
+                  <button className="w-12 h-12 bg-black text-white flex items-center justify-center hover:bg-primary transition-colors">
+                    <span className="material-symbols-outlined">arrow_forward</span>
+                  </button>
                 </div>
 
                 {/* ── Proposal # (absolute bottom-left) ── */}
-                <span className="absolute bottom-2 left-3 text-[10px] font-mono text-slate-300 uppercase tracking-wider">
+                <div className="absolute bottom-4 left-8 text-[9px] font-bold text-slate-300 uppercase">
                   Proposal #{poll.id}
-                </span>
+                </div>
               </button>
             )
           })}

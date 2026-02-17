@@ -324,7 +324,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
 
   // Generate a pseudo receipt ID from the vote data
   const receiptId = myVote
-    ? `RX-${propPollId.toString().padStart(3, '0')}-${(myVote.choice * 1000 + myVote.weight * 100 + myVote.cost).toString(16).toUpperCase().padStart(6, '0')}`
+    ? String(propPollId * 1000 + myVote.choice * 500 + myVote.weight * 100 + myVote.cost).padStart(4, '0')
     : null
 
   // === Not configured ===
@@ -378,9 +378,9 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         <div className="max-w-4xl mx-auto px-6 py-20">
           <button
             onClick={onBack}
-            className="text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-black flex items-center gap-1 mb-8 transition-colors"
+            className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 hover:text-black transition-colors mb-6 group"
           >
-            <span className="material-symbols-outlined text-sm">arrow_back</span>
+            <span className="material-symbols-outlined text-sm group-hover:-translate-x-1 transition-transform">arrow_back</span>
             {t.proposals.backToList}
           </button>
           <div className="technical-card-heavy bg-white p-12 text-center">
@@ -445,29 +445,27 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
           {/* Back button */}
           <button
             onClick={onBack}
-            className="text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-black flex items-center gap-1 mb-8 transition-colors"
+            className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 hover:text-black transition-colors mb-6 group"
           >
-            <span className="material-symbols-outlined text-sm">arrow_back</span>
+            <span className="material-symbols-outlined text-sm group-hover:-translate-x-1 transition-transform">arrow_back</span>
             {t.proposals.backToList}
           </button>
 
           {/* Proposal Header */}
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 mb-12">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-12">
             <div className="flex-1">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-wider">
+              <div className="flex items-center gap-4 mb-4">
+                <span className="bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest">
                   Proposal #{propPollId + 1}
                 </span>
               </div>
-              <h1 className="font-display text-5xl lg:text-7xl font-black uppercase italic leading-[0.9] tracking-tight">
+              <h1 className="font-display text-5xl lg:text-7xl font-black uppercase italic leading-[0.9] tracking-tighter max-w-4xl">
                 {displayTitle}
               </h1>
             </div>
-            <div className="flex-shrink-0">
-              <div className="border-4 border-black px-6 py-3 text-center">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1">Status</span>
-                <span className="font-display text-lg font-black uppercase text-green-600">VOTING OPEN</span>
-              </div>
+            <div className="flex flex-col items-end shrink-0">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Current Status</span>
+              <span className="px-6 py-3 bg-white text-black border-4 border-black font-black text-xl italic uppercase tracking-tighter">VOTING OPEN</span>
             </div>
           </div>
 
@@ -560,7 +558,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                   />
                 ) : (
                   /* Voted Summary Card (Page 6) */
-                  <div className="bg-white border-4 border-black" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>
+                  <div className="bg-white border-4 border-black sticky top-32" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>
                     {/* Card Header */}
                     <div className="p-8 border-b-2 border-black bg-slate-50 flex items-center justify-between">
                       <h3 className="text-xl font-display font-black text-primary tracking-tight italic flex items-center gap-2">
@@ -569,7 +567,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                       </h3>
                       {receiptId && (
                         <span className="text-[10px] font-mono font-bold bg-black text-white px-2 py-1 uppercase">
-                          {receiptId}
+                          Receipt ID: {receiptId}
                         </span>
                       )}
                     </div>
@@ -661,35 +659,33 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         {/* Back button */}
         <button
           onClick={onBack}
-          className="text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-black flex items-center gap-1 mb-8 transition-colors"
+          className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 hover:text-black transition-colors mb-6 group"
         >
-          <span className="material-symbols-outlined text-sm">arrow_back</span>
+          <span className="material-symbols-outlined text-sm group-hover:-translate-x-1 transition-transform">arrow_back</span>
           {t.proposals.backToList}
         </button>
 
         {/* Proposal Header */}
-        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6 mb-12">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-12">
           <div className="flex-1">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-wider">
+            <div className="flex items-center gap-4 mb-4">
+              <span className="bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest">
                 Proposal #{propPollId + 1}
               </span>
             </div>
-            <h1 className="font-display text-5xl lg:text-7xl font-black uppercase italic leading-[0.9] tracking-tight">
+            <h1 className="font-display text-5xl lg:text-7xl font-black uppercase italic leading-[0.9] tracking-tighter max-w-4xl">
               {displayTitle}
             </h1>
           </div>
-          <div className="flex-shrink-0">
-            <div className="border-4 border-black px-6 py-3 text-center">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-1">Status</span>
-              <span className={`font-display text-lg font-black uppercase ${
-                phase === V2Phase.Finalized ? 'text-green-600' : 'text-amber-600'
-              }`}>
-                {phase === V2Phase.Merging && t.merging.title.toUpperCase()}
-                {phase === V2Phase.Processing && t.processing.title.toUpperCase()}
-                {phase === V2Phase.Finalized && 'FINALIZED'}
-              </span>
-            </div>
+          <div className="flex flex-col items-end shrink-0">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Current Status</span>
+            <span className={`px-6 py-3 bg-white border-4 border-black font-black text-xl italic uppercase tracking-tighter ${
+              phase === V2Phase.Finalized ? 'text-green-600' : 'text-amber-600'
+            }`}>
+              {phase === V2Phase.Merging && t.merging.title.toUpperCase()}
+              {phase === V2Phase.Processing && t.processing.title.toUpperCase()}
+              {phase === V2Phase.Finalized && 'FINALIZED'}
+            </span>
           </div>
         </div>
 
