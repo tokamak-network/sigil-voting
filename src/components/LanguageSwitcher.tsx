@@ -4,23 +4,22 @@ export function LanguageSwitcher() {
   const { lang, setLang } = useTranslation()
 
   return (
-    <div className="lang-switcher" role="group" aria-label="Language selection">
+    <div className="flex border-2 border-black overflow-hidden" role="group" aria-label="Language selection">
       <button
-        className={`lang-btn ${lang === 'ko' ? 'active' : ''}`}
-        onClick={() => setLang('ko')}
-        aria-label="한국어로 전환"
-        aria-pressed={lang === 'ko'}
-      >
-        KO
-      </button>
-      <span className="lang-divider" aria-hidden="true">|</span>
-      <button
-        className={`lang-btn ${lang === 'en' ? 'active' : ''}`}
+        className={`px-3 py-1 text-xs font-bold ${lang === 'en' ? 'bg-black text-white' : 'hover:bg-slate-100'}`}
         onClick={() => setLang('en')}
         aria-label="Switch to English"
         aria-pressed={lang === 'en'}
       >
         EN
+      </button>
+      <button
+        className={`px-3 py-1 text-xs font-bold ${lang === 'ko' ? 'bg-black text-white' : 'hover:bg-slate-100'}`}
+        onClick={() => setLang('ko')}
+        aria-label="한국어로 전환"
+        aria-pressed={lang === 'ko'}
+      >
+        KR
       </button>
     </div>
   )

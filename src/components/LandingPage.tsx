@@ -87,8 +87,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
               <span className="material-symbols-outlined">encrypted</span>
             </div>
             <h3 className="font-bold text-lg mb-4 uppercase tracking-tight">
-              {t.landing.features.privacy.title}<br />
-              <span className="text-sm font-normal opacity-60">{t.landing.features.privacy.sub}</span>
+              {t.landing.features.privacy.title}
             </h3>
             <p className="text-xs font-medium leading-relaxed uppercase">{t.landing.features.privacy.desc}</p>
           </div>
@@ -99,8 +98,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
               <span className="material-symbols-outlined">gpp_maybe</span>
             </div>
             <h3 className="font-bold text-lg mb-4 uppercase tracking-tight">
-              {t.landing.features.coercion.title}<br />
-              <span className="text-sm font-normal opacity-60">{t.landing.features.coercion.sub}</span>
+              {t.landing.features.coercion.title}
             </h3>
             <p className="text-xs font-medium leading-relaxed uppercase">{t.landing.features.coercion.desc}</p>
           </div>
@@ -111,8 +109,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
               <span className="material-symbols-outlined">balance</span>
             </div>
             <h3 className="font-bold text-lg mb-4 uppercase tracking-tight">
-              {t.landing.features.fairness.title}<br />
-              <span className="text-sm font-normal opacity-60">{t.landing.features.fairness.sub}</span>
+              {t.landing.features.fairness.title}
             </h3>
             <p className="text-xs font-medium leading-relaxed uppercase">{t.landing.features.fairness.desc}</p>
           </div>
@@ -123,8 +120,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
               <span className="material-symbols-outlined">rule</span>
             </div>
             <h3 className="font-bold text-lg mb-4 uppercase tracking-tight">
-              {t.landing.features.verified.title}<br />
-              <span className="text-sm font-normal opacity-60">{t.landing.features.verified.sub}</span>
+              {t.landing.features.verified.title}
             </h3>
             <p className="text-xs font-medium leading-relaxed uppercase">{t.landing.features.verified.desc}</p>
           </div>
@@ -207,7 +203,6 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                 <span className="w-3 h-3 bg-primary"></span>
                 {t.landing.whyMaci.anti.title}
               </h4>
-              <p className="text-xs font-mono font-bold text-slate-500 mb-2">{t.landing.whyMaci.anti.sub}</p>
               <p className="text-sm leading-relaxed">{t.landing.whyMaci.anti.desc}</p>
             </div>
 
@@ -217,7 +212,6 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                 <span className="w-3 h-3 bg-primary"></span>
                 {t.landing.whyMaci.privacy.title}
               </h4>
-              <p className="text-xs font-mono font-bold text-slate-500 mb-2">{t.landing.whyMaci.privacy.sub}</p>
               <p className="text-sm leading-relaxed">{t.landing.whyMaci.privacy.desc}</p>
             </div>
 
@@ -229,7 +223,6 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                 </div>
                 <div>
                   <h4 className="font-bold text-xl mb-2 uppercase tracking-widest">{t.landing.whyMaci.verify.title}</h4>
-                  <p className="text-xs font-mono font-bold text-slate-500 mb-4">{t.landing.whyMaci.verify.sub}</p>
                   <p className="text-sm leading-relaxed max-w-2xl">{t.landing.whyMaci.verify.desc}</p>
                 </div>
               </div>

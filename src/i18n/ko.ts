@@ -21,14 +21,14 @@ export const ko: Translations = {
     heroVersion: 'By Tokamak Network',
     zeroExposure: { title: '완벽한 비공개', desc: '투표는 집계 완료까지 암호학적으로 숨겨집니다.' },
     maciSecured: { title: 'MACI 보안', desc: '담합과 매수를 해체하도록 설계되었습니다.' },
-    coreFeatures: '핵심 기능 // Core Features',
+    coreFeatures: '핵심 기능',
     features: {
       privacy: { title: '영구적 개인정보 보호', sub: 'Permanent Privacy', desc: '고급 암호화로 누구도 개별 투표에 접근할 수 없습니다.' },
       coercion: { title: '매수 방지', sub: 'Unbribable', desc: '투표 증명이 불가능하여 매수 시장 자체가 성립하지 않습니다.' },
       fairness: { title: '모두를 위한 공정성', sub: 'Fair for All', desc: '이차투표가 고래 독점을 효과적으로 완화합니다.' },
       verified: { title: '증명된 정직성', sub: 'Proven Honesty', desc: 'ZK 증명으로 누구나 최종 결과를 검증할 수 있습니다.' },
     },
-    operationalFlow: '작동 방식 // Operational Flow',
+    operationalFlow: '작동 방식',
     lifecycle: {
       title: '이용 방법',
       label: '간단한 3단계',
@@ -37,7 +37,7 @@ export const ko: Translations = {
       step3: { title: '집계 검증', desc: '집계 결과를 확인합니다. 모든 배치는 암호학적 증명으로 검증 가능합니다.' },
     },
     whyMaci: {
-      title: '왜 SIGIL인가? // Why SIGIL?',
+      title: '왜 SIGIL인가?',
       anti: {
         title: '강압 저항성',
         sub: 'Coercion Resistance',
