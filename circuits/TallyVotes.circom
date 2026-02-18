@@ -17,6 +17,9 @@ include "utils/sha256Hasher.circom";
  *   4. Compute tally commitment: poseidon_3(tallyResultsRoot, totalSpent, perOptionSpentRoot)
  *   5. Verify SHA256-compressed public input matches on-chain hash
  *
+ * SHA256 matches on-chain Tally contract:
+ *   sha256(stateCommitment, prevTallyCommitment, newTallyCommitment)
+ *
  * Parameters:
  *   stateTreeDepth       - Quinary state tree depth
  *   voteOptionTreeDepth  - Vote option tree depth
@@ -32,19 +35,20 @@ template TallyVotes(
     // ============ Public Input (SHA256 compressed) ============
     signal input inputHash;
 
-    // ============ Values inside SHA256 hash ============
+    // ============ SHA256 hash values (matching on-chain Tally contract) ============
     signal input stateCommitment;
     signal input tallyCommitment;
     signal input newTallyCommitment;
-    signal input batchNum;
 
     // ============ Private Inputs ============
+    signal input batchNum;  // for isBatchZero check (not in SHA256)
+
     signal input stateLeaves[batchSize][4];
     signal input ballotNonces[batchSize];
     signal input voteWeights[batchSize][numVoteOptions];
     signal input voteOptionRoots[batchSize];
 
-    signal input stateProofs[batchSize][stateTreeDepth][4];
+    signal input stateProofs[batchSize][stateTreeDepth][5];
     signal input statePathIndices[batchSize][stateTreeDepth];
 
     signal input currentTally[numVoteOptions];
@@ -62,11 +66,11 @@ template TallyVotes(
     signal input newPerOptionSpentRoot;
 
     // ============ 1. SHA256 Public Input Verification ============
-    component sha256Hasher = Sha256Hasher(4);
+    // 3 values matching Tally.sol
+    component sha256Hasher = Sha256Hasher(3);
     sha256Hasher.inputs[0] <== stateCommitment;
     sha256Hasher.inputs[1] <== tallyCommitment;
     sha256Hasher.inputs[2] <== newTallyCommitment;
-    sha256Hasher.inputs[3] <== batchNum;
 
     sha256Hasher.out === inputHash;
 
@@ -110,7 +114,7 @@ template TallyVotes(
         stateInclusion[i].leaf <== stateLeafHash[i].out;
         for (var d = 0; d < stateTreeDepth; d++) {
             stateInclusion[i].path_index[d] <== statePathIndices[i][d];
-            for (var s = 0; s < 4; s++) {
+            for (var s = 0; s < 5; s++) {
                 stateInclusion[i].path_elements[d][s] <== stateProofs[i][d][s];
             }
         }

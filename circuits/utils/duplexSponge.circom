@@ -28,76 +28,61 @@ template PoseidonDuplexSpongeDecrypt(length) {
     signal input ciphertext[ciphertextLen];
     signal input key[2];
     signal input nonce;
+    signal input enabled;  // 1 = enforce auth tag & padding, 0 = skip (for padding messages)
     signal output plaintext[length];
 
     // 2^128 for domain separation
     var TWO128 = 340282366920938463463374607431768211456;
 
     // ============ Initial State ============
-    // state = [0, key[0], key[1], nonce + length * 2^128]
-    //
-    // Note: the initial state[3] encodes both nonce and plaintext length
-    // for domain separation, matching @zk-kit/poseidon-cipher.
-
     signal initState3;
     initState3 <== nonce + length * TWO128;
 
     // ============ Block Processing ============
-    // Each block: permute → decrypt 3 elements → absorb ciphertext
-
     component perms[numBlocks];
-
-    // State after each permutation: perms[i].out[0..3]
-    // Before first permutation, state = [0, key[0], key[1], initState3]
-
-    // Decrypted (including padding) — we'll slice to `length` at the end
     signal decrypted[paddedLen];
 
     for (var i = 0; i < numBlocks; i++) {
-        // Permute state
         perms[i] = PoseidonEx(3, 4);
 
         if (i == 0) {
-            // First block: initial state
             perms[i].initialState <== 0;
             perms[i].inputs[0] <== key[0];
             perms[i].inputs[1] <== key[1];
             perms[i].inputs[2] <== initState3;
         } else {
-            // Subsequent blocks: state = [perms[i-1].out[0], ct[prev_0], ct[prev_1], ct[prev_2]]
-            // After absorb: rate portion (state[1..3]) is set to ciphertext values
             perms[i].initialState <== perms[i - 1].out[0];
             perms[i].inputs[0] <== ciphertext[(i - 1) * 3];
             perms[i].inputs[1] <== ciphertext[(i - 1) * 3 + 1];
             perms[i].inputs[2] <== ciphertext[(i - 1) * 3 + 2];
         }
 
-        // Decrypt: pt[j] = ct[j] - permuted_state[j+1]
         for (var j = 0; j < 3; j++) {
             decrypted[i * 3 + j] <== ciphertext[i * 3 + j] - perms[i].out[j + 1];
         }
     }
 
-    // ============ Padding Verification ============
-    // Padded elements must be 0
+    // ============ Padding Verification (conditional) ============
+    // When enabled=0 (padding message), skip these checks
     for (var i = length; i < paddedLen; i++) {
-        decrypted[i] === 0;
+        decrypted[i] * enabled === 0;
     }
 
-    // ============ Auth Tag Verification ============
-    // Final permutation with last block's ciphertext absorbed
+    // ============ Auth Tag Verification (conditional) ============
     component authPerm = PoseidonEx(3, 4);
     authPerm.initialState <== perms[numBlocks - 1].out[0];
     authPerm.inputs[0] <== ciphertext[(numBlocks - 1) * 3];
     authPerm.inputs[1] <== ciphertext[(numBlocks - 1) * 3 + 1];
     authPerm.inputs[2] <== ciphertext[(numBlocks - 1) * 3 + 2];
 
-    // Auth tag is the last element of ciphertext, must equal state[1] after final permute
-    authPerm.out[1] === ciphertext[paddedLen];
+    // When enabled=0, allow tag mismatch
+    (authPerm.out[1] - ciphertext[paddedLen]) * enabled === 0;
 
     // ============ Output ============
+    // When enabled=0 (padding message), force plaintext to zero
+    // This prevents garbage values from reaching downstream Num2Bits etc.
     for (var i = 0; i < length; i++) {
-        plaintext[i] <== decrypted[i];
+        plaintext[i] <== decrypted[i] * enabled;
     }
 }
 

@@ -25,6 +25,7 @@ import { ethers } from 'ethers';
 import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, '..');
@@ -113,7 +114,7 @@ const MACI_ABI = [
   'function numSignUps() view returns (uint256)',
   'function polls(uint256) view returns (address)',
   'function owner() view returns (address)',
-  'event SignUp(uint256 indexed stateIndex, uint256 pubKeyX, uint256 pubKeyY, uint256 voiceCreditBalance, uint256 timestamp)',
+  'event SignUp(uint256 indexed stateIndex, uint256 indexed pubKeyX, uint256 pubKeyY, uint256 voiceCreditBalance, uint256 timestamp)',
   'event DeployPoll(uint256 indexed pollId, address pollAddr, address messageProcessorAddr, address tallyAddr)',
 ];
 
@@ -194,15 +195,95 @@ async function main() {
   log(`  TON balance: ${tonBalNum.toFixed(2)} TON`);
   if (tonBalNum < 300) fail('Phase 0', `Insufficient TON: ${tonBalNum} (need >= 300)`);
 
-  // Check MACI contract
-  const maci = new ethers.Contract(config.maciAddress, MACI_ABI, deployer);
-  const owner = await maci.owner();
-  log(`  MACI owner: ${owner}`);
-  if (owner.toLowerCase() !== deployer.address.toLowerCase()) {
-    fail('Phase 0', `Deployer is not MACI owner. Owner=${owner}, Deployer=${deployer.address}`);
+  pass('Phase 0: Pre-checks');
+
+  // ── Phase 0.5: Deploy fresh MACI + AccQueue ──────────
+  log('Phase 0.5: Deploying fresh Verifiers + MACI + AccQueue...');
+
+  const forgeBin = resolve(process.env.HOME || '~', '.foundry/bin/forge');
+  const forgeCmd = [
+    forgeBin, 'script', 'script/DeployE2E.s.sol:DeployE2EScript',
+    '--rpc-url', config.rpcUrl,
+    '--private-key', config.privateKey,
+    '--broadcast',
+    '--skip-simulation',
+  ].join(' ');
+
+  log('  Running forge script...');
+  let forgeOutput: string;
+  try {
+    forgeOutput = execSync(forgeCmd, {
+      cwd: PROJECT_ROOT,
+      encoding: 'utf8',
+      timeout: 120_000,
+      env: {
+        ...process.env,
+        FOUNDRY_PROFILE: 'deploy',
+        PATH: `${resolve(process.env.HOME || '~', '.foundry/bin')}:${process.env.PATH}`,
+      },
+    });
+  } catch (err: any) {
+    fail('Phase 0.5', `forge script failed: ${err.stderr?.slice(0, 300) || err.message}`);
   }
 
-  pass('Phase 0: Pre-checks');
+  // Parse addresses from forge output
+  const mpVerifierMatch = forgeOutput.match(/E2E_MP_VERIFIER=(0x[0-9a-fA-F]{40})/);
+  const tallyVerifierMatch = forgeOutput.match(/E2E_TALLY_VERIFIER=(0x[0-9a-fA-F]{40})/);
+  const accQueueMatch = forgeOutput.match(/E2E_ACCQUEUE=(0x[0-9a-fA-F]{40})/);
+  const maciMatch = forgeOutput.match(/E2E_MACI=(0x[0-9a-fA-F]{40})/);
+  const vkRegistryMatch = forgeOutput.match(/E2E_VK_REGISTRY=(0x[0-9a-fA-F]{40})/);
+
+  if (!accQueueMatch || !maciMatch || !mpVerifierMatch || !tallyVerifierMatch) {
+    log(forgeOutput.slice(-500));
+    fail('Phase 0.5', 'Could not parse deployed addresses from forge output');
+  }
+
+  const freshMpVerifier = mpVerifierMatch[1];
+  const freshTallyVerifier = tallyVerifierMatch[1];
+  const freshMaciAddress = maciMatch[1];
+  const freshAccQueueAddress = accQueueMatch[1];
+  const freshVkRegistry = vkRegistryMatch ? vkRegistryMatch[1] : config.vkRegistry;
+  log(`  Fresh MpVerifier: ${freshMpVerifier}`);
+  log(`  Fresh TallyVerifier: ${freshTallyVerifier}`);
+  log(`  Fresh AccQueue: ${freshAccQueueAddress}`);
+  log(`  Fresh MACI: ${freshMaciAddress}`);
+
+  // Wait for deploy tx confirmation
+  await new Promise((r) => setTimeout(r, 5000));
+
+  // Verify fresh MACI is owned by deployer
+  const maci = new ethers.Contract(freshMaciAddress, MACI_ABI, deployer);
+  const owner = await maci.owner();
+  if (owner.toLowerCase() !== deployer.address.toLowerCase()) {
+    fail('Phase 0.5', `Fresh MACI owner mismatch: ${owner}`);
+  }
+
+  // Get deploy block (recent block number)
+  const deployBlockNum = await provider.getBlockNumber();
+
+  pass('Phase 0.5: Fresh MACI deployed');
+
+  // ── Crypto init (needed for coordinator pubkey derivation before Phase 2) ──
+  log('Initializing crypto modules...');
+  const { buildBabyjub, buildEddsa, buildPoseidon } = await import('circomlibjs');
+  const babyJub = await buildBabyjub();
+  const eddsa = await buildEddsa();
+  const F = babyJub.F;
+  const poseidon = await buildPoseidon();
+  const Fp = poseidon.F;
+
+  // Derive actual coordinator pubkey from private key (config.json might be stale)
+  log('Deriving coordinator pubkey from COORDINATOR_PRIVATE_KEY...');
+  const coordPubKeyRaw = babyJub.mulPointEscalar(babyJub.Base8, config.coordinatorSk);
+  const coordPubKeyX = BigInt(F.toString(coordPubKeyRaw[0]));
+  const coordPubKeyY = BigInt(F.toString(coordPubKeyRaw[1]));
+  if (coordPubKeyX !== config.coordPubKeyX) {
+    log(`  WARNING: config.json coordPubKey is STALE — using derived key`);
+    log(`    derived X: ${coordPubKeyX.toString().slice(0, 20)}...`);
+    log(`    config  X: ${config.coordPubKeyX.toString().slice(0, 20)}...`);
+  } else {
+    log(`  coordPubKey matches config.json`);
+  }
 
   // ── Phase 1: Create test wallets ─────────────────────
   log('Phase 1: Creating test wallets...');
@@ -253,11 +334,11 @@ async function main() {
   const deployTx = await maci.deployPoll(
     'E2E Test Poll',
     pollDuration,
-    config.coordPubKeyX,
-    config.coordPubKeyY,
-    config.mpVerifier,
-    config.tallyVerifier,
-    config.vkRegistry,
+    coordPubKeyX,
+    coordPubKeyY,
+    freshMpVerifier,
+    freshTallyVerifier,
+    freshVkRegistry,
     2, // messageTreeDepth
   );
   const deployReceipt = await waitForTx(deployTx, 'deployPoll');
@@ -297,15 +378,9 @@ async function main() {
   // ── Phase 3: Register 3 voters ───────────────────────
   log('Phase 3: Registering voters...');
 
-  // Initialize crypto for MACI key generation
-  const { buildBabyjub, buildEddsa } = await import('circomlibjs');
-  const babyJub = await buildBabyjub();
-  const eddsa = await buildEddsa();
-  const F = babyJub.F;
-
   interface VoterInfo {
     wallet: ethers.Wallet;
-    sk: bigint;
+    skBuf: Buffer;
     pubKey: [bigint, bigint];
     stateIndex: number;
     name: string;
@@ -319,24 +394,20 @@ async function main() {
       ethers.solidityPackedKeccak256(['string', 'uint256'], [`maci-e2e-voter-${i}`, pollId])
     );
 
-    // Derive BabyJubjub private key: take first 31 bytes mod subgroup order
-    let sk = 0n;
-    for (let j = 0; j < 31; j++) {
-      sk = (sk << 8n) | BigInt(seedBytes[j]);
-    }
-    // BabyJubjub subgroup order
-    const subOrder = 2736030358979909402780800718157159386076813972158567259200215660948447373041n;
-    sk = sk % subOrder;
+    // Use seedBytes directly as EdDSA private key buffer (32 bytes)
+    // circomlibjs eddsa.prv2pub internally does: blake512(buf) → prune → shift >> 3 → mulPointEscalar
+    // This ensures pubkey matches what signPoseidon uses internally
+    const skBuf = Buffer.from(seedBytes);
 
-    // Derive public key
-    const pubKeyRaw = babyJub.mulPointEscalar(babyJub.Base8, sk);
+    // Derive public key via EdDSA (NOT babyJub.mulPointEscalar which gives a different key!)
+    const pubKeyRaw = eddsa.prv2pub(skBuf);
     const pubKey: [bigint, bigint] = [
       BigInt(F.toString(pubKeyRaw[0])),
       BigInt(F.toString(pubKeyRaw[1])),
     ];
 
-    // signUp on MACI
-    const maciWithSigner = new ethers.Contract(config.maciAddress, MACI_ABI, wallets[i]);
+    // signUp on fresh MACI
+    const maciWithSigner = new ethers.Contract(freshMaciAddress, MACI_ABI, wallets[i]);
     const signUpTx = await maciWithSigner.signUp(pubKey[0], pubKey[1], '0x', '0x');
     const signUpReceipt = await waitForTx(signUpTx, `signUp ${walletNames[i]}`);
 
@@ -357,7 +428,7 @@ async function main() {
       stateIndex = Number(parsed!.args.stateIndex);
     }
 
-    voters.push({ wallet: wallets[i], sk, pubKey, stateIndex, name: walletNames[i] });
+    voters.push({ wallet: wallets[i], skBuf, pubKey, stateIndex, name: walletNames[i] });
     log(`  ${walletNames[i]}: stateIndex=${stateIndex}, pubKey=(${pubKey[0].toString().slice(0, 10)}..., ${pubKey[1].toString().slice(0, 10)}...)`);
   }
 
@@ -370,11 +441,6 @@ async function main() {
 
   // ── Phase 4: Cast votes ──────────────────────────────
   log('Phase 4: Casting votes...');
-
-  // Build crypto modules for voting
-  const { buildPoseidon } = await import('circomlibjs');
-  const poseidon = await buildPoseidon();
-  const Fp = poseidon.F;
 
   // ECDH + DuplexSponge encryption
   function ecdhSharedKey(sk: bigint, pub: [bigint, bigint]): [bigint, bigint] {
@@ -437,15 +503,9 @@ async function main() {
   }
 
   // EdDSA sign (using circomlibjs eddsa)
-  function eddsaSign(msg: bigint, sk: bigint): { R8: [bigint, bigint]; S: bigint } {
-    // circomlibjs eddsa.signPoseidon expects Buffer privKey and F element msg
-    // We need to convert our bigint sk to a Buffer
-    const skBuf = Buffer.alloc(32);
-    let v = sk;
-    for (let i = 31; i >= 0; i--) {
-      skBuf[i] = Number(v & 0xFFn);
-      v >>= 8n;
-    }
+  function eddsaSign(msg: bigint, skBuf: Buffer): { R8: [bigint, bigint]; S: bigint } {
+    // circomlibjs eddsa.signPoseidon internally derives signing key via blake512(skBuf)
+    // The pubkey used in verification must come from eddsa.prv2pub(skBuf) — NOT babyJub.mulPointEscalar
     const sig = eddsa.signPoseidon(skBuf, F.e(msg));
     return {
       R8: [BigInt(F.toString(sig.R8[0])), BigInt(F.toString(sig.R8[1]))],
@@ -455,6 +515,36 @@ async function main() {
 
   function packCommand(stateIndex: bigint, voteOptionIndex: bigint, newVoteWeight: bigint, nonce: bigint, pollIdN: bigint): bigint {
     return stateIndex | (voteOptionIndex << 50n) | (newVoteWeight << 100n) | (nonce << 150n) | (pollIdN << 200n);
+  }
+
+  // Self-test: verify DuplexSponge encrypt/decrypt roundtrip
+  log('  Self-testing DuplexSponge encrypt/decrypt...');
+  {
+    const testPt = [1n, 2n, 3n, 4n, 5n, 6n, 7n];
+    const testKey: [bigint, bigint] = [111n, 222n];
+    const testCt = duplexEncrypt(testPt, testKey, 0n);
+
+    // Decrypt
+    const tag = testCt[testCt.length - 1];
+    const encrypted = testCt.slice(0, -1);
+    let decState: bigint[] = [0n, testKey[0], testKey[1], (0n + 7n * TWO128) % SNARK_FIELD];
+    const recovered: bigint[] = [];
+    for (let i = 0; i < encrypted.length; i += 3) {
+      decState = poseidonPerm(decState);
+      recovered.push(
+        (encrypted[i] - decState[1] + SNARK_FIELD) % SNARK_FIELD,
+        (encrypted[i + 1] - decState[2] + SNARK_FIELD) % SNARK_FIELD,
+        (encrypted[i + 2] - decState[3] + SNARK_FIELD) % SNARK_FIELD,
+      );
+      decState[1] = encrypted[i];
+      decState[2] = encrypted[i + 1];
+      decState[3] = encrypted[i + 2];
+    }
+    decState = poseidonPerm(decState);
+    const tagMatch = decState[1] === tag;
+    const ptMatch = testPt.every((v, j) => v === recovered[j]);
+    log(`    Encrypt/Decrypt roundtrip: tag=${tagMatch}, plaintext=${ptMatch}`);
+    if (!tagMatch || !ptMatch) fail('Phase 4', 'DuplexSponge self-test FAILED');
   }
 
   // Vote plan: Alice=FOR(1), Bob=FOR(1), Charlie=AGAINST(0)
@@ -481,8 +571,17 @@ async function main() {
       BigInt(F.toString(ephPubKeyRaw[1])),
     ];
 
-    // ECDH shared key with coordinator
-    const sharedKey = ecdhSharedKey(ephSk, [config.coordPubKeyX, config.coordPubKeyY]);
+    // ECDH shared key with coordinator (use derived pubkey, not config.json)
+    const sharedKey = ecdhSharedKey(ephSk, [coordPubKeyX, coordPubKeyY]);
+
+    // Verify ECDH: coordinator should derive same key from its sk + ephPubKey
+    const coordSharedKey = ecdhSharedKey(config.coordinatorSk, ephPubKey);
+    if (sharedKey[0] !== coordSharedKey[0] || sharedKey[1] !== coordSharedKey[1]) {
+      log(`    ECDH MISMATCH for ${voter.name}!`);
+      log(`      voter: [${sharedKey[0].toString().slice(0, 15)}..., ${sharedKey[1].toString().slice(0, 15)}...]`);
+      log(`      coord: [${coordSharedKey[0].toString().slice(0, 15)}..., ${coordSharedKey[1].toString().slice(0, 15)}...]`);
+      fail('Phase 4', 'ECDH shared key mismatch');
+    }
 
     // Pack command
     const packed = packCommand(
@@ -500,11 +599,18 @@ async function main() {
       salt = (salt << 8n) | BigInt(saltBytes[j]);
     }
 
-    // Compute cmdHash = poseidon(packed, pubKeyX, pubKeyY, salt) — must match coordinator
-    const cmdHash = poseidonHash(packed, voter.pubKey[0], voter.pubKey[1], salt);
+    // Compute cmdHash = poseidon(stateIndex, newPubKeyX, newPubKeyY, newVoteWeight, salt)
+    // Must match circuit: MessageProcessor.circom line 204-209 (5 unpacked inputs)
+    const cmdHash = poseidonHash(
+      BigInt(voter.stateIndex),
+      voter.pubKey[0],
+      voter.pubKey[1],
+      BigInt(voteWeights[i]),
+      salt,
+    );
 
-    // EdDSA sign
-    const sig = eddsaSign(cmdHash, voter.sk);
+    // EdDSA sign (uses skBuf — same buffer that eddsa.prv2pub used for pubkey)
+    const sig = eddsaSign(cmdHash, voter.skBuf);
 
     // Compose plaintext: [packed, pubKeyX, pubKeyY, salt, R8x, R8y, S]
     const plaintext = [
@@ -574,7 +680,7 @@ async function main() {
 
   const crypto = await initCrypto();
   const coordSigner = new ethers.Wallet(config.privateKey, provider);
-  const maciForCoord = new ethers.Contract(config.maciAddress, MACI_ABI, provider);
+  const maciForCoord = new ethers.Contract(freshMaciAddress, MACI_ABI, provider);
 
   await processPoll(
     pollId,
@@ -584,7 +690,7 @@ async function main() {
     coordSigner,
     config.coordinatorSk,
     crypto,
-    config.deployBlock,
+    deployBlockNum - 10, // Use deploy block with small buffer
   );
 
   pass('Phase 6: Coordinator processing complete');

@@ -93,7 +93,7 @@ export const MACI_ABI = [
   'function nextPollId() view returns (uint256)',
   'function polls(uint256) view returns (address)',
   'function numSignUps() view returns (uint256)',
-  'event SignUp(uint256 indexed stateIndex, uint256 pubKeyX, uint256 pubKeyY, uint256 voiceCreditBalance, uint256 timestamp)',
+  'event SignUp(uint256 indexed stateIndex, uint256 indexed pubKeyX, uint256 pubKeyY, uint256 voiceCreditBalance, uint256 timestamp)',
   'event DeployPoll(uint256 indexed pollId, address pollAddr, address messageProcessorAddr, address tallyAddr)',
 ];
 
@@ -136,6 +136,7 @@ interface CryptoKit {
   hash: (...inputs: bigint[]) => bigint;
   ecdh: (sk: bigint, pub: [bigint, bigint]) => bigint[];
   decrypt: (ct: bigint[], key: bigint[], nonce: bigint) => bigint[] | null;
+  encrypt: (pt: bigint[], key: bigint[], nonce: bigint) => bigint[];
   verifyEdDSA: (msg: bigint, sig: { R8: bigint[]; S: bigint }, pk: bigint[]) => boolean;
   hashStateLeaf: (l: StateLeaf) => bigint;
   hashBallot: (b: Ballot) => bigint;
@@ -229,6 +230,37 @@ export async function initCrypto(): Promise<CryptoKit> {
     return plaintext.slice(0, length);
   }
 
+  function duplexEncrypt(pt: bigint[], key: bigint[], nonce: bigint): bigint[] {
+    const length = pt.length;
+    const padded = [...pt];
+    while (padded.length % 3 !== 0) padded.push(0n);
+
+    let state: bigint[] = [
+      0n,
+      key[0],
+      key[1],
+      (nonce + BigInt(length) * TWO128) % SNARK_FIELD,
+    ];
+
+    const ciphertext: bigint[] = [];
+
+    for (let i = 0; i < padded.length; i += 3) {
+      state = poseidonPerm(state);
+      const c0 = (padded[i] + state[1]) % SNARK_FIELD;
+      const c1 = (padded[i + 1] + state[2]) % SNARK_FIELD;
+      const c2 = (padded[i + 2] + state[3]) % SNARK_FIELD;
+      ciphertext.push(c0, c1, c2);
+      state[1] = c0;
+      state[2] = c1;
+      state[3] = c2;
+    }
+
+    // Auth tag
+    state = poseidonPerm(state);
+    ciphertext.push(state[1]);
+    return ciphertext;
+  }
+
   function verifyEdDSAFn(msg: bigint, sig: { R8: bigint[]; S: bigint }, pk: bigint[]): boolean {
     try {
       return eddsa.verifyPoseidon(
@@ -250,12 +282,9 @@ export async function initCrypto(): Promise<CryptoKit> {
   }
 
   function hashCommandFn(c: Command): bigint {
-    const packed = c.stateIndex
-      | (c.voteOptionIndex << 50n)
-      | (c.newVoteWeight << 100n)
-      | (c.nonce << 150n)
-      | (c.pollId << 200n);
-    return hash(packed, c.newPubKeyX, c.newPubKeyY, c.salt);
+    // Must match circuit: Poseidon(stateIndex, newPubKeyX, newPubKeyY, newVoteWeight, salt)
+    // NOT the packed version — circuit unpacks first then hashes individual fields
+    return hash(c.stateIndex, c.newPubKeyX, c.newPubKeyY, c.newVoteWeight, c.salt);
   }
 
   function unpackCommandFn(packed: bigint): Command {
@@ -274,7 +303,7 @@ export async function initCrypto(): Promise<CryptoKit> {
 
   return {
     poseidon, F, eddsa, babyJub,
-    hash, ecdh: ecdhFn, decrypt: duplexDecrypt,
+    hash, ecdh: ecdhFn, decrypt: duplexDecrypt, encrypt: duplexEncrypt,
     verifyEdDSA: verifyEdDSAFn,
     hashStateLeaf: hashStateLeafFn,
     hashBallot: hashBallotFn,
@@ -445,6 +474,10 @@ async function processAndSubmitProofs(
   const reversed = [...messages].sort((a, b) => b.messageIndex - a.messageIndex);
   const mpContract = new ethers.Contract(addrs.mp, MP_ABI, signer);
 
+  // Track state commitment across batches (matches contract's stored value)
+  // Contract initializes currentStateCommitment = 0, updated after each batch
+  let currentStateCommitmentTracker = 0n;
+
   let batchCount = 0;
   for (let bi = 0; bi < reversed.length; bi += BATCH_SIZE) {
     const batch = reversed.slice(bi, bi + BATCH_SIZE);
@@ -576,23 +609,15 @@ async function processAndSubmitProofs(
     const outputStateRoot = stateTree.root;
     const outputBallotRoot = ballotTree.root;
 
-    // Compute coordinator pubkey hash
-    const coordPubKey = crypto.babyJub.mulPointEscalar(crypto.babyJub.Base8, coordinatorSk);
-    const coordPubKeyHash = crypto.hash(
-      BigInt(crypto.F.toString(coordPubKey[0])),
-      BigInt(crypto.F.toString(coordPubKey[1])),
-    );
+    // Compute newStateCommitment = Poseidon(outputStateRoot, outputBallotRoot)
+    const newStateCommitment = crypto.hash(outputStateRoot, outputBallotRoot);
 
-    const batchStartIdx = BigInt(bi);
-    const batchEndIdx = BigInt(Math.min(bi + BATCH_SIZE, reversed.length));
-
-    // Compute SHA256 inputHash
+    // SHA256: 4 values matching MessageProcessor.sol contract
     const inputHash = await computePublicInputHash([
-      inputStateRoot, outputStateRoot,
-      inputBallotRoot, outputBallotRoot,
+      currentStateCommitmentTracker,
+      newStateCommitment,
       inputMessageRoot,
-      coordPubKeyHash,
-      batchStartIdx, batchEndIdx,
+      BigInt(messages.length),
     ]);
 
     // Generate processMessages proof
@@ -601,15 +626,15 @@ async function processAndSubmitProofs(
       const proofInput: ProcessProofInput = {
         wasmPath: MP_WASM,
         zkeyPath: MP_ZKEY,
+        inputHash,
+        currentStateCommitment: currentStateCommitmentTracker,
+        numMessages: BigInt(messages.length),
         inputStateRoot,
         outputStateRoot,
         inputBallotRoot,
         outputBallotRoot,
         inputMessageRoot,
-        coordinatorPubKeyHash: coordPubKeyHash,
-        batchStartIndex: batchStartIdx,
-        batchEndIndex: batchEndIdx,
-        inputHash,
+        numSignUps: BigInt(numSignUps),
         messages: batchMsgs,
         encPubKeys: batchEncPubKeys,
         coordinatorSk,
@@ -626,9 +651,6 @@ async function processAndSubmitProofs(
       };
 
       const proofResult = await generateProcessProof(proofInput);
-
-      // Submit on-chain
-      const newStateCommitment = crypto.hash(outputStateRoot, outputBallotRoot);
       const { pi_a, pi_b, pi_c } = proofResult.proof;
       const pA: [bigint, bigint] = [BigInt(pi_a[0]), BigInt(pi_a[1])];
       const pB: [[bigint, bigint], [bigint, bigint]] = [
@@ -641,9 +663,14 @@ async function processAndSubmitProofs(
       const tx = await mpContract.processMessages(newStateCommitment, pA, pB, pC);
       await tx.wait();
       log(`  Batch ${batchCount} proof submitted`);
+
+      // Update state commitment tracker (matches contract's currentStateCommitment)
+      currentStateCommitmentTracker = newStateCommitment;
     } catch (err) {
       log(`  Proof generation/submission failed: ${(err as Error).message?.slice(0, 120)}`);
       log(`  Off-chain processing continues (results will be available for manual submission)`);
+      // Still update tracker for next batch's circuit input
+      currentStateCommitmentTracker = newStateCommitment;
     }
   }
 
@@ -753,8 +780,9 @@ async function tallyAndPublish(
     const newPerOptionSpentRoot = crypto.hash(...newPerOptionSpent);
     const newTallyCommitment = crypto.hash(newTallyResultsRoot, newTotalSpent, newPerOptionSpentRoot);
 
+    // SHA256: 3 values matching Tally.sol contract
     const inputHash = await computePublicInputHash([
-      stateCommitment, prevTallyCommitment, newTallyCommitment, BigInt(batchNum),
+      stateCommitment, prevTallyCommitment, newTallyCommitment,
     ]);
 
     log(`  Tally batch ${batchNum + 1}/${numBatches}: generating proof...`);
@@ -1061,7 +1089,11 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  console.error('Fatal error:', err);
-  process.exit(1);
-});
+// Only auto-run when executed directly (not when imported as a module)
+const isDirectRun = process.argv[1]?.endsWith('run.ts') || process.argv[1]?.endsWith('run.js');
+if (isDirectRun) {
+  main().catch(err => {
+    console.error('Fatal error:', err);
+    process.exit(1);
+  });
+}
