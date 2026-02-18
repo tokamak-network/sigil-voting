@@ -5,7 +5,7 @@
  * and shows a live countdown to the voting deadline.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useReadContract } from 'wagmi';
 import { POLL_ABI } from '../../contractV2';
 import { useTranslation } from '../../i18n';
@@ -18,6 +18,7 @@ interface PollTimerProps {
 export function PollTimer({ pollAddress, onExpired }: PollTimerProps) {
   const { t } = useTranslation();
   const [now, setNow] = useState(Math.floor(Date.now() / 1000));
+  const expiredFiredRef = useRef(false);
 
   const { data: timeData } = useReadContract({
     address: pollAddress,
@@ -39,9 +40,10 @@ export function PollTimer({ pollAddress, onExpired }: PollTimerProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // Notify parent when timer reaches zero
+  // Notify parent when timer reaches zero (fire only once)
   useEffect(() => {
-    if (expired && onExpired) {
+    if (expired && onExpired && !expiredFiredRef.current) {
+      expiredFiredRef.current = true;
       onExpired();
     }
   }, [expired, onExpired]);

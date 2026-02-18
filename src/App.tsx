@@ -60,19 +60,15 @@ function App() {
           )}
 
           {currentPage === 'proposals' && (
-            <div className="max-w-7xl mx-auto px-6 py-12">
-              <ProposalsList onSelectPoll={handleSelectPoll} />
-            </div>
+            <ProposalsList onSelectPoll={handleSelectPoll} />
           )}
 
           {currentPage === 'proposal-detail' && selectedPollId !== null && (
-            <div className="max-w-7xl mx-auto px-6 py-8">
-              <MACIVotingDemo
-                pollId={selectedPollId}
-                onBack={handleBackToList}
-                onVoteSubmitted={handleVoteSubmitted}
-              />
-            </div>
+            <MACIVotingDemo
+              pollId={selectedPollId}
+              onBack={handleBackToList}
+              onVoteSubmitted={handleVoteSubmitted}
+            />
           )}
 
           {currentPage === 'create-proposal' && (

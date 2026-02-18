@@ -369,7 +369,7 @@ export function VoteFormV2({
         <div className="bg-slate-50 p-6 flex flex-col">
           <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">{t.voteForm.myCredits}</h3>
           <span className="text-xs font-bold text-slate-500 mb-1">{creditsRemaining} / {voiceCredits}</span>
-          <span className="text-2xl font-mono font-bold text-black">{creditsRemaining - cost}</span>
+          <span className={`text-2xl font-mono font-bold ${creditsRemaining - cost < 0 ? 'text-red-500' : 'text-black'}`}>{Math.max(0, creditsRemaining - cost)}</span>
           <span className="text-[10px] font-bold text-slate-400 uppercase mt-1">{t.voteHistory.creditsRemaining}</span>
         </div>
       </div>

@@ -61,6 +61,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   const [signedUp, setSignedUp] = useState(false)
   const [pollAddress, setPollAddress] = useState<`0x${string}` | null>(null)
   const [tallyAddress, setTallyAddress] = useState<`0x${string}` | null>(null)
+  const [messageProcessorAddress, setMessageProcessorAddress] = useState<`0x${string}` | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
   const [, setIsSigningUp] = useState(false)
@@ -115,9 +116,10 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         if (desc) setPollDescription(desc)
 
         for (const log of logs) {
-          const args = log.args as { _pollId?: bigint; tallyAddr?: `0x${string}` }
-          if (args._pollId !== undefined && Number(args._pollId) === propPollId && args.tallyAddr) {
-            setTallyAddress(args.tallyAddr)
+          const args = log.args as { pollId?: bigint; pollAddr?: `0x${string}`; messageProcessorAddr?: `0x${string}`; tallyAddr?: `0x${string}` }
+          if (args.pollId !== undefined && Number(args.pollId) === propPollId) {
+            if (args.tallyAddr) setTallyAddress(args.tallyAddr)
+            if (args.messageProcessorAddr) setMessageProcessorAddress(args.messageProcessorAddr)
             break
           }
         }
@@ -149,14 +151,14 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   const coordPubKeyY = coordPubKeyYRaw ? BigInt(coordPubKeyYRaw as any) : DEFAULT_COORD_PUB_KEY_Y
 
   // Read voice credits from VoiceCreditProxy (user's token balance = credits)
-  const { data: voiceCreditsRaw } = useReadContract({
+  const { data: voiceCreditsRaw, isLoading: isLoadingCredits } = useReadContract({
     address: VOICE_CREDIT_PROXY_ADDRESS,
     abi: VOICE_CREDIT_PROXY_ABI,
     functionName: 'getVoiceCredits',
     args: address ? [address, '0x'] : undefined,
     query: { enabled: isConfigured && VOICE_CREDIT_PROXY_ADDRESS !== ZERO_ADDRESS && !!address, refetchInterval: 30000 },
   })
-  const voiceCredits = voiceCreditsRaw !== undefined ? Number(voiceCreditsRaw) : 0
+  const voiceCredits = voiceCreditsRaw !== undefined ? Number(voiceCreditsRaw) : (isLoadingCredits ? 100 : 0)
 
   // Read numMessages from Poll contract for stats
   const { data: numMessagesRaw } = useReadContract({
@@ -272,7 +274,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
     try {
       const cm = await preloadCrypto()
       const sk = cm.generateRandomPrivateKey()
-      const pk = await cm.derivePublicKey(sk)
+      const pk = await cm.eddsaDerivePublicKey(sk)
 
       const hash = await writeContractAsync({
         address: MACI_V2_ADDRESS,
@@ -731,7 +733,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
           )}
           {phase === V2Phase.Processing && (
             <div className="technical-card-heavy bg-white p-8">
-              <ProcessingStatus />
+              <ProcessingStatus messageProcessorAddress={messageProcessorAddress || undefined} tallyAddress={tallyAddress || undefined} />
             </div>
           )}
           {phase === V2Phase.Finalized && tallyAddress && tallyAddress !== ZERO_ADDRESS ? (

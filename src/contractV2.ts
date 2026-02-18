@@ -92,7 +92,7 @@ export const MACI_ABI = [
     name: 'SignUp',
     inputs: [
       { name: 'stateIndex', type: 'uint256', indexed: true },
-      { name: 'pubKeyX', type: 'uint256', indexed: false },
+      { name: 'pubKeyX', type: 'uint256', indexed: true },
       { name: 'pubKeyY', type: 'uint256', indexed: false },
       { name: 'voiceCreditBalance', type: 'uint256', indexed: false },
       { name: 'timestamp', type: 'uint256', indexed: false },

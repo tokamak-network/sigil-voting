@@ -240,11 +240,25 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
 
       if (publicClient) {
         const receipt = await publicClient.waitForTransactionReceipt({ hash })
+        // Parse DeployPoll event using ABI-aware decoding
+        const deployPollEvent = {
+          type: 'event' as const,
+          name: 'DeployPoll' as const,
+          inputs: [
+            { name: 'pollId', type: 'uint256' as const, indexed: true },
+            { name: 'pollAddr', type: 'address' as const, indexed: false },
+            { name: 'messageProcessorAddr', type: 'address' as const, indexed: false },
+            { name: 'tallyAddr', type: 'address' as const, indexed: false },
+          ],
+        }
+        let parsed = false
         for (const log of receipt.logs) {
-          if (log.topics.length >= 2) {
-            const newPollId = parseInt(log.topics[1] as string, 16)
-            if (log.data && log.data.length >= 66) {
-              const pollAddr = ('0x' + log.data.slice(26, 66)) as `0x${string}`
+          try {
+            const { parseEventLogs } = await import('viem')
+            const events = parseEventLogs({ abi: [deployPollEvent], logs: [log] })
+            if (events.length > 0) {
+              const { pollId: newPollIdBig, pollAddr } = events[0].args as any
+              const newPollId = Number(newPollIdBig)
 
               localStorage.setItem('maci-last-poll-id', newPollId.toString())
               localStorage.setItem('maci-last-poll-addr', pollAddr)
@@ -258,8 +272,32 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               setCreatedTitle(title.trim())
               setIsCreated(true)
               onPollCreated(newPollId, pollAddr, title.trim())
+              parsed = true
+              break
             }
-            break
+          } catch { /* not a DeployPoll event */ }
+        }
+        // Fallback: raw parsing if viem decoding failed
+        if (!parsed) {
+          for (const log of receipt.logs) {
+            if (log.topics.length >= 2) {
+              const newPollId = parseInt(log.topics[1] as string, 16)
+              if (log.data && log.data.length >= 130) {
+                const pollAddr = ('0x' + log.data.slice(26, 66)) as `0x${string}`
+                localStorage.setItem('maci-last-poll-id', newPollId.toString())
+                localStorage.setItem('maci-last-poll-addr', pollAddr)
+                localStorage.setItem(`maci-poll-title-${newPollId}`, title.trim())
+                if (description.trim()) {
+                  localStorage.setItem(`maci-poll-desc-${newPollId}`, description.trim())
+                }
+                setCreatedPollId(newPollId)
+                setCreatedPollAddr(pollAddr)
+                setCreatedTitle(title.trim())
+                setIsCreated(true)
+                onPollCreated(newPollId, pollAddr, title.trim())
+              }
+              break
+            }
           }
         }
       }
