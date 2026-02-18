@@ -52,6 +52,25 @@ export interface Translations {
     documentation: string
     proofVerified: string
     contactSales: string
+    integration: {
+      title: string
+      subtitle: string
+      step1Title: string
+      step1Code: string
+      step1Desc: string
+      step2Title: string
+      step2Code: string
+      step2Desc: string
+      step3Title: string
+      step3Code: string
+      step3Desc: string
+      trustTitle: string
+      trust1: string
+      trust2: string
+      trust3: string
+      trust4: string
+      comingSoon: string
+    }
     cta: {
       title: string
       button: string
@@ -247,6 +266,7 @@ export interface Translations {
     suggestedAction: string
     createNew: string
     statusFailed: string
+    coordinatorHint: string
   }
   results: {
     title: string
@@ -446,6 +466,26 @@ export interface Translations {
       unforge: { title: string; desc: string }
       nonrepud: { title: string; desc: string }
       correct: { title: string; desc: string }
+    }
+    developers: {
+      title: string
+      subtitle: string
+      sdkTitle: string
+      sdkDesc: string
+      widgetTitle: string
+      widgetDesc: string
+      apiTitle: string
+      apiDesc: string
+      useCaseTitle: string
+      useCase1: string
+      useCase2: string
+      useCase3: string
+      useCase4: string
+      trustTitle: string
+      trust1: string
+      trust2: string
+      trust3: string
+      trust4: string
     }
     cta: {
       title: string
