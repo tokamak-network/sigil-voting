@@ -288,7 +288,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
           </h3>
           <div className="space-y-4">
             <a
-              href="https://docs.sigil.vote"
+              href="https://maci.pse.dev"
               target="_blank"
               rel="noopener noreferrer"
               className="w-full p-4 bg-white text-black border-2 border-black hover:bg-primary hover:text-white transition-colors flex justify-between items-center group"
@@ -306,8 +306,101 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
               <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
             </a>
           </div>
-          <div className="mt-12 p-6 border-2 border-dashed border-black opacity-50">
-            <p className="font-mono text-xs text-center">SIGIL_PROTOCOL :: v2.4<br />VERIFIER :: GROTH16_BN254<br />NETWORK :: ETHEREUM</p>
+          <div className="mt-12 p-6 bg-primary/5 border-l-4 border-primary">
+            <p className="font-mono text-xs font-bold text-primary mb-1">Ethereum Sepolia Testnet</p>
+            <p className="text-sm text-slate-600">{t.landing.cta.step1} → {t.landing.cta.step2} → {t.landing.cta.step3}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Comparison Table ─── */}
+      <section className="border-b-2 border-black">
+        {/* Section Header */}
+        <div className="p-6 border-b-2 border-black bg-slate-100 flex justify-between items-center">
+          <h2 className="font-mono text-sm font-bold uppercase tracking-[0.3em]">
+            {t.landing.comparison.title}
+          </h2>
+          <span className="material-symbols-outlined">compare</span>
+        </div>
+
+        <div className="p-12">
+          <p className="text-lg font-medium text-slate-600 mb-10 max-w-2xl">{t.landing.comparison.subtitle}</p>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full border-2 border-black text-sm">
+              <thead>
+                <tr className="bg-black text-white">
+                  <th className="p-4 text-left font-mono font-bold uppercase tracking-wider border-r-2 border-slate-700">{t.landing.comparison.feature}</th>
+                  <th className="p-4 text-center font-mono font-bold uppercase tracking-wider border-r-2 border-slate-700 bg-primary">SIGIL</th>
+                  <th className="p-4 text-center font-mono font-bold uppercase tracking-wider border-r-2 border-slate-700">Snapshot</th>
+                  <th className="p-4 text-center font-mono font-bold uppercase tracking-wider border-r-2 border-slate-700">Aragon</th>
+                  <th className="p-4 text-center font-mono font-bold uppercase tracking-wider border-r-2 border-slate-700">Tally</th>
+                  <th className="p-4 text-center font-mono font-bold uppercase tracking-wider">Vocdoni</th>
+                </tr>
+              </thead>
+              <tbody>
+                {([
+                  {
+                    feature: t.landing.comparison.permanentPrivacy,
+                    values: [t.landing.comparison.yes, t.landing.comparison.postReveal, t.landing.comparison.yes, t.landing.comparison.no, t.landing.comparison.yes],
+                    highlights: [true, false, true, false, true],
+                  },
+                  {
+                    feature: t.landing.comparison.antiBribery,
+                    values: [t.landing.comparison.yes, t.landing.comparison.no, t.landing.comparison.yes, t.landing.comparison.no, t.landing.comparison.no],
+                    highlights: [true, false, true, false, false],
+                  },
+                  {
+                    feature: t.landing.comparison.quadraticVoting,
+                    values: [t.landing.comparison.yes, t.landing.comparison.plugin, t.landing.comparison.no, t.landing.comparison.no, t.landing.comparison.no],
+                    highlights: [true, false, false, false, false],
+                  },
+                  {
+                    feature: t.landing.comparison.onChainVerify,
+                    values: [t.landing.comparison.yes, t.landing.comparison.offchain, t.landing.comparison.yes, t.landing.comparison.yes, t.landing.comparison.ownChain],
+                    highlights: [true, false, true, true, false],
+                  },
+                  {
+                    feature: t.landing.comparison.automation,
+                    values: [t.landing.comparison.yes, t.landing.comparison.yes, t.landing.comparison.demoStage, t.landing.comparison.yes, t.landing.comparison.yes],
+                    highlights: [true, true, false, true, true],
+                  },
+                ] as const).map((row, i) => (
+                  <tr key={i} className={`border-t-2 border-black ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                    <td className="p-4 font-bold uppercase text-xs tracking-wider border-r-2 border-black">{row.feature}</td>
+                    {row.values.map((val, j) => (
+                      <td
+                        key={j}
+                        className={`p-4 text-center border-r-2 border-black last:border-r-0 font-mono font-bold text-xs uppercase ${
+                          j === 0 ? 'bg-primary/5' : ''
+                        }`}
+                      >
+                        {row.highlights[j] ? (
+                          <span className="text-emerald-600 flex items-center justify-center gap-1">
+                            <span className="material-symbols-outlined text-sm">check_circle</span>
+                            {val}
+                          </span>
+                        ) : val === t.landing.comparison.no ? (
+                          <span className="text-red-400 flex items-center justify-center gap-1">
+                            <span className="material-symbols-outlined text-sm">cancel</span>
+                            {val}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">{val}</span>
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Bottom note */}
+          <div className="mt-6 flex items-center gap-3">
+            <span className="w-3 h-3 bg-primary"></span>
+            <p className="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">{t.landing.comparison.onlyStack}</p>
           </div>
         </div>
       </section>
@@ -381,6 +474,40 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
         </div>
       </section>
 
+      {/* ─── FAQ Section ─── */}
+      <section className="border-b-2 border-black">
+        <div className="p-6 border-b-2 border-black bg-slate-100 flex justify-between items-center">
+          <h2 className="font-mono text-sm font-bold uppercase tracking-[0.3em]">
+            {t.landing.faq.title}
+          </h2>
+          <span className="material-symbols-outlined">help</span>
+        </div>
+        <div className="p-12">
+          <p className="text-lg font-medium text-slate-600 mb-10 max-w-2xl">{t.landing.faq.subtitle}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border-2 border-black">
+            {([
+              { q: t.landing.faq.q1, a: t.landing.faq.a1 },
+              { q: t.landing.faq.q2, a: t.landing.faq.a2 },
+              { q: t.landing.faq.q3, a: t.landing.faq.a3 },
+              { q: t.landing.faq.q4, a: t.landing.faq.a4 },
+              { q: t.landing.faq.q5, a: t.landing.faq.a5 },
+              { q: t.landing.faq.q6, a: t.landing.faq.a6 },
+            ]).map((item, i) => (
+              <div
+                key={i}
+                className={`p-8 ${i % 2 === 0 ? 'border-r-0 md:border-r-2' : ''} ${i < 4 ? 'border-b-2' : i < 5 && i % 2 === 0 ? 'border-b-2 md:border-b-0' : ''} border-black`}
+              >
+                <h4 className="font-bold text-sm uppercase tracking-wide mb-4 flex items-start gap-3">
+                  <span className="w-6 h-6 bg-primary text-white flex items-center justify-center font-mono text-xs shrink-0 mt-0.5">Q</span>
+                  {item.q}
+                </h4>
+                <p className="text-base text-slate-600 leading-relaxed pl-9">{item.a}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ─── CTA Section ─── */}
       <section className="bg-black text-white p-20 text-center relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 pointer-events-none select-none">
@@ -391,6 +518,13 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
           <h2 className="font-display text-5xl md:text-6xl font-bold uppercase tracking-tighter leading-none">
             {t.landing.cta.title}
           </h2>
+          <div className="flex items-center justify-center gap-4 font-mono text-xs font-bold uppercase tracking-widest text-slate-400">
+            <span>{t.landing.cta.step1}</span>
+            <span className="material-symbols-outlined text-primary text-sm">arrow_forward</span>
+            <span>{t.landing.cta.step2}</span>
+            <span className="material-symbols-outlined text-primary text-sm">arrow_forward</span>
+            <span>{t.landing.cta.step3}</span>
+          </div>
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <button
               className="bg-primary text-white px-12 py-6 border-2 border-white font-bold text-lg hover:bg-blue-700 transition-all uppercase tracking-[0.2em]"
@@ -399,7 +533,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
               {t.landing.cta.button}
             </button>
             <a
-              href="mailto:contact@tokamak.network"
+              href="mailto:monica@tokamak.network"
               className="bg-transparent text-white px-12 py-6 border-2 border-white font-bold text-lg hover:bg-white hover:text-black transition-all uppercase tracking-[0.2em]"
             >
               {t.landing.contactSales}

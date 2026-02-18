@@ -13,7 +13,7 @@ export default {
         "background-dark": "#09090b",
       },
       fontFamily: {
-        display: ["Space Grotesk", "sans-serif"],
+        display: ["Sora", "sans-serif"],
         sans: ["Inter", "sans-serif"],
         mono: ["JetBrains Mono", "monospace"],
       },

@@ -99,7 +99,7 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
           </button>
           <button
             onClick={() => setCurrentPage('technology')}
-            className={`hidden md:block ml-4 text-sm font-bold uppercase tracking-wider transition-colors ${
+            className={`ml-4 text-sm font-bold uppercase tracking-wider transition-colors ${
               currentPage === 'technology' ? 'text-primary' : 'text-slate-500 hover:text-black'
             }`}
           >

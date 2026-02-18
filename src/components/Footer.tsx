@@ -23,9 +23,9 @@ export function Footer() {
           <div className="space-y-6">
             <h5 className="font-mono text-xs font-bold uppercase tracking-widest text-primary">Protocol_</h5>
             <ul className="font-mono text-sm space-y-4 font-bold uppercase">
-              <li><a href="https://maci.pse.dev" target="_blank" rel="noopener noreferrer" className="hover:underline hover:text-primary transition-colors">MACI Docs</a></li>
               <li><a href="https://maci.pse.dev" target="_blank" rel="noopener noreferrer" className="hover:underline hover:text-primary transition-colors">{t.footer.whitepaper}</a></li>
               <li><a href="https://github.com/tokamak-network/zk-dex" target="_blank" rel="noopener noreferrer" className="hover:underline hover:text-primary transition-colors">{t.footer.audit}</a></li>
+              <li><a href="https://maci.pse.dev/docs" target="_blank" rel="noopener noreferrer" className="hover:underline hover:text-primary transition-colors">{t.footer.sdk}</a></li>
             </ul>
           </div>
 
@@ -42,8 +42,8 @@ export function Footer() {
           <div className="space-y-6">
             <h5 className="font-mono text-xs font-bold uppercase tracking-widest text-primary">Legal_</h5>
             <ul className="font-mono text-sm space-y-4 font-bold uppercase">
-              <li><a href="#" className="hover:underline hover:text-primary transition-colors">Terms</a></li>
-              <li><a href="#" className="hover:underline hover:text-primary transition-colors">Privacy</a></li>
+              <li><span className="text-slate-400 cursor-default">{t.footer.terms}</span></li>
+              <li><span className="text-slate-400 cursor-default">{t.footer.privacy}</span></li>
             </ul>
           </div>
         </div>
@@ -53,9 +53,9 @@ export function Footer() {
       <div className="mt-20 pt-8 border-t-2 border-black flex flex-col md:flex-row justify-between items-center gap-6">
         <p className="font-mono text-xs font-bold uppercase tracking-widest">{t.footer.copyright}</p>
         <div className="flex items-center gap-8 font-mono text-xs font-bold uppercase tracking-widest">
-          <span className="flex items-center gap-2"><span className="w-2 h-2 bg-green-500"></span>Privacy_First</span>
-          <span className="flex items-center gap-2"><span className="w-2 h-2 bg-green-500"></span>Anti_Bribery</span>
-          <span className="flex items-center gap-2"><span className="w-2 h-2 bg-green-500"></span>Verified_Tally</span>
+          <span className="flex items-center gap-2"><span className="w-2 h-2 bg-green-500"></span>{t.footer.privacyFirst}</span>
+          <span className="flex items-center gap-2"><span className="w-2 h-2 bg-green-500"></span>{t.footer.antiBribery}</span>
+          <span className="flex items-center gap-2"><span className="w-2 h-2 bg-green-500"></span>{t.footer.verifiedTally}</span>
         </div>
       </div>
     </footer>

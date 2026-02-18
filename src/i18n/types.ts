@@ -109,6 +109,16 @@ export interface Translations {
       postReveal: string
       onlyStack: string
     }
+    faq: {
+      title: string
+      subtitle: string
+      q1: string; a1: string
+      q2: string; a2: string
+      q3: string; a3: string
+      q4: string; a4: string
+      q5: string; a5: string
+      q6: string; a6: string
+    }
     cta: {
       title: string
       button: string
@@ -390,6 +400,11 @@ export interface Translations {
     systemOperational: string
     protocolVersion: string
     node: string
+    privacyFirst: string
+    antiBribery: string
+    verifiedTally: string
+    terms: string
+    privacy: string
   }
   proposalDetail: {
     currentStatus: string
@@ -489,10 +504,31 @@ export interface Translations {
       step1: string
       step2: string
       step3: string
+      step1Title: string
+      step2Title: string
+      step3Title: string
     }
     combined: {
       title: string
       desc: string
+    }
+    specs: {
+      title: string
+      subtitle: string
+      proofTime: { label: string; value: string; desc: string }
+      gasPerBatch: { label: string; value: string; desc: string }
+      hashFunction: { label: string; value: string; desc: string }
+      keyCurve: { label: string; value: string; desc: string }
+      cipherSuite: { label: string; value: string; desc: string }
+      treeDepth: { label: string; value: string; desc: string }
+    }
+    architecture: {
+      title: string
+      subtitle: string
+      step1: { title: string; desc: string }
+      step2: { title: string; desc: string }
+      step3: { title: string; desc: string }
+      step4: { title: string; desc: string }
     }
     properties: {
       title: string
@@ -510,10 +546,13 @@ export interface Translations {
       subtitle: string
       sdkTitle: string
       sdkDesc: string
+      sdkCode: string
       widgetTitle: string
       widgetDesc: string
+      widgetCode: string
       apiTitle: string
       apiDesc: string
+      apiCode: string
       useCaseTitle: string
       useCase1: string
       useCase2: string

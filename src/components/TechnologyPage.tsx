@@ -172,17 +172,17 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 border-2 border-black">
             <div className="p-8 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-black">
               <span className="font-mono text-xs font-bold text-primary italic mb-4 block">STEP_01</span>
-              <h4 className="font-bold mb-4 uppercase italic">Forced Vote ({t.technology.antiCollusion.scenario})</h4>
+              <h4 className="font-bold mb-4 uppercase italic">{t.technology.antiCollusion.step1Title} ({t.technology.antiCollusion.scenario})</h4>
               <p className="text-base text-slate-600">{t.technology.antiCollusion.step1}</p>
             </div>
             <div className="p-8 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-black bg-slate-50">
               <span className="font-mono text-xs font-bold text-primary italic mb-4 block">STEP_02</span>
-              <h4 className="font-bold mb-4 uppercase italic">Key Change (EdDSA)</h4>
+              <h4 className="font-bold mb-4 uppercase italic">{t.technology.antiCollusion.step2Title} (EdDSA)</h4>
               <p className="text-base text-slate-600">{t.technology.antiCollusion.step2}</p>
             </div>
             <div className="p-8">
               <span className="font-mono text-xs font-bold text-primary italic mb-4 block">STEP_03</span>
-              <h4 className="font-bold mb-4 uppercase italic">Real Vote (Final)</h4>
+              <h4 className="font-bold mb-4 uppercase italic">{t.technology.antiCollusion.step3Title} (Final)</h4>
               <p className="text-base text-slate-600">{t.technology.antiCollusion.step3}</p>
             </div>
           </div>
@@ -204,6 +204,73 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
           <div className="w-4 h-4 bg-primary" />
           <div className="w-4 h-4 bg-primary" />
           <div className="w-4 h-4 bg-primary" />
+        </div>
+      </section>
+
+      {/* Technical Specifications */}
+      <section className="border-b-2 border-black">
+        <div className="p-6 border-b-2 border-black bg-slate-100">
+          <h3 className="font-mono text-sm font-bold uppercase tracking-[0.3em]">
+            {t.technology.specs.title} — {t.technology.specs.subtitle}
+          </h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          {([
+            { ...t.technology.specs.proofTime, icon: 'timer' },
+            { ...t.technology.specs.gasPerBatch, icon: 'local_gas_station' },
+            { ...t.technology.specs.hashFunction, icon: 'tag' },
+            { ...t.technology.specs.keyCurve, icon: 'key' },
+            { ...t.technology.specs.cipherSuite, icon: 'lock' },
+            { ...t.technology.specs.treeDepth, icon: 'account_tree' },
+          ]).map((spec, i) => (
+            <div
+              key={i}
+              className={`p-8 ${i % 3 < 2 ? 'border-r-0 lg:border-r-2' : ''} ${i < 3 ? 'border-b-2' : ''} ${i % 2 === 0 && i < 4 ? 'md:border-r-2 lg:border-r-2' : i % 2 === 0 ? 'md:border-r-2 lg:border-r-0' : ''} border-black`}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <span className="material-symbols-outlined text-primary">{spec.icon}</span>
+                <span className="font-mono text-xs font-bold uppercase tracking-widest text-slate-400">{spec.label}</span>
+              </div>
+              <p className="font-display text-3xl font-black italic tracking-tight mb-2">{spec.value}</p>
+              <p className="text-sm text-slate-600 leading-relaxed">{spec.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* System Architecture */}
+      <section className="border-b-2 border-black">
+        <div className="p-12">
+          <div className="text-center mb-12">
+            <h2 className="font-display text-4xl md:text-5xl font-black uppercase italic tracking-tighter mb-4">
+              {t.technology.architecture.title}
+            </h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">{t.technology.architecture.subtitle}</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-0 border-2 border-black">
+            {([
+              { ...t.technology.architecture.step1, num: '01', color: 'bg-primary' },
+              { ...t.technology.architecture.step2, num: '02', color: 'bg-black' },
+              { ...t.technology.architecture.step3, num: '03', color: 'bg-black' },
+              { ...t.technology.architecture.step4, num: '04', color: 'bg-primary' },
+            ]).map((step, i) => (
+              <div key={i} className={`p-6 ${i < 3 ? 'border-r-0 md:border-r-2' : ''} border-b-2 md:border-b-0 border-black relative`}>
+                <div className={`w-8 h-8 ${step.color} text-white flex items-center justify-center font-mono text-xs font-bold mb-4`}>
+                  {step.num}
+                </div>
+                <h4 className="font-mono font-bold text-sm uppercase tracking-wider mb-3">{step.title}</h4>
+                <p className="text-sm text-slate-600 leading-relaxed">{step.desc}</p>
+                {i < 3 && (
+                  <div className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 w-6 h-6 bg-white border-2 border-black items-center justify-center">
+                    <span className="material-symbols-outlined text-primary text-sm">arrow_forward</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <p className="mt-6 font-mono text-xs text-center uppercase tracking-widest text-slate-400">
+            MACI → POLL → MESSAGE PROCESSOR → TALLY
+          </p>
         </div>
       </section>
 
@@ -234,16 +301,19 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
               {/* 3 Integration Options */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-2 border-black">
                 {[
-                  { icon: 'package_2', title: t.technology.developers.sdkTitle, desc: t.technology.developers.sdkDesc },
-                  { icon: 'widgets', title: t.technology.developers.widgetTitle, desc: t.technology.developers.widgetDesc },
-                  { icon: 'terminal', title: t.technology.developers.apiTitle, desc: t.technology.developers.apiDesc },
+                  { icon: 'package_2', title: t.technology.developers.sdkTitle, desc: t.technology.developers.sdkDesc, code: t.technology.developers.sdkCode },
+                  { icon: 'widgets', title: t.technology.developers.widgetTitle, desc: t.technology.developers.widgetDesc, code: t.technology.developers.widgetCode },
+                  { icon: 'terminal', title: t.technology.developers.apiTitle, desc: t.technology.developers.apiDesc, code: t.technology.developers.apiCode },
                 ].map((item, i) => (
                   <div key={i} className={`p-6 ${i < 2 ? 'border-r-0 md:border-r-2' : ''} border-b-2 md:border-b-0 border-black`}>
                     <div className="w-10 h-10 bg-primary text-white flex items-center justify-center mb-4">
                       <span className="material-symbols-outlined text-lg">{item.icon}</span>
                     </div>
                     <h4 className="font-bold uppercase text-sm tracking-wider mb-3">{item.title}</h4>
-                    <p className="text-base text-slate-600 leading-relaxed">{item.desc}</p>
+                    <p className="text-base text-slate-600 leading-relaxed mb-4">{item.desc}</p>
+                    <pre className="bg-slate-900 text-green-400 p-3 font-mono text-xs leading-relaxed overflow-x-auto">
+                      {item.code}
+                    </pre>
                   </div>
                 ))}
               </div>

@@ -205,6 +205,7 @@ export function VoteFormV2({
           ephemeral.pubKey[0],
           ephemeral.pubKey[1],
         ],
+        gas: 500_000n, // Explicit cap to avoid 21M default when estimation fails
       });
 
       setTxStage('waiting');
@@ -226,17 +227,20 @@ export function VoteFormV2({
       setTxStage('done');
       onVoteSubmitted?.(hash);
     } catch (err) {
+      console.error('Vote error:', err);
       setTxStage('error');
-      const msg = err instanceof Error ? err.message : '';
+      const msg = err instanceof Error ? err.message : String(err);
       // Signup errors come pre-translated with 'signup:' prefix
       if (msg.startsWith('signup:')) {
         setError(msg.slice(7));
-      } else if (msg.includes('insufficient funds') || msg.includes('exceeds the balance')) {
-        setError(t.voteForm.errorGas);
       } else if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
         setError(t.voteForm.errorRejected);
+      } else if (msg.includes('insufficient funds') || msg.includes('exceeds the balance')) {
+        setError(t.voteForm.errorGas);
       } else {
-        setError(t.voteForm.error);
+        // Show actual error for debugging instead of generic message
+        const shortMsg = msg.length > 200 ? msg.slice(0, 200) + '...' : msg;
+        setError(`${t.voteForm.error} (${shortMsg})`);
       }
     } finally {
       setIsSubmitting(false);

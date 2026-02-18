@@ -443,10 +443,10 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
                     )}
                   </div>
 
-                  {/* Arrow Button */}
-                  <button className="w-12 h-12 bg-black text-white flex items-center justify-center hover:bg-primary transition-colors">
+                  {/* Arrow */}
+                  <div className="w-12 h-12 bg-black text-white flex items-center justify-center group-hover:bg-primary transition-colors">
                     <span className="material-symbols-outlined">arrow_forward</span>
-                  </button>
+                  </div>
                 </div>
 
                 {/* ── Proposal # (absolute bottom-left) ── */}

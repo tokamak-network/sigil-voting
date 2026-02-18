@@ -145,6 +145,7 @@ export function KeyManager({
           ephemeral.pubKey[0],
           ephemeral.pubKey[1],
         ],
+        gas: 500_000n,
       });
 
       // Save new keypair (private key encrypted)

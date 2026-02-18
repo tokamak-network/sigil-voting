@@ -369,6 +369,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         abi: MACI_ABI,
         functionName: 'signUp',
         args: [pk[0], pk[1], '0x', '0x'],
+        gas: 500_000n,
       })
 
       // Parse SignUp event to get stateIndex
@@ -396,13 +397,16 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
       setTxHash(hash)
       refetchSignUps()
     } catch (err) {
-      const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('insufficient funds') || msg.includes('gas')) {
-        throw new Error('signup:' + t.voteForm.errorGas)
-      } else if (msg.includes('rejected') || msg.includes('denied')) {
+      console.error('SignUp error:', err)
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
         throw new Error('signup:' + t.voteForm.errorRejected)
+      } else if (msg.includes('insufficient funds') || msg.includes('exceeds the balance')) {
+        throw new Error('signup:' + t.voteForm.errorGas)
       } else {
-        throw new Error('signup:' + t.maci.signup.error)
+        // Show actual error for debugging
+        const shortMsg = msg.length > 120 ? msg.slice(0, 120) + '...' : msg
+        throw new Error('signup:' + t.maci.signup.error + ' (' + shortMsg + ')')
       }
     } finally {
       setIsSigningUp(false)
