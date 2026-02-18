@@ -19,6 +19,8 @@ export interface Translations {
     enterApp: string
     heroStatus: string
     heroVersion: string
+    heroLabel1: string
+    heroLabel2: string
     zeroExposure: { title: string; desc: string }
     maciSecured: { title: string; desc: string }
     coreFeatures: string
@@ -36,6 +38,8 @@ export interface Translations {
       step2: { title: string; desc: string }
       step3: { title: string; desc: string }
     }
+    optionA: string
+    optionB: string
     whyMaci: {
       title: string
       anti: { title: string; sub: string; desc: string }
@@ -43,9 +47,11 @@ export interface Translations {
       verify: { title: string; sub: string; desc: string }
     }
     terminalAccess: string
+    connectDiscord: string
     sourceCode: string
     documentation: string
     proofVerified: string
+    contactSales: string
     cta: {
       title: string
       button: string
@@ -228,6 +234,11 @@ export interface Translations {
     desc: string
     reason: string
     newPollHint: string
+    errorDetails: string
+    processingError: string
+    suggestedAction: string
+    createNew: string
+    statusFailed: string
   }
   results: {
     title: string

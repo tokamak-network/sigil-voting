@@ -168,6 +168,12 @@ export async function initCrypto(): Promise<CryptoKit> {
   }
 
   function ecdhFn(sk: bigint, pub: [bigint, bigint]): bigint[] {
+    // (0,0) is not on Baby Jubjub curve — padding messages use this.
+    // Circuit handles via Mux1 substitution; here we return dummy key
+    // so decryption fails auth tag → message treated as invalid.
+    if (pub[0] === 0n && pub[1] === 0n) {
+      return [0n, 0n];
+    }
     const pt = [F.e(pub[0]), F.e(pub[1])];
     const shared = babyJub.mulPointEscalar(pt, sk);
     return [BigInt(F.toString(shared[0])), BigInt(F.toString(shared[1]))];

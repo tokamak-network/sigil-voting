@@ -759,51 +759,163 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         )}
 
         {/* Phase Content */}
-        <div className="max-w-3xl">
-          {phase === V2Phase.Merging && pollAddress && (
-            <div className="technical-card-heavy bg-white p-8">
-              <MergingStatus pollAddress={pollAddress} />
-            </div>
-          )}
-          {phase === V2Phase.Processing && (
-            <div className="technical-card-heavy bg-white p-8">
-              <ProcessingStatus messageProcessorAddress={messageProcessorAddress || undefined} tallyAddress={tallyAddress || undefined} />
-            </div>
-          )}
-          {phase === V2Phase.Failed && (
-            <div className="technical-card-heavy bg-white p-8">
-              <div className="flex flex-col items-center text-center gap-4">
-                <div className="w-16 h-16 bg-red-100 border-2 border-red-300 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-3xl text-red-500">error</span>
+        {phase === V2Phase.Failed ? (
+          /* Failed Phase: Full-width grid layout matching CompletedResults */
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column: Error Details + Status Bar */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Error Details Card */}
+              <div className="technical-border bg-white p-8">
+                <div className="flex items-start gap-6 mb-8">
+                  <div className="w-16 h-16 bg-red-500 border-2 border-black flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-3xl text-white">error</span>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-display font-bold text-black uppercase">
+                      {t.failed.errorDetails}
+                    </h2>
+                    <p className="text-sm text-slate-500 mt-1">{t.failed.desc}</p>
+                  </div>
                 </div>
-                <h3 className="font-display text-2xl font-black uppercase tracking-tight text-red-600">
-                  {t.failed.title}
-                </h3>
-                <p className="text-sm text-slate-600 max-w-lg">{t.failed.desc}</p>
-                <div className="mt-2 p-4 bg-red-50 border border-red-200 text-left w-full">
-                  <p className="text-xs text-red-700">{t.failed.reason}</p>
+
+                {/* Error Reason */}
+                <div className="bg-red-50 border-2 border-red-200 p-6 mb-8">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="material-symbols-outlined text-red-500 text-base">warning</span>
+                    <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest">
+                      {t.failed.processingError}
+                    </span>
+                  </div>
+                  <p className="text-sm text-red-700 leading-relaxed font-mono">
+                    {t.failed.reason}
+                  </p>
                 </div>
-                <p className="text-sm font-bold text-slate-500 mt-2">{t.failed.newPollHint}</p>
+
+                {/* Suggested Action */}
+                <div className="border-t-2 border-black pt-8">
+                  <h3 className="text-sm font-bold uppercase tracking-widest mb-4">
+                    {t.failed.suggestedAction}
+                  </h3>
+                  <p className="text-sm text-slate-600 mb-6">{t.failed.newPollHint}</p>
+                  <button
+                    onClick={onBack}
+                    className="bg-black text-white px-8 py-4 font-display font-black uppercase italic text-sm tracking-widest border-2 border-black hover:bg-slate-800 transition-colors"
+                    style={{ boxShadow: '4px 4px 0px 0px rgba(0,0,0,1)' }}
+                  >
+                    {t.failed.createNew}
+                  </button>
+                </div>
+              </div>
+
+              {/* Error Status Bar */}
+              <div className="bg-black text-white p-6 technical-border flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 border border-white/20 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-red-500 text-2xl">gpp_bad</span>
+                  </div>
+                  <div>
+                    <h4 className="font-bold uppercase italic text-sm">
+                      {t.failed.processingError}
+                    </h4>
+                    <p className="text-[10px] text-slate-400 font-mono">
+                      POLL: {pollAddress ? `${pollAddress.slice(0, 6)}...${pollAddress.slice(-4)}` : '—'}
+                    </p>
+                  </div>
+                </div>
+                {pollAddress && (
+                  <a
+                    href={`https://sepolia.etherscan.io/address/${pollAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-white text-black px-6 py-2 text-xs font-bold uppercase tracking-widest hover:bg-primary hover:text-white transition-colors flex items-center gap-2"
+                  >
+                    {t.completedResults.viewOnExplorer}
+                    <span className="material-symbols-outlined text-sm">open_in_new</span>
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* Right Column: Proposal Details + Metadata */}
+            <div className="space-y-6">
+              {/* Proposal Details Card */}
+              <div className="technical-border bg-white p-8 h-fit">
+                <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-400 mb-8 border-b-2 border-slate-100 pb-2">
+                  {t.completedResults.proposalDetails}
+                </h2>
+
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <p className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-1">
+                      {t.completedResults.titleLabel}
+                    </p>
+                    <p className="text-base font-display font-bold text-black">
+                      {displayTitle}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-1">
+                      {t.proposalDetail.currentStatus}
+                    </p>
+                    <span className="inline-block px-3 py-1 bg-red-500 text-white text-xs font-mono font-bold uppercase tracking-wider">
+                      {t.failed.statusFailed}
+                    </span>
+                  </div>
+
+                  {pollDescription && (
+                    <div>
+                      <p className="text-xs font-mono text-slate-400 uppercase tracking-wider mb-1">
+                        {t.completedResults.description}
+                      </p>
+                      <p className="text-sm text-slate-600 leading-relaxed">
+                        {pollDescription}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Back to List Button */}
                 <button
                   onClick={onBack}
-                  className="mt-4 bg-black text-white px-8 py-3 font-bold text-xs uppercase tracking-widest border-2 border-black hover:bg-slate-800 transition-colors"
+                  className="w-full bg-black text-white px-4 py-3 text-sm font-mono font-bold uppercase tracking-wider hover:bg-slate-800 transition-colors"
                 >
                   {t.proposals.backToList}
                 </button>
               </div>
+
+              {/* Metadata Box */}
+              <div className="border-2 border-slate-200 p-4 font-mono text-[10px] text-slate-400 uppercase leading-relaxed">
+                <p>Proposal #{propPollId + 1}</p>
+                <p>{t.completedResults.votingStrategy}</p>
+                <p>{t.completedResults.shieldedVoting}</p>
+              </div>
             </div>
-          )}
-          {phase === V2Phase.Finalized && tallyAddress && tallyAddress !== ZERO_ADDRESS ? (
-            <div className="technical-card-heavy bg-white p-8">
-              <ResultsDisplay tallyAddress={tallyAddress} />
-            </div>
-          ) : phase === V2Phase.Finalized ? (
-            <div className="technical-card-heavy bg-white p-8 text-center">
-              <h3 className="font-display text-2xl font-black uppercase mb-2">{t.results.title}</h3>
-              <p className="text-slate-600">{t.results.desc}</p>
-            </div>
-          ) : null}
-        </div>
+          </div>
+        ) : (
+          <div className="max-w-3xl">
+            {phase === V2Phase.Merging && pollAddress && (
+              <div className="technical-card-heavy bg-white p-8">
+                <MergingStatus pollAddress={pollAddress} />
+              </div>
+            )}
+            {phase === V2Phase.Processing && (
+              <div className="technical-card-heavy bg-white p-8">
+                <ProcessingStatus messageProcessorAddress={messageProcessorAddress || undefined} tallyAddress={tallyAddress || undefined} />
+              </div>
+            )}
+            {phase === V2Phase.Finalized && tallyAddress && tallyAddress !== ZERO_ADDRESS ? (
+              <div className="technical-card-heavy bg-white p-8">
+                <ResultsDisplay tallyAddress={tallyAddress} />
+              </div>
+            ) : phase === V2Phase.Finalized ? (
+              <div className="technical-card-heavy bg-white p-8 text-center">
+                <h3 className="font-display text-2xl font-black uppercase mb-2">{t.results.title}</h3>
+                <p className="text-slate-600">{t.results.desc}</p>
+              </div>
+            ) : null}
+          </div>
+        )}
       </div>
     </div>
   )
