@@ -56,12 +56,12 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
           </div>
           <div className="relative z-10 grid grid-cols-2 gap-4">
             <div className="p-6 bg-black border-2 border-white text-white">
-              <p className="font-mono text-[10px] mb-2 text-primary">01 / ENCRYPTION</p>
+              <p className="font-mono text-[10px] mb-2 text-primary">{t.landing.heroLabel1}</p>
               <h3 className="font-bold text-lg uppercase mb-2">{t.landing.zeroExposure.title}</h3>
               <p className="text-xs text-slate-300 leading-relaxed">{t.landing.zeroExposure.desc}</p>
             </div>
             <div className="p-6 bg-black border-2 border-white text-white">
-              <p className="font-mono text-[10px] mb-2 text-primary">02 / PROTOCOL</p>
+              <p className="font-mono text-[10px] mb-2 text-primary">{t.landing.heroLabel2}</p>
               <h3 className="font-bold text-lg uppercase mb-2">{t.landing.maciSecured.title}</h3>
               <p className="text-xs text-slate-300 leading-relaxed">{t.landing.maciSecured.desc}</p>
             </div>
@@ -159,11 +159,11 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             </div>
             <div className="space-y-3">
               <div className="p-4 border-2 border-primary bg-primary/10 flex justify-between items-center">
-                <span className="font-mono text-xs font-bold uppercase">Option Alpha</span>
+                <span className="font-mono text-xs font-bold uppercase">{t.landing.optionA}</span>
                 <span className="material-symbols-outlined text-primary">check_circle</span>
               </div>
               <div className="p-4 border-2 border-black flex justify-between items-center opacity-40">
-                <span className="font-mono text-xs font-bold uppercase">Option Beta</span>
+                <span className="font-mono text-xs font-bold uppercase">{t.landing.optionB}</span>
                 <span className="material-symbols-outlined">radio_button_unchecked</span>
               </div>
             </div>
@@ -242,7 +242,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
               rel="noopener noreferrer"
               className="w-full p-4 bg-black text-white border-2 border-black hover:bg-primary transition-colors flex justify-between items-center group"
             >
-              <span className="font-mono text-xs font-bold uppercase">Connect Discord</span>
+              <span className="font-mono text-xs font-bold uppercase">{t.landing.connectDiscord}</span>
               <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
             </a>
             <a
@@ -265,7 +265,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             </a>
           </div>
           <div className="mt-12 p-6 border-2 border-dashed border-black opacity-50">
-            <p className="font-mono text-[10px] text-center">SYST_LOG: ALL NODES SYNCED<br />ENCRYPTION_LAYER: ACTIVE</p>
+            <p className="font-mono text-[10px] text-center">SIGIL_PROTOCOL :: v2.4<br />VERIFIER :: GROTH16_BN254<br />NETWORK :: ETHEREUM</p>
           </div>
         </div>
       </section>
@@ -291,7 +291,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
               href="mailto:contact@tokamak.network"
               className="bg-transparent text-white px-12 py-6 border-2 border-white font-bold text-lg hover:bg-white hover:text-black transition-all uppercase tracking-[0.2em]"
             >
-              Contact Sales
+              {t.landing.contactSales}
             </a>
           </div>
         </div>

@@ -166,14 +166,18 @@ export function VoteFormV2({
       setTxStage('waiting');
       setTxHash(hash);
 
-      // Wait for on-chain confirmation before saving state
+      // Save state IMMEDIATELY after tx sent (before receipt wait).
+      // This prevents double-submit issues: if receipt wait fails but tx
+      // is already on-chain, nonce is already incremented so retry creates
+      // a new (valid) message instead of a duplicate.
+      incrementNonce(address, pollId);
+      saveLastVote(address, pollId, choice, weight, cost);
+      setCreditsSpent(address, pollId, cost);
+
+      // Wait for on-chain confirmation
       if (publicClient) {
         await publicClient.waitForTransactionReceipt({ hash });
       }
-
-      incrementNonce(address, pollId);
-      saveLastVote(address, pollId, choice, weight, cost);
-      addCreditsSpent(address, pollId, cost);
 
       setTxStage('done');
       onVoteSubmitted?.(hash);
@@ -469,10 +473,11 @@ function getCreditsSpent(address: string, pollId: number): number {
   return parseInt(localStorage.getItem(key) || '0', 10);
 }
 
-function addCreditsSpent(address: string, pollId: number, cost: number): void {
+function setCreditsSpent(address: string, pollId: number, cost: number): void {
   const key = `maci-creditsSpent-${address}-${pollId}`;
-  const current = getCreditsSpent(address, pollId);
-  localStorage.setItem(key, String(current + cost));
+  // Replace (not accumulate): in MACI, re-votes override previous votes,
+  // so only the latest vote's cost counts as spent credits.
+  localStorage.setItem(key, String(cost));
 }
 
 function getStateIndex(address: string, _pollId: number): number {

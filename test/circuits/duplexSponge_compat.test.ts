@@ -35,6 +35,7 @@ describe('DuplexSponge TS↔Circom Compatibility', () => {
       ciphertext: ciphertext.map((v) => v.toString()),
       key: key.map((v) => v.toString()),
       nonce: nonce.toString(),
+      enabled: '1',
     }
 
     const witness = await circuit.calculateWitness(input, true)
@@ -63,6 +64,7 @@ describe('DuplexSponge TS↔Circom Compatibility', () => {
       ciphertext: ciphertext.map((v) => v.toString()),
       key: key.map((v) => v.toString()),
       nonce: nonce.toString(),
+      enabled: '1',
     }
 
     const witness = await circuit.calculateWitness(input, true)
@@ -90,6 +92,7 @@ describe('DuplexSponge TS↔Circom Compatibility', () => {
       ciphertext: ciphertext.map((v) => v.toString()),
       key: key.map((v) => v.toString()),
       nonce: nonce.toString(),
+      enabled: '1',
     }
 
     const witness = await circuit.calculateWitness(input, true)
@@ -117,9 +120,10 @@ describe('DuplexSponge TS↔Circom Compatibility', () => {
       ciphertext: ciphertext.map((v) => v.toString()),
       key: wrongKey.map((v) => v.toString()),
       nonce: nonce.toString(),
+      enabled: '1',
     }
 
-    // Should fail constraint check (auth tag mismatch)
+    // Should fail constraint check (auth tag mismatch when enabled=1)
     await expect(circuit.calculateWitness(input, true)).rejects.toThrow()
   }, 60000)
 })
