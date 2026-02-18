@@ -352,7 +352,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
       { key: 'waiting', label: t.createPoll.stageWaiting },
     ]
     return (
-      <div className="w-full max-w-7xl mx-auto px-6 py-16">
+      <div className="w-full w-full px-6 py-16">
         <TransactionModal
           title={t.createPoll.submitting}
           steps={txSteps}
@@ -365,7 +365,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
   // ─── Success screen ──────────────────────────────────────────────
   if (isCreated && createdPollId !== null) {
     return (
-      <div className="w-full max-w-7xl mx-auto px-6 py-16">
+      <div className="w-full w-full px-6 py-16">
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8">
           {/* Success Icon */}
           <div className="w-20 h-20 bg-primary text-white technical-border flex items-center justify-center">
@@ -426,7 +426,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
   // ─── Loading state ───────────────────────────────────────────────
   if (isCheckingEligibility) {
     return (
-      <div className="w-full max-w-7xl mx-auto px-6 py-16">
+      <div className="w-full w-full px-6 py-16">
         <div className="flex flex-col items-center justify-center min-h-[40vh] gap-6" role="status">
           <div className="w-12 h-12 border-4 border-black border-t-primary animate-spin" />
           <span className="font-display font-bold text-lg uppercase tracking-wider">{t.createPoll.checkingEligibility}</span>
@@ -438,7 +438,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
   // ─── Not eligible ────────────────────────────────────────────────
   if (!canCreate) {
     return (
-      <div className="w-full max-w-7xl mx-auto px-6 py-16">
+      <div className="w-full w-full px-6 py-16">
         <div className="technical-border bg-white p-10 max-w-2xl mx-auto" role="status">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 bg-slate-100 technical-border flex items-center justify-center flex-shrink-0">
@@ -489,7 +489,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
 
   // ─── Eligible: main form ─────────────────────────────────────────
   return (
-    <div className="w-full max-w-7xl mx-auto px-6 py-12">
+    <div className="w-full w-full px-6 py-12">
       {/* Page Title */}
       <div className="mb-12">
         <h1 className="text-5xl md:text-6xl font-display font-black uppercase italic tracking-tight">

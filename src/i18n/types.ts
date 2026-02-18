@@ -17,12 +17,18 @@ export interface Translations {
     title: string
     subtitle: string
     enterApp: string
+    heroStatus: string
+    heroVersion: string
+    zeroExposure: { title: string; desc: string }
+    maciSecured: { title: string; desc: string }
+    coreFeatures: string
     features: {
-      privacy: { title: string; desc: string }
-      coercion: { title: string; desc: string }
-      fairness: { title: string; desc: string }
-      verified: { title: string; desc: string }
+      privacy: { title: string; sub: string; desc: string }
+      coercion: { title: string; sub: string; desc: string }
+      fairness: { title: string; sub: string; desc: string }
+      verified: { title: string; sub: string; desc: string }
     }
+    operationalFlow: string
     lifecycle: {
       title: string
       label: string
@@ -32,10 +38,14 @@ export interface Translations {
     }
     whyMaci: {
       title: string
-      anti: { title: string; desc: string }
-      privacy: { title: string; desc: string }
-      verify: { title: string; desc: string }
+      anti: { title: string; sub: string; desc: string }
+      privacy: { title: string; sub: string; desc: string }
+      verify: { title: string; sub: string; desc: string }
     }
+    terminalAccess: string
+    sourceCode: string
+    documentation: string
+    proofVerified: string
     cta: {
       title: string
       button: string
@@ -43,7 +53,6 @@ export interface Translations {
       step2: string
       step3: string
     }
-    heroVersion: string
   }
   maci: {
     title: string

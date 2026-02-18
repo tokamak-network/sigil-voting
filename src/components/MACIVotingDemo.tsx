@@ -58,6 +58,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   const { t } = useTranslation()
 
   const [phase, setPhase] = useState<V2Phase>(V2Phase.Voting)
+  const [phaseLoaded, setPhaseLoaded] = useState(false)
   const [signedUp, setSignedUp] = useState(false)
   const [pollAddress, setPollAddress] = useState<`0x${string}` | null>(null)
   const [tallyAddress, setTallyAddress] = useState<`0x${string}` | null>(null)
@@ -229,11 +230,13 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
 
         if (isOpen) {
           setPhase(V2Phase.Voting)
+          setPhaseLoaded(true)
           return
         }
 
         if (!stateMerged || !msgMerged) {
           setPhase(V2Phase.Merging)
+          setPhaseLoaded(true)
           return
         }
 
@@ -247,6 +250,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
             })
             if (verified) {
               setPhase(V2Phase.Finalized)
+              setPhaseLoaded(true)
               return
             }
           } catch {
@@ -255,8 +259,10 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         }
 
         setPhase(V2Phase.Processing)
+        setPhaseLoaded(true)
       } catch {
         // Poll might not exist yet or read failed
+        setPhaseLoaded(true)
       }
     }
 
@@ -337,7 +343,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   if (!isConfigured) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="max-w-4xl mx-auto px-6 py-20">
+        <div className="w-full px-6 py-20">
           <div className="technical-card-heavy bg-white p-12 text-center">
             <span className="material-symbols-outlined text-6xl text-slate-300 mb-4" aria-hidden="true">settings</span>
             <h2 className="font-display text-3xl font-black uppercase mb-4">{t.maci.title}</h2>
@@ -352,7 +358,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   if (!isConnected) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="max-w-4xl mx-auto px-6 py-20">
+        <div className="w-full px-6 py-20">
           <div className="technical-card-heavy bg-white p-12 text-center">
             <span className="material-symbols-outlined text-6xl text-slate-300 mb-4" aria-hidden="true">account_balance_wallet</span>
             <h2 className="font-display text-3xl font-black uppercase mb-4">{t.maci.title}</h2>
@@ -363,11 +369,11 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
     )
   }
 
-  // === Loading ===
-  if (isLoadingPoll) {
+  // === Loading (poll data or phase check) ===
+  if (isLoadingPoll || (hasPoll && !phaseLoaded)) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="max-w-4xl mx-auto px-6 py-20">
+        <div className="w-full px-6 py-20">
           <div className="flex flex-col items-center justify-center gap-4" role="status" aria-busy="true">
             <span className="spinner" aria-hidden="true" />
             <span className="text-sm font-mono text-slate-500 uppercase tracking-wider">{t.maci.waiting.processing}</span>
@@ -381,7 +387,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   if (!hasPoll) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="max-w-4xl mx-auto px-6 py-20">
+        <div className="w-full px-6 py-20">
           <button
             onClick={onBack}
             className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 hover:text-black transition-colors mb-6 group"
@@ -406,7 +412,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
       <div className="min-h-screen bg-white">
         {/* Re-vote banner - only shown if user has already voted and not in re-vote mode */}
         {hasVoted && !showReVoteForm && (
-          <div className="max-w-7xl mx-auto px-6 mt-8">
+          <div className="w-full px-6 mt-8">
             <div className="p-4 border-2 border-black bg-slate-900 text-white flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-primary" aria-hidden="true">info</span>
@@ -425,7 +431,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         {/* Error / Tx banners */}
         {error && (
           <div className="bg-red-50 border-b-2 border-red-500">
-            <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+            <div className="w-full px-6 py-3 flex items-center justify-between">
               <span className="text-red-700 text-sm">{error}</span>
               <button className="text-red-700 text-xs font-bold underline" onClick={() => setError(null)}>{t.maci.signup.retry}</button>
             </div>
@@ -433,7 +439,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         )}
         {txHash && (
           <div className="bg-green-50 border-b-2 border-green-500">
-            <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-2">
+            <div className="w-full px-6 py-3 flex items-center gap-2">
               <span className="text-green-700 text-sm">{t.maci.lastTx}</span>
               <a
                 href={`https://sepolia.etherscan.io/tx/${txHash}`}
@@ -447,7 +453,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
           </div>
         )}
 
-        <div className="max-w-7xl mx-auto px-6 py-8 lg:py-12">
+        <div className="w-full px-6 py-8 lg:py-12">
           {/* Back button */}
           <button
             onClick={onBack}
@@ -643,7 +649,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
       {/* Error / Tx banners */}
       {error && (
         <div className="bg-red-50 border-b-2 border-red-500">
-          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+          <div className="w-full px-6 py-3 flex items-center justify-between">
             <span className="text-red-700 text-sm">{error}</span>
             <button className="text-red-700 text-xs font-bold underline" onClick={() => setError(null)}>{t.maci.signup.retry}</button>
           </div>
@@ -651,7 +657,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
       )}
       {txHash && (
         <div className="bg-green-50 border-b-2 border-green-500">
-          <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-2">
+          <div className="w-full px-6 py-3 flex items-center gap-2">
             <span className="text-green-700 text-sm">{t.maci.lastTx}</span>
             <a
               href={`https://sepolia.etherscan.io/tx/${txHash}`}
@@ -665,7 +671,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-6 py-8 lg:py-12">
+      <div className="w-full px-6 py-8 lg:py-12">
         {/* Back button */}
         <button
           onClick={onBack}

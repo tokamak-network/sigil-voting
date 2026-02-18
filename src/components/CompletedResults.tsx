@@ -75,7 +75,7 @@ export function CompletedResults({
   return (
     <div>
       {/* Navigation */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 pt-6">
         <button
           onClick={onBack}
           className="inline-flex items-center gap-2 text-sm font-mono text-slate-500 hover:text-black transition-colors mb-6"
@@ -107,7 +107,7 @@ export function CompletedResults({
       </div>
 
       {/* Main Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+      <div className="w-full px-4 sm:px-6 lg:px-8 pb-16">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column: Voting Breakdown + Verification */}
           <div className="lg:col-span-2 space-y-6">

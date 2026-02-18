@@ -71,7 +71,7 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
 
   return (
     <nav className="sticky top-0 z-50 px-6 py-4 bg-white border-b-2 border-black">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <div className="w-full flex items-center justify-between">
         {/* Left: Logo + Badge */}
         <div className="flex items-center gap-2">
           <button onClick={() => setCurrentPage('landing')} className="flex items-center gap-2">

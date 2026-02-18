@@ -39,7 +39,7 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
 
       {/* 1. ZK Private Voting */}
       <section className="px-6 md:px-12 lg:px-20 py-16 md:py-24 border-b-2 border-black">
-        <div className="max-w-7xl mx-auto">
+        <div className="w-full">
           <div className="flex flex-col lg:flex-row gap-12">
             {/* Left: Explanation */}
             <div className="flex-1">
@@ -90,7 +90,7 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
 
       {/* 2. Quadratic Voting */}
       <section className="px-6 md:px-12 lg:px-20 py-16 md:py-24 border-b-2 border-black bg-slate-50">
-        <div className="max-w-7xl mx-auto">
+        <div className="w-full">
           <div className="flex flex-col lg:flex-row-reverse gap-12">
             {/* Right: Explanation */}
             <div className="flex-1">
@@ -144,7 +144,7 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
 
       {/* 3. MACI Anti-Collusion */}
       <section className="px-6 md:px-12 lg:px-20 py-16 md:py-24 border-b-2 border-black">
-        <div className="max-w-7xl mx-auto">
+        <div className="w-full">
           <div className="flex flex-col lg:flex-row gap-12">
             {/* Left: Explanation */}
             <div className="flex-1">
@@ -224,7 +224,7 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
 
       {/* 7 Security Properties */}
       <section className="px-6 md:px-12 lg:px-20 py-16 md:py-24 border-b-2 border-black">
-        <div className="max-w-7xl mx-auto">
+        <div className="w-full">
           <div className="mb-12">
             <h2 className="font-display font-black uppercase italic text-4xl md:text-5xl mb-3">
               {t.technology.properties.title}

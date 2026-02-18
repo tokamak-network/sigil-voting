@@ -261,7 +261,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   // Not configured fallback
   if (!isConfigured) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-16">
+      <div className="w-full px-4 py-16">
         <div className="bg-white p-8 technical-card">
           <h2 className="text-2xl font-display font-bold uppercase">{t.maci.notDeployed}</h2>
           <p className="mt-2 text-slate-600">{t.maci.notDeployedDesc}</p>
@@ -271,7 +271,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12">
+    <div className="w-full px-4 py-12">
       {/* ── Header Section ── */}
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
         <div>
