@@ -191,6 +191,14 @@ export function ProcessingStatus({
         <StepItem num={3} label={t.processing.step3} status={step3Status} statusText={step3Text} />
       </div>
 
+      {/* Timeline note */}
+      {!isFinalized && (
+        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 flex items-start gap-2">
+          <span className="material-symbols-outlined text-blue-500 text-sm mt-0.5" aria-hidden="true">schedule</span>
+          <p className="text-[11px] text-blue-700 leading-relaxed">{t.processing.timelineNote}</p>
+        </div>
+      )}
+
       {isStuck && !isFinalized && (
         <div className="mt-4 p-4 border-2 border-amber-400 bg-amber-50">
           <div className="flex items-center gap-2 mb-1">

@@ -79,50 +79,62 @@ export function MergingStatus({ pollAddress }: MergingStatusProps) {
 
       <div className="space-y-3">
         <div
-          className={`flex items-center gap-3 p-4 border-2 ${
+          className={`p-4 border-2 ${
             stateComplete ? 'border-green-500 bg-green-50' : 'border-slate-200'
           }`}
         >
-          <span
-            className={`material-symbols-outlined ${
-              stateComplete ? 'text-green-600' : 'text-slate-400'
-            }`}
-            aria-hidden="true"
-          >
-            {isLoading ? 'pending' : stateComplete ? 'check_circle' : 'circle'}
-          </span>
-          <span className="text-sm font-bold flex-1">{t.merging.stateQueue}</span>
-          <span
-            className={`text-xs font-mono font-bold uppercase ${
-              stateComplete ? 'text-green-600' : 'text-slate-400'
-            }`}
-          >
-            {isLoading ? '...' : stateComplete ? t.merging.merged : t.merging.pending}
-          </span>
+          <div className="flex items-center gap-3">
+            <span
+              className={`material-symbols-outlined ${
+                stateComplete ? 'text-green-600' : 'text-slate-400'
+              }`}
+              aria-hidden="true"
+            >
+              {isLoading ? 'pending' : stateComplete ? 'check_circle' : 'circle'}
+            </span>
+            <span className="text-sm font-bold flex-1">{t.merging.stateQueue}</span>
+            <span
+              className={`text-xs font-mono font-bold uppercase ${
+                stateComplete ? 'text-green-600' : 'text-slate-400'
+              }`}
+            >
+              {isLoading ? '...' : stateComplete ? t.merging.merged : t.merging.pending}
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1 ml-9">{t.merging.stateQueueDesc}</p>
         </div>
 
         <div
-          className={`flex items-center gap-3 p-4 border-2 ${
+          className={`p-4 border-2 ${
             messageComplete ? 'border-green-500 bg-green-50' : 'border-slate-200'
           }`}
         >
-          <span
-            className={`material-symbols-outlined ${
-              messageComplete ? 'text-green-600' : 'text-slate-400'
-            }`}
-            aria-hidden="true"
-          >
-            {isLoading ? 'pending' : messageComplete ? 'check_circle' : 'circle'}
-          </span>
-          <span className="text-sm font-bold flex-1">{t.merging.messageQueue}</span>
-          <span
-            className={`text-xs font-mono font-bold uppercase ${
-              messageComplete ? 'text-green-600' : 'text-slate-400'
-            }`}
-          >
-            {isLoading ? '...' : messageComplete ? t.merging.merged : t.merging.pending}
-          </span>
+          <div className="flex items-center gap-3">
+            <span
+              className={`material-symbols-outlined ${
+                messageComplete ? 'text-green-600' : 'text-slate-400'
+              }`}
+              aria-hidden="true"
+            >
+              {isLoading ? 'pending' : messageComplete ? 'check_circle' : 'circle'}
+            </span>
+            <span className="text-sm font-bold flex-1">{t.merging.messageQueue}</span>
+            <span
+              className={`text-xs font-mono font-bold uppercase ${
+                messageComplete ? 'text-green-600' : 'text-slate-400'
+              }`}
+            >
+              {isLoading ? '...' : messageComplete ? t.merging.merged : t.merging.pending}
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1 ml-9">{t.merging.messageQueueDesc}</p>
         </div>
+      </div>
+
+      {/* Timeline note */}
+      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 flex items-start gap-2">
+        <span className="material-symbols-outlined text-blue-500 text-sm mt-0.5" aria-hidden="true">schedule</span>
+        <p className="text-[11px] text-blue-700 leading-relaxed">{t.merging.timelineNote}</p>
       </div>
 
       {allMerged && (

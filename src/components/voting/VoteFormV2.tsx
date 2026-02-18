@@ -14,7 +14,8 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { useWriteContract, useAccount, usePublicClient } from 'wagmi';
+import { useWriteContract, useAccount, usePublicClient, useBalance } from 'wagmi';
+import { formatEther } from 'viem';
 import { POLL_ABI } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 import { VoteConfirmModal } from './VoteConfirmModal';
@@ -56,9 +57,44 @@ export function VoteFormV2({
   const [txHash, setTxHash] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [txStage, setTxStage] = useState<TxStage>('idle');
+  const [estimatedGasEth, setEstimatedGasEth] = useState<string | null>(null);
   const { t } = useTranslation();
 
   const { writeContractAsync } = useWriteContract();
+
+  // ETH balance for gas fee display
+  const { data: ethBalance } = useBalance({ address });
+  const ethBalanceStr = ethBalance ? parseFloat(formatEther(ethBalance.value)).toFixed(4) : '—';
+  const ethBalanceNum = ethBalance ? parseFloat(formatEther(ethBalance.value)) : 0;
+
+  // Estimate gas cost on mount
+  useEffect(() => {
+    if (!publicClient || !pollAddress || !address) return;
+    const estimateGas = async () => {
+      try {
+        // Use a dummy publishMessage call to estimate gas
+        const dummyMsg = new Array(10).fill(0n) as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
+        const gasLimit = await publicClient.estimateContractGas({
+          address: pollAddress,
+          abi: POLL_ABI,
+          functionName: 'publishMessage',
+          args: [dummyMsg, 1n, 1n],
+          account: address,
+        });
+        const gasPrice = await publicClient.getGasPrice();
+        const gasCostWei = gasLimit * gasPrice;
+        // Add 20% buffer for safety
+        const totalCost = isRegistered
+          ? gasCostWei * 120n / 100n
+          : gasCostWei * 280n / 100n; // signUp + publishMessage ≈ 2.8x
+        setEstimatedGasEth(parseFloat(formatEther(totalCost)).toFixed(4));
+      } catch {
+        // Fallback: rough estimate for Sepolia
+        setEstimatedGasEth(isRegistered ? '0.0030' : '0.0060');
+      }
+    };
+    estimateGas();
+  }, [publicClient, pollAddress, address, isRegistered]);
 
   // Vote history detection
   const hasVoted = address ? getNonce(address, pollId) > 1 : false;
@@ -151,6 +187,14 @@ export function VoteFormV2({
       }
 
       setTxStage('confirming');
+
+      // Re-check wallet connection before submitting transaction
+      if (!address) {
+        setError(t.maci.connectWallet);
+        setTxStage('error');
+        setIsSubmitting(false);
+        return;
+      }
 
       const hash = await writeContractAsync({
         address: pollAddress,
@@ -252,14 +296,14 @@ export function VoteFormV2({
         <div className="flex flex-col gap-2 px-4 py-3 bg-slate-50 border-2 border-black/10">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-[16px] text-slate-500" aria-hidden="true">info</span>
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">{t.voteHistory.alreadyVoted}</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">{t.voteHistory.alreadyVoted}</span>
           </div>
-          <div className="flex flex-wrap gap-4 text-[11px] font-mono text-slate-600">
+          <div className="flex flex-wrap gap-4 text-xs font-mono text-slate-600">
             <span>{t.voteHistory.lastChoice}: <strong className="text-black">{lastVote.choice === 1 ? t.voteForm.for : t.voteForm.against}</strong></span>
             <span>{t.voteHistory.lastWeight}: <strong className="text-black">{lastVote.weight}</strong></span>
             <span>{t.voteHistory.lastCost}: <strong className="text-black">{lastVote.cost}</strong></span>
           </div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase">{t.voteHistory.overrideWarning}</p>
+          <p className="text-xs font-bold text-slate-400 uppercase">{t.voteHistory.overrideWarning}</p>
         </div>
       )}
 
@@ -267,7 +311,7 @@ export function VoteFormV2({
       {!isRegistered && !hasVoted && (
         <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-2 border-blue-200">
           <span className="material-symbols-outlined text-[16px] text-blue-500" aria-hidden="true">info</span>
-          <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wide">{t.voteForm.autoRegisterNotice}</span>
+          <span className="text-xs font-bold text-blue-600 uppercase tracking-wide">{t.voteForm.autoRegisterNotice}</span>
         </div>
       )}
 
@@ -318,7 +362,7 @@ export function VoteFormV2({
             <span className="w-2 h-2 bg-[#0052FF]"></span>
             {t.voteForm.weightLabel}
           </h3>
-          <span className="text-[10px] font-mono font-bold bg-black text-white px-2 py-1 uppercase">{t.voteFormExtra.quadraticScaling}</span>
+          <span className="text-xs font-mono font-bold bg-black text-white px-2 py-1 uppercase">{t.voteFormExtra.quadraticScaling}</span>
         </div>
         <div className="flex items-center gap-4 mb-8">
           <button
@@ -355,7 +399,7 @@ export function VoteFormV2({
             disabled={isSubmitting}
             aria-describedby="vote-cost"
           />
-          <div className="flex justify-between mt-4 text-[10px] font-bold text-slate-400 font-mono">
+          <div className="flex justify-between mt-4 text-xs font-bold text-slate-400 font-mono">
             <span>{t.voteFormExtra.minCredit}</span>
             <span>{t.voteFormExtra.maxCredits.replace('{n}', String(MAX_WEIGHT * MAX_WEIGHT))}</span>
           </div>
@@ -365,16 +409,16 @@ export function VoteFormV2({
       {/* Cost / Remaining grid */}
       <div className="grid grid-cols-2 gap-px bg-black border-2 border-black">
         <div className="bg-slate-50 p-6 flex flex-col">
-          <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">{t.voteForm.cost}</h3>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">{t.voteForm.cost}</h3>
           <span className="text-xs font-bold text-slate-500 mb-1">{t.voteForm.weightLabel}: {weight}&sup2;</span>
           <span className="text-2xl font-mono font-bold text-emerald-500">{cost}</span>
-          <span className="text-[10px] font-bold text-slate-400 uppercase mt-1">{t.voteForm.credits}</span>
+          <span className="text-xs font-bold text-slate-400 uppercase mt-1">{t.voteForm.credits}</span>
         </div>
         <div className="bg-slate-50 p-6 flex flex-col">
-          <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">{t.voteForm.myCredits}</h3>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">{t.voteForm.myCredits}</h3>
           <span className="text-xs font-bold text-slate-500 mb-1">{creditsRemaining} / {voiceCredits}</span>
           <span className={`text-2xl font-mono font-bold ${creditsRemaining - cost < 0 ? 'text-red-500' : 'text-black'}`}>{Math.max(0, creditsRemaining - cost)}</span>
-          <span className="text-[10px] font-bold text-slate-400 uppercase mt-1">{t.voteHistory.creditsRemaining}</span>
+          <span className="text-xs font-bold text-slate-400 uppercase mt-1">{t.voteHistory.creditsRemaining}</span>
         </div>
       </div>
 
@@ -384,6 +428,30 @@ export function VoteFormV2({
           {t.voteForm.creditExceeded}
         </p>
       )}
+
+      {/* Gas Fee Estimate */}
+      <div className="border-2 border-slate-200 p-4 space-y-2">
+        <div className="flex justify-between items-center">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.voteForm.estimatedGas}</span>
+          <span className="text-xs font-mono font-bold text-slate-600">
+            ~{estimatedGasEth || '...'} ETH
+          </span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.voteForm.yourEthBalance}</span>
+          <span className={`text-xs font-mono font-bold ${
+            estimatedGasEth && ethBalanceNum < parseFloat(estimatedGasEth) ? 'text-red-500' : 'text-emerald-600'
+          }`}>
+            {ethBalanceStr} ETH
+          </span>
+        </div>
+        {!isRegistered && (
+          <p className="text-[10px] font-mono text-amber-600 pt-1">{t.voteForm.firstVoteNote}</p>
+        )}
+        {estimatedGasEth && ethBalanceNum < parseFloat(estimatedGasEth) && (
+          <p className="text-[10px] font-bold text-red-500 pt-1">{t.voteForm.lowBalance}</p>
+        )}
+      </div>
 
       {/* Submit */}
       <div className="pt-4">
@@ -398,7 +466,7 @@ export function VoteFormV2({
         </button>
         <div className="flex items-center justify-center gap-2 mt-6 py-3 bg-slate-50 border border-black/10">
           <span className="material-symbols-outlined text-[16px] text-green-600">lock</span>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
             {t.voteForm.desc}
           </p>
         </div>
@@ -441,7 +509,7 @@ export function VoteFormV2({
           >
             {txHash.slice(0, 10)}...{txHash.slice(-6)}
           </a>
-          <p className="text-[11px] font-bold text-slate-500 text-center">{t.voteForm.successNext}</p>
+          <p className="text-xs font-bold text-slate-500 text-center">{t.voteForm.successNext}</p>
         </div>
       )}
     </div>

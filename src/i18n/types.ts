@@ -184,6 +184,10 @@ export interface Translations {
     successNext: string
     retry: string
     autoRegisterNotice: string
+    estimatedGas: string
+    yourEthBalance: string
+    lowBalance: string
+    firstVoteNote: string
   }
   keyManager: {
     title: string
@@ -213,6 +217,9 @@ export interface Translations {
     estimate: string
     stuck: string
     stuckDesc: string
+    stateQueueDesc: string
+    messageQueueDesc: string
+    timelineNote: string
   }
   processing: {
     title: string
@@ -228,6 +235,7 @@ export interface Translations {
     estimate: string
     stuck: string
     stuckDesc: string
+    timelineNote: string
   }
   failed: {
     title: string
