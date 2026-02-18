@@ -8,9 +8,7 @@ export function Footer() {
         {/* Brand */}
         <div className="space-y-8">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-primary border-2 border-black flex items-center justify-center">
-              <span className="material-symbols-outlined text-white text-sm">shield</span>
-            </div>
+            <img src="/assets/symbol.svg" alt="SIGIL" className="w-8 h-8" />
             <span className="font-display font-bold text-2xl tracking-tighter uppercase">SIGIL</span>
           </div>
           <div className="space-y-1">

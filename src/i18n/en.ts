@@ -235,6 +235,12 @@ export const en: Translations = {
     stuck: 'Processing is delayed',
     stuckDesc: 'Proof generation is taking time. It will automatically retry shortly.',
   },
+  failed: {
+    title: 'Tally Failed',
+    desc: 'This proposal could not be tallied due to a technical issue.',
+    reason: 'An error occurred during vote processing and results cannot be retrieved. This may be a proposal created with pre-fix code.',
+    newPollHint: 'Please create a new proposal and vote again.',
+  },
   results: {
     title: 'Vote Results',
     desc: 'Final results verified by zero-knowledge proofs.',

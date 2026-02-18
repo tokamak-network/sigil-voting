@@ -223,6 +223,12 @@ export interface Translations {
     stuck: string
     stuckDesc: string
   }
+  failed: {
+    title: string
+    desc: string
+    reason: string
+    newPollHint: string
+  }
   results: {
     title: string
     desc: string
