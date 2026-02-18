@@ -21,7 +21,7 @@ function poseidonHash(poseidon: any, inputs: bigint[]): bigint {
 }
 
 export interface QuinaryMerkleProof {
-  pathElements: bigint[][];  // [depth][4] siblings
+  pathElements: bigint[][];  // [depth][5] all children at each level
   pathIndices: number[];     // [depth] 0-4 position
   root: bigint;
 }
@@ -86,14 +86,12 @@ export class QuinaryMerkleTree {
 
       pathIndices.push(positionInParent);
 
-      // Collect 4 siblings (all children except self)
-      const siblings: bigint[] = [];
+      // Collect all 5 children (circuit replaces leaf position via isPos mux)
+      const children: bigint[] = [];
       for (let j = 0; j < this.arity; j++) {
-        if (j !== positionInParent) {
-          siblings.push(this.getNodeHash(level, parentStartIndex + j));
-        }
+        children.push(this.getNodeHash(level, parentStartIndex + j));
       }
-      pathElements.push(siblings);
+      pathElements.push(children);
 
       currentIndex = Math.floor(currentIndex / this.arity);
     }

@@ -6,8 +6,8 @@
  * .wasm and .zkey files.
  *
  * IMPORTANT: Circuit input names MUST match the signal names in the .circom files exactly.
- * - MessageProcessor.circom: does in-circuit DuplexSponge decryption (no cmd* inputs)
- * - TallyVotes.circom: batch-based tally with full private inputs
+ * - MessageProcessor.circom: SHA256(currentStateCommitment, newStateCommitment, inputMessageRoot, numMessages)
+ * - TallyVotes.circom: SHA256(stateCommitment, tallyCommitment, newTallyCommitment)
  */
 
 export interface ProofResult {
@@ -26,15 +26,16 @@ export interface ProcessProofInput {
   zkeyPath: string;
   // Public input (SHA256 compressed)
   inputHash: bigint;
-  // Values inside SHA256 hash
+  // SHA256 hash values (matching MessageProcessor.sol)
+  currentStateCommitment: bigint;  // contract's stored value (0 for first batch)
+  numMessages: bigint;             // from Poll.numMessages()
+  // Private inputs (roots)
   inputStateRoot: bigint;
   outputStateRoot: bigint;
   inputBallotRoot: bigint;
   outputBallotRoot: bigint;
   inputMessageRoot: bigint;
-  coordinatorPubKeyHash: bigint;
-  batchStartIndex: bigint;
-  batchEndIndex: bigint;
+  numSignUps: bigint;              // for indexCheck (stateIndex < numSignUps)
   // Per-message private inputs
   messages: bigint[][];       // [batchSize][10]
   encPubKeys: bigint[][];     // [batchSize][2]
@@ -43,11 +44,11 @@ export interface ProcessProofInput {
   stateLeaves: bigint[][];    // [batchSize][4]
   ballots: bigint[][];        // [batchSize][2]
   ballotVoteWeights: bigint[];// [batchSize]
-  stateProofs: bigint[][][];  // [batchSize][depth][4]
+  stateProofs: bigint[][][];  // [batchSize][depth][5]
   statePathIndices: bigint[][]; // [batchSize][depth]
-  ballotProofs: bigint[][][]; // [batchSize][depth][4]
+  ballotProofs: bigint[][][]; // [batchSize][depth][5]
   ballotPathIndices: bigint[][]; // [batchSize][depth]
-  msgProofs: bigint[][][];    // [batchSize][depth][4]
+  msgProofs: bigint[][][];    // [batchSize][depth][5]
   msgPathIndices: bigint[][];  // [batchSize][depth]
 }
 
@@ -57,14 +58,14 @@ export async function generateProcessProof(input: ProcessProofInput): Promise<Pr
   // Circuit input names must exactly match MessageProcessor.circom signal names
   const circuitInputs = {
     inputHash: input.inputHash.toString(),
+    currentStateCommitment: input.currentStateCommitment.toString(),
+    numMessages: input.numMessages.toString(),
     inputStateRoot: input.inputStateRoot.toString(),
     outputStateRoot: input.outputStateRoot.toString(),
     inputBallotRoot: input.inputBallotRoot.toString(),
     outputBallotRoot: input.outputBallotRoot.toString(),
     inputMessageRoot: input.inputMessageRoot.toString(),
-    coordinatorPubKeyHash: input.coordinatorPubKeyHash.toString(),
-    batchStartIndex: input.batchStartIndex.toString(),
-    batchEndIndex: input.batchEndIndex.toString(),
+    numSignUps: input.numSignUps.toString(),
     messages: input.messages.map((m) => m.map((v) => v.toString())),
     encPubKeys: input.encPubKeys.map((pk) => pk.map((v) => v.toString())),
     coordinatorSk: input.coordinatorSk.toString(),
@@ -96,17 +97,18 @@ export interface TallyProofInput {
   zkeyPath: string;
   // Public input (SHA256 compressed)
   inputHash: bigint;
-  // Values inside SHA256 hash
+  // SHA256 hash values (matching Tally.sol — 3 values)
   stateCommitment: bigint;
   tallyCommitment: bigint;
   newTallyCommitment: bigint;
-  batchNum: bigint;
+  // Private input
+  batchNum: bigint;           // for isBatchZero check (not in SHA256)
   // Private inputs (per voter in batch)
   stateLeaves: bigint[][];      // [batchSize][4]
   ballotNonces: bigint[];       // [batchSize]
   voteWeights: bigint[][];      // [batchSize][numVoteOptions]
   voteOptionRoots: bigint[];    // [batchSize]
-  stateProofs: bigint[][][];    // [batchSize][depth][4]
+  stateProofs: bigint[][][];    // [batchSize][depth][5]
   statePathIndices: bigint[][]; // [batchSize][depth]
   // Tally accumulators
   currentTally: bigint[];       // [numVoteOptions]

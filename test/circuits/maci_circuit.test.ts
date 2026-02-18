@@ -187,26 +187,21 @@ describe('MACI Circuit Tests', () => {
       // Build a small quinary tree of depth 2
       // Use leaf at position [0,0] (index 0 at both levels)
       const leaf = 42n
-      // path_elements[level][4]: the 4 sibling values
-      // Circuit logic for path_index=0:
-      //   children = [leaf, pe[1], pe[2], pe[3], pe[3]]
-      //   pe[0] is overwritten by leaf, pe[3] is shared by positions 3 and 4
-      // For clean test, use path_index=2 (middle position):
-      //   children[0]=pe[0], children[1]=pe[1], children[2]=leaf, children[3]=pe[3], children[4]=pe[3]
-      // Actually let's just set path_index to make it simpler to reason about
-      const level1Siblings = [100n, 200n, 300n, 400n]
-      const level2Siblings = [500n, 600n, 700n, 800n]
+      // path_elements[level][5]: all 5 children at each level
+      // Circuit inserts hash at path_index, replacing whatever is at that position
+      const level1Children = [999n, 200n, 300n, 400n, 500n]  // [0]=placeholder, replaced by leaf
+      const level2Children = [888n, 600n, 700n, 800n, 900n]  // [0]=placeholder, replaced by level1Hash
 
-      // path_index=0: children = [leaf, pe[1], pe[2], pe[3], pe[3]]
-      const level1Hash = F.toObject(poseidon([leaf, level1Siblings[1], level1Siblings[2], level1Siblings[3], level1Siblings[3]]))
-      const expectedRoot = F.toObject(poseidon([level1Hash, level2Siblings[1], level2Siblings[2], level2Siblings[3], level2Siblings[3]]))
+      // path_index=0: children[0] = leaf (replaces level1Children[0]), rest unchanged
+      const level1Hash = F.toObject(poseidon([leaf, level1Children[1], level1Children[2], level1Children[3], level1Children[4]]))
+      const expectedRoot = F.toObject(poseidon([level1Hash, level2Children[1], level2Children[2], level2Children[3], level2Children[4]]))
 
       const input = {
         leaf: leaf.toString(),
         path_index: ['0', '0'],
         path_elements: [
-          level1Siblings.map((v) => v.toString()),
-          level2Siblings.map((v) => v.toString()),
+          level1Children.map((v) => v.toString()),
+          level2Children.map((v) => v.toString()),
         ],
       }
 

@@ -8,18 +8,18 @@ include "circomlib/circuits/comparators.circom";
  *
  * Each node has 5 children, hashed with Poseidon(5).
  * path_index[i] = 0..4 indicates the position of the node at level i.
- * path_elements[i][4] = the 4 sibling nodes at level i.
+ * path_elements[i][5] = all 5 children at level i.
  *
- * The prover must arrange path_elements such that:
- *   path_elements[i][0..3] = siblings in order, skipping the leaf's position.
- *   i.e., [child_0, ..., child_{idx-1}, child_{idx+1}, ..., child_4]
+ * The circuit inserts the computed hash at path_index position,
+ * replacing whatever value was provided there. The other 4 positions
+ * must contain the correct sibling values.
  *
  * Replacing binary MerkleProof for MACI quinary trees.
  */
 template QuinaryMerkleProof(depth) {
     signal input leaf;
     signal input path_index[depth];      // 0-4 position at each level
-    signal input path_elements[depth][4]; // 4 siblings at each level
+    signal input path_elements[depth][5]; // all 5 children at each level
     signal output root;
 
     signal hashes[depth + 1];
@@ -43,17 +43,10 @@ template QuinaryMerkleProof(depth) {
         }
 
         // Build children array: insert hashes[i] at path_index position
-        // children[j] = isPos[j] ? hashes[i] : path_elements[i][j or j-1]
-        //
-        // Simplified: prover provides path_elements in adjusted order
-        // path_elements[i][j] corresponds to position j when j < path_index,
-        // and position j+1 when j >= path_index.
-        // So: children[j] = isPos[j] * hashes[i] + (1 - isPos[j]) * path_elements[i][min(j, 3)]
-        for (var j = 0; j < 4; j++) {
+        // children[j] = isPos[j] ? hashes[i] : path_elements[i][j]
+        for (var j = 0; j < 5; j++) {
             children[i][j] <== isPos[i][j] * (hashes[i] - path_elements[i][j]) + path_elements[i][j];
         }
-        // Position 4: sibling index is 3
-        children[i][4] <== isPos[i][4] * (hashes[i] - path_elements[i][3]) + path_elements[i][3];
 
         hashers[i].inputs[0] <== children[i][0];
         hashers[i].inputs[1] <== children[i][1];
