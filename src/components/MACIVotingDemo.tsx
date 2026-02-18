@@ -165,7 +165,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
     address: pollAddress || ZERO_ADDRESS,
     abi: POLL_ABI,
     functionName: 'numMessages',
-    query: { enabled: hasPoll, refetchInterval: 10000 },
+    query: { enabled: hasPoll, refetchInterval: 30000 },
   })
   const numMessages = numMessagesRaw !== undefined ? Number(numMessagesRaw) : 0
 
@@ -261,9 +261,12 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
     }
 
     checkPhase()
-    const interval = setInterval(checkPhase, 5000)
+    // Voting phase: slow poll (15s). Merging/Processing: faster (8s). Finalized: stop.
+    if (phase === V2Phase.Finalized) return
+    const ms = phase === V2Phase.Voting ? 15000 : 8000
+    const interval = setInterval(checkPhase, ms)
     return () => clearInterval(interval)
-  }, [pollAddress, publicClient, tallyAddress])
+  }, [pollAddress, publicClient, tallyAddress, phase])
 
   // === SignUp (called by VoteFormV2 via callback) ===
   const handleSignUp = useCallback(async () => {

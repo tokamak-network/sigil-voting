@@ -69,12 +69,12 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     address: MACI_V2_ADDRESS,
     abi: MACI_ABI,
     functionName: 'nextPollId',
-    query: { enabled: isConfigured, refetchInterval: 5000 },
+    query: { enabled: isConfigured, refetchInterval: 15000 },
   })
 
   // Clock tick for timers
   useEffect(() => {
-    const interval = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
+    const interval = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 10000)
     return () => clearInterval(interval)
   }, [])
 

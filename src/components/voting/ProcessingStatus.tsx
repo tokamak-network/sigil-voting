@@ -83,14 +83,14 @@ export function ProcessingStatus({
     address: mpAddress,
     abi: MESSAGE_PROCESSOR_ABI,
     functionName: 'processingComplete',
-    query: { enabled: hasValidAddresses, refetchInterval: 5000 },
+    query: { enabled: hasValidAddresses, refetchInterval: 10000 },
   });
 
   const { data: tallyVerified } = useReadContract({
     address: tAddress,
     abi: TALLY_ABI,
     functionName: 'tallyVerified',
-    query: { enabled: hasValidAddresses, refetchInterval: 5000 },
+    query: { enabled: hasValidAddresses, refetchInterval: 10000 },
   });
 
   // If we don't have valid addresses, show a simplified waiting state
