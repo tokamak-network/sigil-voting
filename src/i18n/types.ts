@@ -203,6 +203,10 @@ export interface Translations {
     merged: string
     pending: string
     allMerged: string
+    elapsed: string
+    estimate: string
+    stuck: string
+    stuckDesc: string
   }
   processing: {
     title: string
@@ -214,6 +218,10 @@ export interface Translations {
     complete: string
     waiting: string
     verified: string
+    elapsed: string
+    estimate: string
+    stuck: string
+    stuckDesc: string
   }
   results: {
     title: string
