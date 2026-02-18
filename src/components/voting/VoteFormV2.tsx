@@ -22,7 +22,7 @@ import { useTranslation } from '../../i18n';
 import { VoteConfirmModal } from './VoteConfirmModal';
 import { TransactionModal } from './TransactionModal';
 import { preloadCrypto } from '../../crypto/preload';
-import { getLastVote } from './voteUtils';
+import { getLastVote, getMaciNonce, incrementMaciNonce } from './voteUtils';
 
 interface VoteFormV2Props {
   pollId: number;
@@ -97,8 +97,8 @@ export function VoteFormV2({
     estimateGas();
   }, [publicClient, pollAddress, address, isRegistered]);
 
-  // Vote history detection
-  const hasVoted = address ? getNonce(address, pollId) > 1 : false;
+  // Vote history detection (shared MACI nonce: votes + key changes)
+  const hasVoted = address ? getMaciNonce(address, pollId) > 1 : false;
   const lastVote = address ? getLastVote(address, pollId) : null;
   const creditsSpent = address ? getCreditsSpent(address, pollId) : 0;
   const creditsRemaining = voiceCredits - creditsSpent;
@@ -140,7 +140,7 @@ export function VoteFormV2({
         [coordinatorPubKeyX, coordinatorPubKeyY],
       );
 
-      const nonce = BigInt(getNonce(address, pollId));
+      const nonce = BigInt(getMaciNonce(address, pollId));
       const stateIndex = BigInt(getStateIndex(address, pollId));
       const packedCommand = packCommand(
         stateIndex,
@@ -217,7 +217,7 @@ export function VoteFormV2({
       // This prevents double-submit issues: if receipt wait fails but tx
       // is already on-chain, nonce is already incremented so retry creates
       // a new (valid) message instead of a duplicate.
-      incrementNonce(address, pollId);
+      incrementMaciNonce(address, pollId);
       saveLastVote(address, pollId, choice, weight, cost);
       setCreditsSpent(address, pollId, cost);
 

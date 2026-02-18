@@ -92,6 +92,7 @@ export interface Translations {
       stepSubmit: string
       stepProof: string
       stepResult: string
+      network: string
     }
     established: string
     sdkIntegration: string

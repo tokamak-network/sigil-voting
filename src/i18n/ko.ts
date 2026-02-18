@@ -106,6 +106,7 @@ export const ko: Translations = {
       stepSubmit: '온체인 제출',
       stepProof: 'ZK 검증',
       stepResult: '집계 및 게시',
+      network: '이더리움 Sepolia 테스트넷',
     },
     comparison: {
       title: 'SIGIL vs 경쟁사',

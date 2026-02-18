@@ -39,19 +39,15 @@ function StepItem({
   status: StepStatus;
   statusText: React.ReactNode;
 }) {
-  const borderClass =
-    status === 'complete'
-      ? 'border-green-500 bg-green-50'
-      : status === 'active'
-        ? 'border-primary bg-primary/5'
-        : 'border-slate-200';
+  const bgClass =
+    status === 'complete' ? 'bg-green-50' : 'bg-white';
 
   const badgeClass =
     status === 'complete'
-      ? 'border-green-500 bg-green-500 text-white'
+      ? 'bg-green-500 text-white'
       : status === 'active'
-        ? 'border-primary bg-primary text-white'
-        : 'border-slate-300 text-slate-400';
+        ? 'bg-primary text-white'
+        : 'bg-white text-slate-400';
 
   const statusColor =
     status === 'complete'
@@ -61,17 +57,45 @@ function StepItem({
         : 'text-slate-400';
 
   return (
-    <div className={`flex items-center gap-3 p-4 border-2 ${borderClass}`}>
+    <div className={`flex items-center gap-3 p-4 border-2 border-black ${bgClass}`}>
       <span
-        className={`w-8 h-8 flex items-center justify-center text-sm font-black border-2 ${badgeClass}`}
+        className={`w-8 h-8 flex items-center justify-center border-2 border-black font-mono text-xs font-black ${badgeClass}`}
         aria-hidden="true"
       >
-        {num}
+        {status === 'complete' ? <span className="material-symbols-outlined text-sm">check</span> : `0${num}`}
       </span>
-      <span className="text-sm font-bold flex-1">{label}</span>
-      <span className={`text-xs font-mono font-bold uppercase ${statusColor}`}>
+      <span className="text-sm font-bold flex-1 uppercase tracking-wide">{label}</span>
+      <span className={`font-mono text-xs font-bold uppercase tracking-widest ${statusColor}`}>
         {statusText}
       </span>
+    </div>
+  );
+}
+
+function TimerBlock({ elapsed, estimateMs, t }: { elapsed: number; estimateMs: number; t: any }) {
+  const remaining = Math.max(0, estimateMs - elapsed);
+  const overdue = elapsed > estimateMs;
+  const progress = Math.min(100, (elapsed / estimateMs) * 100);
+  const estimateLabel = `~${Math.floor(estimateMs / 60000)}:00`;
+
+  return (
+    <div className="mb-6 p-5 border-2 border-black bg-white">
+      <div className="flex items-center justify-between mb-3">
+        <span className="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">{t.processing.estimate}</span>
+        <span className={`font-display text-3xl font-black tracking-tighter ${overdue ? 'text-amber-500' : 'text-primary'}`}>
+          {overdue ? formatElapsed(elapsed) : formatElapsed(remaining)}
+        </span>
+      </div>
+      <div className="w-full h-2 bg-black/10 border border-black/20">
+        <div
+          className={`h-full transition-all duration-1000 ${overdue ? 'bg-amber-400' : 'bg-primary'}`}
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      <div className="flex justify-between mt-2">
+        <span className="font-mono text-xs font-bold text-slate-400">{t.processing.elapsed}: {formatElapsed(elapsed)}</span>
+        <span className="font-mono text-xs font-bold text-slate-400">{estimateLabel}</span>
+      </div>
     </div>
   );
 }
@@ -93,8 +117,8 @@ export function ProcessingStatus({
   }, [startTime]);
 
   const isStuck = elapsed > STUCK_THRESHOLD_MS;
-
   const hasValidAddresses = mpAddress !== ZERO_ADDRESS && tAddress !== ZERO_ADDRESS;
+  const estimateMs = 4 * 60 * 1000;
 
   const { data: processingComplete } = useReadContract({
     address: mpAddress,
@@ -112,43 +136,17 @@ export function ProcessingStatus({
 
   const isFinalized = tallyVerified === true;
 
-  // If we don't have valid addresses, show a simplified waiting state
+  // Simplified waiting state when addresses not available
   if (!hasValidAddresses) {
     return (
       <div role="status" aria-live="polite">
-        <h3 className="font-display text-xl font-black uppercase tracking-tight mb-2">
-          {t.processing.title}
-        </h3>
-        <p className="text-sm text-slate-500 mb-4">{t.processing.desc}</p>
+        <div className="flex items-center gap-3 mb-2">
+          <span className="material-symbols-outlined text-primary text-2xl animate-spin" aria-hidden="true">progress_activity</span>
+          <h3 className="font-display text-2xl font-black uppercase tracking-tight">{t.processing.title}</h3>
+        </div>
+        <p className="text-sm text-slate-500 mb-6">{t.processing.desc}</p>
 
-        {(() => {
-          const estimateMs = 4 * 60 * 1000;
-          const remaining = Math.max(0, estimateMs - elapsed);
-          const overdue = elapsed > estimateMs;
-          return (
-            <div className="mb-4 p-4 bg-slate-50 border-2 border-slate-200">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg text-primary animate-spin" aria-hidden="true">progress_activity</span>
-                  <span className="text-sm font-bold">{t.processing.estimate}</span>
-                </div>
-                <span className={`text-2xl font-mono font-black ${overdue ? 'text-amber-500' : 'text-primary'}`}>
-                  {overdue ? (t.processing as any).almostDone || '거의 완료' : formatElapsed(remaining)}
-                </span>
-              </div>
-              <div className="w-full h-2 bg-slate-200 overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-1000 ${overdue ? 'bg-amber-400' : 'bg-primary'}`}
-                  style={{ width: `${Math.min(100, (elapsed / estimateMs) * 100)}%` }}
-                />
-              </div>
-              <div className="flex justify-between mt-1">
-                <span className="text-xs font-mono text-slate-400">{t.processing.elapsed}: {formatElapsed(elapsed)}</span>
-                <span className="text-xs font-mono text-slate-400">~4:00</span>
-              </div>
-            </div>
-          );
-        })()}
+        <TimerBlock elapsed={elapsed} estimateMs={estimateMs} t={t} />
 
         <div className="space-y-3">
           <StepItem num={1} label={t.processing.step1} status="active" statusText={t.processing.inProgress} />
@@ -157,10 +155,10 @@ export function ProcessingStatus({
         </div>
 
         {isStuck && (
-          <div className="mt-4 p-4 border-2 border-amber-400 bg-amber-50">
+          <div className="mt-4 p-4 border-2 border-black bg-amber-50">
             <div className="flex items-center gap-2 mb-1">
               <span className="material-symbols-outlined text-amber-600 text-lg" aria-hidden="true">warning</span>
-              <span className="text-sm font-bold text-amber-700">{t.processing.stuck}</span>
+              <span className="text-sm font-bold text-amber-700 uppercase tracking-wide">{t.processing.stuck}</span>
             </div>
             <p className="text-xs text-amber-600">{t.processing.stuckDesc}</p>
           </div>
@@ -186,41 +184,21 @@ export function ProcessingStatus({
 
   return (
     <div role="status" aria-live="polite">
-      <h3 className="font-display text-xl font-black uppercase tracking-tight mb-2">
-        {t.processing.title}
-      </h3>
-      <p className="text-sm text-slate-500 mb-4">{t.processing.desc}</p>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-2">
+        {isFinalized ? (
+          <span className="material-symbols-outlined text-green-600 text-2xl" aria-hidden="true">check_circle</span>
+        ) : (
+          <span className="material-symbols-outlined text-primary text-2xl animate-spin" aria-hidden="true">progress_activity</span>
+        )}
+        <h3 className="font-display text-2xl font-black uppercase tracking-tight">{t.processing.title}</h3>
+      </div>
+      <p className="text-sm text-slate-500 mb-6">{t.processing.desc}</p>
 
-      {/* Countdown timer + progress bar (hide when finalized) */}
-      {!isFinalized && (() => {
-        const estimateMs = 4 * 60 * 1000;
-        const remaining = Math.max(0, estimateMs - elapsed);
-        const overdue = elapsed > estimateMs;
-        return (
-          <div className="mb-4 p-4 bg-slate-50 border-2 border-slate-200">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-lg text-primary animate-spin" aria-hidden="true">progress_activity</span>
-                <span className="text-sm font-bold">{t.processing.estimate}</span>
-              </div>
-              <span className={`text-2xl font-mono font-black ${overdue ? 'text-amber-500' : 'text-primary'}`}>
-                {overdue ? (t.processing as any).almostDone || '거의 완료' : formatElapsed(remaining)}
-              </span>
-            </div>
-            <div className="w-full h-2 bg-slate-200 overflow-hidden">
-              <div
-                className={`h-full transition-all duration-1000 ${overdue ? 'bg-amber-400' : 'bg-primary'}`}
-                style={{ width: `${Math.min(100, (elapsed / estimateMs) * 100)}%` }}
-              />
-            </div>
-            <div className="flex justify-between mt-1">
-              <span className="text-xs font-mono text-slate-400">{t.processing.elapsed}: {formatElapsed(elapsed)}</span>
-              <span className="text-xs font-mono text-slate-400">~4:00</span>
-            </div>
-          </div>
-        );
-      })()}
+      {/* Timer (hide when finalized) */}
+      {!isFinalized && <TimerBlock elapsed={elapsed} estimateMs={estimateMs} t={t} />}
 
+      {/* Steps */}
       <div className="space-y-3">
         <StepItem num={1} label={t.processing.step1} status={step1Status} statusText={step1Text} />
         <StepItem num={2} label={t.processing.step2} status={step2Status} statusText={step2Text} />
@@ -229,17 +207,17 @@ export function ProcessingStatus({
 
       {/* Timeline note */}
       {!isFinalized && (
-        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 flex items-start gap-2">
-          <span className="material-symbols-outlined text-blue-500 text-sm mt-0.5" aria-hidden="true">schedule</span>
-          <p className="text-xs text-blue-700 leading-relaxed">{t.processing.timelineNote}</p>
+        <div className="mt-4 p-4 border-2 border-black bg-primary/5 flex items-start gap-3">
+          <span className="material-symbols-outlined text-primary text-sm mt-0.5" aria-hidden="true">schedule</span>
+          <p className="text-xs text-slate-600 leading-relaxed">{t.processing.timelineNote}</p>
         </div>
       )}
 
       {isStuck && !isFinalized && (
-        <div className="mt-4 p-4 border-2 border-amber-400 bg-amber-50">
+        <div className="mt-4 p-4 border-2 border-black bg-amber-50">
           <div className="flex items-center gap-2 mb-1">
             <span className="material-symbols-outlined text-amber-600 text-lg" aria-hidden="true">warning</span>
-            <span className="text-sm font-bold text-amber-700">{t.processing.stuck}</span>
+            <span className="text-sm font-bold text-amber-700 uppercase tracking-wide">{t.processing.stuck}</span>
           </div>
           <p className="text-xs text-amber-600">{t.processing.stuckDesc}</p>
         </div>

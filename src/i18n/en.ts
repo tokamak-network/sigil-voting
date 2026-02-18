@@ -106,6 +106,7 @@ export const en: Translations = {
       stepSubmit: 'On-chain Submit',
       stepProof: 'ZK Verification',
       stepResult: 'Tallied & Published',
+      network: 'Ethereum Sepolia Testnet',
     },
     comparison: {
       title: 'How SIGIL Compares',

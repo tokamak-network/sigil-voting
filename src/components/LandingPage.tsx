@@ -12,7 +12,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
 
   return (
     <div className="w-full border-x-0 min-h-screen">
-      {/* ─── Hero Section ─── */}
+      {/* ─── 1. Hero Section ─── */}
       <section className="grid grid-cols-12 border-b-2 border-black">
         {/* Hero Left */}
         <div className="col-span-12 lg:col-span-5 p-12 flex flex-col justify-between border-r-0 lg:border-r-2 border-black bg-white">
@@ -69,7 +69,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
         </div>
       </section>
 
-      {/* ─── Stats Bar ─── */}
+      {/* ─── 2. Stats Bar ─── */}
       <section className="grid grid-cols-2 md:grid-cols-4 border-b-2 border-black">
         {[
           { count: t.landing.stats.testsCount, label: t.landing.stats.testsLabel, icon: 'group' },
@@ -88,7 +88,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
         ))}
       </section>
 
-      {/* ─── Core Features Section ─── */}
+      {/* ─── 3. Core Features Section ─── */}
       <section className="border-b-2 border-black">
         {/* Section Header — bg-black text-white */}
         <div className="p-6 border-b-2 border-black bg-black text-white flex justify-between items-center">
@@ -146,7 +146,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
         </div>
       </section>
 
-      {/* ─── Operational Flow Section ─── */}
+      {/* ─── 4. Operational Flow Section ─── */}
       <section className="border-b-2 border-black">
         {/* Section Header — bg-slate-100 */}
         <div className="p-6 border-b-2 border-black bg-slate-100 flex justify-between items-center">
@@ -208,123 +208,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
         </div>
       </section>
 
-      {/* ─── Demo Video Section ─── */}
-      <section className="border-b-2 border-black">
-        <div className="grid grid-cols-1 lg:grid-cols-2">
-          {/* Left: Text */}
-          <div className="p-12 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-black flex flex-col justify-center">
-            <h2 className="font-display text-5xl md:text-6xl font-black uppercase italic tracking-tighter leading-none mb-8">
-              {t.landing.demo.title}
-            </h2>
-            <p className="text-lg font-medium leading-relaxed text-slate-600 mb-8 max-w-lg">
-              {t.landing.demo.subtitle}
-            </p>
-            <div className="flex items-center gap-3 font-mono text-xs font-bold uppercase tracking-widest text-slate-400">
-              <span className="w-2 h-2 bg-primary"></span>
-              {t.landing.demo.note}
-            </div>
-          </div>
-
-          {/* Right: Flow Diagram */}
-          <div className="bg-slate-900 p-8 md:p-12 flex flex-col justify-center min-h-[400px]">
-            <div className="space-y-4">
-              {([
-                { icon: 'account_balance_wallet', label: t.landing.cta.step1, detail: 'MetaMask / WalletConnect', color: 'text-slate-400' },
-                { icon: 'enhanced_encryption', label: t.landing.lifecycle.step2.title, detail: 'Poseidon + EdDSA + ECDH', color: 'text-primary' },
-                { icon: 'cloud_upload', label: t.landing.demo.stepSubmit, detail: 'AccQueue (Immutable)', color: 'text-primary' },
-                { icon: 'verified', label: 'Groth16 Proof', detail: t.landing.demo.stepProof, color: 'text-emerald-400' },
-                { icon: 'how_to_vote', label: t.landing.cta.step3, detail: t.landing.demo.stepResult, color: 'text-emerald-400' },
-              ]).map((step, i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <div className="w-10 h-10 border-2 border-slate-700 flex items-center justify-center shrink-0">
-                    <span className={`material-symbols-outlined text-lg ${step.color}`}>{step.icon}</span>
-                  </div>
-                  <div className="flex-1 border-b border-slate-800 pb-3">
-                    <p className="font-mono text-sm font-bold text-white">{step.label}</p>
-                    <p className="font-mono text-xs text-slate-500">{step.detail}</p>
-                  </div>
-                  {i < 4 && <span className="material-symbols-outlined text-slate-700 text-sm shrink-0">arrow_downward</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Why SIGIL Section ─── */}
-      <section className="grid grid-cols-12 border-b-2 border-black">
-        {/* Left: col-span-8 */}
-        <div className="col-span-12 lg:col-span-8 p-12 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-black">
-          <h2 className="font-display text-5xl font-bold mb-12 uppercase tracking-tight">
-            {t.landing.whyMaci.title}
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Coercion Resistance */}
-            <div className="p-8 border-2 border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all">
-              <h4 className="font-bold text-lg mb-4 uppercase tracking-widest flex items-center gap-2">
-                <span className="w-3 h-3 bg-primary"></span>
-                {t.landing.whyMaci.anti.title}
-              </h4>
-              <p className="text-base leading-relaxed">{t.landing.whyMaci.anti.desc}</p>
-            </div>
-
-            {/* True Secret Voting */}
-            <div className="p-8 border-2 border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all">
-              <h4 className="font-bold text-lg mb-4 uppercase tracking-widest flex items-center gap-2">
-                <span className="w-3 h-3 bg-primary"></span>
-                {t.landing.whyMaci.privacy.title}
-              </h4>
-              <p className="text-base leading-relaxed">{t.landing.whyMaci.privacy.desc}</p>
-            </div>
-
-            {/* Whale Resistance — col-span-2 */}
-            <div className="col-span-1 md:col-span-2 p-8 border-2 border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all">
-              <div className="flex flex-col md:flex-row gap-8">
-                <div className="w-20 h-20 bg-primary border-2 border-black flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-white text-4xl">analytics</span>
-                </div>
-                <div>
-                  <h4 className="font-bold text-xl mb-2 uppercase tracking-widest">{t.landing.whyMaci.verify.title}</h4>
-                  <p className="text-base leading-relaxed max-w-2xl">{t.landing.whyMaci.verify.desc}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: col-span-4, Terminal Access */}
-        <div className="col-span-12 lg:col-span-4 p-12 bg-slate-50">
-          <h3 className="font-mono text-sm font-bold mb-8 uppercase tracking-widest border-b-2 border-black pb-4">
-            {t.landing.terminalAccess}
-          </h3>
-          <div className="space-y-4">
-            <a
-              href="https://maci.pse.dev"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full p-4 bg-white text-black border-2 border-black hover:bg-primary hover:text-white transition-colors flex justify-between items-center group"
-            >
-              <span className="font-mono text-xs font-bold uppercase">{t.landing.documentation}</span>
-              <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
-            </a>
-            <a
-              href="https://github.com/tokamak-network/zk-dex"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full p-4 bg-white text-black border-2 border-black hover:bg-primary hover:text-white transition-colors flex justify-between items-center group"
-            >
-              <span className="font-mono text-xs font-bold uppercase">{t.landing.sourceCode}</span>
-              <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
-            </a>
-          </div>
-          <div className="mt-12 p-6 bg-primary/5 border-l-4 border-primary">
-            <p className="font-mono text-xs font-bold text-primary mb-1">Ethereum Sepolia Testnet</p>
-            <p className="text-sm text-slate-600">{t.landing.cta.step1} → {t.landing.cta.step2} → {t.landing.cta.step3}</p>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Comparison Table ─── */}
+      {/* ─── 5. Comparison Table ─── */}
       <section className="border-b-2 border-black">
         {/* Section Header */}
         <div className="p-6 border-b-2 border-black bg-slate-100 flex justify-between items-center">
@@ -416,7 +300,110 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
         </div>
       </section>
 
-      {/* ─── Integration Section ─── */}
+      {/* ─── 6. Demo Video Section ─── */}
+      <section className="border-b-2 border-black">
+        <div className="grid grid-cols-1 lg:grid-cols-2">
+          {/* Left: Text */}
+          <div className="p-12 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-black flex flex-col justify-center">
+            <h2 className="font-display text-5xl md:text-6xl font-black uppercase italic tracking-tighter leading-none mb-8">
+              {t.landing.demo.title}
+            </h2>
+            <p className="text-lg font-medium leading-relaxed text-slate-600 mb-8 max-w-lg">
+              {t.landing.demo.subtitle}
+            </p>
+            <div className="flex items-center gap-3 font-mono text-xs font-bold uppercase tracking-widest text-slate-400">
+              <span className="w-2 h-2 bg-primary"></span>
+              {t.landing.demo.note}
+            </div>
+          </div>
+
+          {/* Right: Video Placeholder */}
+          <div className="bg-slate-900 flex items-center justify-center min-h-[400px] relative">
+            {/* Replace this div with: <iframe src="YOUR_VIDEO_URL" className="w-full h-full absolute inset-0" /> */}
+            <div className="flex flex-col items-center gap-6">
+              <div className="w-20 h-20 border-2 border-white/30 rounded-full flex items-center justify-center hover:border-primary hover:scale-110 transition-all cursor-pointer" role="button" aria-label="Play demo video">
+                <span className="material-symbols-outlined text-white text-4xl ml-1">play_arrow</span>
+              </div>
+              <p className="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">{t.landing.demo.placeholder}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── 7. Why SIGIL Section ─── */}
+      <section className="grid grid-cols-12 border-b-2 border-black">
+        {/* Left: col-span-8 */}
+        <div className="col-span-12 lg:col-span-8 p-12 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-black">
+          <h2 className="font-display text-5xl font-bold mb-12 uppercase tracking-tight">
+            {t.landing.whyMaci.title}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Coercion Resistance */}
+            <div className="p-8 border-2 border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all">
+              <h4 className="font-bold text-lg mb-4 uppercase tracking-widest flex items-center gap-2">
+                <span className="w-3 h-3 bg-primary"></span>
+                {t.landing.whyMaci.anti.title}
+              </h4>
+              <p className="text-base leading-relaxed">{t.landing.whyMaci.anti.desc}</p>
+            </div>
+
+            {/* True Secret Voting */}
+            <div className="p-8 border-2 border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all">
+              <h4 className="font-bold text-lg mb-4 uppercase tracking-widest flex items-center gap-2">
+                <span className="w-3 h-3 bg-primary"></span>
+                {t.landing.whyMaci.privacy.title}
+              </h4>
+              <p className="text-base leading-relaxed">{t.landing.whyMaci.privacy.desc}</p>
+            </div>
+
+            {/* SDK — col-span-2 */}
+            <div className="col-span-1 md:col-span-2 p-8 border-2 border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all">
+              <div className="flex flex-col md:flex-row gap-8">
+                <div className="w-20 h-20 bg-primary border-2 border-black flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-white text-4xl">analytics</span>
+                </div>
+                <div>
+                  <h4 className="font-bold text-xl mb-2 uppercase tracking-widest">{t.landing.whyMaci.verify.title}</h4>
+                  <p className="text-base leading-relaxed max-w-2xl">{t.landing.whyMaci.verify.desc}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: col-span-4, Quick Links */}
+        <div className="col-span-12 lg:col-span-4 p-12 bg-slate-50">
+          <h3 className="font-mono text-sm font-bold mb-8 uppercase tracking-widest border-b-2 border-black pb-4">
+            {t.landing.terminalAccess}
+          </h3>
+          <div className="space-y-4">
+            <a
+              href="https://maci.pse.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full p-4 bg-white text-black border-2 border-black hover:bg-primary hover:text-white transition-colors flex justify-between items-center group"
+            >
+              <span className="font-mono text-xs font-bold uppercase">{t.landing.documentation}</span>
+              <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            </a>
+            <a
+              href="https://github.com/tokamak-network/zk-dex"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full p-4 bg-white text-black border-2 border-black hover:bg-primary hover:text-white transition-colors flex justify-between items-center group"
+            >
+              <span className="font-mono text-xs font-bold uppercase">{t.landing.sourceCode}</span>
+              <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            </a>
+          </div>
+          <div className="mt-12 p-6 bg-primary/5 border-l-4 border-primary">
+            <p className="font-mono text-xs font-bold text-primary mb-1">{t.landing.demo.network}</p>
+            <p className="text-sm text-slate-600">{t.landing.cta.step1} → {t.landing.cta.step2} → {t.landing.cta.step3}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── 8. Integration Section ─── */}
       <section className="border-b-2 border-black">
         {/* Section Header */}
         <div className="p-6 border-b-2 border-black bg-primary text-white flex justify-between items-center">
@@ -485,7 +472,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
         </div>
       </section>
 
-      {/* ─── FAQ Section ─── */}
+      {/* ─── 9. FAQ Section ─── */}
       <section className="border-b-2 border-black">
         <div className="p-6 border-b-2 border-black bg-slate-100 flex justify-between items-center">
           <h2 className="font-mono text-sm font-bold uppercase tracking-[0.3em]">
@@ -519,7 +506,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
         </div>
       </section>
 
-      {/* ─── CTA Section ─── */}
+      {/* ─── 10. CTA Section ─── */}
       <section className="bg-black text-white p-20 text-center relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 pointer-events-none select-none">
           <div className="absolute top-0 left-0 p-8 font-display font-bold text-9xl">GOVERN</div>

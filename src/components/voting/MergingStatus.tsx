@@ -59,113 +59,89 @@ export function MergingStatus({ pollAddress }: MergingStatusProps) {
   const messageComplete = messageAqMerged === true;
   const allMerged = stateComplete && messageComplete;
 
+  const estimateMs = 2 * 60 * 1000;
+  const remaining = Math.max(0, estimateMs - elapsed);
+  const overdue = elapsed > estimateMs;
+  const progress = Math.min(100, (elapsed / estimateMs) * 100);
+
   return (
     <div role="status" aria-live="polite">
-      <h3 className="font-display text-xl font-black uppercase tracking-tight mb-2">
-        {t.merging.title}
-      </h3>
-      <p className="text-sm text-slate-500 mb-4">{t.merging.desc}</p>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-2">
+        <span className="material-symbols-outlined text-primary text-2xl animate-spin" aria-hidden="true">progress_activity</span>
+        <h3 className="font-display text-2xl font-black uppercase tracking-tight">
+          {t.merging.title}
+        </h3>
+      </div>
+      <p className="text-sm text-slate-500 mb-6">{t.merging.desc}</p>
 
-      {/* Countdown timer */}
-      {(() => {
-        const estimateMs = 2 * 60 * 1000; // 2 minutes estimate
-        const remaining = Math.max(0, estimateMs - elapsed);
-        const overdue = elapsed > estimateMs;
-        return (
-          <div className="mb-4 p-4 bg-slate-50 border-2 border-slate-200">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-lg text-primary animate-spin" aria-hidden="true">progress_activity</span>
-                <span className="text-sm font-bold">{t.merging.estimate}</span>
-              </div>
-              <span className={`text-2xl font-mono font-black ${overdue ? 'text-amber-500' : 'text-primary'}`}>
-                {overdue ? t.merging.almostDone || '거의 완료' : formatElapsed(remaining)}
-              </span>
-            </div>
-            {/* Progress bar */}
-            <div className="w-full h-2 bg-slate-200 overflow-hidden">
-              <div
-                className={`h-full transition-all duration-1000 ${overdue ? 'bg-amber-400' : 'bg-primary'}`}
-                style={{ width: `${Math.min(100, (elapsed / estimateMs) * 100)}%` }}
-              />
-            </div>
-            <div className="flex justify-between mt-1">
-              <span className="text-xs font-mono text-slate-400">{t.merging.elapsed}: {formatElapsed(elapsed)}</span>
-              <span className="text-xs font-mono text-slate-400">~2:00</span>
-            </div>
-          </div>
-        );
-      })()}
+      {/* Timer */}
+      <div className="mb-6 p-5 border-2 border-black bg-white">
+        <div className="flex items-center justify-between mb-3">
+          <span className="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">{t.merging.estimate}</span>
+          <span className={`font-display text-3xl font-black tracking-tighter ${overdue ? 'text-amber-500' : 'text-primary'}`}>
+            {overdue ? formatElapsed(elapsed) : formatElapsed(remaining)}
+          </span>
+        </div>
+        <div className="w-full h-2 bg-black/10 border border-black/20">
+          <div
+            className={`h-full transition-all duration-1000 ${overdue ? 'bg-amber-400' : 'bg-primary'}`}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <div className="flex justify-between mt-2">
+          <span className="font-mono text-xs font-bold text-slate-400">{t.merging.elapsed}: {formatElapsed(elapsed)}</span>
+          <span className="font-mono text-xs font-bold text-slate-400">~2:00</span>
+        </div>
+      </div>
 
+      {/* Steps */}
       <div className="space-y-3">
-        <div
-          className={`p-4 border-2 ${
-            stateComplete ? 'border-green-500 bg-green-50' : 'border-slate-200'
-          }`}
-        >
+        <div className={`p-4 border-2 border-black ${stateComplete ? 'bg-green-50' : 'bg-white'}`}>
           <div className="flex items-center gap-3">
-            <span
-              className={`material-symbols-outlined ${
-                stateComplete ? 'text-green-600' : 'text-slate-400'
-              }`}
-              aria-hidden="true"
-            >
-              {isLoading ? 'pending' : stateComplete ? 'check_circle' : 'circle'}
+            <span className={`w-8 h-8 flex items-center justify-center border-2 border-black font-mono text-xs font-black ${stateComplete ? 'bg-green-500 text-white' : 'bg-primary text-white'}`} aria-hidden="true">
+              {stateComplete ? <span className="material-symbols-outlined text-sm">check</span> : '01'}
             </span>
-            <span className="text-sm font-bold flex-1">{t.merging.stateQueue}</span>
-            <span
-              className={`text-xs font-mono font-bold uppercase ${
-                stateComplete ? 'text-green-600' : 'text-slate-400'
-              }`}
-            >
+            <span className="text-sm font-bold flex-1 uppercase tracking-wide">{t.merging.stateQueue}</span>
+            <span className={`font-mono text-xs font-bold uppercase tracking-widest ${stateComplete ? 'text-green-600' : 'text-slate-400'}`}>
               {isLoading ? '...' : stateComplete ? t.merging.merged : t.merging.pending}
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1 ml-9">{t.merging.stateQueueDesc}</p>
+          <p className="text-xs text-slate-400 mt-2 ml-11">{t.merging.stateQueueDesc}</p>
         </div>
 
-        <div
-          className={`p-4 border-2 ${
-            messageComplete ? 'border-green-500 bg-green-50' : 'border-slate-200'
-          }`}
-        >
+        <div className={`p-4 border-2 border-black ${messageComplete ? 'bg-green-50' : 'bg-white'}`}>
           <div className="flex items-center gap-3">
-            <span
-              className={`material-symbols-outlined ${
-                messageComplete ? 'text-green-600' : 'text-slate-400'
-              }`}
-              aria-hidden="true"
-            >
-              {isLoading ? 'pending' : messageComplete ? 'check_circle' : 'circle'}
+            <span className={`w-8 h-8 flex items-center justify-center border-2 border-black font-mono text-xs font-black ${messageComplete ? 'bg-green-500 text-white' : stateComplete ? 'bg-primary text-white' : 'bg-white text-slate-400'}`} aria-hidden="true">
+              {messageComplete ? <span className="material-symbols-outlined text-sm">check</span> : '02'}
             </span>
-            <span className="text-sm font-bold flex-1">{t.merging.messageQueue}</span>
-            <span
-              className={`text-xs font-mono font-bold uppercase ${
-                messageComplete ? 'text-green-600' : 'text-slate-400'
-              }`}
-            >
+            <span className="text-sm font-bold flex-1 uppercase tracking-wide">{t.merging.messageQueue}</span>
+            <span className={`font-mono text-xs font-bold uppercase tracking-widest ${messageComplete ? 'text-green-600' : 'text-slate-400'}`}>
               {isLoading ? '...' : messageComplete ? t.merging.merged : t.merging.pending}
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1 ml-9">{t.merging.messageQueueDesc}</p>
+          <p className="text-xs text-slate-400 mt-2 ml-11">{t.merging.messageQueueDesc}</p>
         </div>
       </div>
 
       {/* Timeline note */}
-      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 flex items-start gap-2">
-        <span className="material-symbols-outlined text-blue-500 text-sm mt-0.5" aria-hidden="true">schedule</span>
-        <p className="text-xs text-blue-700 leading-relaxed">{t.merging.timelineNote}</p>
+      <div className="mt-4 p-4 border-2 border-black bg-primary/5 flex items-start gap-3">
+        <span className="material-symbols-outlined text-primary text-sm mt-0.5" aria-hidden="true">schedule</span>
+        <p className="text-xs text-slate-600 leading-relaxed">{t.merging.timelineNote}</p>
       </div>
 
       {allMerged && (
-        <p className="mt-4 text-sm font-bold text-green-600">{t.merging.allMerged}</p>
+        <div className="mt-4 p-4 border-2 border-black bg-green-50 flex items-center gap-3">
+          <span className="material-symbols-outlined text-green-600" aria-hidden="true">check_circle</span>
+          <p className="text-sm font-bold text-green-700 uppercase tracking-wide">{t.merging.allMerged}</p>
+        </div>
       )}
 
       {isStuck && !allMerged && (
-        <div className="mt-4 p-4 border-2 border-amber-400 bg-amber-50">
+        <div className="mt-4 p-4 border-2 border-black bg-amber-50">
           <div className="flex items-center gap-2 mb-1">
             <span className="material-symbols-outlined text-amber-600 text-lg" aria-hidden="true">warning</span>
-            <span className="text-sm font-bold text-amber-700">{t.merging.stuck}</span>
+            <span className="text-sm font-bold text-amber-700 uppercase tracking-wide">{t.merging.stuck}</span>
           </div>
           <p className="text-xs text-amber-600">{t.merging.stuckDesc}</p>
         </div>
