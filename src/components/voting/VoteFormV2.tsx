@@ -120,11 +120,11 @@ export function VoteFormV2({
 
       const poseidon = await crypto.buildPoseidon();
       const F = poseidon.F;
+      // cmdHash must match coordinator/circuit: hash(packed, newPubKeyX, newPubKeyY, salt)
       const cmdHashF = poseidon([
-        F.e(stateIndex),
+        F.e(packedCommand),
         F.e(userPubKey[0]),
         F.e(userPubKey[1]),
-        F.e(BigInt(weight)),
         F.e(salt),
       ]);
       const cmdHash = F.toObject(cmdHashF);

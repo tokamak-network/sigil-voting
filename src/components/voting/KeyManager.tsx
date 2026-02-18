@@ -101,11 +101,11 @@ export function KeyManager({
       const salt = BigInt('0x' + Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join(''));
       const poseidon = await cm.buildPoseidon();
       const F = poseidon.F;
+      // cmdHash must match coordinator/circuit: hash(packed, newPubKeyX, newPubKeyY, salt)
       const cmdHashF = poseidon([
-        F.e(stateIndex),
+        F.e(packedCommand),
         F.e(newPubKey[0]),
         F.e(newPubKey[1]),
-        F.e(0n), // newVoteWeight = 0 for key change
         F.e(salt),
       ]);
       const cmdHash = F.toObject(cmdHashF);

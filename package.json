@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "deploy": "npx hardhat run scripts/deploy_final.cjs --network sepolia",
-    "deploy:local": "npx hardhat run scripts/deploy_final.cjs --network localhost"
+    "deploy:local": "npx hardhat run scripts/deploy_final.cjs --network localhost",
+    "test:e2e": "npx tsx e2e/test-full-flow.ts"
   },
   "dependencies": {
     "@noble/hashes": "^2.0.1",

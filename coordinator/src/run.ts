@@ -55,7 +55,7 @@ interface Config {
   deployBlock: number;
 }
 
-function loadConfig(): Config {
+export function loadConfig(): Config {
   // Parse .env (simple key=value parser, no dependency needed)
   const envPath = resolve(PROJECT_ROOT, '.env');
   const envVars: Record<string, string> = {};
@@ -89,7 +89,7 @@ function loadConfig(): Config {
 
 // ─── ABIs (coordinator needs merge/process/tally functions) ───────────
 
-const MACI_ABI = [
+export const MACI_ABI = [
   'function nextPollId() view returns (uint256)',
   'function polls(uint256) view returns (address)',
   'function numSignUps() view returns (uint256)',
@@ -97,7 +97,7 @@ const MACI_ABI = [
   'event DeployPoll(uint256 indexed pollId, address pollAddr, address messageProcessorAddr, address tallyAddr)',
 ];
 
-const POLL_ABI = [
+export const POLL_ABI = [
   'function isVotingOpen() view returns (bool)',
   'function stateAqMerged() view returns (bool)',
   'function messageAqMerged() view returns (bool)',
@@ -119,7 +119,7 @@ const MP_ABI = [
   'function currentStateCommitment() view returns (uint256)',
 ];
 
-const TALLY_ABI = [
+export const TALLY_ABI = [
   'function tallyVotes(uint256 _newTallyCommitment, uint256[2] _pA, uint256[2][2] _pB, uint256[2] _pC)',
   'function publishResults(uint256 _forVotes, uint256 _againstVotes, uint256 _abstainVotes, uint256 _totalVoters, uint256 _tallyResultsRoot, uint256 _totalSpent, uint256 _perOptionSpentRoot)',
   'function tallyVerified() view returns (bool)',
@@ -154,7 +154,7 @@ interface Command {
   salt: bigint;
 }
 
-async function initCrypto(): Promise<CryptoKit> {
+export async function initCrypto(): Promise<CryptoKit> {
   const { buildPoseidon, buildBabyjub, buildEddsa } = await import('circomlibjs');
   const poseidon = await buildPoseidon();
   const babyJub = await buildBabyjub();
@@ -285,7 +285,7 @@ async function initCrypto(): Promise<CryptoKit> {
 
 // ─── Poll Processing Pipeline ─────────────────────────────────────────
 
-interface PollAddresses {
+export interface PollAddresses {
   poll: string;
   mp: string;
   tally: string;
@@ -861,7 +861,7 @@ async function retryRpc<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
   throw new Error('retryRpc: unreachable');
 }
 
-async function processPoll(
+export async function processPoll(
   pollId: number,
   addrs: PollAddresses,
   maci: ethers.Contract,
