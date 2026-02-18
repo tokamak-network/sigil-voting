@@ -246,6 +246,13 @@ export const POLL_ABI = [
     stateMutability: 'view',
   },
   {
+    type: 'function',
+    name: 'title',
+    inputs: [],
+    outputs: [{ name: '', type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
     type: 'event',
     name: 'MessagePublished',
     inputs: [

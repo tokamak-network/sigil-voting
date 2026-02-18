@@ -110,9 +110,24 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         const pollAddr = addr as `0x${string}`
         if (pollAddr && pollAddr !== ZERO_ADDRESS) {
           setPollAddress(pollAddr)
+
+          // Read title from on-chain Poll contract (authoritative)
+          try {
+            const onChainTitle = await publicClient.readContract({
+              address: pollAddr,
+              abi: POLL_ABI,
+              functionName: 'title',
+            }) as string
+            if (onChainTitle) {
+              setPollTitle(onChainTitle)
+              localStorage.setItem(`maci-poll-title-${propPollId}`, onChainTitle)
+            }
+          } catch {
+            // Fallback to localStorage
+            const title = localStorage.getItem(`maci-poll-title-${propPollId}`)
+            if (title) setPollTitle(title)
+          }
         }
-        const title = localStorage.getItem(`maci-poll-title-${propPollId}`)
-        if (title) setPollTitle(title)
         const desc = localStorage.getItem(`maci-poll-desc-${propPollId}`)
         if (desc) setPollDescription(desc)
 

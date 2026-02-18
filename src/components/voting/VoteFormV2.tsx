@@ -89,8 +89,8 @@ export function VoteFormV2({
           : gasCostWei * 280n / 100n; // signUp + publishMessage ≈ 2.8x
         setEstimatedGasEth(parseFloat(formatEther(totalCost)).toFixed(4));
       } catch {
-        // Fallback: rough estimate for Sepolia
-        setEstimatedGasEth(isRegistered ? '0.0030' : '0.0060');
+        // Fallback: rough estimate for Sepolia (gas is very cheap on testnet)
+        setEstimatedGasEth(isRegistered ? '0.0005' : '0.0015');
       }
     };
     estimateGas();
@@ -231,7 +231,7 @@ export function VoteFormV2({
       // Signup errors come pre-translated with 'signup:' prefix
       if (msg.startsWith('signup:')) {
         setError(msg.slice(7));
-      } else if (msg.includes('insufficient funds') || msg.includes('gas')) {
+      } else if (msg.includes('insufficient funds') || msg.includes('exceeds the balance')) {
         setError(t.voteForm.errorGas);
       } else if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
         setError(t.voteForm.errorRejected);

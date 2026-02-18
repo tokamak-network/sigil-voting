@@ -144,7 +144,8 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
           publicClient.readContract({ address: pollAddr, abi: POLL_ABI, functionName: 'isVotingOpen' }),
           publicClient.readContract({ address: pollAddr, abi: POLL_ABI, functionName: 'getDeployTimeAndDuration' }),
           publicClient.readContract({ address: pollAddr, abi: POLL_ABI, functionName: 'numMessages' }),
-        ]).then(async ([isOpen, timeData, numMsgs]) => {
+          publicClient.readContract({ address: pollAddr, abi: POLL_ABI, functionName: 'title' }).catch(() => null),
+        ]).then(async ([isOpen, timeData, numMsgs, onChainTitle]) => {
           let isFinalized = false
           const tallyAddr = tallyMap.get(i)
           if (tallyAddr && tallyAddr !== ZERO_ADDRESS && !(isOpen as boolean)) {
@@ -160,7 +161,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
           return {
             id: i,
             address: pollAddr,
-            title: localStorage.getItem(`maci-poll-title-${i}`) || `Proposal #${i + 1}`,
+            title: (onChainTitle as string) || localStorage.getItem(`maci-poll-title-${i}`) || `Proposal #${i + 1}`,
             isOpen: isOpen as boolean,
             isFinalized,
             deployTime: Number(td[0]),

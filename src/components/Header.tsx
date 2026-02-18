@@ -72,11 +72,14 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
   const handleResetTestData = () => {
     if (!address) return
     if (!confirm(t.header.resetConfirm)) return
-    // Clear all maci-* localStorage entries for this address
+    // Clear registration/voting data but keep poll titles & descriptions
     const keysToRemove: string[] = []
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
-      if (key && (key.includes(`maci-`) || key === 'maci-polls-cache')) {
+      if (!key) continue
+      // Keep poll metadata (titles, descriptions)
+      if (key.startsWith('maci-poll-title-') || key.startsWith('maci-poll-desc-')) continue
+      if (key.includes('maci-') || key === 'maci-polls-cache') {
         keysToRemove.push(key)
       }
     }
