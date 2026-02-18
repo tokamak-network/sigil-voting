@@ -66,16 +66,36 @@ export function MergingStatus({ pollAddress }: MergingStatusProps) {
       </h3>
       <p className="text-sm text-slate-500 mb-4">{t.merging.desc}</p>
 
-      {/* Elapsed timer + estimate */}
-      <div className="flex items-center justify-between mb-4 p-3 bg-slate-50 border border-slate-200">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-sm text-slate-400 animate-spin" aria-hidden="true">progress_activity</span>
-          <span className="text-xs font-mono text-slate-600">
-            {t.merging.elapsed}: <strong>{formatElapsed(elapsed)}</strong>
-          </span>
-        </div>
-        <span className="text-xs font-mono text-slate-400">{t.merging.estimate}</span>
-      </div>
+      {/* Countdown timer */}
+      {(() => {
+        const estimateMs = 2 * 60 * 1000; // 2 minutes estimate
+        const remaining = Math.max(0, estimateMs - elapsed);
+        const overdue = elapsed > estimateMs;
+        return (
+          <div className="mb-4 p-4 bg-slate-50 border-2 border-slate-200">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-lg text-primary animate-spin" aria-hidden="true">progress_activity</span>
+                <span className="text-sm font-bold">{t.merging.estimate}</span>
+              </div>
+              <span className={`text-2xl font-mono font-black ${overdue ? 'text-amber-500' : 'text-primary'}`}>
+                {overdue ? t.merging.almostDone || '거의 완료' : formatElapsed(remaining)}
+              </span>
+            </div>
+            {/* Progress bar */}
+            <div className="w-full h-2 bg-slate-200 overflow-hidden">
+              <div
+                className={`h-full transition-all duration-1000 ${overdue ? 'bg-amber-400' : 'bg-primary'}`}
+                style={{ width: `${Math.min(100, (elapsed / estimateMs) * 100)}%` }}
+              />
+            </div>
+            <div className="flex justify-between mt-1">
+              <span className="text-xs font-mono text-slate-400">{t.merging.elapsed}: {formatElapsed(elapsed)}</span>
+              <span className="text-xs font-mono text-slate-400">~2:00</span>
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="space-y-3">
         <div

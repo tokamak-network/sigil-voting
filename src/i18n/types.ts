@@ -89,7 +89,12 @@ export interface Translations {
       subtitle: string
       placeholder: string
       note: string
+      stepSubmit: string
+      stepProof: string
+      stepResult: string
     }
+    established: string
+    sdkIntegration: string
     comparison: {
       title: string
       subtitle: string
@@ -405,6 +410,7 @@ export interface Translations {
     verifiedTally: string
     terms: string
     privacy: string
+    poweredBy: string
   }
   proposalDetail: {
     currentStatus: string
@@ -507,6 +513,7 @@ export interface Translations {
       step1Title: string
       step2Title: string
       step3Title: string
+      partnership: string
     }
     combined: {
       title: string
