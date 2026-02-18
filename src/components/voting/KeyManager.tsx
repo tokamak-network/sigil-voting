@@ -10,7 +10,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAccount, useWalletClient } from 'wagmi';
+import { useAccount } from 'wagmi';
+import { writeContract } from '../../writeHelper';
 import { POLL_ABI, POLL_V2_ADDRESS } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 import { preloadCrypto } from '../../crypto/preload';
@@ -39,7 +40,7 @@ export function KeyManager({
   const [showTooltip, setShowTooltip] = useState(false);
   const { t } = useTranslation();
 
-  const { data: walletClient } = useWalletClient();
+  // writeContract from writeHelper.ts
 
   // Load current key from localStorage (poll-specific > global)
   useEffect(() => {
@@ -136,17 +137,18 @@ export function KeyManager({
       }
 
       // Submit key change message
-      if (!walletClient) throw new Error('Wallet not connected');
-      await walletClient.writeContract({
+      if (!address) throw new Error('Wallet not connected');
+      await writeContract({
         address: pollAddress || POLL_V2_ADDRESS,
         abi: POLL_ABI,
         functionName: 'publishMessage',
         args: [
-          encMessage.map((v) => v) as any,
+          encMessage.map((v) => v),
           ephemeral.pubKey[0],
           ephemeral.pubKey[1],
         ],
         gas: 500_000n,
+        account: address,
       });
 
       // Save new keypair (private key encrypted)
@@ -169,7 +171,7 @@ export function KeyManager({
     } finally {
       setIsChanging(false);
     }
-  }, [address, pollId, coordinatorPubKeyX, coordinatorPubKeyY, pollAddress, walletClient]);
+  }, [address, pollId, coordinatorPubKeyX, coordinatorPubKeyY, pollAddress]);
 
   return (
     <div className="border-t-2 border-slate-200 pt-6">
