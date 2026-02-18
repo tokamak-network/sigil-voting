@@ -20,6 +20,7 @@ import { useTranslation } from '../../i18n';
 import { VoteConfirmModal } from './VoteConfirmModal';
 import { TransactionModal } from './TransactionModal';
 import { preloadCrypto } from '../../crypto/preload';
+import { getLastVote } from './voteUtils';
 
 interface VoteFormV2Props {
   pollId: number;
@@ -140,7 +141,7 @@ export function VoteFormV2({
         signature.S,
       ];
 
-      const ciphertext = await crypto.poseidonEncrypt(plaintext, sharedKey, nonce);
+      const ciphertext = await crypto.poseidonEncrypt(plaintext, sharedKey, 0n);
 
       const encMessage: bigint[] = new Array(10).fill(0n);
       for (let i = 0; i < Math.min(ciphertext.length, 10); i++) {
@@ -453,13 +454,7 @@ function incrementNonce(address: string, pollId: number): void {
   localStorage.setItem(key, String(current + 1));
 }
 
-// Vote history (localStorage)
-export function getLastVote(address: string, pollId: number): { choice: number; weight: number; cost: number } | null {
-  const key = `maci-lastVote-${address}-${pollId}`;
-  const stored = localStorage.getItem(key);
-  if (!stored) return null;
-  try { return JSON.parse(stored); } catch { return null; }
-}
+// Vote history read is in voteUtils.ts (shared with MACIVotingDemo)
 
 function saveLastVote(address: string, pollId: number, choice: number, weight: number, cost: number): void {
   const key = `maci-lastVote-${address}-${pollId}`;

@@ -24,7 +24,8 @@ import {
   DEFAULT_COORD_PUB_KEY_X,
   DEFAULT_COORD_PUB_KEY_Y,
 } from '../contractV2'
-import { VoteFormV2, getLastVote } from './voting/VoteFormV2'
+import { VoteFormV2 } from './voting/VoteFormV2'
+import { getLastVote } from './voting/voteUtils'
 import { MergingStatus } from './voting/MergingStatus'
 import { ProcessingStatus } from './voting/ProcessingStatus'
 import { KeyManager } from './voting/KeyManager'
@@ -62,7 +63,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   const [tallyAddress, setTallyAddress] = useState<`0x${string}` | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
-  const [_isSigningUp, setIsSigningUp] = useState(false)
+  const [, setIsSigningUp] = useState(false)
   const [isLoadingPoll, setIsLoadingPoll] = useState(true)
   const [pollTitle, setPollTitle] = useState<string | null>(null)
   const [pollDescription, setPollDescription] = useState<string | null>(null)
@@ -178,7 +179,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   const currentStep = (hasPoll && phase !== V2Phase.Voting) ? 1 : 0
 
   // Read numSignUps from MACI
-  const { data: _numSignUps, refetch: refetchSignUps } = useReadContract({
+  const { refetch: refetchSignUps } = useReadContract({
     address: MACI_V2_ADDRESS,
     abi: MACI_ABI,
     functionName: 'numSignUps',

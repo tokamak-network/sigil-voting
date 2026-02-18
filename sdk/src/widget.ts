@@ -53,7 +53,7 @@ export function mountSigilWidget(_config: WidgetConfig): { unmount: () => void }
   // This will render the VoteFormV2 + ResultsDisplay components
   // in the target element with its own React root
 
-  console.warn('@sigil/sdk/widget: Widget rendering not yet implemented. Coming soon.');
+  // Widget rendering not yet implemented — SDK v2 will include React-based renderer
 
   return {
     unmount: () => {

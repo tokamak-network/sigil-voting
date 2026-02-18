@@ -16,7 +16,6 @@ const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string
 interface HeaderProps {
   currentPage: Page
   setCurrentPage: (page: Page) => void
-  showToast?: (message: string, type: 'success' | 'error' | 'info') => void
 }
 
 export function Header({ currentPage, setCurrentPage }: HeaderProps) {

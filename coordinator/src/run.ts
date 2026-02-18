@@ -135,7 +135,7 @@ interface CryptoKit {
   babyJub: any;
   hash: (...inputs: bigint[]) => bigint;
   ecdh: (sk: bigint, pub: [bigint, bigint]) => bigint[];
-  decrypt: (ct: bigint[], key: bigint[], nonce: bigint) => bigint[];
+  decrypt: (ct: bigint[], key: bigint[], nonce: bigint) => bigint[] | null;
   verifyEdDSA: (msg: bigint, sig: { R8: bigint[]; S: bigint }, pk: bigint[]) => boolean;
   hashStateLeaf: (l: StateLeaf) => bigint;
   hashBallot: (b: Ballot) => bigint;
@@ -186,7 +186,7 @@ async function initCrypto(): Promise<CryptoKit> {
     return result.map((r: any) => BigInt(F.toString(r)));
   }
 
-  function duplexDecrypt(ct: bigint[], key: bigint[], nonce: bigint): bigint[] {
+  function duplexDecrypt(ct: bigint[], key: bigint[], nonce: bigint): bigint[] | null {
     // ct format: [encrypted[0..N-2], authTag] where N = ct.length
     // MACI messages: plaintext length = 7, padded to 9, + 1 auth tag = 10 elements
     const tag = ct[ct.length - 1];
@@ -222,7 +222,8 @@ async function initCrypto(): Promise<CryptoKit> {
     // Verify authentication tag
     state = poseidonPerm(state);
     if (state[1] !== tag) {
-      log(`  ⚠ DuplexSponge auth tag mismatch (message may be corrupted)`);
+      log(`  ⚠ DuplexSponge auth tag mismatch (message corrupted or wrong key)`);
+      return null;
     }
 
     return plaintext.slice(0, length);
@@ -298,8 +299,8 @@ async function mergeAccQueues(
   const poll = new ethers.Contract(pollAddr, POLL_ABI, signer);
   const pollRead = new ethers.Contract(pollAddr, POLL_ABI, signer.provider);
 
-  const stateM = await pollRead.stateAqMerged();
-  const msgM = await pollRead.messageAqMerged();
+  const stateM = await retryRpc(() => pollRead.stateAqMerged());
+  const msgM = await retryRpc(() => pollRead.messageAqMerged());
 
   if (!stateM) {
     try {
@@ -351,7 +352,7 @@ async function fetchEvents(
 ): Promise<{ stateLeaves: StateLeaf[]; messages: EncryptedMessage[] }> {
   // SignUp events (from deploy block to avoid RPC block range limit)
   const suFilter = maciContract.filters.SignUp();
-  const suEvents = await maciContract.queryFilter(suFilter, deployBlock);
+  const suEvents = await retryRpc(() => maciContract.queryFilter(suFilter, deployBlock));
   const stateLeaves: StateLeaf[] = [];
   for (const ev of suEvents) {
     if (!('args' in ev)) continue;
@@ -367,7 +368,7 @@ async function fetchEvents(
   // MessagePublished events
   const pollContract = new ethers.Contract(pollAddr, POLL_ABI, provider);
   const msgFilter = pollContract.filters.MessagePublished();
-  const msgEvents = await pollContract.queryFilter(msgFilter, deployBlock);
+  const msgEvents = await retryRpc(() => pollContract.queryFilter(msgFilter, deployBlock));
   const messages: EncryptedMessage[] = [];
   for (const ev of msgEvents) {
     if (!('args' in ev)) continue;
@@ -483,15 +484,23 @@ async function processAndSubmitProofs(
       const sharedKey = crypto.ecdh(coordinatorSk, [msg.encPubKeyX, msg.encPubKeyY]);
       const plaintext = crypto.decrypt(msg.data, sharedKey, 0n);
 
+      // Auth tag failure → treat as invalid message
+      let decryptFailed = false;
+      const pt = plaintext ?? [0n, 0n, 0n, 0n, 0n, 0n, 0n];
+      if (!plaintext) {
+        decryptFailed = true;
+        log(`    msg[${msg.messageIndex}]: decryption failed (auth tag mismatch)`);
+      }
+
       // Unpack command
-      const cmd = crypto.unpackCommand(plaintext[0] ?? 0n);
-      cmd.newPubKeyX = plaintext[1] ?? 0n;
-      cmd.newPubKeyY = plaintext[2] ?? 0n;
-      cmd.salt = plaintext[3] ?? 0n;
+      const cmd = crypto.unpackCommand(pt[0] ?? 0n);
+      cmd.newPubKeyX = pt[1] ?? 0n;
+      cmd.newPubKeyY = pt[2] ?? 0n;
+      cmd.salt = pt[3] ?? 0n;
 
       const sig = {
-        R8: [plaintext[4] ?? 0n, plaintext[5] ?? 0n],
-        S: plaintext[6] ?? 0n,
+        R8: [pt[4] ?? 0n, pt[5] ?? 0n],
+        S: pt[6] ?? 0n,
       };
 
       const stateIdx = Number(cmd.stateIndex);
@@ -520,7 +529,7 @@ async function processAndSubmitProofs(
       batchMsgPathIndices.push(msgProof.pathIndices.map(BigInt));
 
       // Validate & apply state transition
-      let isValid = true;
+      let isValid = !decryptFailed;
 
       // 5a. Signature check
       const cmdHash = crypto.hashCommand(cmd);
@@ -836,6 +845,22 @@ function log(msg: string) {
   console.log(`[${new Date().toLocaleTimeString()}] ${msg}`);
 }
 
+async function retryRpc<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const msg = (err as Error).message ?? '';
+      const isRetryable = msg.includes('ECONNRESET') || msg.includes('ETIMEDOUT') || msg.includes('ENOTFOUND') || msg.includes('network') || msg.includes('rate limit');
+      if (!isRetryable || attempt === maxRetries) throw err;
+      const delay = 1000 * 2 ** attempt;
+      log(`  RPC error (attempt ${attempt + 1}/${maxRetries}): ${msg.slice(0, 80)}. Retrying in ${delay}ms...`);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  throw new Error('retryRpc: unreachable');
+}
+
 async function processPoll(
   pollId: number,
   addrs: PollAddresses,
@@ -941,7 +966,7 @@ async function main() {
 
   // Fetch DeployPoll events once (cache)
   const deployFilter = maci.filters.DeployPoll();
-  let deployEvents = await maci.queryFilter(deployFilter, config.deployBlock);
+  let deployEvents = await retryRpc(() => maci.queryFilter(deployFilter, config.deployBlock));
   let lastDeployFetch = Date.now();
 
   // Track processed polls to avoid re-processing
@@ -949,13 +974,13 @@ async function main() {
 
   while (true) {
     try {
-      const nextPollId = Number(await maci.nextPollId());
+      const nextPollId = Number(await retryRpc(() => maci.nextPollId()));
       if (nextPollId === 0) {
         log('No polls deployed yet. Waiting...');
       } else {
         // Refresh deploy events periodically
         if (Date.now() - lastDeployFetch > 60_000) {
-          deployEvents = await maci.queryFilter(deployFilter, config.deployBlock);
+          deployEvents = await retryRpc(() => maci.queryFilter(deployFilter, config.deployBlock));
           lastDeployFetch = Date.now();
         }
 
@@ -984,7 +1009,7 @@ async function main() {
 
           const poll = new ethers.Contract(addrs.poll, POLL_ABI, provider);
 
-          const isOpen = await poll.isVotingOpen();
+          const isOpen = await retryRpc(() => poll.isVotingOpen());
           if (isOpen) {
             const [deployTime, duration] = await poll.getDeployTimeAndDuration();
             const endTime = Number(deployTime) + Number(duration);
@@ -1022,7 +1047,13 @@ async function main() {
         }
       }
     } catch (err) {
-      log(`Loop error: ${(err as Error).message?.slice(0, 100)}`);
+      const errMsg = (err as Error).message ?? '';
+      log(`Loop error: ${errMsg.slice(0, 100)}`);
+      if (errMsg.includes('ECONNRESET') || errMsg.includes('ETIMEDOUT')) {
+        log('Network error detected. Waiting 10s before retry...');
+        await new Promise(r => setTimeout(r, 10_000));
+        continue;
+      }
     }
 
     log(`\nNext check in ${POLL_CHECK_INTERVAL / 1000}s...\n`);

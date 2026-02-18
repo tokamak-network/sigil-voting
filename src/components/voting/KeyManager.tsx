@@ -124,7 +124,7 @@ export function KeyManager({
         signature.S,
       ];
 
-      const ciphertext = await cm.poseidonEncrypt(plaintext, sharedKey, nonce);
+      const ciphertext = await cm.poseidonEncrypt(plaintext, sharedKey, 0n);
 
       // Pad to 10 fields
       const encMessage: bigint[] = new Array(10).fill(0n);

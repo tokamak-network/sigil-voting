@@ -19,11 +19,6 @@ function App() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
   const [voteSubmittedData, setVoteSubmittedData] = useState<VoteSubmittedData | null>(null)
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
-    setToast({ message, type })
-    setTimeout(() => setToast(null), 4000)
-  }
-
   const handleSelectPoll = (pollId: number) => {
     setSelectedPollId(pollId)
     setCurrentPage('proposal-detail')
@@ -34,7 +29,7 @@ function App() {
     setCurrentPage('proposals')
   }
 
-  const handlePollCreated = (newPollId: number, _newPollAddress: `0x${string}`, _title?: string) => {
+  const handlePollCreated = (newPollId: number, _pollAddress: `0x${string}`, _title?: string) => {
     setSelectedPollId(newPollId)
     setCurrentPage('proposal-detail')
   }
@@ -52,7 +47,6 @@ function App() {
         <Header
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}
-          showToast={showToast}
         />
 
         <main className="flex-grow">

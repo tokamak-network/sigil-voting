@@ -45,3 +45,6 @@ circuits/build/
 *.wasm
 *.r1cs
 *.sym
+
+# External directories
+stitch_sigil_privacy_first_dao_voting_landing_page/
