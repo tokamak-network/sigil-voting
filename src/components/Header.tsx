@@ -27,6 +27,8 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
 
   const isCorrectChain = chainId === sepolia.id
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
+  const isLandingOrTech = currentPage === 'landing' || currentPage === 'technology'
+  const showNewProposal = currentPage === 'proposals'
 
   const { data: voiceCreditsRaw } = useReadContract({
     address: VOICE_CREDIT_PROXY_ADDRESS,
@@ -67,16 +69,16 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
 
   const handleConnect = () => connect({ connector: injected() })
 
-  const showNewProposal = currentPage === 'proposals'
-
   return (
     <nav className="sticky top-0 z-50 px-6 py-4 bg-white border-b-2 border-black">
       <div className="w-full flex items-center justify-between">
-        {/* Left: Logo + Badge */}
-        <div className="flex items-center gap-2">
-          <button onClick={() => setCurrentPage('landing')} className="flex items-center gap-2">
-            <img src="/assets/symbol.svg" alt="SIGIL" className="w-8 h-8" />
-            <span className="font-display font-bold text-2xl tracking-tighter uppercase italic">SIGIL</span>
+        {/* Left: Logo + Nav */}
+        <div className="flex items-center gap-3">
+          <button onClick={() => setCurrentPage('landing')} className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary flex items-center justify-center border-2 border-black">
+              <span className="material-symbols-outlined text-white">shield</span>
+            </div>
+            <span className="font-display font-bold text-2xl tracking-tighter uppercase">SIGIL</span>
           </button>
           <button
             onClick={() => setCurrentPage('technology')}
@@ -86,48 +88,35 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
           >
             {t.technology.nav}
           </button>
-          {(currentPage === 'proposals' || currentPage === 'proposal-detail') && (
-            <span className="hidden md:block ml-2 text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 border border-primary/20">{t.proposals.title}</span>
-          )}
         </div>
 
-        {/* Right: Balance + New Proposal + Wallet + Language */}
+        {/* Right: Controls */}
         <div className="flex items-center gap-4">
           <LanguageSwitcher />
 
-          {isConnected && isCorrectChain && (
-            <>
-              {/* Balance + New Proposal */}
-              <div className="hidden lg:flex items-center border-2 border-black bg-white p-2 gap-4">
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase leading-none">{t.header.balance}</span>
-                  <span className="text-sm font-mono font-bold">{voiceCredits.toLocaleString()} {t.voteForm.credits}</span>
-                </div>
-                {showNewProposal && (
-                  <>
-                    <div className="h-8 w-[1px] bg-slate-200"></div>
-                    <button
-                      onClick={() => setCurrentPage('create-proposal')}
-                      className="bg-black text-white px-4 py-2 text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-sm">add</span>
-                      {t.header.newProposal}
-                    </button>
-                  </>
-                )}
+          {/* Balance + New Proposal (connected, in app pages) */}
+          {isConnected && isCorrectChain && !isLandingOrTech && (
+            <div className="hidden lg:flex items-center border-2 border-black bg-white p-2 gap-4">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-slate-500 uppercase leading-none">{t.header.balance}</span>
+                <span className="text-sm font-mono font-bold">{voiceCredits.toLocaleString()} {t.voteForm.credits}</span>
               </div>
-
-              {/* Wallet Address + Disconnect */}
-              <button
-                onClick={() => disconnect()}
-                className="flex items-center border-2 border-black hover:border-red-500 transition-colors group"
-                title={t.header.disconnect}
-              >
-                <div className="px-3 py-1 bg-black text-white text-[10px] font-bold group-hover:bg-red-500 transition-colors">{shortenAddress(address!)}</div>
-              </button>
-            </>
+              {showNewProposal && (
+                <>
+                  <div className="h-8 w-[1px] bg-slate-200"></div>
+                  <button
+                    onClick={() => setCurrentPage('create-proposal')}
+                    className="bg-black text-white px-4 py-2 text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">add</span>
+                    {t.header.newProposal}
+                  </button>
+                </>
+              )}
+            </div>
           )}
 
+          {/* Wrong chain warning */}
           {isConnected && !isCorrectChain && (
             <button
               onClick={handleSwitchNetwork}
@@ -138,11 +127,33 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
             </button>
           )}
 
-          {!isConnected && (
+          {/* Wallet address (connected) */}
+          {isConnected && isCorrectChain && (
+            <button
+              onClick={() => disconnect()}
+              className="flex items-center border-2 border-black hover:border-red-500 transition-colors group"
+              title={t.header.disconnect}
+            >
+              <div className="px-3 py-1 bg-black text-white text-[10px] font-bold group-hover:bg-red-500 transition-colors">{shortenAddress(address!)}</div>
+            </button>
+          )}
+
+          {/* Launch App (landing / technology pages) */}
+          {isLandingOrTech && (
+            <button
+              className="bg-primary text-white px-6 py-2 border-2 border-black font-bold text-xs uppercase tracking-widest hover:translate-x-[2px] hover:translate-y-[2px] transition-transform"
+              onClick={() => setCurrentPage('proposals')}
+            >
+              {t.landing.enterApp}
+            </button>
+          )}
+
+          {/* Connect wallet (not connected, in app pages) */}
+          {!isConnected && !isLandingOrTech && (
             <button
               onClick={handleConnect}
               disabled={isConnecting}
-              className="bg-primary text-white px-6 py-2 text-xs font-bold border-2 border-black hover:bg-blue-600 transition-colors"
+              className="bg-primary text-white px-6 py-2 border-2 border-black font-bold text-xs uppercase tracking-widest hover:translate-x-[2px] hover:translate-y-[2px] transition-transform"
             >
               {isConnecting ? t.header.connecting : t.header.connect}
             </button>

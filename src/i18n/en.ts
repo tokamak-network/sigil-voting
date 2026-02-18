@@ -21,14 +21,14 @@ export const en: Translations = {
     heroVersion: 'By Tokamak Network',
     zeroExposure: { title: 'Zero Exposure', desc: 'Ballots are cryptographically hidden until tallying completion.' },
     maciSecured: { title: 'MACI Secured', desc: 'Engineered specifically to dismantle collusion and bribery.' },
-    coreFeatures: 'Core Features // 핵심 기능',
+    coreFeatures: 'Core Features',
     features: {
       privacy: { title: 'Permanent Privacy', sub: '\uC601\uAD6C\uC801 \uAC1C\uC778\uC815\uBCF4 \uBCF4\uD638', desc: 'Advanced encryption ensures no one can access individual ballots.' },
       coercion: { title: 'Unbribable', sub: '\uB9E4\uC218 \uBC29\uC9C0', desc: 'Prevents voters from proving their vote, making markets impossible.' },
       fairness: { title: 'Fair for All', sub: '\uBAA8\uB450\uB97C \uC704\uD55C \uACF5\uC815\uC131', desc: 'Quadratic voting mitigates whale dominance effectively.' },
       verified: { title: 'Proven Honesty', sub: '\uC99D\uBA85\uB41C \uC815\uC9C1\uC131', desc: 'ZK-proofs allow any participant to verify final results.' },
     },
-    operationalFlow: 'Operational Flow // 작동 방식',
+    operationalFlow: 'Operational Flow',
     lifecycle: {
       title: 'How It Works',
       label: 'Three Simple Steps',
@@ -37,7 +37,7 @@ export const en: Translations = {
       step3: { title: 'Audit Tally', desc: 'Review aggregate results. Every batch is verifiable via cryptographic proof.' },
     },
     whyMaci: {
-      title: 'Why SIGIL? // 도입 이유',
+      title: 'Why SIGIL?',
       anti: {
         title: 'Coercion Resistance',
         sub: '\uAC15\uC555 \uC800\uD56D\uC131',
