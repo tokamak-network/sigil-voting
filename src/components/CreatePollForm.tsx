@@ -117,7 +117,9 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
   // Load token gate details + user balances
   useEffect(() => {
     if (!publicClient || !address) return
-    const gateCount = Number(gateCountRaw || 0)
+    // Wait for both queries to load before deciding eligibility
+    if (gateCountRaw === undefined || canCreateRaw === undefined) return
+    const gateCount = Number(gateCountRaw)
 
     if (gateCount === 0) {
       setIsOwnerOnly(true)
