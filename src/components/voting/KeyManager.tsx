@@ -208,8 +208,8 @@ export function KeyManager({
       {!showConfirm ? (
         <button
           onClick={() => setShowConfirm(true)}
-          disabled={isChanging}
-          className="text-xs font-bold text-slate-500 uppercase tracking-wider hover:text-black transition-colors underline underline-offset-4"
+          disabled={isChanging || !address}
+          className="text-xs font-bold text-slate-500 uppercase tracking-wider hover:text-black transition-colors underline underline-offset-4 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {t.keyManager.changeKey}
         </button>
@@ -219,8 +219,8 @@ export function KeyManager({
           <div className="flex gap-2">
             <button
               onClick={handleKeyChange}
-              disabled={isChanging}
-              className="bg-black text-white px-4 py-2 text-xs font-bold uppercase hover:bg-slate-800 transition-colors"
+              disabled={isChanging || !address}
+              className="bg-black text-white px-4 py-2 text-xs font-bold uppercase hover:bg-slate-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isChanging ? t.keyManager.changing : t.keyManager.confirm}
             </button>

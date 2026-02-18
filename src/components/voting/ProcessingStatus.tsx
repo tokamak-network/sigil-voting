@@ -195,7 +195,7 @@ export function ProcessingStatus({
       {!isFinalized && (
         <div className="mt-4 p-3 bg-blue-50 border border-blue-200 flex items-start gap-2">
           <span className="material-symbols-outlined text-blue-500 text-sm mt-0.5" aria-hidden="true">schedule</span>
-          <p className="text-[11px] text-blue-700 leading-relaxed">{t.processing.timelineNote}</p>
+          <p className="text-xs text-blue-700 leading-relaxed">{t.processing.timelineNote}</p>
         </div>
       )}
 

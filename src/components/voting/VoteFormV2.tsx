@@ -432,13 +432,13 @@ export function VoteFormV2({
       {/* Gas Fee Estimate */}
       <div className="border-2 border-slate-200 p-4 space-y-2">
         <div className="flex justify-between items-center">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.voteForm.estimatedGas}</span>
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.voteForm.estimatedGas}</span>
           <span className="text-xs font-mono font-bold text-slate-600">
             ~{estimatedGasEth || '...'} ETH
           </span>
         </div>
         <div className="flex justify-between items-center">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.voteForm.yourEthBalance}</span>
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{t.voteForm.yourEthBalance}</span>
           <span className={`text-xs font-mono font-bold ${
             estimatedGasEth && ethBalanceNum < parseFloat(estimatedGasEth) ? 'text-red-500' : 'text-emerald-600'
           }`}>
@@ -446,10 +446,10 @@ export function VoteFormV2({
           </span>
         </div>
         {!isRegistered && (
-          <p className="text-[10px] font-mono text-amber-600 pt-1">{t.voteForm.firstVoteNote}</p>
+          <p className="text-xs font-mono text-amber-600 pt-1">{t.voteForm.firstVoteNote}</p>
         )}
         {estimatedGasEth && ethBalanceNum < parseFloat(estimatedGasEth) && (
-          <p className="text-[10px] font-bold text-red-500 pt-1">{t.voteForm.lowBalance}</p>
+          <p className="text-xs font-bold text-red-500 pt-1">{t.voteForm.lowBalance}</p>
         )}
       </div>
 

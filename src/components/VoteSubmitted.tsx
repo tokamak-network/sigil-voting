@@ -63,7 +63,7 @@ export function VoteSubmitted({
         <div className="technical-border bg-white p-8 w-full relative overflow-hidden">
           {/* Receipt ID Badge */}
           <div className="absolute top-0 right-0 p-4 border-l-2 border-b-2 border-black bg-slate-50">
-            <span className="font-mono text-[10px] font-bold">RECEIPT #{pollId}-ZK</span>
+            <span className="font-mono text-xs font-bold">RECEIPT #{pollId}-ZK</span>
           </div>
 
           {/* Proposal Title */}
@@ -140,15 +140,15 @@ export function VoteSubmitted({
           <div className="technical-border bg-slate-50 p-4 flex items-center gap-3">
             <span className="material-symbols-outlined text-primary text-xl">shield_with_heart</span>
             <div>
-              <p className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">{t.voteSubmittedPage.privacyStatus}</p>
-              <p className="text-[10px] font-display font-bold uppercase tracking-wider">{t.voteSubmittedPage.maciShield}</p>
+              <p className="text-xs font-mono text-slate-400 uppercase tracking-widest">{t.voteSubmittedPage.privacyStatus}</p>
+              <p className="text-xs font-display font-bold uppercase tracking-wider">{t.voteSubmittedPage.maciShield}</p>
             </div>
           </div>
           <div className="technical-border bg-slate-50 p-4 flex items-center gap-3">
             <span className="material-symbols-outlined text-primary text-xl">analytics</span>
             <div>
-              <p className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">{t.voteSubmittedPage.proofs}</p>
-              <p className="text-[10px] font-display font-bold uppercase tracking-wider">{t.voteSubmittedPage.zkProofGenerated}</p>
+              <p className="text-xs font-mono text-slate-400 uppercase tracking-widest">{t.voteSubmittedPage.proofs}</p>
+              <p className="text-xs font-display font-bold uppercase tracking-wider">{t.voteSubmittedPage.zkProofGenerated}</p>
             </div>
           </div>
         </div>

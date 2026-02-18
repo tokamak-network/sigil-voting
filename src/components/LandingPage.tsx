@@ -18,7 +18,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
         <div className="col-span-12 lg:col-span-5 p-12 flex flex-col justify-between border-r-0 lg:border-r-2 border-black bg-white">
           <div>
             <div className="inline-block border-2 border-black px-3 py-1 mb-10">
-              <span className="font-mono text-[10px] font-bold uppercase tracking-widest">{t.landing.badge}</span>
+              <span className="font-mono text-xs font-bold uppercase tracking-widest">{t.landing.badge}</span>
             </div>
             <h1 className="font-display text-6xl md:text-7xl font-bold leading-none mb-8 tracking-tighter uppercase">
               {titleLines[0]}<br />
@@ -56,17 +56,36 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
           </div>
           <div className="relative z-10 grid grid-cols-2 gap-4">
             <div className="p-6 bg-black border-2 border-white text-white">
-              <p className="font-mono text-[10px] mb-2 text-primary">{t.landing.heroLabel1}</p>
+              <p className="font-mono text-xs mb-2 text-primary">{t.landing.heroLabel1}</p>
               <h3 className="font-bold text-lg uppercase mb-2">{t.landing.zeroExposure.title}</h3>
-              <p className="text-xs text-slate-300 leading-relaxed">{t.landing.zeroExposure.desc}</p>
+              <p className="text-sm text-slate-300 leading-relaxed">{t.landing.zeroExposure.desc}</p>
             </div>
             <div className="p-6 bg-black border-2 border-white text-white">
-              <p className="font-mono text-[10px] mb-2 text-primary">{t.landing.heroLabel2}</p>
+              <p className="font-mono text-xs mb-2 text-primary">{t.landing.heroLabel2}</p>
               <h3 className="font-bold text-lg uppercase mb-2">{t.landing.maciSecured.title}</h3>
-              <p className="text-xs text-slate-300 leading-relaxed">{t.landing.maciSecured.desc}</p>
+              <p className="text-sm text-slate-300 leading-relaxed">{t.landing.maciSecured.desc}</p>
             </div>
           </div>
         </div>
+      </section>
+
+      {/* ─── Stats Bar ─── */}
+      <section className="grid grid-cols-2 md:grid-cols-4 border-b-2 border-black">
+        {[
+          { count: t.landing.stats.testsCount, label: t.landing.stats.testsLabel, icon: 'check_circle' },
+          { count: t.landing.stats.contractsCount, label: t.landing.stats.contractsLabel, icon: 'shield' },
+          { count: t.landing.stats.propertiesCount, label: t.landing.stats.propertiesLabel, icon: 'security' },
+          { count: t.landing.stats.licenseCount, label: t.landing.stats.licenseLabel, icon: 'code' },
+        ].map((stat, i) => (
+          <div
+            key={i}
+            className={`p-8 flex flex-col items-center text-center ${i < 3 ? 'border-r-0 md:border-r-2' : ''} ${i < 2 ? 'border-b-2 md:border-b-0' : ''} border-black`}
+          >
+            <span className="material-symbols-outlined text-primary text-2xl mb-3">{stat.icon}</span>
+            <span className="font-display text-4xl md:text-5xl font-black italic tracking-tighter">{stat.count}</span>
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-slate-500 mt-2">{stat.label}</span>
+          </div>
+        ))}
       </section>
 
       {/* ─── Core Features Section ─── */}
@@ -86,10 +105,10 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             <div className="w-12 h-12 border-2 border-black flex items-center justify-center mb-8 bg-white group-hover:bg-black group-hover:text-white transition-colors">
               <span className="material-symbols-outlined">encrypted</span>
             </div>
-            <h3 className="font-bold text-lg mb-4 uppercase tracking-tight">
+            <h3 className="font-bold text-lg mb-4 uppercase tracking-tight group-hover:text-white transition-colors">
               {t.landing.features.privacy.title}
             </h3>
-            <p className="text-xs font-medium leading-relaxed uppercase">{t.landing.features.privacy.desc}</p>
+            <p className="text-base font-medium leading-relaxed group-hover:text-white/90 transition-colors">{t.landing.features.privacy.desc}</p>
           </div>
 
           {/* Coercion */}
@@ -97,10 +116,10 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             <div className="w-12 h-12 border-2 border-black flex items-center justify-center mb-8 bg-white group-hover:bg-black group-hover:text-white transition-colors">
               <span className="material-symbols-outlined">gpp_maybe</span>
             </div>
-            <h3 className="font-bold text-lg mb-4 uppercase tracking-tight">
+            <h3 className="font-bold text-lg mb-4 uppercase tracking-tight group-hover:text-white transition-colors">
               {t.landing.features.coercion.title}
             </h3>
-            <p className="text-xs font-medium leading-relaxed uppercase">{t.landing.features.coercion.desc}</p>
+            <p className="text-base font-medium leading-relaxed group-hover:text-white/90 transition-colors">{t.landing.features.coercion.desc}</p>
           </div>
 
           {/* Fairness */}
@@ -108,10 +127,10 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             <div className="w-12 h-12 border-2 border-black flex items-center justify-center mb-8 bg-white group-hover:bg-black group-hover:text-white transition-colors">
               <span className="material-symbols-outlined">balance</span>
             </div>
-            <h3 className="font-bold text-lg mb-4 uppercase tracking-tight">
+            <h3 className="font-bold text-lg mb-4 uppercase tracking-tight group-hover:text-white transition-colors">
               {t.landing.features.fairness.title}
             </h3>
-            <p className="text-xs font-medium leading-relaxed uppercase">{t.landing.features.fairness.desc}</p>
+            <p className="text-base font-medium leading-relaxed group-hover:text-white/90 transition-colors">{t.landing.features.fairness.desc}</p>
           </div>
 
           {/* Verified */}
@@ -119,10 +138,10 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             <div className="w-12 h-12 border-2 border-black flex items-center justify-center mb-8 bg-white group-hover:bg-black group-hover:text-white transition-colors">
               <span className="material-symbols-outlined">rule</span>
             </div>
-            <h3 className="font-bold text-lg mb-4 uppercase tracking-tight">
+            <h3 className="font-bold text-lg mb-4 uppercase tracking-tight group-hover:text-white transition-colors">
               {t.landing.features.verified.title}
             </h3>
-            <p className="text-xs font-medium leading-relaxed uppercase">{t.landing.features.verified.desc}</p>
+            <p className="text-base font-medium leading-relaxed group-hover:text-white/90 transition-colors">{t.landing.features.verified.desc}</p>
           </div>
         </div>
       </section>
@@ -143,7 +162,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             <div>
               <span className="font-mono text-primary font-bold text-xs uppercase tracking-widest mb-4 block">STEP_01</span>
               <h3 className="font-display text-4xl font-bold mb-6 tracking-tighter uppercase">{t.landing.lifecycle.step1.title}</h3>
-              <p className="text-sm font-medium leading-relaxed">{t.landing.lifecycle.step1.desc}</p>
+              <p className="text-base font-medium leading-relaxed">{t.landing.lifecycle.step1.desc}</p>
             </div>
             <div className="border-2 border-black p-4 bg-slate-50 flex items-center justify-center h-32">
               <span className="material-symbols-outlined text-5xl text-slate-400">account_balance_wallet</span>
@@ -155,7 +174,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             <div>
               <span className="font-mono text-primary font-bold text-xs uppercase tracking-widest mb-4 block">STEP_02</span>
               <h3 className="font-display text-4xl font-bold mb-6 tracking-tighter uppercase">{t.landing.lifecycle.step2.title}</h3>
-              <p className="text-sm font-medium leading-relaxed">{t.landing.lifecycle.step2.desc}</p>
+              <p className="text-base font-medium leading-relaxed">{t.landing.lifecycle.step2.desc}</p>
             </div>
             <div className="space-y-3">
               <div className="p-4 border-2 border-primary bg-primary/10 flex justify-between items-center">
@@ -174,7 +193,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             <div>
               <span className="font-mono text-primary font-bold text-xs uppercase tracking-widest mb-4 block">STEP_03</span>
               <h3 className="font-display text-4xl font-bold mb-6 tracking-tighter uppercase">{t.landing.lifecycle.step3.title}</h3>
-              <p className="text-sm font-medium text-slate-400 leading-relaxed">{t.landing.lifecycle.step3.desc}</p>
+              <p className="text-base font-medium text-slate-400 leading-relaxed">{t.landing.lifecycle.step3.desc}</p>
             </div>
             <div className="border-2 border-white p-6 bg-slate-900 flex flex-col gap-4">
               <div className="flex items-center gap-2 text-green-400">
@@ -185,6 +204,38 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                 <div className="h-full bg-primary w-[88%]"></div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Demo Video Section ─── */}
+      <section className="border-b-2 border-black">
+        <div className="grid grid-cols-1 lg:grid-cols-2">
+          {/* Left: Text */}
+          <div className="p-12 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-black flex flex-col justify-center">
+            <h2 className="font-display text-5xl md:text-6xl font-black uppercase italic tracking-tighter leading-none mb-8">
+              {t.landing.demo.title}
+            </h2>
+            <p className="text-lg font-medium leading-relaxed text-slate-600 mb-8 max-w-lg">
+              {t.landing.demo.subtitle}
+            </p>
+            <div className="flex items-center gap-3 font-mono text-xs font-bold uppercase tracking-widest text-slate-400">
+              <span className="w-2 h-2 bg-primary"></span>
+              {t.landing.demo.note}
+            </div>
+          </div>
+
+          {/* Right: Video Placeholder */}
+          <div className="bg-slate-900 p-12 flex flex-col items-center justify-center min-h-[400px] relative">
+            <div className="w-24 h-24 border-4 border-white flex items-center justify-center mb-8 hover:bg-primary hover:border-primary transition-colors cursor-pointer group">
+              <span className="material-symbols-outlined text-white text-5xl group-hover:scale-110 transition-transform">play_arrow</span>
+            </div>
+            <p className="font-mono text-sm font-bold text-slate-400 uppercase tracking-widest">{t.landing.demo.placeholder}</p>
+            {/* Corner decorations */}
+            <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-slate-700"></div>
+            <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-slate-700"></div>
+            <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-slate-700"></div>
+            <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-slate-700"></div>
           </div>
         </div>
       </section>
@@ -203,7 +254,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                 <span className="w-3 h-3 bg-primary"></span>
                 {t.landing.whyMaci.anti.title}
               </h4>
-              <p className="text-sm leading-relaxed">{t.landing.whyMaci.anti.desc}</p>
+              <p className="text-base leading-relaxed">{t.landing.whyMaci.anti.desc}</p>
             </div>
 
             {/* True Secret Voting */}
@@ -212,7 +263,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                 <span className="w-3 h-3 bg-primary"></span>
                 {t.landing.whyMaci.privacy.title}
               </h4>
-              <p className="text-sm leading-relaxed">{t.landing.whyMaci.privacy.desc}</p>
+              <p className="text-base leading-relaxed">{t.landing.whyMaci.privacy.desc}</p>
             </div>
 
             {/* Whale Resistance — col-span-2 */}
@@ -223,7 +274,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                 </div>
                 <div>
                   <h4 className="font-bold text-xl mb-2 uppercase tracking-widest">{t.landing.whyMaci.verify.title}</h4>
-                  <p className="text-sm leading-relaxed max-w-2xl">{t.landing.whyMaci.verify.desc}</p>
+                  <p className="text-base leading-relaxed max-w-2xl">{t.landing.whyMaci.verify.desc}</p>
                 </div>
               </div>
             </div>
@@ -236,15 +287,6 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             {t.landing.terminalAccess}
           </h3>
           <div className="space-y-4">
-            <a
-              href="https://discord.gg/tokamak"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full p-4 bg-black text-white border-2 border-black hover:bg-primary transition-colors flex justify-between items-center group"
-            >
-              <span className="font-mono text-xs font-bold uppercase">{t.landing.connectDiscord}</span>
-              <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
-            </a>
             <a
               href="https://docs.sigil.vote"
               target="_blank"
@@ -265,7 +307,76 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             </a>
           </div>
           <div className="mt-12 p-6 border-2 border-dashed border-black opacity-50">
-            <p className="font-mono text-[10px] text-center">SIGIL_PROTOCOL :: v2.4<br />VERIFIER :: GROTH16_BN254<br />NETWORK :: ETHEREUM</p>
+            <p className="font-mono text-xs text-center">SIGIL_PROTOCOL :: v2.4<br />VERIFIER :: GROTH16_BN254<br />NETWORK :: ETHEREUM</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Integration Section ─── */}
+      <section className="border-b-2 border-black">
+        {/* Section Header */}
+        <div className="p-6 border-b-2 border-black bg-primary text-white flex justify-between items-center">
+          <h2 className="font-mono text-sm font-bold uppercase tracking-[0.3em]">
+            SDK Integration
+          </h2>
+          <span className="font-mono text-xs font-bold uppercase tracking-widest border border-white px-3 py-1">
+            {t.landing.integration.comingSoon}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2">
+          {/* Left: Title + Trust Badges */}
+          <div className="p-12 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-black flex flex-col justify-between">
+            <div>
+              <h2 className="font-display text-5xl md:text-6xl font-black uppercase italic tracking-tighter leading-none mb-8">
+                {t.landing.integration.title.split('\n').map((line, i) => (
+                  <span key={i}>
+                    {i === 1 ? <span className="text-primary">{line}</span> : line}
+                    {i === 0 && <br />}
+                  </span>
+                ))}
+              </h2>
+              <p className="text-lg font-medium leading-relaxed max-w-md mb-12">
+                {t.landing.integration.subtitle}
+              </p>
+            </div>
+
+            {/* Trust Badges */}
+            <div>
+              <h4 className="font-mono text-xs font-bold uppercase tracking-widest text-slate-400 mb-6">
+                {t.landing.integration.trustTitle}
+              </h4>
+              <div className="space-y-3">
+                {[t.landing.integration.trust1, t.landing.integration.trust2, t.landing.integration.trust3, t.landing.integration.trust4].map((trust, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-primary text-sm">check_circle</span>
+                    <span className="text-base font-medium">{trust}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Code Steps */}
+          <div className="p-0">
+            {[
+              { num: '01', title: t.landing.integration.step1Title, code: t.landing.integration.step1Code, desc: t.landing.integration.step1Desc },
+              { num: '02', title: t.landing.integration.step2Title, code: t.landing.integration.step2Code, desc: t.landing.integration.step2Desc },
+              { num: '03', title: t.landing.integration.step3Title, code: t.landing.integration.step3Code, desc: t.landing.integration.step3Desc },
+            ].map((step, i) => (
+              <div key={i} className={`p-8 ${i < 2 ? 'border-b-2 border-black' : ''}`}>
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="w-8 h-8 bg-black text-white flex items-center justify-center font-mono font-bold text-xs">
+                    {step.num}
+                  </span>
+                  <span className="font-bold uppercase tracking-wider text-sm">{step.title}</span>
+                </div>
+                <pre className="bg-slate-900 text-green-400 p-4 font-mono text-sm mb-3 overflow-x-auto whitespace-pre-wrap">
+                  {step.code}
+                </pre>
+                <p className="text-base text-slate-600">{step.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>

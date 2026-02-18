@@ -383,13 +383,13 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
                 {/* ── Card Top Row ── */}
                 <div>
                   <div className="flex justify-between items-start mb-6">
-                    <span className={`text-[10px] font-bold px-3 py-1.5 uppercase tracking-widest ${badge.className}`}>
+                    <span className={`text-xs font-bold px-3 py-1.5 uppercase tracking-widest ${badge.className}`}>
                       {badge.label}
                     </span>
                     {poll.hasVoted && (
                       <div className="flex items-center gap-1.5 text-primary">
                         <span className="material-symbols-outlined text-sm font-bold">check</span>
-                        <span className="text-[10px] font-bold uppercase tracking-widest">{t.proposals.voted}</span>
+                        <span className="text-xs font-bold uppercase tracking-widest">{t.proposals.voted}</span>
                       </div>
                     )}
                   </div>
@@ -405,26 +405,26 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
                   <div className="flex gap-12">
                     {/* Participants */}
                     <div>
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposals.participants}</span>
+                      <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposals.participants}</span>
                       <span className="text-2xl font-display font-bold">{poll.numMessages} <span className="text-sm font-normal text-slate-400">{t.proposals.messages}</span></span>
                     </div>
 
                     {/* Timer or Status */}
                     {status === 'active' && remaining > 0 && (
                       <div>
-                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{t.timer.remaining}</span>
+                        <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.timer.remaining}</span>
                         <span className="text-2xl font-mono font-bold text-primary">{formatTime(remaining)}</span>
                       </div>
                     )}
                     {status === 'ended' && (
                       <div>
-                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
+                        <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
                         <span className="text-2xl font-display font-bold">{t.proposals.calculating}</span>
                       </div>
                     )}
                     {status === 'failed' && (
                       <div>
-                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
+                        <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
                         <div className="flex items-center gap-2">
                           <span className="material-symbols-outlined text-red-500 text-xl">error</span>
                           <span className="text-2xl font-display font-bold text-red-500">{t.failed.title}</span>
@@ -433,7 +433,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
                     )}
                     {status === 'finalized' && (
                       <div>
-                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposals.result}</span>
+                        <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposals.result}</span>
                         <div className="flex items-center gap-2">
                           <span className="material-symbols-outlined text-emerald-500 text-xl">check_circle</span>
                           <span className="text-2xl font-display font-bold text-emerald-500">{t.proposals.statusEnded}</span>
@@ -449,7 +449,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
                 </div>
 
                 {/* ── Proposal # (absolute bottom-left) ── */}
-                <div className="absolute bottom-4 left-8 text-[9px] font-bold text-slate-300 uppercase">
+                <div className="absolute bottom-4 left-8 text-xs font-bold text-slate-300 uppercase">
                   {t.proposals.title} #{poll.id}
                 </div>
               </button>

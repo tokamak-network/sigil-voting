@@ -11,6 +11,9 @@ export interface Translations {
     switching: string
     balance: string
     newProposal: string
+    resetData: string
+    resetConfirm: string
+    resetDone: string
   }
   landing: {
     badge: string
@@ -70,6 +73,41 @@ export interface Translations {
       trust3: string
       trust4: string
       comingSoon: string
+    }
+    stats: {
+      testsCount: string
+      testsLabel: string
+      contractsCount: string
+      contractsLabel: string
+      propertiesCount: string
+      propertiesLabel: string
+      licenseCount: string
+      licenseLabel: string
+    }
+    demo: {
+      title: string
+      subtitle: string
+      placeholder: string
+      note: string
+    }
+    comparison: {
+      title: string
+      subtitle: string
+      feature: string
+      permanentPrivacy: string
+      antiBribery: string
+      quadraticVoting: string
+      onChainVerify: string
+      automation: string
+      yes: string
+      no: string
+      partial: string
+      plugin: string
+      offchain: string
+      demoStage: string
+      ownChain: string
+      postReveal: string
+      onlyStack: string
     }
     cta: {
       title: string

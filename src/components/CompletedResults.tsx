@@ -149,7 +149,7 @@ export function CompletedResults({
                       aria-label={`For: ${forPct}%`}
                     />
                   </div>
-                  <div className="mt-2 text-[10px] font-mono font-bold text-slate-500 text-right uppercase">
+                  <div className="mt-2 text-xs font-mono font-bold text-slate-500 text-right uppercase">
                     {forNum.toLocaleString()} {t.completedResults.quadraticCredits}
                   </div>
                 </div>
@@ -174,7 +174,7 @@ export function CompletedResults({
                       aria-label={`Against: ${againstPct}%`}
                     />
                   </div>
-                  <div className="mt-2 text-[10px] font-mono font-bold text-slate-500 text-right uppercase">
+                  <div className="mt-2 text-xs font-mono font-bold text-slate-500 text-right uppercase">
                     {againstNum.toLocaleString()} {t.completedResults.quadraticCredits}
                   </div>
                 </div>
@@ -187,7 +187,7 @@ export function CompletedResults({
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-slate-50 p-4 border border-slate-200">
-                    <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                    <span className="block text-xs font-bold text-slate-400 uppercase mb-1">
                       {t.completedResults.uniqueAddresses}
                     </span>
                     <span className="font-mono font-bold">
@@ -195,7 +195,7 @@ export function CompletedResults({
                     </span>
                   </div>
                   <div className="bg-slate-50 p-4 border border-slate-200">
-                    <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                    <span className="block text-xs font-bold text-slate-400 uppercase mb-1">
                       {t.completedResults.quadraticMagnitude}
                     </span>
                     <span className="font-mono font-bold">
@@ -216,7 +216,7 @@ export function CompletedResults({
                   <h4 className="font-bold uppercase italic text-sm">
                     {t.completedResults.zkVerified}
                   </h4>
-                  <p className="text-[10px] text-slate-400 font-mono">
+                  <p className="text-xs text-slate-400 font-mono">
                     TX: {shortTallyAddr}
                   </p>
                 </div>
@@ -287,7 +287,7 @@ export function CompletedResults({
             </div>
 
             {/* Metadata Box */}
-            <div className="border-2 border-slate-200 p-4 font-mono text-[10px] text-slate-400 uppercase leading-relaxed">
+            <div className="border-2 border-slate-200 p-4 font-mono text-xs text-slate-400 uppercase leading-relaxed">
               <p>IPFS Hash: QmXoyp...7821</p>
               <p>{t.completedResults.votingStrategy}</p>
               <p>{t.completedResults.shieldedVoting}</p>

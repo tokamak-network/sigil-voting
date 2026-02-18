@@ -69,6 +69,22 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
 
   const handleConnect = () => connect({ connector: injected() })
 
+  const handleResetTestData = () => {
+    if (!address) return
+    if (!confirm(t.header.resetConfirm)) return
+    // Clear all maci-* localStorage entries for this address
+    const keysToRemove: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && (key.includes(`maci-`) || key === 'maci-polls-cache')) {
+        keysToRemove.push(key)
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k))
+    alert(t.header.resetDone)
+    window.location.reload()
+  }
+
   return (
     <nav className="sticky top-0 z-50 px-6 py-4 bg-white border-b-2 border-black">
       <div className="w-full flex items-center justify-between">
@@ -80,7 +96,7 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
           </button>
           <button
             onClick={() => setCurrentPage('technology')}
-            className={`hidden md:block ml-4 text-xs font-bold uppercase tracking-wider transition-colors ${
+            className={`hidden md:block ml-4 text-sm font-bold uppercase tracking-wider transition-colors ${
               currentPage === 'technology' ? 'text-primary' : 'text-slate-500 hover:text-black'
             }`}
           >
@@ -96,7 +112,7 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
           {isConnected && isCorrectChain && !isLandingOrTech && (
             <div className="hidden lg:flex items-center border-2 border-black bg-white p-2 gap-4">
               <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-slate-500 uppercase leading-none">{t.header.balance}</span>
+                <span className="text-xs font-bold text-slate-500 uppercase leading-none">{t.header.balance}</span>
                 <span className="text-sm font-mono font-bold">{voiceCredits.toLocaleString()} {t.voteForm.credits}</span>
               </div>
               {showNewProposal && (
@@ -112,6 +128,18 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
                 </>
               )}
             </div>
+          )}
+
+          {/* Reset test data (connected, in app pages) */}
+          {isConnected && isCorrectChain && !isLandingOrTech && (
+            <button
+              onClick={handleResetTestData}
+              className="hidden md:flex items-center gap-1 px-3 py-2 text-xs font-bold text-slate-400 hover:text-red-500 border border-slate-200 hover:border-red-300 transition-colors"
+              title={t.header.resetData}
+            >
+              <span className="material-symbols-outlined text-sm">delete_sweep</span>
+              {t.header.resetData}
+            </button>
           )}
 
           {/* Wrong chain warning */}
@@ -132,7 +160,7 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
               className="flex items-center border-2 border-black hover:border-red-500 transition-colors group"
               title={t.header.disconnect}
             >
-              <div className="px-3 py-1 bg-black text-white text-[10px] font-bold group-hover:bg-red-500 transition-colors">{shortenAddress(address!)}</div>
+              <div className="px-3 py-1 bg-black text-white text-xs font-bold group-hover:bg-red-500 transition-colors">{shortenAddress(address!)}</div>
             </button>
           )}
 

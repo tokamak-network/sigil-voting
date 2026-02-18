@@ -71,7 +71,7 @@ const DURATION_PRESETS: { key: DurationPreset; labelKey: 'preset3d' | 'preset7d'
 ]
 
 export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormProps) {
-  const { address } = useAccount()
+  const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
   const { writeContractAsync, isPending } = useWriteContract()
   const { t } = useTranslation()
@@ -423,6 +423,19 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
     )
   }
 
+  // ─── Wallet not connected ──────────────────────────────────────
+  if (!isConnected) {
+    return (
+      <div className="w-full px-6 py-16">
+        <div className="technical-card-heavy bg-white p-12 text-center">
+          <span className="material-symbols-outlined text-6xl text-slate-300 mb-4" aria-hidden="true">account_balance_wallet</span>
+          <h2 className="font-display text-3xl font-black uppercase mb-4">{t.createPoll.title}</h2>
+          <p className="text-slate-600">{t.maci.connectWallet}</p>
+        </div>
+      </div>
+    )
+  }
+
   // ─── Loading state ───────────────────────────────────────────────
   if (isCheckingEligibility) {
     return (
@@ -651,7 +664,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
           {/* Submit Button */}
           <button
             onClick={handleSubmit}
-            disabled={!titleValid || !descValid || isSubmitting || isPending}
+            disabled={!titleValid || !descValid || isSubmitting || isPending || !address}
             className="cta-button w-full h-16 bg-primary text-white font-display font-black text-xl italic uppercase tracking-tight flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
             aria-busy={isSubmitting}
           >
@@ -679,7 +692,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               <div className="flex gap-4">
                 <span className="text-2xl font-display font-black text-primary leading-none">01</span>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">{t.createPoll.stakingTitle}</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase mb-1">{t.createPoll.stakingTitle}</p>
                   <p className="text-sm text-slate-700 leading-relaxed">{t.createPoll.stakingDesc}</p>
                 </div>
               </div>
@@ -687,7 +700,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               <div className="flex gap-4">
                 <span className="text-2xl font-display font-black text-primary leading-none">02</span>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">{t.createPoll.privacyGuideTitle}</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase mb-1">{t.createPoll.privacyGuideTitle}</p>
                   <p className="text-sm text-slate-700 leading-relaxed">{t.createPoll.privacyGuideDesc}</p>
                 </div>
               </div>
@@ -695,7 +708,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               <div className="flex gap-4">
                 <span className="text-2xl font-display font-black text-primary leading-none">03</span>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">{t.createPoll.windowTitle}</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase mb-1">{t.createPoll.windowTitle}</p>
                   <p className="text-sm text-slate-700 leading-relaxed">{t.createPoll.windowDesc}</p>
                 </div>
               </div>
@@ -703,7 +716,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               <div className="flex gap-4">
                 <span className="text-2xl font-display font-black text-primary leading-none">04</span>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">{t.createPoll.quorumTitle}</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase mb-1">{t.createPoll.quorumTitle}</p>
                   <p className="text-sm text-slate-700 leading-relaxed">{t.createPoll.quorumDesc}</p>
                 </div>
               </div>

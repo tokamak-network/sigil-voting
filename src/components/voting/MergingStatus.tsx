@@ -101,7 +101,7 @@ export function MergingStatus({ pollAddress }: MergingStatusProps) {
               {isLoading ? '...' : stateComplete ? t.merging.merged : t.merging.pending}
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1 ml-9">{t.merging.stateQueueDesc}</p>
+          <p className="text-xs text-slate-400 mt-1 ml-9">{t.merging.stateQueueDesc}</p>
         </div>
 
         <div
@@ -127,14 +127,14 @@ export function MergingStatus({ pollAddress }: MergingStatusProps) {
               {isLoading ? '...' : messageComplete ? t.merging.merged : t.merging.pending}
             </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-1 ml-9">{t.merging.messageQueueDesc}</p>
+          <p className="text-xs text-slate-400 mt-1 ml-9">{t.merging.messageQueueDesc}</p>
         </div>
       </div>
 
       {/* Timeline note */}
       <div className="mt-4 p-3 bg-blue-50 border border-blue-200 flex items-start gap-2">
         <span className="material-symbols-outlined text-blue-500 text-sm mt-0.5" aria-hidden="true">schedule</span>
-        <p className="text-[11px] text-blue-700 leading-relaxed">{t.merging.timelineNote}</p>
+        <p className="text-xs text-blue-700 leading-relaxed">{t.merging.timelineNote}</p>
       </div>
 
       {allMerged && (

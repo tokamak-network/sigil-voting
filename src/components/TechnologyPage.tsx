@@ -8,256 +8,332 @@ interface TechnologyPageProps {
 export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
   const { t } = useTranslation()
 
-  const properties = [
-    { key: 'collusion' as const, icon: 'group_off' },
-    { key: 'receipt' as const, icon: 'receipt_long' },
-    { key: 'privacy' as const, icon: 'visibility_off' },
-    { key: 'uncensor' as const, icon: 'block' },
-    { key: 'unforge' as const, icon: 'fingerprint' },
-    { key: 'nonrepud' as const, icon: 'gavel' },
-    { key: 'correct' as const, icon: 'verified' },
-  ]
-
   return (
     <div className="min-h-screen">
-      {/* Hero */}
-      <section className="px-6 md:px-12 lg:px-20 py-16 md:py-24 border-b-2 border-black">
-        <div className="max-w-4xl">
-          <div className="bg-black text-white px-3 py-1 text-xs font-bold uppercase tracking-widest w-fit mb-8">
-            {t.technology.heroBadge}
+      {/* Hero: 12-col grid */}
+      <section className="grid grid-cols-12 border-b-2 border-black overflow-hidden">
+        <div className="col-span-12 lg:col-span-8 p-12 lg:p-24 border-r-0 lg:border-r-2 border-black">
+          <div className="inline-block border-2 border-primary px-3 py-1 mb-6">
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-primary">
+              {t.technology.heroBadge}
+            </span>
           </div>
-          <h1 className="font-display font-black text-5xl md:text-6xl lg:text-7xl leading-none tracking-tight mb-6">
+          <h1 className="font-display text-6xl md:text-7xl font-black leading-none mb-10 tracking-tighter uppercase italic">
             {t.technology.title.split('\n').map((line, i) => (
-              <span key={i}>{line}{i === 0 && <br />}</span>
+              <span key={i}>
+                {line.includes('기술') || line.includes('Technology') ? (
+                  <>
+                    {line.split(/(기술|Technology)/i).map((part, j) =>
+                      /기술|Technology/i.test(part)
+                        ? <span key={j} className="text-primary">{part}</span>
+                        : <span key={j}>{part}</span>
+                    )}
+                  </>
+                ) : line}
+                {i === 0 && <br />}
+              </span>
             ))}
           </h1>
-          <p className="text-lg md:text-xl text-gray-600 max-w-2xl leading-relaxed">
+          <p className="text-xl md:text-2xl font-medium leading-tight max-w-2xl text-slate-700">
             {t.technology.subtitle}
           </p>
         </div>
+        <div className="col-span-12 lg:col-span-4 bg-primary p-12 flex flex-col justify-end">
+          <div className="space-y-6">
+            <a href="#pillar-1" className="block border-t-2 border-white pt-4 hover:opacity-80 transition-opacity">
+              <p className="font-mono text-white font-bold italic">01. {t.technology.zkVoting.badge.toUpperCase()}</p>
+            </a>
+            <a href="#pillar-2" className="block border-t-2 border-white pt-4 hover:opacity-80 transition-opacity">
+              <p className="font-mono text-white font-bold italic">02. {t.technology.quadratic.badge.toUpperCase()}</p>
+            </a>
+            <a href="#pillar-3" className="block border-t-2 border-white pt-4 hover:opacity-80 transition-opacity">
+              <p className="font-mono text-white font-bold italic">03. {t.technology.antiCollusion.badge.toUpperCase()}</p>
+            </a>
+          </div>
+        </div>
       </section>
 
-      {/* 1. ZK Private Voting */}
-      <section className="px-6 md:px-12 lg:px-20 py-16 md:py-24 border-b-2 border-black">
-        <div className="w-full">
-          <div className="flex flex-col lg:flex-row gap-12">
-            {/* Left: Explanation */}
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-6">
-                <span className="inline-flex items-center justify-center w-12 h-12 bg-primary text-white">
-                  <span className="material-symbols-outlined text-2xl">shield_person</span>
-                </span>
-                <div>
-                  <h2 className="font-display font-black text-3xl md:text-4xl uppercase italic">{t.technology.zkVoting.title}</h2>
-                  <span className="text-xs font-mono text-primary font-bold uppercase tracking-wider">{t.technology.zkVoting.badge}</span>
-                </div>
+      {/* Section 01: ZK Private Voting */}
+      <section className="border-b-2 border-black" id="pillar-1">
+        <div className="grid grid-cols-1 md:grid-cols-2">
+          {/* Left: Explanation */}
+          <div className="p-12 border-b-2 md:border-b-0 md:border-r-2 border-black">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 bg-black text-white flex items-center justify-center font-mono font-bold text-xl italic">
+                01
               </div>
-              <p className="text-lg text-gray-600 leading-relaxed mb-8">
+              <h2 className="font-display text-4xl font-bold tracking-tight uppercase italic">
+                {t.technology.zkVoting.title}
+              </h2>
+            </div>
+            <div className="mb-8">
+              <h3 className="font-mono text-sm font-bold text-primary uppercase mb-4 tracking-widest">
+                [ {t.technology.zkVoting.howTitle} ]
+              </h3>
+              <p className="text-lg leading-relaxed mb-6">
                 {t.technology.zkVoting.desc}
               </p>
-              <div className="technical-border bg-slate-50 p-6">
-                <h3 className="font-bold text-sm uppercase tracking-widest mb-4">{t.technology.zkVoting.howTitle}</h3>
-                <p className="text-sm text-gray-600 leading-relaxed mb-6">{t.technology.zkVoting.howDesc}</p>
-                <ul className="space-y-3">
-                  {[t.technology.zkVoting.point1, t.technology.zkVoting.point2, t.technology.zkVoting.point3].map((point, i) => (
-                    <li key={i} className="flex items-start gap-3 text-sm">
-                      <span className="material-symbols-outlined text-emerald-500 text-lg mt-0.5">check_circle</span>
-                      <span className="text-gray-700">{point}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <ul className="space-y-4 font-mono text-sm">
+                {[t.technology.zkVoting.point1, t.technology.zkVoting.point2, t.technology.zkVoting.point3].map((point, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <span className="material-symbols-outlined text-primary text-sm mt-1">check_circle</span>
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-            {/* Right: Visual */}
-            <div className="flex-1 flex items-center justify-center">
-              <div className="w-full max-w-sm">
-                <div className="border-2 border-black p-8 bg-white text-center">
-                  <span className="material-symbols-outlined text-6xl text-black/10 block mb-4">lock</span>
-                  <div className="font-mono text-xs text-slate-400 mb-2">{t.technology.zkVoting.commitLabel}</div>
-                  <div className="bg-black text-white font-mono text-sm p-4 break-all leading-relaxed">
-                    {t.technology.zkVoting.commitFormula}
-                  </div>
-                  <div className="mt-4 flex items-center justify-center gap-2 text-emerald-500 text-sm font-bold">
-                    <span className="material-symbols-outlined text-lg">verified</span>
-                    {t.technology.zkVoting.proofValid}
-                  </div>
-                </div>
+          </div>
+          {/* Right: Visual Diagram */}
+          <div className="p-12 flex items-center justify-center bg-slate-50">
+            <div className="w-full max-w-md border-2 border-black p-8 bg-white font-mono text-xs space-y-4">
+              <div className="flex justify-between border-b border-slate-200 pb-2">
+                <span className="opacity-50">INPUT_DATA</span>
+                <span className="font-bold">VOTE_OPTION_A</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-200 pb-2 text-primary">
+                <span className="opacity-50">SECRET_NONCE</span>
+                <span className="font-bold">x8f9...32a1</span>
+              </div>
+              <div className="py-4 flex justify-center">
+                <span className="material-symbols-outlined text-4xl">keyboard_double_arrow_down</span>
+              </div>
+              <div className="p-4 bg-black text-white break-all">
+                <p className="mb-1 text-xs opacity-50 uppercase">{t.technology.zkVoting.commitLabel} (On-Chain)</p>
+                0x4a2e8c1f9b3d7e5a6012c8b7f3d9e0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 2. Quadratic Voting */}
-      <section className="px-6 md:px-12 lg:px-20 py-16 md:py-24 border-b-2 border-black bg-slate-50">
-        <div className="w-full">
-          <div className="flex flex-col lg:flex-row-reverse gap-12">
-            {/* Right: Explanation */}
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-6">
-                <span className="inline-flex items-center justify-center w-12 h-12 bg-primary text-white">
-                  <span className="material-symbols-outlined text-2xl">balance</span>
-                </span>
-                <div>
-                  <h2 className="font-display font-black text-3xl md:text-4xl uppercase italic">{t.technology.quadratic.title}</h2>
-                  <span className="text-xs font-mono text-primary font-bold uppercase tracking-wider">{t.technology.quadratic.badge}</span>
+      {/* Section 02: Quadratic Voting */}
+      <section className="border-b-2 border-black" id="pillar-2">
+        <div className="grid grid-cols-1 md:grid-cols-2">
+          {/* Left: Cost Visual (reversed order on desktop) */}
+          <div className="p-12 border-b-2 md:border-b-0 md:border-r-2 border-black order-2 md:order-1 bg-slate-50">
+            <div className="grid grid-cols-1 gap-6">
+              <div className="p-6 border-2 border-black bg-white">
+                <p className="font-mono text-xs text-primary font-bold mb-4 uppercase">
+                  {t.technology.quadratic.formula}
+                </p>
+                <div className="space-y-4 font-mono text-sm">
+                  {[
+                    { label: t.technology.quadratic.vote1, credits: `1 ${t.technology.quadratic.creditUnit}` },
+                    { label: t.technology.quadratic.vote2, credits: `4 ${t.technology.quadratic.creditUnit}` },
+                    { label: t.technology.quadratic.vote3, credits: `9 ${t.technology.quadratic.creditUnit}` },
+                  ].map((item, i) => (
+                    <div key={i} className="flex justify-between items-center p-3 border border-slate-200">
+                      <span>{item.label}</span>
+                      <span className="font-bold">{item.credits}</span>
+                    </div>
+                  ))}
+                  <div className="h-1 bg-slate-200 w-full">
+                    <div className="h-full bg-primary w-[33%]" />
+                  </div>
                 </div>
               </div>
-              <p className="text-lg text-gray-600 leading-relaxed mb-8">
-                {t.technology.quadratic.desc}
-              </p>
-              <div className="technical-border bg-white p-6">
-                <h3 className="font-bold text-sm uppercase tracking-widest mb-4">{t.technology.quadratic.howTitle}</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">{t.technology.quadratic.howDesc}</p>
+              <div className="text-center font-bold italic text-slate-400 text-xs uppercase tracking-widest">
+                {t.technology.quadratic.example}
               </div>
             </div>
-            {/* Left: Cost Visual */}
-            <div className="flex-1 flex items-center justify-center">
-              <div className="w-full max-w-sm space-y-4">
-                <div className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">{t.technology.quadratic.example}</div>
+          </div>
+          {/* Right: Explanation */}
+          <div className="p-12 order-1 md:order-2">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 bg-black text-white flex items-center justify-center font-mono font-bold text-xl italic">
+                02
+              </div>
+              <h2 className="font-display text-4xl font-bold tracking-tight uppercase italic">
+                {t.technology.quadratic.title}
+              </h2>
+            </div>
+            <p className="text-lg mb-8 leading-relaxed">
+              {t.technology.quadratic.desc}
+            </p>
+            <div className="bg-primary/5 p-6 border-l-4 border-primary">
+              <h4 className="font-mono text-xs font-bold text-primary mb-2">{t.technology.quadratic.howTitle}:</h4>
+              <p className="font-mono text-base">{t.technology.quadratic.howDesc}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section 03: MACI Anti-Collusion */}
+      <section className="border-b-2 border-black" id="pillar-3">
+        <div className="p-12">
+          <div className="flex items-center gap-4 mb-12">
+            <div className="w-12 h-12 bg-black text-white flex items-center justify-center font-mono font-bold text-xl italic">
+              03
+            </div>
+            <h2 className="font-display text-4xl font-bold tracking-tight uppercase italic">
+              {t.technology.antiCollusion.title} — {t.technology.antiCollusion.badge}
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 border-2 border-black">
+            <div className="p-8 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-black">
+              <span className="font-mono text-xs font-bold text-primary italic mb-4 block">STEP_01</span>
+              <h4 className="font-bold mb-4 uppercase italic">Forced Vote ({t.technology.antiCollusion.scenario})</h4>
+              <p className="text-base text-slate-600">{t.technology.antiCollusion.step1}</p>
+            </div>
+            <div className="p-8 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-black bg-slate-50">
+              <span className="font-mono text-xs font-bold text-primary italic mb-4 block">STEP_02</span>
+              <h4 className="font-bold mb-4 uppercase italic">Key Change (EdDSA)</h4>
+              <p className="text-base text-slate-600">{t.technology.antiCollusion.step2}</p>
+            </div>
+            <div className="p-8">
+              <span className="font-mono text-xs font-bold text-primary italic mb-4 block">STEP_03</span>
+              <h4 className="font-bold mb-4 uppercase italic">Real Vote (Final)</h4>
+              <p className="text-base text-slate-600">{t.technology.antiCollusion.step3}</p>
+            </div>
+          </div>
+          <p className="mt-8 font-mono text-xs text-center uppercase tracking-widest opacity-50">
+            Developed in partnership with Ethereum Privacy &amp; Scaling Explorations (PSE)
+          </p>
+        </div>
+      </section>
+
+      {/* Stronger Together */}
+      <section className="p-12 lg:p-24 bg-black text-white text-center border-b-2 border-black">
+        <h2 className="font-display text-5xl md:text-7xl font-black italic uppercase mb-8 tracking-tighter">
+          {t.technology.combined.title}
+        </h2>
+        <p className="text-xl max-w-3xl mx-auto mb-12 font-medium leading-relaxed">
+          {t.technology.combined.desc}
+        </p>
+        <div className="inline-flex gap-4 border-2 border-white p-2">
+          <div className="w-4 h-4 bg-primary" />
+          <div className="w-4 h-4 bg-primary" />
+          <div className="w-4 h-4 bg-primary" />
+        </div>
+      </section>
+
+      {/* For Developers */}
+      <section className="border-b-2 border-black">
+        <div className="p-6 border-b-2 border-black bg-black text-white flex justify-between items-center">
+          <h3 className="font-mono text-sm font-bold uppercase tracking-[0.3em]">
+            {t.technology.developers.title.replace('\n', ' ')}
+          </h3>
+          <span className="material-symbols-outlined">code</span>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12">
+          {/* Left: SDK + Widget + API */}
+          <div className="lg:col-span-8 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-black">
+            <div className="p-12">
+              <h2 className="font-display text-4xl md:text-5xl font-black uppercase italic tracking-tighter leading-none mb-4">
+                {t.technology.developers.title.split('\n').map((line, i) => (
+                  <span key={i}>
+                    {line}
+                    {i === 0 && <br />}
+                  </span>
+                ))}
+              </h2>
+              <p className="text-lg text-slate-600 mb-12 max-w-xl">
+                {t.technology.developers.subtitle}
+              </p>
+
+              {/* 3 Integration Options */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-2 border-black">
                 {[
-                  { label: t.technology.quadratic.vote1, width: '11%', credits: 1 },
-                  { label: t.technology.quadratic.vote2, width: '44%', credits: 4 },
-                  { label: t.technology.quadratic.vote3, width: '100%', credits: 9 },
+                  { icon: 'package_2', title: t.technology.developers.sdkTitle, desc: t.technology.developers.sdkDesc },
+                  { icon: 'widgets', title: t.technology.developers.widgetTitle, desc: t.technology.developers.widgetDesc },
+                  { icon: 'terminal', title: t.technology.developers.apiTitle, desc: t.technology.developers.apiDesc },
                 ].map((item, i) => (
-                  <div key={i} className="border-2 border-black bg-white p-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="font-mono font-bold text-sm">{item.label}</span>
-                      <span className="text-xs font-mono text-slate-400">{item.credits} {t.technology.quadratic.creditUnit}</span>
+                  <div key={i} className={`p-6 ${i < 2 ? 'border-r-0 md:border-r-2' : ''} border-b-2 md:border-b-0 border-black`}>
+                    <div className="w-10 h-10 bg-primary text-white flex items-center justify-center mb-4">
+                      <span className="material-symbols-outlined text-lg">{item.icon}</span>
                     </div>
-                    <div className="w-full h-6 bg-slate-100">
-                      <div
-                        className="h-full bg-primary transition-all duration-700"
-                        style={{ width: item.width }}
-                      />
-                    </div>
+                    <h4 className="font-bold uppercase text-sm tracking-wider mb-3">{item.title}</h4>
+                    <p className="text-base text-slate-600 leading-relaxed">{item.desc}</p>
                   </div>
                 ))}
-                <div className="text-center pt-2">
-                  <span className="font-mono text-xs text-slate-500">{t.technology.quadratic.formula}</span>
-                </div>
+              </div>
+            </div>
+
+            {/* Use Cases */}
+            <div className="p-12 border-t-2 border-black bg-slate-50">
+              <h3 className="font-mono text-xs font-bold uppercase tracking-widest text-primary mb-6">
+                {t.technology.developers.useCaseTitle}
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[t.technology.developers.useCase1, t.technology.developers.useCase2, t.technology.developers.useCase3, t.technology.developers.useCase4].map((uc, i) => (
+                  <div key={i} className="flex items-start gap-3 p-4 bg-white border border-slate-200">
+                    <span className="material-symbols-outlined text-primary text-sm mt-0.5">arrow_right</span>
+                    <span className="text-base font-medium">{uc}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* 3. MACI Anti-Collusion */}
-      <section className="px-6 md:px-12 lg:px-20 py-16 md:py-24 border-b-2 border-black">
-        <div className="w-full">
-          <div className="flex flex-col lg:flex-row gap-12">
-            {/* Left: Explanation */}
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-6">
-                <span className="inline-flex items-center justify-center w-12 h-12 bg-primary text-white">
-                  <span className="material-symbols-outlined text-2xl">lock_reset</span>
-                </span>
-                <div>
-                  <h2 className="font-display font-black text-3xl md:text-4xl uppercase italic">{t.technology.antiCollusion.title}</h2>
-                  <span className="text-xs font-mono text-primary font-bold uppercase tracking-wider">{t.technology.antiCollusion.badge}</span>
-                </div>
+          {/* Right: Security & Trust */}
+          <div className="lg:col-span-4 p-12 flex flex-col justify-between">
+            <div>
+              <h3 className="font-mono text-xs font-bold uppercase tracking-widest mb-8 border-b-2 border-black pb-4">
+                {t.technology.developers.trustTitle}
+              </h3>
+              <div className="space-y-6">
+                {[t.technology.developers.trust1, t.technology.developers.trust2, t.technology.developers.trust3, t.technology.developers.trust4].map((trust, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <span className="material-symbols-outlined text-primary text-base mt-0.5">verified</span>
+                    <p className="text-base leading-relaxed">{trust}</p>
+                  </div>
+                ))}
               </div>
-              <p className="text-lg text-gray-600 leading-relaxed mb-8">
-                {t.technology.antiCollusion.desc}
+            </div>
+            <div className="mt-12 p-6 bg-black text-white">
+              <p className="font-mono text-xs uppercase tracking-widest mb-2 text-slate-400">Protocol Stack</p>
+              <p className="font-mono text-xs leading-relaxed">
+                POSEIDON HASH | EDDSA KEYS<br />
+                GROTH16 PROOFS | BABY JUBJUB<br />
+                DUPLEXSPONGE CIPHER | ECDH
               </p>
-              <div className="technical-border bg-slate-50 p-6">
-                <h3 className="font-bold text-sm uppercase tracking-widest mb-4">{t.technology.antiCollusion.howTitle}</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">{t.technology.antiCollusion.howDesc}</p>
-              </div>
-            </div>
-            {/* Right: Scenario */}
-            <div className="flex-1 flex items-center justify-center">
-              <div className="w-full max-w-sm">
-                <div className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">{t.technology.antiCollusion.scenario}</div>
-                <div className="space-y-4">
-                  {[
-                    { step: '1', text: t.technology.antiCollusion.step1, icon: 'warning', color: 'text-red-500' },
-                    { step: '2', text: t.technology.antiCollusion.step2, icon: 'key', color: 'text-primary' },
-                    { step: '3', text: t.technology.antiCollusion.step3, icon: 'check_circle', color: 'text-emerald-500' },
-                  ].map((item, i) => (
-                    <div key={i} className="border-2 border-black bg-white p-4 flex items-start gap-4">
-                      <span className="inline-flex items-center justify-center w-8 h-8 bg-black text-white text-sm font-bold font-mono flex-shrink-0">
-                        {item.step}
-                      </span>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`material-symbols-outlined text-lg ${item.color}`}>{item.icon}</span>
-                        </div>
-                        <p className="text-sm text-gray-700">{item.text}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Combined Strength */}
-      <section className="px-6 md:px-12 lg:px-20 py-16 md:py-20 border-b-2 border-black bg-black text-white">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="font-display font-black text-3xl md:text-4xl uppercase italic mb-6">
-            {t.technology.combined.title}
-          </h2>
-          <p className="text-lg text-white/70 leading-relaxed max-w-2xl mx-auto mb-10">
-            {t.technology.combined.desc}
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <div className="border border-white/20 px-5 py-3 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">shield_person</span>
-              <span className="font-mono text-sm font-bold">{t.technology.zkVoting.title}</span>
-            </div>
-            <span className="text-white/30 text-2xl">+</span>
-            <div className="border border-white/20 px-5 py-3 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">balance</span>
-              <span className="font-mono text-sm font-bold">{t.technology.quadratic.title}</span>
-            </div>
-            <span className="text-white/30 text-2xl">+</span>
-            <div className="border border-white/20 px-5 py-3 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">lock_reset</span>
-              <span className="font-mono text-sm font-bold">{t.technology.antiCollusion.title}</span>
-            </div>
-          </div>
+      {/* Security Guarantees: 7-col grid */}
+      <section className="border-b-2 border-black">
+        <div className="p-6 border-b-2 border-black bg-slate-100">
+          <h3 className="font-mono text-sm font-bold uppercase tracking-[0.3em]">
+            {t.technology.properties.title} — {t.technology.properties.subtitle}
+          </h3>
         </div>
-      </section>
-
-      {/* 7 Security Properties */}
-      <section className="px-6 md:px-12 lg:px-20 py-16 md:py-24 border-b-2 border-black">
-        <div className="w-full">
-          <div className="mb-12">
-            <h2 className="font-display font-black uppercase italic text-4xl md:text-5xl mb-3">
-              {t.technology.properties.title}
-            </h2>
-            <p className="text-sm font-mono text-slate-500 uppercase tracking-wider">
-              {t.technology.properties.subtitle}
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {properties.map(({ key, icon }) => (
-              <div key={key} className="technical-border bg-white p-5 hover:border-primary transition-colors">
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="material-symbols-outlined text-primary text-xl">{icon}</span>
-                  <h3 className="font-bold text-sm uppercase tracking-wider">{t.technology.properties[key].title}</h3>
-                </div>
-                <p className="text-xs text-gray-500 leading-relaxed">{t.technology.properties[key].desc}</p>
-              </div>
-            ))}
-          </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 text-center">
+          {([
+            { key: 'collusion' as const },
+            { key: 'receipt' as const },
+            { key: 'privacy' as const },
+            { key: 'uncensor' as const },
+            { key: 'unforge' as const },
+            { key: 'nonrepud' as const },
+            { key: 'correct' as const },
+          ]).map(({ key }, i) => (
+            <div
+              key={key}
+              className={`group p-8 ${i < 6 ? 'border-r-2' : ''} border-b-2 border-black hover:bg-primary transition-colors flex flex-col items-center justify-center gap-2`}
+            >
+              <p className="font-mono text-xs font-bold group-hover:text-white transition-colors">{t.technology.properties[key].title}</p>
+              <p className="font-mono text-xs text-slate-500 uppercase group-hover:text-white/70 transition-colors">{t.technology.properties[key].desc}</p>
+            </div>
+          ))}
         </div>
       </section>
 
       {/* CTA */}
-      <section className="px-6 md:px-12 lg:px-20 py-20 md:py-28 bg-black text-white text-center">
-        <h2 className="font-display font-black uppercase italic text-3xl md:text-5xl mb-8">
-          {t.technology.cta.title}
-        </h2>
-        <button
-          className="cta-button bg-primary text-white px-8 py-4 text-lg font-display font-black uppercase"
-          onClick={() => setCurrentPage('proposals')}
-        >
-          {t.technology.cta.button}
-        </button>
+      <section className="p-24 bg-white text-center">
+        <div className="max-w-2xl mx-auto space-y-8">
+          <h2 className="font-display text-4xl md:text-5xl font-black uppercase italic tracking-tight">
+            {t.technology.cta.title} →
+          </h2>
+          <button
+            className="bg-primary text-white px-12 py-6 border-2 border-black font-bold text-xl hover:translate-x-1 hover:-translate-y-1 transition-transform flex items-center justify-center gap-4 mx-auto uppercase italic"
+            onClick={() => setCurrentPage('proposals')}
+          >
+            {t.technology.cta.button}
+            <span className="material-symbols-outlined">arrow_forward</span>
+          </button>
+        </div>
       </section>
     </div>
   )

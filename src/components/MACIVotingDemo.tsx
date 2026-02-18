@@ -418,8 +418,9 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
     )
   }
 
-  // === Not connected ===
-  if (!isConnected) {
+  // === Not connected: show connect prompt only during Voting phase ===
+  // Ended polls (Merging/Processing/Finalized/Failed) are viewable without connection
+  if (!isConnected && (!hasPoll || phase === V2Phase.Voting)) {
     return (
       <div className="min-h-screen bg-white">
         <div className="w-full px-6 py-20">
@@ -796,7 +797,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
             </div>
           </div>
         )}
-        {!myVote && address && (
+        {!myVote && isConnected && (
           <div className="border-2 border-slate-200 bg-slate-50 p-4 mb-8 flex items-center gap-3">
             <span className="material-symbols-outlined text-slate-400" aria-hidden="true">info</span>
             <span className="text-sm text-slate-500">{t.myVote.noVote}</span>
