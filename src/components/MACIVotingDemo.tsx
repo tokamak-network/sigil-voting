@@ -207,10 +207,12 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   useEffect(() => {
     if (!pollAddress || !publicClient) return
 
+    const FAIL_THRESHOLD_S = 30 * 60 // 30 minutes after voting ends
+
     const checkPhase = async () => {
       try {
         // Parallel: fetch all poll state in one batch
-        const [isOpen, stateMerged, msgMerged] = await Promise.all([
+        const [isOpen, stateMerged, msgMerged, deployTimeAndDuration] = await Promise.all([
           publicClient.readContract({
             address: pollAddress,
             abi: POLL_ABI,
@@ -226,6 +228,11 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
             abi: POLL_ABI,
             functionName: 'messageAqMerged',
           }),
+          publicClient.readContract({
+            address: pollAddress,
+            abi: POLL_ABI,
+            functionName: 'getDeployTimeAndDuration',
+          }).catch(() => null),
         ])
 
         if (isOpen) {
@@ -234,13 +241,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
           return
         }
 
-        if (!stateMerged || !msgMerged) {
-          setPhase(V2Phase.Merging)
-          setPhaseLoaded(true)
-          return
-        }
-
-        // Both queues merged -- check if tally is verified
+        // Check if tally is verified first (success path)
         if (tallyAddress && tallyAddress !== ZERO_ADDRESS) {
           try {
             const verified = await publicClient.readContract({
@@ -256,6 +257,24 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
           } catch {
             // Tally contract might not support tallyVerified
           }
+        }
+
+        // Check if stuck too long → Failed
+        if (deployTimeAndDuration) {
+          const [deployTime, duration] = deployTimeAndDuration as [bigint, bigint]
+          const votingEndTime = Number(deployTime) + Number(duration)
+          const now = Math.floor(Date.now() / 1000)
+          if (now - votingEndTime > FAIL_THRESHOLD_S) {
+            setPhase(V2Phase.Failed)
+            setPhaseLoaded(true)
+            return
+          }
+        }
+
+        if (!stateMerged || !msgMerged) {
+          setPhase(V2Phase.Merging)
+          setPhaseLoaded(true)
+          return
         }
 
         setPhase(V2Phase.Processing)
@@ -696,10 +715,16 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
           <div className="flex flex-col items-end shrink-0">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
             <span className={`px-6 py-3 bg-white border-4 border-black font-black text-xl italic uppercase tracking-tighter ${
-              phase === V2Phase.Finalized ? 'text-green-600' : 'text-amber-600'
+              phase === V2Phase.Finalized ? 'text-green-600' : phase === V2Phase.Failed ? 'text-red-600' : 'text-amber-600'
             }`}>
               {phase === V2Phase.Merging && t.merging.title.toUpperCase()}
               {phase === V2Phase.Processing && t.processing.title.toUpperCase()}
+              {phase === V2Phase.Failed && (
+                <span className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-lg">error</span>
+                  {t.failed.title.toUpperCase()}
+                </span>
+              )}
               {phase === V2Phase.Finalized && (
                 <span className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-lg">check_circle</span>
@@ -743,6 +768,29 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
           {phase === V2Phase.Processing && (
             <div className="technical-card-heavy bg-white p-8">
               <ProcessingStatus messageProcessorAddress={messageProcessorAddress || undefined} tallyAddress={tallyAddress || undefined} />
+            </div>
+          )}
+          {phase === V2Phase.Failed && (
+            <div className="technical-card-heavy bg-white p-8">
+              <div className="flex flex-col items-center text-center gap-4">
+                <div className="w-16 h-16 bg-red-100 border-2 border-red-300 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-3xl text-red-500">error</span>
+                </div>
+                <h3 className="font-display text-2xl font-black uppercase tracking-tight text-red-600">
+                  {t.failed.title}
+                </h3>
+                <p className="text-sm text-slate-600 max-w-lg">{t.failed.desc}</p>
+                <div className="mt-2 p-4 bg-red-50 border border-red-200 text-left w-full">
+                  <p className="text-xs text-red-700">{t.failed.reason}</p>
+                </div>
+                <p className="text-sm font-bold text-slate-500 mt-2">{t.failed.newPollHint}</p>
+                <button
+                  onClick={onBack}
+                  className="mt-4 bg-black text-white px-8 py-3 font-bold text-xs uppercase tracking-widest border-2 border-black hover:bg-slate-800 transition-colors"
+                >
+                  {t.proposals.backToList}
+                </button>
+              </div>
             </div>
           )}
           {phase === V2Phase.Finalized && tallyAddress && tallyAddress !== ZERO_ADDRESS ? (

@@ -183,9 +183,13 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     loadPolls()
   }, [nextPollId, publicClient, address, refreshKey])
 
-  const getStatus = (poll: PollInfo): 'active' | 'ended' | 'finalized' => {
+  const FAIL_THRESHOLD_S = 30 * 60 // 30 minutes after voting ends
+
+  const getStatus = (poll: PollInfo): 'active' | 'ended' | 'finalized' | 'failed' => {
     if (poll.isOpen) return 'active'
     if (poll.isFinalized) return 'finalized'
+    const votingEndTime = poll.deployTime + poll.duration
+    if (now - votingEndTime > FAIL_THRESHOLD_S) return 'failed'
     return 'ended'
   }
 
@@ -225,7 +229,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     const status = getStatus(poll)
     if (status === 'active') return 'voting'
     if (status === 'ended') return 'processing' // ended but not finalized = processing/revealing
-    return 'ended' // finalized = ended
+    return 'ended' // finalized or failed = ended
   }
 
   // Compute counts for filter tabs
@@ -251,6 +255,9 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     const status = getStatus(poll)
     if (status === 'active') {
       return { label: t.proposals.statusVoting, className: 'bg-primary text-white' }
+    }
+    if (status === 'failed') {
+      return { label: t.failed.title, className: 'bg-red-500 text-white' }
     }
     if (status === 'ended') {
       return { label: t.proposals.statusRevealing, className: 'bg-amber-400 text-black' }
@@ -413,6 +420,15 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
                       <div>
                         <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
                         <span className="text-2xl font-display font-bold">{t.proposals.calculating}</span>
+                      </div>
+                    )}
+                    {status === 'failed' && (
+                      <div>
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-red-500 text-xl">error</span>
+                          <span className="text-2xl font-display font-bold text-red-500">{t.failed.title}</span>
+                        </div>
                       </div>
                     )}
                     {status === 'finalized' && (

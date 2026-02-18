@@ -27,12 +27,13 @@ export const POLL_V2_ADDRESS = '0x0000000000000000000000000000000000000000' as `
 export const MESSAGE_PROCESSOR_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`;
 export const TALLY_V2_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`;
 
-// V2 Phases (4-phase, no Reveal)
+// V2 Phases (5-phase, no Reveal)
 export const V2Phase = {
   Voting: 'voting',
   Merging: 'merging',
   Processing: 'processing',
   Finalized: 'finalized',
+  Failed: 'failed',
 } as const;
 export type V2Phase = (typeof V2Phase)[keyof typeof V2Phase];
 

@@ -75,9 +75,7 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
         {/* Left: Logo + Nav */}
         <div className="flex items-center gap-3">
           <button onClick={() => setCurrentPage('landing')} className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary flex items-center justify-center border-2 border-black">
-              <span className="material-symbols-outlined text-white">shield</span>
-            </div>
+            <img src="/assets/symbol.svg" alt="SIGIL" className="w-10 h-10" />
             <span className="font-display font-bold text-2xl tracking-tighter uppercase">SIGIL</span>
           </button>
           <button
