@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAccount, useWriteContract } from 'wagmi';
+import { sepolia } from '../../wagmi';
 import { POLL_ABI, POLL_V2_ADDRESS } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 import { preloadCrypto } from '../../crypto/preload';
@@ -146,6 +147,8 @@ export function KeyManager({
           ephemeral.pubKey[1],
         ],
         gas: 500_000n,
+        account: address,
+        chain: sepolia,
       });
 
       // Save new keypair (private key encrypted)

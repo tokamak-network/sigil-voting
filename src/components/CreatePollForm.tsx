@@ -10,6 +10,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useAccount, useWriteContract, usePublicClient, useReadContract } from 'wagmi'
+import { sepolia } from '../wagmi'
 import {
   MACI_V2_ADDRESS,
   MSG_PROCESSOR_VERIFIER_ADDRESS,
@@ -192,6 +193,8 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
         abi: MACI_ABI,
         functionName: 'addProposalGate',
         args: [TON_TOKEN_ADDRESS, 1n],
+        account: address,
+        chain: sepolia,
       })
       if (publicClient) {
         await publicClient.waitForTransactionReceipt({ hash })
@@ -236,6 +239,8 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
           2,
         ],
         gas: 15000000n,
+        account: address,
+        chain: sepolia,
       })
 
       setTxStage('waiting')

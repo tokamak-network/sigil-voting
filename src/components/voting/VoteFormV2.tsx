@@ -16,6 +16,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useWriteContract, useAccount, usePublicClient, useBalance } from 'wagmi';
 import { formatEther } from 'viem';
+import { sepolia } from '../../wagmi';
 import { POLL_ABI } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 import { VoteConfirmModal } from './VoteConfirmModal';
@@ -205,7 +206,9 @@ export function VoteFormV2({
           ephemeral.pubKey[0],
           ephemeral.pubKey[1],
         ],
-        gas: 500_000n, // Explicit cap to avoid 21M default when estimation fails
+        gas: 500_000n,
+        account: address,
+        chain: sepolia,
       });
 
       setTxStage('waiting');

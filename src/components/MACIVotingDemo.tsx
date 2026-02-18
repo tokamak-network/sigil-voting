@@ -12,6 +12,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAccount, useWriteContract, useReadContract, usePublicClient } from 'wagmi'
+import { sepolia } from '../wagmi'
 import {
   MACI_V2_ADDRESS,
   MACI_DEPLOY_BLOCK,
@@ -370,6 +371,8 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         functionName: 'signUp',
         args: [pk[0], pk[1], '0x', '0x'],
         gas: 500_000n,
+        account: address,
+        chain: sepolia,
       })
 
       // Parse SignUp event to get stateIndex
