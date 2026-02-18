@@ -61,7 +61,7 @@ export function ResultsDisplay({ tallyAddress }: ResultsDisplayProps) {
           </div>
         ) : (
           <div className="px-4 py-2 font-display font-black text-sm uppercase bg-slate-300 text-white">
-            No votes
+            {t.results.noVotes}
           </div>
         )}
       </div>
@@ -71,10 +71,10 @@ export function ResultsDisplay({ tallyAddress }: ResultsDisplayProps) {
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-emerald-500">thumb_up</span>
-            <span className="text-sm font-bold uppercase text-emerald-500">For</span>
+            <span className="text-sm font-bold uppercase text-emerald-500">{t.results.forLabel}</span>
             <span className="text-2xl font-display font-black">{forPct}%</span>
           </div>
-          <span className="text-sm font-mono text-slate-500">{forNum} credits</span>
+          <span className="text-sm font-mono text-slate-500">{forNum} {t.results.creditsUnit}</span>
         </div>
         <div className="w-full h-4 bg-slate-100">
           <div
@@ -93,10 +93,10 @@ export function ResultsDisplay({ tallyAddress }: ResultsDisplayProps) {
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-red-500">thumb_down</span>
-            <span className="text-sm font-bold uppercase">Against</span>
+            <span className="text-sm font-bold uppercase">{t.results.againstLabel}</span>
             <span className="text-2xl font-display font-black">{againstPct}%</span>
           </div>
-          <span className="text-sm font-mono text-slate-500">{againstNum} credits</span>
+          <span className="text-sm font-mono text-slate-500">{againstNum} {t.results.creditsUnit}</span>
         </div>
         <div className="w-full h-4 bg-slate-100">
           <div

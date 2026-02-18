@@ -98,7 +98,7 @@ export function VoteSubmitted({
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-mono text-slate-600 uppercase">{t.voteSubmittedPage.used}:</span>
-                  <span className="text-sm font-mono font-bold text-primary text-right">{cost.toFixed(2)} TON</span>
+                  <span className="text-sm font-mono font-bold text-primary text-right">{cost} {t.voteForm.credits}</span>
                 </div>
               </div>
             </div>

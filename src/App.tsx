@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Header, Footer, Toast, LandingPage, MACIVotingDemo, ProposalsList, VoteSubmitted, TechnologyPage } from './components'
 import { CreatePollForm } from './components/CreatePollForm'
 import { LanguageProvider } from './i18n'
@@ -18,6 +18,11 @@ function App() {
   const [selectedPollId, setSelectedPollId] = useState<number | null>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
   const [voteSubmittedData, setVoteSubmittedData] = useState<VoteSubmittedData | null>(null)
+
+  // Scroll to top on page navigation
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [currentPage])
 
   const handleSelectPoll = (pollId: number) => {
     setSelectedPollId(pollId)
@@ -71,15 +76,7 @@ function App() {
           )}
 
           {currentPage === 'create-proposal' && (
-            <div className="max-w-7xl mx-auto px-6 py-12">
-              <header className="mb-12">
-                <h1 className="text-6xl font-display font-black uppercase italic leading-none tracking-tighter">CREATE NEW PROPOSAL</h1>
-                <div className="mt-4 flex items-center gap-3">
-                  <span className="bg-primary text-white text-xs font-bold px-3 py-1 uppercase tracking-widest">DRAFT PHASE</span>
-                </div>
-              </header>
-              <CreatePollForm onPollCreated={handlePollCreated} onSelectPoll={handleSelectPoll} />
-            </div>
+            <CreatePollForm onPollCreated={handlePollCreated} onSelectPoll={handleSelectPoll} />
           )}
 
           {currentPage === 'technology' && (

@@ -63,11 +63,11 @@ const ERC20_BALANCE_ABI = [
 
 type DurationPreset = '3d' | '7d' | '14d' | 'custom'
 
-const DURATION_PRESETS: { key: DurationPreset; label: string; hours: number }[] = [
-  { key: '3d', label: '3 Days', hours: 72 },
-  { key: '7d', label: '7 Days', hours: 168 },
-  { key: '14d', label: '14 Days', hours: 336 },
-  { key: 'custom', label: 'Custom', hours: 0 },
+const DURATION_PRESETS: { key: DurationPreset; labelKey: 'preset3d' | 'preset7d' | 'preset14d' | 'presetCustom'; hours: number }[] = [
+  { key: '3d', labelKey: 'preset3d', hours: 72 },
+  { key: '7d', labelKey: 'preset7d', hours: 168 },
+  { key: '14d', labelKey: 'preset14d', hours: 336 },
+  { key: 'custom', labelKey: 'presetCustom', hours: 0 },
 ]
 
 export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormProps) {
@@ -344,7 +344,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
           {/* Created proposal info */}
           <div className="technical-border bg-white p-8 w-full max-w-lg">
             <div className="border-l-4 border-primary pl-4 mb-4">
-              <p className="text-xs font-mono text-slate-400 uppercase tracking-widest mb-1">Proposal Title</p>
+              <p className="text-xs font-mono text-slate-400 uppercase tracking-widest mb-1">{t.createPoll.titleLabel}</p>
               <p className="text-xl font-display font-bold">{createdTitle}</p>
             </div>
             <div className="flex items-center gap-2 text-sm text-slate-500">
@@ -455,11 +455,11 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
       {/* Page Title */}
       <div className="mb-12">
         <h1 className="text-5xl md:text-6xl font-display font-black uppercase italic tracking-tight">
-          Create New Proposal
+          {t.createPoll.title}
         </h1>
         <div className="mt-4 inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 technical-border border-primary/30">
           <span className="material-symbols-outlined text-sm">edit_note</span>
-          <span className="font-mono text-xs font-bold uppercase tracking-widest">Draft Phase</span>
+          <span className="font-mono text-xs font-bold uppercase tracking-widest">{t.createPoll.draftPhase}</span>
         </div>
       </div>
 
@@ -510,7 +510,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               htmlFor="poll-title"
               className="block font-display font-black text-sm uppercase tracking-widest mb-3"
             >
-              Proposal Title
+              {t.createPoll.titleLabel}
             </label>
             <input
               id="poll-title"
@@ -537,7 +537,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
           {/* Voting Period Duration */}
           <div>
             <label className="block font-display font-black text-sm uppercase tracking-widest mb-3">
-              Voting Period Duration
+              {t.createPoll.durationLabel}
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {DURATION_PRESETS.map((preset) => (
@@ -555,10 +555,10 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
                   {preset.key === 'custom' ? (
                     <span className="flex items-center justify-center gap-1">
                       <span className="material-symbols-outlined text-sm">calendar_today</span>
-                      {preset.label}
+                      {t.createPoll[preset.labelKey]}
                     </span>
                   ) : (
-                    preset.label
+                    t.createPoll[preset.labelKey]
                   )}
                 </button>
               ))}
@@ -573,7 +573,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
                   onChange={(e) => setDurationHours(Math.max(1, Math.min(720, Number(e.target.value))))}
                   disabled={isSubmitting}
                   className="technical-input w-full h-12 px-4 font-mono text-lg"
-                  placeholder="Hours"
+                  placeholder={t.createPoll.hoursUnit}
                 />
                 <p className="text-xs font-mono text-slate-400 mt-1">{t.createPoll.durationHint}</p>
               </div>
@@ -586,7 +586,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               htmlFor="poll-desc"
               className="block font-display font-black text-sm uppercase tracking-widest mb-3"
             >
-              Proposal Description
+              {t.createPoll.descLabel}
             </label>
             <textarea
               id="poll-desc"
@@ -600,7 +600,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               className="technical-input w-full px-5 py-4 text-base bg-white placeholder:text-slate-300 resize-none leading-relaxed"
             />
             <div className="flex justify-between mt-2">
-              <span className="text-xs text-slate-400 italic">Markdown Supported</span>
+              <span className="text-xs text-slate-400 italic">{t.createPoll.markdownSupported}</span>
               <span
                 id="desc-counter"
                 className={`text-xs font-mono ${!descValid ? 'text-red-500' : 'text-slate-400'}`}
@@ -618,7 +618,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
             aria-busy={isSubmitting}
           >
             <span className="material-symbols-outlined text-2xl">bolt</span>
-            {isSubmitting ? t.createPoll.submitting : 'Generate Proposal'}
+            {isSubmitting ? t.createPoll.submitting : t.createPoll.generateProposal}
           </button>
 
           {/* Error banner */}
@@ -634,47 +634,39 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
           <div className="guideline-box bg-white p-8 sticky top-32">
             <h3 className="flex items-center gap-2 text-xl font-display font-bold uppercase italic mb-8">
               <span className="material-symbols-outlined text-primary">gavel</span>
-              Proposal Guidelines
+              {t.createPoll.guidelinesTitle}
             </h3>
 
             <div className="space-y-6">
               <div className="flex gap-4">
                 <span className="text-2xl font-display font-black text-primary leading-none">01</span>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">STAKING REQUIREMENT</p>
-                  <p className="text-sm text-slate-700 leading-relaxed">
-                    Minimum <strong>100 TON</strong> balance required to submit a governance proposal.
-                  </p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">{t.createPoll.stakingTitle}</p>
+                  <p className="text-sm text-slate-700 leading-relaxed">{t.createPoll.stakingDesc}</p>
                 </div>
               </div>
 
               <div className="flex gap-4">
                 <span className="text-2xl font-display font-black text-primary leading-none">02</span>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">MACI PRIVACY</p>
-                  <p className="text-sm text-slate-700 leading-relaxed">
-                    All voting is end-to-end encrypted using MACI protocol. Ensure technical specifications are clear.
-                  </p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">{t.createPoll.privacyGuideTitle}</p>
+                  <p className="text-sm text-slate-700 leading-relaxed">{t.createPoll.privacyGuideDesc}</p>
                 </div>
               </div>
 
               <div className="flex gap-4">
                 <span className="text-2xl font-display font-black text-primary leading-none">03</span>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">VOTING WINDOW</p>
-                  <p className="text-sm text-slate-700 leading-relaxed">
-                    Proposals must have a minimum duration of 72 hours for community review.
-                  </p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">{t.createPoll.windowTitle}</p>
+                  <p className="text-sm text-slate-700 leading-relaxed">{t.createPoll.windowDesc}</p>
                 </div>
               </div>
 
               <div className="flex gap-4">
                 <span className="text-2xl font-display font-black text-primary leading-none">04</span>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">QUORUM</p>
-                  <p className="text-sm text-slate-700 leading-relaxed">
-                    A minimum participation rate of 15% is required for a proposal to be considered valid.
-                  </p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">{t.createPoll.quorumTitle}</p>
+                  <p className="text-sm text-slate-700 leading-relaxed">{t.createPoll.quorumDesc}</p>
                 </div>
               </div>
             </div>
@@ -684,7 +676,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               <div className="flex items-center gap-2">
                 <div className={`w-2.5 h-2.5 ${networkOnline ? 'bg-green-500' : 'bg-red-500'}`} />
                 <span className="text-xs font-mono text-slate-500 uppercase tracking-widest">
-                  {networkOnline ? 'Network Status: Optimal' : 'Network Offline'}
+                  {networkOnline ? t.createPoll.networkOptimal : t.createPoll.networkOffline}
                 </span>
               </div>
             </div>

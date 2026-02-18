@@ -24,7 +24,7 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
       <section className="px-6 md:px-12 lg:px-20 py-16 md:py-24 border-b-2 border-black">
         <div className="max-w-4xl">
           <div className="bg-black text-white px-3 py-1 text-xs font-bold uppercase tracking-widest w-fit mb-8">
-            CRYPTOGRAPHY
+            {t.technology.heroBadge}
           </div>
           <h1 className="font-display font-black text-5xl md:text-6xl lg:text-7xl leading-none tracking-tight mb-6">
             {t.technology.title.split('\n').map((line, i) => (
@@ -73,13 +73,13 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
               <div className="w-full max-w-sm">
                 <div className="border-2 border-black p-8 bg-white text-center">
                   <span className="material-symbols-outlined text-6xl text-black/10 block mb-4">lock</span>
-                  <div className="font-mono text-xs text-slate-400 mb-2">POSEIDON COMMITMENT</div>
+                  <div className="font-mono text-xs text-slate-400 mb-2">{t.technology.zkVoting.commitLabel}</div>
                   <div className="bg-black text-white font-mono text-sm p-4 break-all leading-relaxed">
-                    H(choice, power, proposal, salt) = 0x7f3a...
+                    {t.technology.zkVoting.commitFormula}
                   </div>
                   <div className="mt-4 flex items-center justify-center gap-2 text-emerald-500 text-sm font-bold">
                     <span className="material-symbols-outlined text-lg">verified</span>
-                    ZK PROOF VALID
+                    {t.technology.zkVoting.proofValid}
                   </div>
                 </div>
               </div>
@@ -123,7 +123,7 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
                   <div key={i} className="border-2 border-black bg-white p-4">
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-mono font-bold text-sm">{item.label}</span>
-                      <span className="text-xs font-mono text-slate-400">{item.credits} credits</span>
+                      <span className="text-xs font-mono text-slate-400">{item.credits} {t.technology.quadratic.creditUnit}</span>
                     </div>
                     <div className="w-full h-6 bg-slate-100">
                       <div
@@ -134,7 +134,7 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
                   </div>
                 ))}
                 <div className="text-center pt-2">
-                  <span className="font-mono text-xs text-slate-500">cost = votes&sup2;</span>
+                  <span className="font-mono text-xs text-slate-500">{t.technology.quadratic.formula}</span>
                 </div>
               </div>
             </div>

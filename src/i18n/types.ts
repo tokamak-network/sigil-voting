@@ -119,6 +119,25 @@ export interface Translations {
     enableCommunityDesc: string
     enabling: string
     gateEnabledSuccess: string
+    draftPhase: string
+    markdownSupported: string
+    generateProposal: string
+    guidelinesTitle: string
+    stakingTitle: string
+    stakingDesc: string
+    privacyGuideTitle: string
+    privacyGuideDesc: string
+    windowTitle: string
+    windowDesc: string
+    quorumTitle: string
+    quorumDesc: string
+    networkOptimal: string
+    networkOffline: string
+    preset3d: string
+    preset7d: string
+    preset14d: string
+    presetCustom: string
+    hoursUnit: string
   }
   voteForm: {
     title: string
@@ -195,6 +214,10 @@ export interface Translations {
     totalVoters: string
     totalVotes: string
     verified: string
+    noVotes: string
+    forLabel: string
+    againstLabel: string
+    creditsUnit: string
   }
   timer: {
     remaining: string
@@ -202,6 +225,7 @@ export interface Translations {
     hours: string
     minutes: string
     seconds: string
+    tallyCountdown: string
   }
   confirm: {
     title: string
@@ -328,6 +352,7 @@ export interface Translations {
     nav: string
     title: string
     subtitle: string
+    heroBadge: string
     zkVoting: {
       title: string
       badge: string
@@ -337,6 +362,9 @@ export interface Translations {
       point1: string
       point2: string
       point3: string
+      commitLabel: string
+      commitFormula: string
+      proofValid: string
     }
     quadratic: {
       title: string
@@ -348,6 +376,8 @@ export interface Translations {
       vote1: string
       vote2: string
       vote3: string
+      creditUnit: string
+      formula: string
     }
     antiCollusion: {
       title: string
