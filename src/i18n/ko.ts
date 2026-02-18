@@ -215,6 +215,10 @@ export const ko: Translations = {
     merged: '완료',
     pending: '처리 중...',
     allMerged: '데이터 정리가 완료되었습니다. 곧 결과가 집계됩니다.',
+    elapsed: '경과 시간',
+    estimate: '보통 1~3분 소요',
+    stuck: '처리가 지연되고 있습니다',
+    stuckDesc: '코디네이터가 아직 응답하지 않았습니다. 잠시 후 자동으로 재시도됩니다.',
   },
   processing: {
     title: '결과 집계 중',
@@ -226,6 +230,10 @@ export const ko: Translations = {
     complete: '완료',
     waiting: '대기 중',
     verified: '온체인 검증 완료',
+    elapsed: '경과 시간',
+    estimate: '보통 3~5분 소요',
+    stuck: '처리가 지연되고 있습니다',
+    stuckDesc: '증명 생성에 시간이 걸리고 있습니다. 잠시 후 자동으로 재시도됩니다.',
   },
   results: {
     title: '투표 결과',

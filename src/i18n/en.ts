@@ -215,6 +215,10 @@ export const en: Translations = {
     merged: 'Done',
     pending: 'Processing...',
     allMerged: 'Data preparation complete. Results will be tallied soon.',
+    elapsed: 'Elapsed',
+    estimate: 'Usually takes 1-3 min',
+    stuck: 'Processing is delayed',
+    stuckDesc: 'The coordinator has not responded yet. It will automatically retry shortly.',
   },
   processing: {
     title: 'Tallying Votes',
@@ -226,6 +230,10 @@ export const en: Translations = {
     complete: 'Complete',
     waiting: 'Waiting',
     verified: 'Verified on-chain',
+    elapsed: 'Elapsed',
+    estimate: 'Usually takes 3-5 min',
+    stuck: 'Processing is delayed',
+    stuckDesc: 'Proof generation is taking time. It will automatically retry shortly.',
   },
   results: {
     title: 'Vote Results',
