@@ -11,8 +11,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import { useAccount, useWriteContract, useReadContract, usePublicClient } from 'wagmi'
-import { sepolia } from '../wagmi'
+import { useAccount, useReadContract, usePublicClient, useWalletClient } from 'wagmi'
 import {
   MACI_V2_ADDRESS,
   MACI_DEPLOY_BLOCK,
@@ -55,7 +54,7 @@ interface MACIVotingDemoProps {
 export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: MACIVotingDemoProps) {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
-  const { writeContractAsync } = useWriteContract()
+  const { data: walletClient } = useWalletClient()
   const { t } = useTranslation()
 
   const [phase, setPhase] = useState<V2Phase>(V2Phase.Voting)
@@ -365,14 +364,13 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
       const sk = cm.generateRandomPrivateKey()
       const pk = await cm.eddsaDerivePublicKey(sk)
 
-      const hash = await writeContractAsync({
+      if (!walletClient) throw new Error('Wallet not connected')
+      const hash = await walletClient.writeContract({
         address: MACI_V2_ADDRESS,
         abi: MACI_ABI,
         functionName: 'signUp',
-        args: [pk[0], pk[1], '0x', '0x'],
+        args: [pk[0], pk[1], '0x' as `0x${string}`, '0x' as `0x${string}`],
         gas: 500_000n,
-        account: address,
-        chain: sepolia,
       })
 
       // Parse SignUp event to get stateIndex
@@ -414,7 +412,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
     } finally {
       setIsSigningUp(false)
     }
-  }, [address, writeContractAsync, refetchSignUps, publicClient, t])
+  }, [address, walletClient, refetchSignUps, publicClient, t])
 
   // My vote info
   const myVote = address ? getLastVote(address, propPollId) : null

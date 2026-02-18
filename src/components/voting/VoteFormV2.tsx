@@ -14,9 +14,8 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { useWriteContract, useAccount, usePublicClient, useBalance } from 'wagmi';
+import { useAccount, usePublicClient, useBalance, useWalletClient } from 'wagmi';
 import { formatEther } from 'viem';
-import { sepolia } from '../../wagmi';
 import { POLL_ABI } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 import { VoteConfirmModal } from './VoteConfirmModal';
@@ -61,7 +60,7 @@ export function VoteFormV2({
   const [estimatedGasEth, setEstimatedGasEth] = useState<string | null>(null);
   const { t } = useTranslation();
 
-  const { writeContractAsync } = useWriteContract();
+  const { data: walletClient } = useWalletClient();
 
   // ETH balance for gas fee display
   const { data: ethBalance } = useBalance({ address });
@@ -197,18 +196,17 @@ export function VoteFormV2({
         return;
       }
 
-      const hash = await writeContractAsync({
+      if (!walletClient) throw new Error('Wallet not connected');
+      const hash = await walletClient.writeContract({
         address: pollAddress,
         abi: POLL_ABI,
         functionName: 'publishMessage',
         args: [
-          encMessage.map((v) => v) as any,
+          encMessage.map((v) => v) as readonly bigint[] as any,
           ephemeral.pubKey[0],
           ephemeral.pubKey[1],
         ],
         gas: 500_000n,
-        account: address,
-        chain: sepolia,
       });
 
       setTxStage('waiting');

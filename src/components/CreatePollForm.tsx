@@ -9,8 +9,7 @@
  */
 
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import { useAccount, useWriteContract, usePublicClient, useReadContract } from 'wagmi'
-import { sepolia } from '../wagmi'
+import { useAccount, usePublicClient, useReadContract, useWalletClient } from 'wagmi'
 import {
   MACI_V2_ADDRESS,
   MSG_PROCESSOR_VERIFIER_ADDRESS,
@@ -74,7 +73,8 @@ const DURATION_PRESETS: { key: DurationPreset; labelKey: 'preset3d' | 'preset7d'
 export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormProps) {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
-  const { writeContractAsync, isPending } = useWriteContract()
+  const { data: walletClient } = useWalletClient()
+  const isPending = false
   const { t } = useTranslation()
 
   const [title, setTitle] = useState('')
@@ -188,13 +188,12 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
     setIsEnablingGate(true)
     setError(null)
     try {
-      const hash = await writeContractAsync({
+      if (!walletClient) throw new Error('Wallet not connected')
+      const hash = await walletClient.writeContract({
         address: MACI_V2_ADDRESS as `0x${string}`,
         abi: MACI_ABI,
         functionName: 'addProposalGate',
         args: [TON_TOKEN_ADDRESS, 1n],
-        account: address,
-        chain: sepolia,
       })
       if (publicClient) {
         await publicClient.waitForTransactionReceipt({ hash })
@@ -212,7 +211,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
     } finally {
       setIsEnablingGate(false)
     }
-  }, [address, isOwner, writeContractAsync, publicClient, t])
+  }, [address, isOwner, walletClient, publicClient, t])
 
   const handleSubmit = useCallback(async () => {
     if (!address || !title.trim() || !canCreate) return
@@ -224,7 +223,8 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
       const durationSeconds = BigInt(durationHours * 3600)
 
       setTxStage('confirming')
-      const hash = await writeContractAsync({
+      if (!walletClient) throw new Error('Wallet not connected')
+      const hash = await walletClient.writeContract({
         address: MACI_V2_ADDRESS as `0x${string}`,
         abi: MACI_ABI,
         functionName: 'deployPoll',
@@ -239,8 +239,6 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
           2,
         ],
         gas: 15000000n,
-        account: address,
-        chain: sepolia,
       })
 
       setTxStage('waiting')
@@ -323,7 +321,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
       setIsSubmitting(false)
       setTxStage('idle')
     }
-  }, [address, title, description, durationHours, canCreate, writeContractAsync, publicClient, onPollCreated, t])
+  }, [address, title, description, durationHours, canCreate, walletClient, publicClient, onPollCreated, t])
 
   const titleLen = title.trim().length
   const descLen = description.length
