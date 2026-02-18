@@ -5169,7 +5169,7 @@ textarea[aria-invalid="true"] {
 }
 
 .proposal-timer {
-  font-family: 'Space Grotesk', monospace;
+  font-family: 'Sora', monospace;
   font-weight: 600;
   color: var(--bold-blue);
 }

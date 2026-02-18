@@ -44,7 +44,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
         <div className="col-span-12 lg:col-span-7 bg-primary p-12 relative overflow-hidden flex flex-col justify-between min-h-[600px]">
           <div className="relative z-10 flex justify-between items-start">
             <div className="font-mono text-white text-xs font-bold space-y-1">
-              <p>EST. 2026</p>
+              <p>{t.landing.established}</p>
               <p>{t.landing.heroVersion.toUpperCase()}</p>
             </div>
             <div className="w-16 h-16 border-2 border-white flex items-center justify-center">
@@ -72,8 +72,8 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
       {/* ─── Stats Bar ─── */}
       <section className="grid grid-cols-2 md:grid-cols-4 border-b-2 border-black">
         {[
-          { count: t.landing.stats.testsCount, label: t.landing.stats.testsLabel, icon: 'check_circle' },
-          { count: t.landing.stats.contractsCount, label: t.landing.stats.contractsLabel, icon: 'shield' },
+          { count: t.landing.stats.testsCount, label: t.landing.stats.testsLabel, icon: 'group' },
+          { count: t.landing.stats.contractsCount, label: t.landing.stats.contractsLabel, icon: 'schedule' },
           { count: t.landing.stats.propertiesCount, label: t.landing.stats.propertiesLabel, icon: 'security' },
           { count: t.landing.stats.licenseCount, label: t.landing.stats.licenseLabel, icon: 'code' },
         ].map((stat, i) => (
@@ -225,17 +225,28 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             </div>
           </div>
 
-          {/* Right: Video Placeholder */}
-          <div className="bg-slate-900 p-12 flex flex-col items-center justify-center min-h-[400px] relative">
-            <div className="w-24 h-24 border-4 border-white flex items-center justify-center mb-8 hover:bg-primary hover:border-primary transition-colors cursor-pointer group">
-              <span className="material-symbols-outlined text-white text-5xl group-hover:scale-110 transition-transform">play_arrow</span>
+          {/* Right: Flow Diagram */}
+          <div className="bg-slate-900 p-8 md:p-12 flex flex-col justify-center min-h-[400px]">
+            <div className="space-y-4">
+              {([
+                { icon: 'account_balance_wallet', label: t.landing.cta.step1, detail: 'MetaMask / WalletConnect', color: 'text-slate-400' },
+                { icon: 'enhanced_encryption', label: t.landing.lifecycle.step2.title, detail: 'Poseidon + EdDSA + ECDH', color: 'text-primary' },
+                { icon: 'cloud_upload', label: t.landing.demo.stepSubmit, detail: 'AccQueue (Immutable)', color: 'text-primary' },
+                { icon: 'verified', label: 'Groth16 Proof', detail: t.landing.demo.stepProof, color: 'text-emerald-400' },
+                { icon: 'how_to_vote', label: t.landing.cta.step3, detail: t.landing.demo.stepResult, color: 'text-emerald-400' },
+              ]).map((step, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <div className="w-10 h-10 border-2 border-slate-700 flex items-center justify-center shrink-0">
+                    <span className={`material-symbols-outlined text-lg ${step.color}`}>{step.icon}</span>
+                  </div>
+                  <div className="flex-1 border-b border-slate-800 pb-3">
+                    <p className="font-mono text-sm font-bold text-white">{step.label}</p>
+                    <p className="font-mono text-xs text-slate-500">{step.detail}</p>
+                  </div>
+                  {i < 4 && <span className="material-symbols-outlined text-slate-700 text-sm shrink-0">arrow_downward</span>}
+                </div>
+              ))}
             </div>
-            <p className="font-mono text-sm font-bold text-slate-400 uppercase tracking-widest">{t.landing.demo.placeholder}</p>
-            {/* Corner decorations */}
-            <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-slate-700"></div>
-            <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-slate-700"></div>
-            <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-slate-700"></div>
-            <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-slate-700"></div>
           </div>
         </div>
       </section>
@@ -343,13 +354,13 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                 {([
                   {
                     feature: t.landing.comparison.permanentPrivacy,
-                    values: [t.landing.comparison.yes, t.landing.comparison.postReveal, t.landing.comparison.yes, t.landing.comparison.no, t.landing.comparison.yes],
-                    highlights: [true, false, true, false, true],
+                    values: [t.landing.comparison.yes, t.landing.comparison.postReveal, t.landing.comparison.yes, t.landing.comparison.no, t.landing.comparison.partial],
+                    highlights: [true, false, true, false, false],
                   },
                   {
                     feature: t.landing.comparison.antiBribery,
-                    values: [t.landing.comparison.yes, t.landing.comparison.no, t.landing.comparison.yes, t.landing.comparison.no, t.landing.comparison.no],
-                    highlights: [true, false, true, false, false],
+                    values: [t.landing.comparison.yes, t.landing.comparison.no, t.landing.comparison.demoStage, t.landing.comparison.no, t.landing.comparison.no],
+                    highlights: [true, false, false, false, false],
                   },
                   {
                     feature: t.landing.comparison.quadraticVoting,
@@ -410,7 +421,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
         {/* Section Header */}
         <div className="p-6 border-b-2 border-black bg-primary text-white flex justify-between items-center">
           <h2 className="font-mono text-sm font-bold uppercase tracking-[0.3em]">
-            SDK Integration
+            {t.landing.sdkIntegration}
           </h2>
           <span className="font-mono text-xs font-bold uppercase tracking-widest border border-white px-3 py-1">
             {t.landing.integration.comingSoon}

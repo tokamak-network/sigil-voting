@@ -187,7 +187,7 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
             </div>
           </div>
           <p className="mt-8 font-mono text-xs text-center uppercase tracking-widest opacity-50">
-            Developed in partnership with Ethereum Privacy &amp; Scaling Explorations (PSE)
+            {t.technology.antiCollusion.partnership}
           </p>
         </div>
       </section>

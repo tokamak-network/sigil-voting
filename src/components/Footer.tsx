@@ -12,7 +12,7 @@ export function Footer() {
             <span className="font-display font-bold text-2xl tracking-tighter uppercase">SIGIL</span>
           </div>
           <div className="space-y-1">
-            <p className="font-mono text-xs font-bold text-slate-400 uppercase tracking-widest">Protocol Powered By</p>
+            <p className="font-mono text-xs font-bold text-slate-400 uppercase tracking-widest">{t.footer.poweredBy}</p>
             <p className="font-bold text-lg tracking-widest">TOKAMAK NETWORK</p>
           </div>
         </div>
