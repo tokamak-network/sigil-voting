@@ -279,6 +279,7 @@ export interface Translations {
     stageConfirming: string
     stageWaiting: string
     stageDone: string
+    stageKeyChange: string
     processing: string
     patience: string
     successNext: string

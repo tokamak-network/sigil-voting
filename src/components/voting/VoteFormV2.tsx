@@ -37,7 +37,7 @@ interface VoteFormV2Props {
   onVoteSubmitted?: (txHash: string) => void;
 }
 
-type TxStage = 'idle' | 'registering' | 'encrypting' | 'signing' | 'confirming' | 'waiting' | 'done' | 'error';
+type TxStage = 'idle' | 'registering' | 'keyChanging' | 'encrypting' | 'signing' | 'confirming' | 'waiting' | 'done' | 'error';
 
 export function VoteFormV2({
   pollId,
@@ -118,6 +118,7 @@ export function VoteFormV2({
   const handleSubmit = async () => {
     if (choice === null || !address) return;
     wasRegisteredRef.current = isRegistered;
+    const isReVote = getMaciNonce(address, pollId) > 1;
     setIsSubmitting(true);
     setError(null);
 
@@ -130,13 +131,113 @@ export function VoteFormV2({
 
       setTxStage('encrypting');
       const crypto = await preloadCrypto();
+      const poseidon = await crypto.buildPoseidon();
+      const F = poseidon.F;
 
-      const { sk: userSk, pubKey: userPubKey } = await getOrCreateMaciKeypair(
-        address, pollId, crypto.derivePrivateKey, crypto.eddsaDerivePublicKey, crypto.loadEncrypted, crypto.storeEncrypted,
-      );
+      // Get current keypair
+      let currentSk: bigint;
+      let currentPubKey: [bigint, bigint];
+      {
+        const kp = await getOrCreateMaciKeypair(
+          address, pollId, crypto.derivePrivateKey, crypto.eddsaDerivePublicKey, crypto.loadEncrypted, crypto.storeEncrypted,
+        );
+        currentSk = kp.sk;
+        currentPubKey = kp.pubKey;
+      }
+
+      // Determine the keypair that will sign the vote message
+      let voteSk = currentSk;
+      let votePubKey = currentPubKey;
+
+      // --- Step A: Auto key change on re-vote ---
+      if (isReVote) {
+        setTxStage('keyChanging');
+
+        // Generate new random keypair
+        const seed = globalThis.crypto.getRandomValues(new Uint8Array(32));
+        const newSk = crypto.derivePrivateKey(seed);
+        const newPubKey = await crypto.eddsaDerivePublicKey(newSk);
+
+        // ECDH for key change message
+        const kcEphemeral = await crypto.generateEphemeralKeyPair();
+        const kcSharedKey = await crypto.generateECDHSharedKey(
+          kcEphemeral.sk,
+          [coordinatorPubKeyX, coordinatorPubKeyY],
+        );
+
+        const kcNonce = BigInt(getMaciNonce(address, pollId));
+        const stateIndex = BigInt(getStateIndex(address, pollId));
+        // Key change command: voteOption=0, weight=0
+        const kcPackedCommand = stateIndex | (0n << 50n) | (0n << 100n) | (kcNonce << 150n) | (BigInt(pollId) << 200n);
+
+        const kcSaltBytes = globalThis.crypto.getRandomValues(new Uint8Array(31));
+        const kcSalt = BigInt('0x' + Array.from(kcSaltBytes).map(b => b.toString(16).padStart(2, '0')).join(''));
+
+        // cmdHash: Poseidon(stateIndex, newPubKeyX, newPubKeyY, weight=0, salt)
+        const kcCmdHashF = poseidon([
+          F.e(stateIndex),
+          F.e(newPubKey[0]),
+          F.e(newPubKey[1]),
+          F.e(0n),
+          F.e(kcSalt),
+        ]);
+        const kcCmdHash = F.toObject(kcCmdHashF);
+
+        // Sign with current key
+        const kcSignature = await crypto.eddsaSign(kcCmdHash, currentSk);
+
+        const kcPlaintext = [
+          kcPackedCommand,
+          newPubKey[0],
+          newPubKey[1],
+          kcSalt,
+          kcSignature.R8[0],
+          kcSignature.R8[1],
+          kcSignature.S,
+        ];
+
+        const kcCiphertext = await crypto.poseidonEncrypt(kcPlaintext, kcSharedKey, 0n);
+        const kcEncMessage: bigint[] = new Array(10).fill(0n);
+        for (let i = 0; i < Math.min(kcCiphertext.length, 10); i++) {
+          kcEncMessage[i] = kcCiphertext[i];
+        }
+
+        setTxStage('confirming');
+
+        // Submit key change message
+        const kcHash = await publishWithRetry(pollAddress, kcEncMessage, kcEphemeral.pubKey, address, setTxStage);
+
+        setTxStage('waiting');
+
+        // Wait for on-chain confirmation
+        if (publicClient) {
+          const receipt = await publicClient.waitForTransactionReceipt({ hash: kcHash });
+          if (receipt.status === 'reverted') {
+            throw new Error('Key change transaction reverted on-chain');
+          }
+        }
+
+        // Save new keypair and increment nonce
+        localStorage.setItem(
+          storageKey.pubkey(address, pollId),
+          JSON.stringify([newPubKey[0].toString(), newPubKey[1].toString()]),
+        );
+        await crypto.storeEncrypted(
+          storageKey.skPoll(address, pollId),
+          newSk.toString(),
+          address,
+        );
+        incrementMaciNonce(address, pollId);
+
+        // Use the new key for the vote
+        voteSk = newSk;
+        votePubKey = newPubKey;
+      }
+
+      // --- Step B: Send vote message ---
+      setTxStage('encrypting');
 
       const ephemeral = await crypto.generateEphemeralKeyPair();
-
       const sharedKey = await crypto.generateECDHSharedKey(
         ephemeral.sk,
         [coordinatorPubKeyX, coordinatorPubKeyY],
@@ -157,25 +258,22 @@ export function VoteFormV2({
       const saltBytes = globalThis.crypto.getRandomValues(new Uint8Array(31));
       const salt = BigInt('0x' + Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join(''));
 
-      const poseidon = await crypto.buildPoseidon();
-      const F = poseidon.F;
       // cmdHash must match circuit: Poseidon(stateIndex, newPubKeyX, newPubKeyY, newVoteWeight, salt)
-      // See MessageProcessor.circom line 204-209 (5 unpacked inputs, NOT packed command)
       const cmdHashF = poseidon([
         F.e(stateIndex),
-        F.e(userPubKey[0]),
-        F.e(userPubKey[1]),
+        F.e(votePubKey[0]),
+        F.e(votePubKey[1]),
         F.e(BigInt(weight)),
         F.e(salt),
       ]);
       const cmdHash = F.toObject(cmdHashF);
 
-      const signature = await crypto.eddsaSign(cmdHash, userSk);
+      const signature = await crypto.eddsaSign(cmdHash, voteSk);
 
       const plaintext = [
         packedCommand,
-        userPubKey[0],
-        userPubKey[1],
+        votePubKey[0],
+        votePubKey[1],
         salt,
         signature.R8[0],
         signature.R8[1],
@@ -199,33 +297,7 @@ export function VoteFormV2({
         return;
       }
 
-      // Auto-retry on nonce conflict (coordinator might be sending tx simultaneously)
-      let hash: `0x${string}` = '0x' as `0x${string}`;
-      while (true) {
-        try {
-          hash = await writeContract({
-            address: pollAddress,
-            abi: POLL_ABI,
-            functionName: 'publishMessage',
-            args: [
-              encMessage as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint],
-              ephemeral.pubKey[0],
-              ephemeral.pubKey[1],
-            ],
-            gas: 500_000n,
-            account: address,
-          });
-          break;
-        } catch (retryErr) {
-          const retryMsg = retryErr instanceof Error ? retryErr.message : '';
-          if (retryMsg.includes('underpriced') || retryMsg.includes('nonce') || retryMsg.includes('already known')) {
-            setTxStage('confirming');
-            await new Promise(r => setTimeout(r, 10_000));
-            continue;
-          }
-          throw retryErr;
-        }
-      }
+      const hash = await publishWithRetry(pollAddress, encMessage, ephemeral.pubKey, address, setTxStage);
 
       setTxStage('waiting');
       setTxHash(hash);
@@ -268,6 +340,7 @@ export function VoteFormV2({
   const stageMessages: Record<TxStage, string> = {
     idle: '',
     registering: t.voteForm.stageRegistering,
+    keyChanging: t.voteForm.stageKeyChange,
     encrypting: t.voteForm.stageEncrypting,
     signing: t.voteForm.stageSigning,
     confirming: t.voteForm.stageConfirming,
@@ -280,6 +353,7 @@ export function VoteFormV2({
   if (txStage !== 'idle' && txStage !== 'done' && txStage !== 'error') {
     const txSteps = [
       ...(!wasRegisteredRef.current ? [{ key: 'registering', label: t.voteForm.stageRegistering }] : []),
+      ...(hasVoted ? [{ key: 'keyChanging', label: t.voteForm.stageKeyChange }] : []),
       { key: 'encrypting', label: t.voteForm.stageEncrypting },
       { key: 'signing', label: t.voteForm.stageSigning },
       { key: 'confirming', label: t.voteForm.stageConfirming },
@@ -665,4 +739,38 @@ function packCommand(
     (nonce << 150n) |
     (pollId << 200n)
   );
+}
+
+async function publishWithRetry(
+  pollAddress: `0x${string}`,
+  encMessage: bigint[],
+  ephemeralPubKey: [bigint, bigint],
+  account: `0x${string}`,
+  setTxStage: (stage: TxStage) => void,
+): Promise<`0x${string}`> {
+  while (true) {
+    try {
+      const hash = await writeContract({
+        address: pollAddress,
+        abi: POLL_ABI,
+        functionName: 'publishMessage',
+        args: [
+          encMessage as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint],
+          ephemeralPubKey[0],
+          ephemeralPubKey[1],
+        ],
+        gas: 500_000n,
+        account,
+      });
+      return hash;
+    } catch (retryErr) {
+      const retryMsg = retryErr instanceof Error ? retryErr.message : '';
+      if (retryMsg.includes('underpriced') || retryMsg.includes('nonce') || retryMsg.includes('already known')) {
+        setTxStage('confirming');
+        await new Promise(r => setTimeout(r, 10_000));
+        continue;
+      }
+      throw retryErr;
+    }
+  }
 }

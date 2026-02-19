@@ -297,6 +297,7 @@ export const en: Translations = {
     stageConfirming: 'Please approve in your wallet...',
     stageWaiting: 'Waiting for confirmation...',
     stageDone: 'Vote complete!',
+    stageKeyChange: 'Enhancing security...',
     processing: 'Processing Vote',
     patience: 'This includes encryption for your security. It may take 10-30 seconds.',
     successNext: 'Your vote has been securely recorded. When voting ends, the operator will tally results. You can check the results on this page.',

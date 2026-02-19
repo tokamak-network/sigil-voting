@@ -297,6 +297,7 @@ export const ko: Translations = {
     stageConfirming: '지갑에서 승인해주세요...',
     stageWaiting: '처리 확인 대기 중...',
     stageDone: '투표 완료!',
+    stageKeyChange: '보안 강화 중...',
     processing: '투표 처리 중',
     patience: '보안을 위해 암호화 과정이 포함됩니다. 약 10~30초 정도 걸립니다.',
     successNext: '투표가 안전하게 기록되었습니다. 투표 기간이 끝나면 운영자가 결과를 집계합니다. 결과는 이 페이지에서 확인할 수 있습니다.',
