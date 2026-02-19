@@ -1,8 +1,10 @@
 import { useState, useCallback, useMemo } from 'react'
-import { useAccount, usePublicClient } from 'wagmi'
+import { useAccount, usePublicClient, useReadContract } from 'wagmi'
+import { formatEther } from 'viem'
 import { writeContract } from '../writeHelper'
 import {
   MACI_V2_ADDRESS,
+  TON_TOKEN_ADDRESS,
   MSG_PROCESSOR_VERIFIER_ADDRESS,
   TALLY_VERIFIER_ADDRESS,
   VK_REGISTRY_ADDRESS,
@@ -14,8 +16,18 @@ import { storageKey } from '../storageKeys'
 import { useTranslation } from '../i18n'
 import { TransactionModal } from './voting/TransactionModal'
 
+const ERC20_BALANCE_ABI = [
+  {
+    type: 'function' as const,
+    name: 'balanceOf' as const,
+    inputs: [{ name: 'account', type: 'address' as const }],
+    outputs: [{ name: '', type: 'uint256' as const }],
+    stateMutability: 'view' as const,
+  },
+] as const
+
 interface CreatePollFormProps {
-  onPollCreated: (pollId: number, pollAddress: `0x${string}`, title?: string) => void
+  onPollCreated: (pollId: number, pollAddress: `0x${string}`, title?: string, durationSeconds?: number) => void
   onSelectPoll?: (pollId: number) => void
 }
 
@@ -34,6 +46,38 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
   const { t } = useTranslation()
+
+  // Token gate eligibility check
+  const { data: canCreate, isLoading: checkingEligibility } = useReadContract({
+    address: MACI_V2_ADDRESS as `0x${string}`,
+    abi: MACI_ABI,
+    functionName: 'canCreatePoll',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address },
+  })
+
+  const { data: gateCount } = useReadContract({
+    address: MACI_V2_ADDRESS as `0x${string}`,
+    abi: MACI_ABI,
+    functionName: 'proposalGateCount',
+    query: { enabled: !!address },
+  })
+
+  const { data: gateInfo } = useReadContract({
+    address: MACI_V2_ADDRESS as `0x${string}`,
+    abi: MACI_ABI,
+    functionName: 'proposalGates',
+    args: [0n],
+    query: { enabled: !!address && Number(gateCount || 0) > 0 },
+  })
+
+  const { data: tonBalance } = useReadContract({
+    address: TON_TOKEN_ADDRESS as `0x${string}`,
+    abi: ERC20_BALANCE_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: { enabled: !!address && Number(gateCount || 0) > 0 },
+  })
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -109,7 +153,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               setCreatedPollAddr(pollAddr)
               setCreatedTitle(title.trim())
               setIsCreated(true)
-              onPollCreated(newPollId, pollAddr, title.trim())
+              onPollCreated(newPollId, pollAddr, title.trim(), durationMinutes * 60)
               parsed = true
               break
             }
@@ -131,7 +175,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
                 setCreatedPollAddr(pollAddr)
                 setCreatedTitle(title.trim())
                 setIsCreated(true)
-                onPollCreated(newPollId, pollAddr, title.trim())
+                onPollCreated(newPollId, pollAddr, title.trim(), durationMinutes * 60)
               }
               break
             }
@@ -263,6 +307,52 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
           <span className="material-symbols-outlined text-6xl text-slate-300 mb-4" aria-hidden="true">account_balance_wallet</span>
           <h2 className="font-display text-3xl font-black uppercase mb-4">{t.createPoll.title}</h2>
           <p className="text-slate-600">{t.maci.connectWallet}</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Checking eligibility
+  if (checkingEligibility) {
+    return (
+      <div className="w-full px-6 py-16">
+        <div className="flex items-center justify-center gap-3">
+          <span className="spinner" aria-hidden="true" />
+          <span className="font-mono text-sm text-slate-500">{t.createPoll.checkingEligibility}</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Not eligible - show token requirement
+  if (canCreate === false && Number(gateCount || 0) > 0) {
+    const threshold = gateInfo ? formatEther((gateInfo as [string, bigint])[1]) : '100'
+    const balance = tonBalance ? formatEther(tonBalance as bigint) : '0'
+    return (
+      <div className="w-full px-6 py-16">
+        <div className="flex flex-col items-center justify-center min-h-[40vh] gap-8">
+          <div className="w-20 h-20 bg-red-500 text-white technical-border flex items-center justify-center">
+            <span className="material-symbols-outlined text-4xl">block</span>
+          </div>
+          <h2 className="text-3xl md:text-4xl font-display font-black uppercase italic text-center tracking-tight">
+            {t.createPoll.errorTokens}
+          </h2>
+          <p className="text-slate-600 text-lg text-center max-w-lg">
+            {t.createPoll.tokenRequired}
+          </p>
+          <div className="technical-border bg-white p-8 w-full max-w-lg">
+            <div className="flex items-center justify-between py-3 border-b border-slate-200">
+              <span className="font-display font-bold uppercase text-sm">TON</span>
+              <div className="text-right">
+                <div className="text-xs text-slate-400 uppercase tracking-widest">{t.createPoll.required}</div>
+                <div className="text-xl font-mono font-bold">{Number(threshold).toLocaleString()}</div>
+              </div>
+            </div>
+            <div className="flex items-center justify-between py-3">
+              <span className="text-sm text-slate-500">{t.createPoll.yourBalance}</span>
+              <span className="text-xl font-mono font-bold text-red-500">{Number(balance).toLocaleString()}</span>
+            </div>
+          </div>
         </div>
       </div>
     )

@@ -29,6 +29,7 @@ interface PollInfo {
   deployTime: number
   duration: number
   numMessages: number
+  totalVoters: number
   hasVoted: boolean
 }
 
@@ -146,6 +147,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
           publicClient.readContract({ address: pollAddr, abi: POLL_ABI, functionName: 'title' }).catch(() => null),
         ]).then(async ([isOpen, timeData, numMsgs, onChainTitle]) => {
           let isFinalized = false
+          let voters = 0
           const tallyAddr = tallyMap.get(i)
           if (tallyAddr && tallyAddr !== ZERO_ADDRESS && !(isOpen as boolean)) {
             try {
@@ -153,6 +155,12 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
                 address: tallyAddr, abi: TALLY_ABI, functionName: 'tallyVerified',
               })
               isFinalized = verified === true
+              if (isFinalized) {
+                const tv = await publicClient.readContract({
+                  address: tallyAddr, abi: TALLY_ABI, functionName: 'totalVoters',
+                })
+                voters = Number(tv)
+              }
             } catch { /* skip */ }
           }
 
@@ -166,6 +174,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
             deployTime: Number(td[0]),
             duration: Number(td[1]),
             numMessages: Number(numMsgs),
+            totalVoters: voters,
             hasVoted: address ? localStorage.getItem(storageKey.lastVote(address, i)) !== null : false,
           } as PollInfo
         }).catch(() => null)
@@ -208,7 +217,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     return `${pad(m)}${t.timer.minutes} ${pad(s)}${t.timer.seconds}`
   }
 
-  const handlePollCreated = (newPollId: number, newPollAddress: `0x${string}`, title?: string) => {
+  const handlePollCreated = (newPollId: number, newPollAddress: `0x${string}`, title?: string, durationSeconds?: number) => {
     setShowCreatePoll(false)
     // Add the new poll to the list immediately and persist to cache
     const newPoll: PollInfo = {
@@ -218,8 +227,9 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
       isOpen: true,
       isFinalized: false,
       deployTime: Math.floor(Date.now() / 1000),
-      duration: 3600, // default, will be overridden on next load
+      duration: durationSeconds || 3600,
       numMessages: 0,
+      totalVoters: 0,
       hasVoted: false,
     }
     setPolls(prev => {
@@ -408,7 +418,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
                 {/* ── Card Bottom Row ── */}
                 <div className="flex items-end justify-between">
                   <div className="flex gap-12">
-                    {/* Participants */}
+                    {/* Messages / Voters */}
                     <div>
                       <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposals.participants}</span>
                       <span className="text-2xl font-display font-bold">{poll.numMessages} <span className="text-sm font-normal text-slate-400">{t.proposals.messages}</span></span>
