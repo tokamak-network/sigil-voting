@@ -89,9 +89,10 @@ export function VoteFormV2({
           ? gasCostWei * 120n / 100n
           : gasCostWei * 280n / 100n; // signUp + publishMessage ≈ 2.8x
         setEstimatedGasEth(parseFloat(formatEther(totalCost)).toFixed(4));
-      } catch {
-        // Fallback: rough estimate for Sepolia (gas is very cheap on testnet)
-        setEstimatedGasEth(isRegistered ? '0.0005' : '0.0015');
+      } catch (err) {
+        console.warn('Gas estimation failed:', err);
+        // Show null so UI displays "..." instead of misleading value
+        setEstimatedGasEth(null);
       }
     };
     estimateGas();
@@ -202,7 +203,7 @@ export function VoteFormV2({
         abi: POLL_ABI,
         functionName: 'publishMessage',
         args: [
-          encMessage.map((v) => v),
+          encMessage as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint],
           ephemeral.pubKey[0],
           ephemeral.pubKey[1],
         ],
@@ -213,18 +214,18 @@ export function VoteFormV2({
       setTxStage('waiting');
       setTxHash(hash);
 
-      // Save state IMMEDIATELY after tx sent (before receipt wait).
-      // This prevents double-submit issues: if receipt wait fails but tx
-      // is already on-chain, nonce is already incremented so retry creates
-      // a new (valid) message instead of a duplicate.
+      // Wait for on-chain confirmation before saving state
+      if (publicClient) {
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status === 'reverted') {
+          throw new Error('Transaction reverted on-chain');
+        }
+      }
+
+      // Only save state after confirmed on-chain
       incrementMaciNonce(address, pollId);
       saveLastVote(address, pollId, choice, weight, cost);
       setCreditsSpent(address, pollId, cost);
-
-      // Wait for on-chain confirmation
-      if (publicClient) {
-        await publicClient.waitForTransactionReceipt({ hash });
-      }
 
       setTxStage('done');
       onVoteSubmitted?.(hash);

@@ -25,9 +25,13 @@ contract DeployMACIScript is Script {
         AccQueue stateAq = new AccQueue(5, 2);
         console.log("AccQueue:", address(stateAq));
 
-        // Fresh MACI with fixed Poll.sol (handles already-merged AccQueue)
+        // Fresh MACI with security hardening
         MACI maci = new MACI(GATEKEEPER, VOICE_CREDIT_PROXY, 2, address(stateAq));
         console.log("MACI:", address(maci));
+
+        // Transfer AccQueue ownership to MACI, then initialize
+        stateAq.transferOwnership(address(maci));
+        maci.init();
 
         vm.stopBroadcast();
 

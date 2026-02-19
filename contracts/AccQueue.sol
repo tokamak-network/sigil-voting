@@ -20,11 +20,27 @@ contract AccQueue {
     error NoSubtrees();
     error IndexOutOfBounds();
     error NotMerged();
+    error NotOwner();
 
     // ============ Constants ============
 
     uint256 internal constant SNARK_SCALAR_FIELD =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
+
+    /// @notice Owner (the contract authorized to enqueue — MACI or Poll)
+    address public owner;
+
+    /// @notice Only the owner can enqueue leaves
+    modifier onlyOwner() {
+        if (msg.sender != owner) revert NotOwner();
+        _;
+    }
+
+    /// @notice Transfer ownership (e.g., deployer → MACI contract)
+    function transferOwnership(address _newOwner) external {
+        if (msg.sender != owner) revert NotOwner();
+        owner = _newOwner;
+    }
 
     /// @notice Tree arity (5 for quinary)
     uint256 public immutable ARITY;
@@ -84,6 +100,7 @@ contract AccQueue {
     constructor(uint256 _arity, uint256 _subDepth) {
         require(_arity == 5, "Only quinary (arity=5) supported");
         require(_subDepth > 0 && _subDepth <= 4, "SubDepth must be 1-4");
+        owner = msg.sender;
 
         ARITY = _arity;
         SUB_DEPTH = _subDepth;
@@ -117,7 +134,7 @@ contract AccQueue {
     /// @notice Add a leaf to the accumulator queue
     /// @param _leaf The leaf value to enqueue
     /// @return leafIndex The global index of the enqueued leaf
-    function enqueue(uint256 _leaf) external returns (uint256 leafIndex) {
+    function enqueue(uint256 _leaf) external onlyOwner returns (uint256 leafIndex) {
         if (_leaf >= SNARK_SCALAR_FIELD) revert LeafTooLarge();
         if (merged) revert AlreadyMerged();
 

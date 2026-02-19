@@ -40,6 +40,10 @@ contract MACI is DomainObjs {
     error InsufficientTokens();
     error NoProposalGates();
     error ZeroAddress();
+    error InvalidVerifier();
+    error SameVerifier();
+    error AlreadyInitialized();
+    error NotInitialized();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -59,6 +63,8 @@ contract MACI is DomainObjs {
 
     event DeployPoll(uint256 indexed pollId, address pollAddr, address messageProcessorAddr, address tallyAddr);
 
+    bool public initialized;
+
     // ============ Constructor ============
     constructor(address _signUpGatekeeper, address _voiceCreditProxy, uint8 _stateTreeDepth, address _stateAq) {
         signUpGatekeeper = ISignUpGatekeeper(_signUpGatekeeper);
@@ -66,9 +72,15 @@ contract MACI is DomainObjs {
         stateTreeDepth = _stateTreeDepth;
         owner = msg.sender;
 
-        // Use pre-deployed AccQueue
+        // Use pre-deployed AccQueue (ownership transferred separately)
         stateAq = AccQueue(_stateAq);
+    }
 
+    /// @notice Initialize MACI by enqueueing the blank state leaf
+    /// @dev Must be called after AccQueue ownership is transferred to this contract
+    function init() external onlyOwner {
+        if (initialized) revert AlreadyInitialized();
+        initialized = true;
         // Index 0: blank state leaf (for invalid message routing)
         stateAq.enqueue(BLANK_STATE_LEAF_HASH);
         // numSignUps stays 0 — blank leaf doesn't count
@@ -85,6 +97,9 @@ contract MACI is DomainObjs {
         bytes memory _signUpGatekeeperData,
         bytes memory _initialVoiceCreditProxyData
     ) external {
+        // 0. Must be initialized
+        if (!initialized) revert NotInitialized();
+
         // 1. Gatekeeper check
         signUpGatekeeper.register(msg.sender, _signUpGatekeeperData);
 
@@ -158,6 +173,8 @@ contract MACI is DomainObjs {
         uint8 _messageTreeDepth
     ) external returns (uint256 pollId) {
         if (!canCreatePoll(msg.sender)) revert InsufficientTokens();
+        if (_mpVerifier == address(0) || _tallyVerifier == address(0)) revert InvalidVerifier();
+        if (_mpVerifier == _tallyVerifier) revert SameVerifier();
         pollId = nextPollId++;
 
         Poll poll = new Poll(

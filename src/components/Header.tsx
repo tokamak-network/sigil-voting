@@ -97,22 +97,6 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
           </button>
         </div>
 
-        {/* Center: Anchor nav (landing/technology pages) */}
-        {isLandingOrTech && (
-          <nav className="hidden md:flex items-center gap-8 font-display text-sm font-bold">
-            <a href="#features" className="hover:text-primary transition-colors">FEATURES</a>
-            <a href="#comparison" className="hover:text-primary transition-colors">PROTOCOL</a>
-            <a href="#sdk" className="hover:text-primary transition-colors">SDK</a>
-            <a href="#faq" className="hover:text-primary transition-colors">DOCS</a>
-            <button
-              onClick={() => setCurrentPage('technology')}
-              className={`hover:text-primary transition-colors ${currentPage === 'technology' ? 'text-primary' : ''}`}
-            >
-              {t.technology.nav.toUpperCase()}
-            </button>
-          </nav>
-        )}
-
         {/* Right: Controls */}
         <div className="flex items-center gap-4">
           <LanguageSwitcher />

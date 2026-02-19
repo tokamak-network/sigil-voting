@@ -76,10 +76,31 @@ export function KeyManager({
       const newPubKey = await cm.eddsaDerivePublicKey(newSk);
 
       // Get current sk for signing the key change command
-      // Priority: poll-specific (after previous key change) > global (from signUp)
+      // Priority: poll-specific (after previous key change) > global (from signUp) > wallet-derived
       const pollSk = await cm.loadEncrypted(`maci-sk-${address}-${pollId}`, address);
       const globalSk = await cm.loadEncrypted(`maci-sk-${address}`, address);
-      const currentSk = pollSk ? BigInt(pollSk) : globalSk ? BigInt(globalSk) : newSk;
+      let currentSk: bigint;
+      if (pollSk) {
+        currentSk = BigInt(pollSk);
+      } else if (globalSk) {
+        currentSk = BigInt(globalSk);
+      } else {
+        // Derive from wallet signature (same as signUp flow)
+        const MACI_KEY_MESSAGE = 'SIGIL Voting Key v1';
+        const provider = (window as any).ethereum;
+        if (!provider) throw new Error('No wallet provider');
+        const sig: string = await provider.request({
+          method: 'personal_sign',
+          params: [
+            `0x${Array.from(new TextEncoder().encode(MACI_KEY_MESSAGE)).map(b => b.toString(16).padStart(2, '0')).join('')}`,
+            address,
+          ],
+        });
+        const sigBytes = new Uint8Array(sig.slice(2).match(/.{2}/g)!.map(h => parseInt(h, 16)));
+        currentSk = cm.derivePrivateKey(sigBytes);
+        // Cache for future use
+        await cm.storeEncrypted(`maci-sk-${address}`, currentSk.toString(), address);
+      }
 
       // ECDH shared key with coordinator
       const ephemeral = await cm.generateEphemeralKeyPair();
@@ -144,7 +165,7 @@ export function KeyManager({
         abi: POLL_ABI,
         functionName: 'publishMessage',
         args: [
-          encMessage.map((v) => v),
+          encMessage as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint],
           ephemeral.pubKey[0],
           ephemeral.pubKey[1],
         ],

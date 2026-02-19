@@ -51,7 +51,8 @@ contract MACITest is Test {
     MACI public maci;
     FreeForAllGatekeeper public gatekeeper;
     ConstantVoiceCreditProxy public voiceCreditProxy;
-    MockVerifier public verifier;
+    MockVerifier public mpVerifier;
+    MockVerifier public tallyVerifier;
     VkRegistry public vkRegistry;
 
     uint256 constant VOICE_CREDITS = 100;
@@ -66,11 +67,15 @@ contract MACITest is Test {
     function setUp() public {
         gatekeeper = new FreeForAllGatekeeper();
         voiceCreditProxy = new ConstantVoiceCreditProxy(VOICE_CREDITS);
-        verifier = new MockVerifier();
+        mpVerifier = new MockVerifier();
+        tallyVerifier = new MockVerifier();
         vkRegistry = new VkRegistry();
 
         AccQueue stateAq = new AccQueue(5, 2);
         maci = new MACI(address(gatekeeper), address(voiceCreditProxy), STATE_TREE_DEPTH, address(stateAq));
+        // Transfer AccQueue ownership to MACI, then initialize
+        stateAq.transferOwnership(address(maci));
+        maci.init();
     }
 
     // ============ 1. test_MACI_SignUp ============
@@ -102,6 +107,8 @@ contract MACITest is Test {
         AccQueue restrictedAq = new AccQueue(5, 2);
         MACI restrictedMaci =
             new MACI(address(rejectGk), address(voiceCreditProxy), STATE_TREE_DEPTH, address(restrictedAq));
+        restrictedAq.transferOwnership(address(restrictedMaci));
+        restrictedMaci.init();
 
         vm.expectRevert("Rejected");
         restrictedMaci.signUp(100, 200, "", "");
@@ -117,8 +124,8 @@ contract MACITest is Test {
             POLL_DURATION,
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
-            address(verifier),
-            address(verifier),
+            address(mpVerifier),
+            address(tallyVerifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
         );
@@ -143,8 +150,8 @@ contract MACITest is Test {
             POLL_DURATION,
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
-            address(verifier),
-            address(verifier),
+            address(mpVerifier),
+            address(tallyVerifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
         );
@@ -168,8 +175,8 @@ contract MACITest is Test {
             POLL_DURATION,
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
-            address(verifier),
-            address(verifier),
+            address(mpVerifier),
+            address(tallyVerifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
         );
@@ -204,8 +211,8 @@ contract MACITest is Test {
             POLL_DURATION,
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
-            address(verifier),
-            address(verifier),
+            address(mpVerifier),
+            address(tallyVerifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
         );
@@ -225,7 +232,8 @@ contract MACITest is Test {
 
         // Get MessageProcessor address from event
         // For testing, we deploy manually
-        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry), address(this));
+        MessageProcessor mp =
+            new MessageProcessor(address(poll), address(mpVerifier), address(vkRegistry), address(this));
 
         uint256[2] memory pA = [uint256(0), uint256(0)];
         uint256[2][2] memory pB = [[uint256(0), uint256(0)], [uint256(0), uint256(0)]];
@@ -245,8 +253,8 @@ contract MACITest is Test {
             POLL_DURATION,
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
-            address(verifier),
-            address(verifier),
+            address(mpVerifier),
+            address(tallyVerifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
         );
@@ -262,9 +270,10 @@ contract MACITest is Test {
         poll.mergeMessageAqSubRoots(0);
         poll.mergeMessageAq();
 
-        // Set verifier to reject
-        verifier.setReturnValue(false);
-        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry), address(this));
+        // Set mpVerifier to reject
+        mpVerifier.setReturnValue(false);
+        MessageProcessor mp =
+            new MessageProcessor(address(poll), address(mpVerifier), address(vkRegistry), address(this));
 
         uint256[2] memory pA;
         uint256[2][2] memory pB;
@@ -283,8 +292,8 @@ contract MACITest is Test {
             POLL_DURATION,
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
-            address(verifier),
-            address(verifier),
+            address(mpVerifier),
+            address(tallyVerifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
         );
@@ -292,7 +301,8 @@ contract MACITest is Test {
         Poll poll = Poll(maci.polls(0));
         vm.warp(block.timestamp + POLL_DURATION + 1);
 
-        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry), address(this));
+        MessageProcessor mp =
+            new MessageProcessor(address(poll), address(mpVerifier), address(vkRegistry), address(this));
 
         uint256[2] memory pA;
         uint256[2][2] memory pB;
@@ -312,8 +322,8 @@ contract MACITest is Test {
             POLL_DURATION,
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
-            address(verifier),
-            address(verifier),
+            address(mpVerifier),
+            address(tallyVerifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
         );
@@ -329,14 +339,15 @@ contract MACITest is Test {
         poll.mergeMessageAqSubRoots(0);
         poll.mergeMessageAq();
 
-        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry), address(this));
+        MessageProcessor mp =
+            new MessageProcessor(address(poll), address(mpVerifier), address(vkRegistry), address(this));
         uint256[2] memory pA;
         uint256[2][2] memory pB;
         uint256[2] memory pC;
         mp.processMessages(12345, pA, pB, pC);
         mp.completeProcessing();
 
-        Tally tally = new Tally(address(poll), address(mp), address(verifier), address(vkRegistry), address(this));
+        Tally tally = new Tally(address(poll), address(mp), address(tallyVerifier), address(vkRegistry), address(this));
         uint256 tallyCommitment = PoseidonT4.hash([uint256(111), uint256(222), uint256(333)]);
         tally.tallyVotes(tallyCommitment, pA, pB, pC);
         assertEq(tally.tallyCommitment(), tallyCommitment);
@@ -351,8 +362,8 @@ contract MACITest is Test {
             POLL_DURATION,
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
-            address(verifier),
-            address(verifier),
+            address(mpVerifier),
+            address(tallyVerifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
         );
@@ -367,15 +378,16 @@ contract MACITest is Test {
         poll.mergeMessageAqSubRoots(0);
         poll.mergeMessageAq();
 
-        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry), address(this));
+        MessageProcessor mp =
+            new MessageProcessor(address(poll), address(mpVerifier), address(vkRegistry), address(this));
         uint256[2] memory pA;
         uint256[2][2] memory pB;
         uint256[2] memory pC;
         mp.processMessages(12345, pA, pB, pC);
         mp.completeProcessing();
 
-        verifier.setReturnValue(false);
-        Tally tally = new Tally(address(poll), address(mp), address(verifier), address(vkRegistry), address(this));
+        tallyVerifier.setReturnValue(false);
+        Tally tally = new Tally(address(poll), address(mp), address(tallyVerifier), address(vkRegistry), address(this));
 
         vm.expectRevert(Tally.InvalidTallyProof.selector);
         tally.tallyVotes(67890, pA, pB, pC);
@@ -390,8 +402,8 @@ contract MACITest is Test {
             POLL_DURATION,
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
-            address(verifier),
-            address(verifier),
+            address(mpVerifier),
+            address(tallyVerifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
         );
@@ -406,14 +418,15 @@ contract MACITest is Test {
         poll.mergeMessageAqSubRoots(0);
         poll.mergeMessageAq();
 
-        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry), address(this));
+        MessageProcessor mp =
+            new MessageProcessor(address(poll), address(mpVerifier), address(vkRegistry), address(this));
         uint256[2] memory pA;
         uint256[2][2] memory pB;
         uint256[2] memory pC;
         mp.processMessages(12345, pA, pB, pC);
         mp.completeProcessing();
 
-        Tally tally = new Tally(address(poll), address(mp), address(verifier), address(vkRegistry), address(this));
+        Tally tally = new Tally(address(poll), address(mp), address(tallyVerifier), address(vkRegistry), address(this));
         uint256 tallyResultsRoot = 1111;
         uint256 totalSpent = 2222;
         uint256 perOptionSpentRoot = 3333;
@@ -476,8 +489,8 @@ contract MACITest is Test {
             POLL_DURATION,
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
-            address(verifier),
-            address(verifier),
+            address(mpVerifier),
+            address(tallyVerifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
         );
@@ -500,8 +513,8 @@ contract MACITest is Test {
             POLL_DURATION,
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
-            address(verifier),
-            address(verifier),
+            address(mpVerifier),
+            address(tallyVerifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
         );
@@ -573,8 +586,8 @@ contract MACITest is Test {
             POLL_DURATION,
             COORD_PUB_KEY_X,
             COORD_PUB_KEY_Y,
-            address(verifier),
-            address(verifier),
+            address(mpVerifier),
+            address(tallyVerifier),
             address(vkRegistry),
             MSG_TREE_DEPTH
         );
@@ -607,7 +620,8 @@ contract MACITest is Test {
         assertTrue(poll.messageAqMerged());
 
         // 6. Process messages
-        MessageProcessor mp = new MessageProcessor(address(poll), address(verifier), address(vkRegistry), address(this));
+        MessageProcessor mp =
+            new MessageProcessor(address(poll), address(mpVerifier), address(vkRegistry), address(this));
         uint256[2] memory pA;
         uint256[2][2] memory pB;
         uint256[2] memory pC;
@@ -616,7 +630,7 @@ contract MACITest is Test {
         assertTrue(mp.processingComplete());
 
         // 7. Tally votes
-        Tally tally = new Tally(address(poll), address(mp), address(verifier), address(vkRegistry), address(this));
+        Tally tally = new Tally(address(poll), address(mp), address(tallyVerifier), address(vkRegistry), address(this));
         uint256 tallyResultsRoot = 4444;
         uint256 totalSpent = 5555;
         uint256 perOptionSpentRoot = 6666;

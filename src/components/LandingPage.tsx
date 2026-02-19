@@ -79,7 +79,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                     <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 mb-2">
                       <div className="bg-primary h-full w-2/3"></div>
                     </div>
-                    <div className="flex justify-between font-display text-[10px]">
+                    <div className="flex justify-between font-display text-xs">
                       <span>PROVING STATE</span>
                       <span>67% COMPLETE</span>
                     </div>
@@ -105,7 +105,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             ].map((stat, i) => (
               <div key={i} className="text-center md:text-left">
                 <div className="font-display text-3xl font-extrabold text-primary">{stat.count}</div>
-                <div className="font-display text-xs opacity-60 uppercase tracking-widest">{stat.label}</div>
+                <div className="font-display text-sm opacity-70 uppercase tracking-widest">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -132,7 +132,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
               >
                 <span className="material-symbols-outlined text-4xl mb-6 text-primary group-hover:text-white">{feat.icon}</span>
                 <h3 className="font-display text-xl font-bold mb-4 uppercase">{feat.title}</h3>
-                <p className="text-sm leading-relaxed opacity-70 group-hover:opacity-100">{feat.desc}</p>
+                <p className="text-base leading-relaxed opacity-80 group-hover:opacity-100">{feat.desc}</p>
               </div>
             ))}
           </div>
@@ -156,7 +156,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                 <div className="relative z-10">
                   <h4 className="font-display text-xl font-bold mb-4 uppercase">{step.title}</h4>
                   <p className="text-slate-600 dark:text-slate-400">{step.desc}</p>
-                  <div className="mt-6 p-4 border-2 border-border-light dark:border-border-dark bg-white dark:bg-black font-display text-[10px] overflow-hidden">
+                  <div className="mt-6 p-4 border-2 border-border-light dark:border-border-dark bg-white dark:bg-black font-display text-xs overflow-hidden">
                     <code className={step.color}>{step.code}</code>
                   </div>
                 </div>
@@ -171,7 +171,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
         <div className="container mx-auto px-6">
           <div className="mb-12">
             <h2 className="font-display text-4xl font-extrabold uppercase">{t.landing.comparison.title}</h2>
-            <p className="font-display text-sm opacity-50 mt-2">{t.landing.comparison.subtitle}</p>
+            <p className="font-display text-base opacity-70 mt-2">{t.landing.comparison.subtitle}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse border-2 border-border-light dark:border-border-dark font-display text-sm">
@@ -223,7 +223,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                     {row.values.map((val, j) => (
                       <td key={j} className={`p-6 text-center border-l-2 border-border-light dark:border-border-dark ${row.colors[j]}`}>
                         <span className="material-symbols-outlined">{row.icons[j]}</span>
-                        <span className="block text-[10px] mt-1 opacity-60">{val}</span>
+                        <span className="block text-xs mt-1 opacity-70">{val}</span>
                       </td>
                     ))}
                   </tr>
@@ -251,7 +251,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                 <span className="material-symbols-outlined text-4xl">play_arrow</span>
               </button>
             </div>
-            <div className="absolute bottom-10 left-10 right-10 flex justify-between font-display text-[10px] opacity-40">
+            <div className="absolute bottom-10 left-10 right-10 flex justify-between font-display text-xs opacity-60">
               <span>CONNECT → ENCRYPT</span>
               <span>SUBMIT → PROVE</span>
               <span>VERIFY SUCCESS</span>
@@ -275,21 +275,21 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                   <span className="material-symbols-outlined text-primary">code</span>
                   <div>
                     <h4 className="font-display font-bold">{t.landing.integration.trust1.split(' — ')[0]}</h4>
-                    <p className="text-sm opacity-70">{t.landing.integration.trust1.split(' — ')[1]}</p>
+                    <p className="text-base opacity-80">{t.landing.integration.trust1.split(' — ')[1]}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
                   <span className="material-symbols-outlined text-primary">layers</span>
                   <div>
                     <h4 className="font-display font-bold">{t.landing.integration.trust2.split(' — ')[0]}</h4>
-                    <p className="text-sm opacity-70">{t.landing.integration.trust2.split(' — ')[1]}</p>
+                    <p className="text-base opacity-80">{t.landing.integration.trust2.split(' — ')[1]}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
                   <span className="material-symbols-outlined text-primary">security</span>
                   <div>
                     <h4 className="font-display font-bold">{t.landing.integration.trust3.split(' — ')[0]}</h4>
-                    <p className="text-sm opacity-70">{t.landing.integration.trust3.split(' — ')[1]}</p>
+                    <p className="text-base opacity-80">{t.landing.integration.trust3.split(' — ')[1]}</p>
                   </div>
                 </div>
               </div>
@@ -344,10 +344,10 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                 className="border-2 border-border-light dark:border-border-dark p-6 hover:border-primary transition-colors cursor-pointer group"
               >
                 <div className="flex justify-between items-center mb-2">
-                  <h4 className="font-display font-bold uppercase text-sm pr-4">{item.q}</h4>
+                  <h4 className="font-display font-bold uppercase text-base pr-4">{item.q}</h4>
                   <span className="material-symbols-outlined text-primary shrink-0">add</span>
                 </div>
-                <p className="text-sm opacity-60">{item.a}</p>
+                <p className="text-base opacity-70">{item.a}</p>
               </div>
             ))}
           </div>

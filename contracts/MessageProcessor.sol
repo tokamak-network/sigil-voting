@@ -16,6 +16,7 @@ contract MessageProcessor is DomainObjs {
     address public immutable coordinator;
 
     uint256 public processedBatchCount;
+    uint256 public expectedBatchCount;
     uint256 public currentStateCommitment;
     bool public processingComplete;
 
@@ -26,6 +27,8 @@ contract MessageProcessor is DomainObjs {
     error AlreadyComplete();
     error NoBatchesProcessed();
     error InvalidProcessProof();
+    error NotAllBatchesProcessed();
+    error ExpectedBatchCountAlreadySet();
 
     modifier onlyCoordinator() {
         if (msg.sender != coordinator) revert NotCoordinator();
@@ -85,10 +88,18 @@ contract MessageProcessor is DomainObjs {
         emit MessagesProcessed(processedBatchCount - 1, _newStateCommitment);
     }
 
+    /// @notice Set the expected number of batches (must be called before completeProcessing)
+    function setExpectedBatchCount(uint256 _count) external onlyCoordinator {
+        if (expectedBatchCount != 0) revert ExpectedBatchCountAlreadySet();
+        expectedBatchCount = _count;
+    }
+
     /// @notice Mark processing as complete (called after all batches processed)
     function completeProcessing() external onlyCoordinator {
         if (processingComplete) revert AlreadyComplete();
         if (processedBatchCount == 0) revert NoBatchesProcessed();
+        // If expectedBatchCount was set, verify all batches were processed
+        if (expectedBatchCount != 0 && processedBatchCount < expectedBatchCount) revert NotAllBatchesProcessed();
         processingComplete = true;
         emit ProcessingCompleted(currentStateCommitment);
     }
