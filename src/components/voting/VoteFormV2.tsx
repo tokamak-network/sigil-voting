@@ -23,6 +23,7 @@ import { VoteConfirmModal } from './VoteConfirmModal';
 import { TransactionModal } from './TransactionModal';
 import { preloadCrypto } from '../../crypto/preload';
 import { getLastVote, getMaciNonce, incrementMaciNonce } from './voteUtils';
+import { storageKey } from '../../storageKeys';
 
 interface VoteFormV2Props {
   pollId: number;
@@ -526,31 +527,24 @@ export function VoteFormV2({
 // Vote history read + nonce management is in voteUtils.ts (shared with KeyManager)
 
 function saveLastVote(address: string, pollId: number, choice: number, weight: number, cost: number): void {
-  const key = `maci-lastVote-${address}-${pollId}`;
-  localStorage.setItem(key, JSON.stringify({ choice, weight, cost }));
+  localStorage.setItem(storageKey.lastVote(address, pollId), JSON.stringify({ choice, weight, cost }));
 }
 
 // Credit tracking (localStorage)
 function getCreditsSpent(address: string, pollId: number): number {
-  const key = `maci-creditsSpent-${address}-${pollId}`;
-  return parseInt(localStorage.getItem(key) || '0', 10);
+  return parseInt(localStorage.getItem(storageKey.creditsSpent(address, pollId)) || '0', 10);
 }
 
 function setCreditsSpent(address: string, pollId: number, cost: number): void {
-  const key = `maci-creditsSpent-${address}-${pollId}`;
-  // Accumulate credits spent: in MACI first-vote-wins, re-votes are always
-  // invalid (nonce won't match), so every submission costs credits but only
-  // the first vote actually counts. This accurately tracks total spent.
+  const key = storageKey.creditsSpent(address, pollId);
   const prev = parseInt(localStorage.getItem(key) || '0', 10);
   localStorage.setItem(key, String(prev + cost));
 }
 
 function getStateIndex(address: string, _pollId: number): number {
-  const globalKey = `maci-stateIndex-${address}`;
-  const globalVal = localStorage.getItem(globalKey);
+  const globalVal = localStorage.getItem(storageKey.stateIndex(address));
   if (globalVal) return parseInt(globalVal, 10);
-  const pollKey = `maci-stateIndex-${address}-${_pollId}`;
-  const pollVal = localStorage.getItem(pollKey);
+  const pollVal = localStorage.getItem(storageKey.stateIndexPoll(address, _pollId));
   if (pollVal) return parseInt(pollVal, 10);
   return 1;
 }
@@ -563,8 +557,8 @@ async function getOrCreateMaciKeypair(
   loadEncrypted: (storageKey: string, address: string) => Promise<string | null>,
   storeEncrypted: (storageKey: string, value: string, address: string) => Promise<void>,
 ): Promise<{ sk: bigint; pubKey: [bigint, bigint] }> {
-  const pollSkKey = `maci-sk-${address}-${pollId}`;
-  const pollPkKey = `maci-pubkey-${address}-${pollId}`;
+  const pollSkKey = storageKey.skPoll(address, pollId);
+  const pollPkKey = storageKey.pubkey(address, pollId);
   const storedPollSk = await loadEncrypted(pollSkKey, address);
   if (storedPollSk) {
     const sk = BigInt(storedPollSk);
@@ -582,8 +576,8 @@ async function getOrCreateMaciKeypair(
     return { sk, pubKey };
   }
 
-  const globalSkKey = `maci-sk-${address}`;
-  const globalPkKey = `maci-pk-${address}`;
+  const globalSkKey = storageKey.sk(address);
+  const globalPkKey = storageKey.pk(address);
   const storedGlobalSk = await loadEncrypted(globalSkKey, address);
   if (storedGlobalSk) {
     const sk = BigInt(storedGlobalSk);

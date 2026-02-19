@@ -17,6 +17,7 @@ import {
   TALLY_ABI,
 } from '../contractV2'
 import { useTranslation } from '../i18n'
+import { storageKey } from '../storageKeys'
 import { CreatePollForm } from './CreatePollForm'
 
 interface PollInfo {
@@ -39,17 +40,15 @@ type FilterTab = 'all' | 'voting' | 'processing' | 'ended'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
 
-const POLLS_CACHE_KEY = 'maci-polls-cache'
-
 function loadCachedPolls(): PollInfo[] {
   try {
-    const raw = localStorage.getItem(POLLS_CACHE_KEY)
+    const raw = localStorage.getItem(storageKey.pollsCache)
     return raw ? JSON.parse(raw) : []
   } catch { return [] }
 }
 
 function saveCachedPolls(polls: PollInfo[]): void {
-  try { localStorage.setItem(POLLS_CACHE_KEY, JSON.stringify(polls)) } catch { /* quota */ }
+  try { localStorage.setItem(storageKey.pollsCache, JSON.stringify(polls)) } catch { /* quota */ }
 }
 
 export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
@@ -57,7 +56,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   const publicClient = usePublicClient()
   const { t } = useTranslation()
   const [polls, setPolls] = useState<PollInfo[]>(() => loadCachedPolls())
-  const [loading, setLoading] = useState(() => loadCachedPolls().length === 0)
+  const [loading, setLoading] = useState(false)
   const [showCreatePoll, setShowCreatePoll] = useState(false)
   const [now, setNow] = useState(Math.floor(Date.now() / 1000))
   const [refreshKey, setRefreshKey] = useState(0)
@@ -161,13 +160,13 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
           return {
             id: i,
             address: pollAddr,
-            title: (onChainTitle as string) || localStorage.getItem(`maci-poll-title-${i}`) || `Proposal #${i + 1}`,
+            title: (onChainTitle as string) || localStorage.getItem(storageKey.pollTitle(i)) || `Proposal #${i + 1}`,
             isOpen: isOpen as boolean,
             isFinalized,
             deployTime: Number(td[0]),
             duration: Number(td[1]),
             numMessages: Number(numMsgs),
-            hasVoted: address ? localStorage.getItem(`maci-lastVote-${address}-${i}`) !== null : false,
+            hasVoted: address ? localStorage.getItem(storageKey.lastVote(address, i)) !== null : false,
           } as PollInfo
         }).catch(() => null)
       })

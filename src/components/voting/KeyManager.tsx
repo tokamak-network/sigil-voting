@@ -16,6 +16,7 @@ import { POLL_ABI, POLL_V2_ADDRESS } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 import { preloadCrypto } from '../../crypto/preload';
 import { getMaciNonce, incrementMaciNonce } from './voteUtils';
+import { storageKey } from '../../storageKeys';
 
 interface KeyManagerProps {
   pollId: number;
@@ -46,17 +47,16 @@ export function KeyManager({
   // Load current key from localStorage (poll-specific > global)
   useEffect(() => {
     if (!address) return;
-    const pollPk = localStorage.getItem(`maci-pubkey-${address}-${pollId}`);
-    const globalPk = localStorage.getItem(`maci-pk-${address}`);
+    const pollPk = localStorage.getItem(storageKey.pubkey(address, pollId));
+    const globalPk = localStorage.getItem(storageKey.pk(address));
     const stored = pollPk || globalPk;
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
         setCurrentPubKey([BigInt(parsed[0]), BigInt(parsed[1])]);
       } catch {
-        // Corrupted key data, remove it
-        localStorage.removeItem(`maci-pubkey-${address}-${pollId}`);
-        localStorage.removeItem(`maci-pk-${address}`);
+        localStorage.removeItem(storageKey.pubkey(address, pollId));
+        localStorage.removeItem(storageKey.pk(address));
       }
     }
   }, [address, pollId, isRegistered]);
@@ -77,8 +77,8 @@ export function KeyManager({
 
       // Get current sk for signing the key change command
       // Priority: poll-specific (after previous key change) > global (from signUp) > wallet-derived
-      const pollSk = await cm.loadEncrypted(`maci-sk-${address}-${pollId}`, address);
-      const globalSk = await cm.loadEncrypted(`maci-sk-${address}`, address);
+      const pollSk = await cm.loadEncrypted(storageKey.skPoll(address, pollId), address);
+      const globalSk = await cm.loadEncrypted(storageKey.sk(address), address);
       let currentSk: bigint;
       if (pollSk) {
         currentSk = BigInt(pollSk);
@@ -99,7 +99,7 @@ export function KeyManager({
         const sigBytes = new Uint8Array(sig.slice(2).match(/.{2}/g)!.map(h => parseInt(h, 16)));
         currentSk = cm.derivePrivateKey(sigBytes);
         // Cache for future use
-        await cm.storeEncrypted(`maci-sk-${address}`, currentSk.toString(), address);
+        await cm.storeEncrypted(storageKey.sk(address), currentSk.toString(), address);
       }
 
       // ECDH shared key with coordinator
@@ -112,8 +112,8 @@ export function KeyManager({
       // Pack key change command
       const nonce = BigInt(getMaciNonce(address, pollId));
       // Priority: global key (from signUp) > poll-specific > default 1
-      const globalIdx = localStorage.getItem(`maci-stateIndex-${address}`);
-      const pollIdx = localStorage.getItem(`maci-stateIndex-${address}-${pollId}`);
+      const globalIdx = localStorage.getItem(storageKey.stateIndex(address));
+      const pollIdx = localStorage.getItem(storageKey.stateIndexPoll(address, pollId));
       const stateIndex = globalIdx ? BigInt(globalIdx) : pollIdx ? BigInt(pollIdx) : 1n;
       // Pack command with full bit-packing: stateIndex | (voteOption << 50) | (weight << 100) | (nonce << 150) | (pollId << 200)
       // Key change: voteOption=0, weight=0, but nonce and pollId must be included
@@ -175,11 +175,11 @@ export function KeyManager({
 
       // Save new keypair (private key encrypted)
       localStorage.setItem(
-        `maci-pubkey-${address}-${pollId}`,
+        storageKey.pubkey(address, pollId),
         JSON.stringify([newPubKey[0].toString(), newPubKey[1].toString()]),
       );
       await cm.storeEncrypted(
-        `maci-sk-${address}-${pollId}`,
+        storageKey.skPoll(address, pollId),
         newSk.toString(),
         address,
       );

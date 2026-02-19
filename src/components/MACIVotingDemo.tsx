@@ -33,6 +33,7 @@ import { KeyManager } from './voting/KeyManager'
 import { ResultsDisplay } from './voting/ResultsDisplay'
 import { PollTimer } from './voting/PollTimer'
 import { useTranslation } from '../i18n'
+import { storageKey } from '../storageKeys'
 import { preloadCrypto } from '../crypto/preload'
 import type { CryptoModules } from '../crypto/preload'
 
@@ -47,7 +48,7 @@ const MACI_KEY_MESSAGE = 'SIGIL Voting Key v1'
  */
 async function deriveKeyFromWallet(address: string, cm: CryptoModules): Promise<bigint> {
   // Try cache first
-  const cached = await cm.loadEncrypted(`maci-sk-${address}`, address)
+  const cached = await cm.loadEncrypted(storageKey.sk(address), address)
   if (cached) return BigInt(cached)
 
   // Request wallet signature (MetaMask popup)
@@ -64,7 +65,7 @@ async function deriveKeyFromWallet(address: string, cm: CryptoModules): Promise<
   const sk = cm.derivePrivateKeyFromSignature(sigBytes)
 
   // Cache for future use
-  await cm.storeEncrypted(`maci-sk-${address}`, sk.toString(), address)
+  await cm.storeEncrypted(storageKey.sk(address), sk.toString(), address)
   return sk
 }
 
@@ -153,15 +154,15 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
             }) as string
             if (onChainTitle) {
               setPollTitle(onChainTitle)
-              localStorage.setItem(`maci-poll-title-${propPollId}`, onChainTitle)
+              localStorage.setItem(storageKey.pollTitle(propPollId), onChainTitle)
             }
           } catch {
             // Fallback to localStorage
-            const title = localStorage.getItem(`maci-poll-title-${propPollId}`)
+            const title = localStorage.getItem(storageKey.pollTitle(propPollId))
             if (title) setPollTitle(title)
           }
         }
-        const desc = localStorage.getItem(`maci-poll-desc-${propPollId}`)
+        const desc = localStorage.getItem(storageKey.pollDesc(propPollId))
         if (desc) setPollDescription(desc)
 
         for (const log of logs) {
@@ -242,13 +243,13 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
     if (!address) return
 
     // Fast path: check localStorage signals
-    const hasSignupFlag = localStorage.getItem(`maci-signup-${address}`)
-    const hasGlobalKey = localStorage.getItem(`maci-pk-${address}`)
-    const hasPollKey = localStorage.getItem(`maci-pubkey-${address}-${propPollId}`)
-    const hasVoted = parseInt(localStorage.getItem(`maci-nonce-${address}-${propPollId}`) || '1', 10) > 1
+    const hasSignupFlag = localStorage.getItem(storageKey.signup(address))
+    const hasGlobalKey = localStorage.getItem(storageKey.pk(address))
+    const hasPollKey = localStorage.getItem(storageKey.pubkey(address, propPollId))
+    const hasVoted = parseInt(localStorage.getItem(storageKey.nonce(address, propPollId)) || '1', 10) > 1
     if (hasSignupFlag || hasGlobalKey || hasPollKey || hasVoted) {
       setSignedUp(true)
-      if (!hasSignupFlag) localStorage.setItem(`maci-signup-${address}`, 'true')
+      if (!hasSignupFlag) localStorage.setItem(storageKey.signup(address), 'true')
       return
     }
 
@@ -281,8 +282,8 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
               // User already registered on-chain — restore localStorage
               const rawIndex = log.topics[1] ? parseInt(log.topics[1] as string, 16) : NaN
               const stateIndex = !isNaN(rawIndex) && rawIndex > 0 ? rawIndex : 1
-              localStorage.setItem(`maci-signup-${address}`, 'true')
-              localStorage.setItem(`maci-stateIndex-${address}`, String(stateIndex))
+              localStorage.setItem(storageKey.signup(address), 'true')
+              localStorage.setItem(storageKey.stateIndex(address), String(stateIndex))
               setSignedUp(true)
               return
             }
@@ -425,18 +426,18 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
             if (log.topics.length >= 2 && log.topics[0]) {
               const stateIndex = parseInt(log.topics[1] as string, 16)
               if (!isNaN(stateIndex) && stateIndex > 0) {
-                localStorage.setItem(`maci-stateIndex-${address}`, String(stateIndex))
+                localStorage.setItem(storageKey.stateIndex(address), String(stateIndex))
               }
             }
           }
         } catch {
-          localStorage.setItem(`maci-stateIndex-${address}`, '1')
+          localStorage.setItem(storageKey.stateIndex(address), '1')
         }
       }
 
-      localStorage.setItem(`maci-signup-${address}`, 'true')
-      await cm.storeEncrypted(`maci-sk-${address}`, sk.toString(), address)
-      localStorage.setItem(`maci-pk-${address}`, JSON.stringify([pk[0].toString(), pk[1].toString()]))
+      localStorage.setItem(storageKey.signup(address), 'true')
+      await cm.storeEncrypted(storageKey.sk(address), sk.toString(), address)
+      localStorage.setItem(storageKey.pk(address), JSON.stringify([pk[0].toString(), pk[1].toString()]))
 
       setSignedUp(true)
       setTxHash(hash)

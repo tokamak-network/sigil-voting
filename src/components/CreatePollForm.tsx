@@ -10,6 +10,7 @@ import {
   DEFAULT_COORD_PUB_KEY_X,
   DEFAULT_COORD_PUB_KEY_Y,
 } from '../contractV2'
+import { storageKey } from '../storageKeys'
 import { useTranslation } from '../i18n'
 import { TransactionModal } from './voting/TransactionModal'
 
@@ -99,9 +100,9 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
 
               localStorage.setItem('maci-last-poll-id', newPollId.toString())
               localStorage.setItem('maci-last-poll-addr', pollAddr)
-              localStorage.setItem(`maci-poll-title-${newPollId}`, title.trim())
+              localStorage.setItem(storageKey.pollTitle(newPollId), title.trim())
               if (description.trim()) {
-                localStorage.setItem(`maci-poll-desc-${newPollId}`, description.trim())
+                localStorage.setItem(storageKey.pollDesc(newPollId), description.trim())
               }
 
               setCreatedPollId(newPollId)
@@ -122,9 +123,9 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
                 const pollAddr = ('0x' + log.data.slice(26, 66)) as `0x${string}`
                 localStorage.setItem('maci-last-poll-id', newPollId.toString())
                 localStorage.setItem('maci-last-poll-addr', pollAddr)
-                localStorage.setItem(`maci-poll-title-${newPollId}`, title.trim())
+                localStorage.setItem(storageKey.pollTitle(newPollId), title.trim())
                 if (description.trim()) {
-                  localStorage.setItem(`maci-poll-desc-${newPollId}`, description.trim())
+                  localStorage.setItem(storageKey.pollDesc(newPollId), description.trim())
                 }
                 setCreatedPollId(newPollId)
                 setCreatedPollAddr(pollAddr)

@@ -6,8 +6,10 @@
  * MACI processes messages in reverse order and only nonce=1 is valid.
  */
 
+import { storageKey } from '../../storageKeys'
+
 export function getLastVote(address: string, pollId: number): { choice: number; weight: number; cost: number } | null {
-  const key = `maci-lastVote-${address}-${pollId}`;
+  const key = storageKey.lastVote(address, pollId);
   const stored = localStorage.getItem(key);
   if (!stored) return null;
   try {
@@ -26,12 +28,12 @@ export function getLastVote(address: string, pollId: number): { choice: number; 
  * message is always the final one.
  */
 export function getMaciNonce(address: string, pollId: number): number {
-  const key = `maci-nonce-${address}-${pollId}`;
+  const key = storageKey.nonce(address, pollId);
   return parseInt(localStorage.getItem(key) || '1', 10);
 }
 
 export function incrementMaciNonce(address: string, pollId: number): void {
-  const key = `maci-nonce-${address}-${pollId}`;
+  const key = storageKey.nonce(address, pollId);
   const current = getMaciNonce(address, pollId);
   localStorage.setItem(key, String(current + 1));
 }
