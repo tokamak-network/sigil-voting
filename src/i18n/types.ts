@@ -114,6 +114,7 @@ export interface Translations {
       demoStage: string
       ownChain: string
       postReveal: string
+      postRevealDev: string
       onlyStack: string
     }
     faq: {
