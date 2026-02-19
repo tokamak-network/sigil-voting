@@ -52,7 +52,7 @@ Prevents wealthy voters from dominating:
 
 | Contract | Address |
 |----------|---------|
-| **MACI** | [`0x0Eb7Cff2bA07743c80992710986669c66709D430`](https://sepolia.etherscan.io/address/0x0Eb7Cff2bA07743c80992710986669c66709D430) |
+| **MACI** | [`0x56f81f9ff308c85287A2fF8F91BB6e9039Ec78f5`](https://sepolia.etherscan.io/address/0x56f81f9ff308c85287A2fF8F91BB6e9039Ec78f5) |
 | MsgProcessor Verifier | [`0x47221B605bF18E92296850191A0c899fe03A27dB`](https://sepolia.etherscan.io/address/0x47221B605bF18E92296850191A0c899fe03A27dB) |
 | Tally Verifier | [`0xa48c2bD789EAd236fFEE36dEad220DFFE3feccF1`](https://sepolia.etherscan.io/address/0xa48c2bD789EAd236fFEE36dEad220DFFE3feccF1) |
 | VkRegistry | [`0xC8f6e6AB628CC73aDa2c01054C4772ACA222852C`](https://sepolia.etherscan.io/address/0xC8f6e6AB628CC73aDa2c01054C4772ACA222852C) |
@@ -67,7 +67,7 @@ Prevents wealthy voters from dominating:
 npm install
 npm run dev
 ```
-Open http://localhost:5174
+Open http://localhost:5173
 
 ### Coordinator (Auto-Runner)
 ```bash
@@ -75,7 +75,7 @@ cd coordinator
 npm install
 npx tsx src/run.ts
 ```
-Requires `.env` with `PRIVATE_KEY` and `COORDINATOR_PRIVATE_KEY`.
+Requires `.env` in the project root with `PRIVATE_KEY` and `COORDINATOR_PRIVATE_KEY`.
 
 The coordinator polls for ended votes every 30 seconds and automatically processes messages, generates Groth16 proofs, and publishes tally results on-chain.
 
@@ -114,7 +114,7 @@ npx vitest run              # 66 tests
 └──────────────────────┬──────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────┐
-│  ZK Circuits (Circom 2.1.6, Groth16)                 │
+│  ZK Circuits (Circom 2.2, Groth16)                 │
 │  - MessageProcessor: EdDSA verify + decrypt + state   │
 │  - TallyVotes: aggregate counting with commitment     │
 │  - SHA256Hasher, QuinaryMerkleProof, DuplexSponge     │
@@ -125,7 +125,7 @@ npx vitest run              # 66 tests
 
 | Layer | Technology |
 |-------|-----------|
-| Circuits | Circom 2.1.6, Groth16 (snarkjs) |
+| Circuits | Circom 2.2, Groth16 (snarkjs) |
 | Contracts | Solidity 0.8.24, Foundry |
 | Frontend | React 19, Vite 7, Wagmi 3, TypeScript |
 | Crypto | Poseidon hash, Baby Jubjub (EdDSA), DuplexSponge |
