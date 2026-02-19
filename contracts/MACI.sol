@@ -188,8 +188,10 @@ contract MACI is DomainObjs {
             _title, _duration, _coordinatorPubKeyX, _coordinatorPubKeyY, address(stateAq), numSignUps, _messageTreeDepth
         );
 
-        MessageProcessor mp = new MessageProcessor(address(poll), _mpVerifier, _vkRegistry, msg.sender);
-        Tally tally = new Tally(address(poll), address(mp), _tallyVerifier, _vkRegistry, msg.sender);
+        // Coordinator = MACI owner (the coordinator service wallet), not msg.sender
+        // This ensures the auto-runner can process polls regardless of who created them
+        MessageProcessor mp = new MessageProcessor(address(poll), _mpVerifier, _vkRegistry, owner);
+        Tally tally = new Tally(address(poll), address(mp), _tallyVerifier, _vkRegistry, owner);
 
         polls[pollId] = address(poll);
 
