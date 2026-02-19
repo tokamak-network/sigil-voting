@@ -27,8 +27,7 @@ import {
 } from '../contractV2'
 import { VoteFormV2 } from './voting/VoteFormV2'
 import { getLastVote } from './voting/voteUtils'
-import { MergingStatus } from './voting/MergingStatus'
-import { ProcessingStatus } from './voting/ProcessingStatus'
+import { TallyingStatus } from './voting/TallyingStatus'
 import { KeyManager } from './voting/KeyManager'
 import { ResultsDisplay } from './voting/ResultsDisplay'
 import { PollTimer } from './voting/PollTimer'
@@ -268,12 +267,13 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   const currentStep = (hasPoll && phase !== V2Phase.Voting) ? 1 : 0
 
   // Read numSignUps from MACI
-  const { refetch: refetchSignUps } = useReadContract({
+  const { data: numSignUpsRaw, refetch: refetchSignUps } = useReadContract({
     address: MACI_V2_ADDRESS,
     abi: MACI_ABI,
     functionName: 'numSignUps',
-    query: { enabled: isConfigured },
+    query: { enabled: isConfigured, refetchInterval: 30000 },
   })
+  const numSignUps = numSignUpsRaw !== undefined ? Number(numSignUpsRaw) : 0
 
   // Check if user already signed up (localStorage fast path + on-chain fallback)
   useEffect(() => {
@@ -1226,17 +1226,20 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
             </div>
           </div>
         ) : (
-          <div className="max-w-3xl">
-            {phase === V2Phase.Merging && pollAddress && (
-              <div className="technical-card-heavy bg-white p-8">
-                <MergingStatus pollAddress={pollAddress} votingEndTime={votingEndTime ?? undefined} />
-              </div>
-            )}
-            {phase === V2Phase.Processing && (
-              <div className="technical-card-heavy bg-white p-8">
-                <ProcessingStatus messageProcessorAddress={messageProcessorAddress || undefined} tallyAddress={tallyAddress || undefined} votingEndTime={votingEndTime ?? undefined} />
-              </div>
-            )}
+          <div className="w-full">
+            <div className="bg-white p-6 border-2 border-black">
+              <TallyingStatus
+                pollAddress={pollAddress || undefined}
+                messageProcessorAddress={messageProcessorAddress || undefined}
+                tallyAddress={tallyAddress || undefined}
+                votingEndTime={votingEndTime ?? undefined}
+                pollTitle={displayTitle}
+                pollDescription={pollDescription}
+                pollId={propPollId}
+                myVote={myVote}
+                numSignUps={numSignUps}
+              />
+            </div>
           </div>
         )}
       </div>
