@@ -88,8 +88,8 @@ export const ko: Translations = {
       comingSoon: 'SDK 베타 — 곧 출시',
     },
     stats: {
-      testsCount: '1,024',
-      testsLabel: '투표당 최대 참여자',
+      testsCount: '116',
+      testsLabel: '자동화 테스트 통과',
       contractsCount: '~10분',
       contractsLabel: '투표→결과 소요시간',
       propertiesCount: '7',

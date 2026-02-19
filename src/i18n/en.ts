@@ -88,8 +88,8 @@ export const en: Translations = {
       comingSoon: 'SDK Beta — Coming Soon',
     },
     stats: {
-      testsCount: '1,024',
-      testsLabel: 'Max Voters per Poll',
+      testsCount: '116',
+      testsLabel: 'Automated Tests Passed',
       contractsCount: '~10 min',
       contractsLabel: 'Vote to Result Time',
       propertiesCount: '7',
