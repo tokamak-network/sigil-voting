@@ -73,26 +73,22 @@ export function TallyingStatus({
   })
 
   // Determine current step (1-based)
-  const allMerged = stateAqMerged === true && messageAqMerged === true
+  void (stateAqMerged === true && messageAqMerged === true)
   const isProcessed = processingComplete === true
   const isFinalized = tallyVerified === true
 
-  // Estimated total processing time: ~3 minutes after voting ends
-  const estimatedEndMs = votingEndTime
-    ? (votingEndTime + 3 * 60) * 1000
-    : Date.now() + 3 * 60 * 1000
+  // Elapsed time since voting ended
+  const endTimeMs = votingEndTime ? votingEndTime * 1000 : Date.now()
 
-  // Countdown timer
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
     const iv = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(iv)
   }, [])
 
-  const remainingMs = Math.max(0, estimatedEndMs - now)
-  const remainingMin = Math.floor(remainingMs / 60000)
-  const remainingSec = Math.floor((remainingMs % 60000) / 1000)
-  const isOverdue = remainingMs === 0 && !isFinalized
+  const elapsedMs = Math.max(0, now - endTimeMs)
+  const elapsedMin = Math.floor(elapsedMs / 60000)
+  const elapsedSec = Math.floor((elapsedMs % 60000) / 1000)
 
   const choiceLabel = myVote
     ? myVote.choice === 1
@@ -225,16 +221,16 @@ export function TallyingStatus({
               </div>
             </div>
 
-            {/* Countdown Timer */}
+            {/* Elapsed Timer */}
             <div className="bg-white p-8 border-2 border-black" style={{ boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)' }}>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
-                {isOverdue ? t.tallying.processing : t.tallying.estimatedRemaining}
+                {t.tallying.elapsed}
               </span>
               <div className="flex items-baseline gap-2">
-                <span className={`text-5xl font-mono font-bold leading-none ${isOverdue ? 'text-amber-500' : 'text-primary'}`}>
-                  {isOverdue ? '—:——' : `${remainingMin.toString().padStart(2, '0')}:${remainingSec.toString().padStart(2, '0')}`}
+                <span className="text-5xl font-mono font-bold leading-none text-primary">
+                  {`${elapsedMin.toString().padStart(2, '0')}:${elapsedSec.toString().padStart(2, '0')}`}
                 </span>
-                <span className="text-xs font-bold text-slate-400">{isOverdue ? '' : t.tallying.remaining}</span>
+                <span className="text-xs font-bold text-slate-400">{t.tallying.elapsedUnit}</span>
               </div>
             </div>
 

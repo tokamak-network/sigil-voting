@@ -354,8 +354,8 @@ export interface Translations {
     currentPhase: string
     finalStep: string
     processing: string
-    estimatedRemaining: string
-    remaining: string
+    elapsed: string
+    elapsedUnit: string
     myVoteSummary: string
     choice: string
     spent: string
@@ -390,6 +390,11 @@ export interface Translations {
     againstLabel: string
     creditsUnit: string
     retry: string
+  }
+  noVotes: {
+    title: string
+    desc: string
+    status: string
   }
   timer: {
     remaining: string

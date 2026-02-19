@@ -372,8 +372,8 @@ export const en: Translations = {
     currentPhase: 'Current Phase',
     finalStep: 'Final Step',
     processing: 'Processing...',
-    estimatedRemaining: 'Estimated Remaining',
-    remaining: 'remaining',
+    elapsed: 'Elapsed Time',
+    elapsedUnit: 'elapsed',
     myVoteSummary: 'My Vote Summary',
     choice: 'Choice',
     spent: 'Spent',
@@ -530,6 +530,7 @@ export const en: Translations = {
     defaultDesc: 'This proposal was created through SIGIL private voting protocol with ZK-proof verified secret ballots. All votes were encrypted using MACI anti-collusion infrastructure and tallied with Groth16 zero-knowledge proofs on Ethereum.',
     votingStrategy: 'Voting Strategy: Quadratic v2',
     shieldedVoting: 'Shielded Voting: Enabled',
+    contractLabel: 'Contract',
   },
   voteSubmittedPage: {
     title: 'Vote Submitted Securely',
