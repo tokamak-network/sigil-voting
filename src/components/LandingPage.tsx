@@ -219,11 +219,10 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                   },
                 ] as const).map((row, i) => (
                   <tr key={i} className="border-b-2 border-border-light dark:border-border-dark last:border-b-0">
-                    <td className="p-6 font-bold">{row.feature}</td>
+                    <td className="p-4 font-bold">{row.feature}</td>
                     {row.values.map((val, j) => (
-                      <td key={j} className={`p-6 text-center border-l-2 border-border-light dark:border-border-dark ${row.colors[j]}`}>
-                        <span className="material-symbols-outlined">{row.icons[j]}</span>
-                        <span className="block text-xs mt-1 opacity-70">{val}</span>
+                      <td key={j} className={`p-4 text-center border-l-2 border-border-light dark:border-border-dark ${j === 0 ? 'bg-primary/5 dark:bg-primary/10' : ''}`}>
+                        <span className={`material-symbols-outlined text-2xl ${row.colors[j]}`}>{row.icons[j]}</span>
                       </td>
                     ))}
                   </tr>
