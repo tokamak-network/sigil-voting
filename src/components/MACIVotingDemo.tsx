@@ -144,7 +144,10 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
     functionName: 'againstVotes',
     query: { enabled: tallyReady },
   })
-  const isPassed = Number(tallyFor || 0n) >= Number(tallyAgainst || 0n)
+  const forNum = Number(tallyFor || 0n)
+  const againstNum = Number(tallyAgainst || 0n)
+  const isTied = forNum === againstNum && forNum > 0
+  const isPassed = forNum > againstNum
 
   // Load poll address from contract using propPollId
   useEffect(() => {
@@ -807,7 +810,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
             </div>
             <div className="flex flex-col items-end shrink-0">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
-              <span className="px-6 py-3 bg-white text-black border-4 border-black font-black text-xl italic uppercase tracking-tighter">{t.proposalDetail.votingOpen}</span>
+              <span className="px-6 py-3 bg-white text-black border-2 border-black font-black text-xl italic uppercase tracking-tighter">{t.proposalDetail.votingOpen}</span>
             </div>
           </div>
 
@@ -832,14 +835,14 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
 
               {/* Stats */}
               <div className="grid grid-cols-2 gap-6">
-                <div className="p-8 border-2 border-black bg-white flex flex-col justify-between aspect-video">
+                <div className="p-6 border-2 border-black bg-white flex flex-col justify-between">
                   <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">{t.proposalDetail.totalParticipants}</span>
                   <div className="flex items-baseline gap-2">
                     <span className="text-6xl font-display font-black italic">{numMessages}</span>
                     <span className="text-sm font-bold text-slate-400">{t.proposalDetail.users}</span>
                   </div>
                 </div>
-                <div className="p-8 border-2 border-black bg-white flex flex-col justify-between aspect-video">
+                <div className="p-6 border-2 border-black bg-white flex flex-col justify-between">
                   <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">{t.proposalDetail.currentWeight}</span>
                   <div className="flex items-baseline gap-2">
                     <span className="text-6xl font-display font-black italic">{voiceCredits.toLocaleString()}</span>
@@ -1021,8 +1024,8 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
               <span className="bg-black text-white text-[10px] font-bold px-2 py-1 uppercase font-mono">
                 {t.proposalDetail.proposalPrefix} #{propPollId + 1}
               </span>
-              <span className={`${isPassed ? 'bg-green-500' : 'bg-red-500'} text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest`}>
-                {isPassed ? t.results.passed : t.results.rejected}
+              <span className={`${isTied ? 'bg-amber-500' : isPassed ? 'bg-green-500' : 'bg-red-500'} text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest`}>
+                {isTied ? t.results.tied : isPassed ? t.results.passed : t.results.rejected}
               </span>
             </div>
             <h1 className="text-5xl font-display font-black uppercase italic leading-none tracking-tighter">

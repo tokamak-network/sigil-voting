@@ -31,6 +31,11 @@ export function VoteConfirmModal({
     return () => document.removeEventListener('keydown', handleEsc);
   }, [onCancel]);
 
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
   const choiceLabel = choice === 1 ? t.voteForm.for : t.voteForm.against;
 
   return (
@@ -53,7 +58,7 @@ export function VoteConfirmModal({
         </div>
         <p className="text-xs text-slate-500 mb-6 leading-relaxed">{t.confirm.notice}</p>
         <div className="flex flex-col gap-3">
-          <button onClick={onConfirm} className="w-full bg-primary text-white py-4 font-display font-black uppercase text-lg border-2 border-black hover:bg-blue-600 transition-colors" style={{ boxShadow: '4px 4px 0px 0px rgba(0, 82, 255, 1)' }}>
+          <button onClick={onConfirm} className="w-full bg-primary text-white py-4 font-display font-black uppercase text-lg border-2 border-black hover:bg-blue-600 transition-colors" style={{ boxShadow: '4px 4px 0px 0px rgba(37, 99, 235, 1)' }}>
             {t.confirm.submit}
           </button>
           <button onClick={onCancel} className="w-full bg-white text-black py-3 font-bold uppercase text-sm border-2 border-black hover:bg-slate-50 transition-colors">

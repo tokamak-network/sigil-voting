@@ -1,6 +1,7 @@
 export { Header } from './Header'
 export { Footer } from './Footer'
-export { Toast } from './Toast'
+export { Toast, ToastContainer } from './Toast'
+export type { ToastItem } from './Toast'
 export { LandingPage } from './LandingPage'
 export { MACIVotingDemo } from './MACIVotingDemo'
 export { ProposalsList } from './ProposalsList'

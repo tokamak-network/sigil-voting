@@ -31,11 +31,10 @@ interface CreatePollFormProps {
   onSelectPoll?: (pollId: number) => void
 }
 
-type DurationPreset = '1m' | '5m' | '1h' | '3d' | '7d' | 'custom'
+type DurationPreset = '5m' | '1h' | '3d' | '7d' | 'custom'
 
 function getDurationPresets(t: ReturnType<typeof useTranslation>['t']): { key: DurationPreset; label: string; minutes: number }[] {
   return [
-    { key: '1m', label: t.createPoll.preset1m, minutes: 1 },
     { key: '5m', label: t.createPoll.preset5m, minutes: 5 },
     { key: '1h', label: t.createPoll.preset1h, minutes: 60 },
     { key: '3d', label: t.createPoll.preset3d, minutes: 72 * 60 },
@@ -358,6 +357,9 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               <span className="text-xl font-mono font-bold text-red-500">{Number(balance).toLocaleString()}</span>
             </div>
           </div>
+          <p className="text-sm text-slate-500 text-center mt-4">
+            {t.createPoll.getTokens}
+          </p>
         </div>
       </div>
     )
@@ -408,7 +410,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
           <label className="block font-display font-black text-sm uppercase tracking-widest mb-3">
             {t.createPoll.durationLabel}
           </label>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
             {DURATION_PRESETS.map((preset) => (
               <button
                 key={preset.key}

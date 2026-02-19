@@ -24,6 +24,7 @@ interface PollInfo {
   id: number
   address: `0x${string}`
   title: string
+  description?: string
   isOpen: boolean
   isFinalized: boolean
   deployTime: number
@@ -170,6 +171,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
             id: i,
             address: pollAddr,
             title: (onChainTitle as string) || localStorage.getItem(storageKey.pollTitle(i)) || `#${i + 1}`,
+            description: localStorage.getItem(storageKey.pollDesc(i)) || undefined,
             isOpen: isOpen as boolean,
             isFinalized,
             deployTime: Number(td[0]),
@@ -320,7 +322,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
         </div>
 
         {/* ── Filter Tabs (desktop: inline with header) ── */}
-        <div className="flex border-2 border-black font-bold text-sm bg-white overflow-hidden">
+        <div className="flex flex-nowrap overflow-x-auto border-2 border-black font-bold text-sm bg-white">
           {([
             { key: 'all' as FilterTab, label: t.proposals.filterAll, dot: null },
             { key: 'voting' as FilterTab, label: t.proposals.filterVoting, dot: 'bg-primary' },
@@ -378,9 +380,31 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
 
       {/* ── Content ── */}
       {loading ? (
-        <div className="flex items-center justify-center py-20 gap-3">
-          <span className="spinner" aria-hidden="true" />
-          <span className="font-mono text-sm text-slate-500">{t.proposals.loading}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="bg-white p-8 technical-card min-h-[320px] flex flex-col justify-between animate-pulse">
+              <div>
+                <div className="flex justify-between items-start mb-6">
+                  <div className="h-6 w-24 bg-gray-200 rounded" />
+                </div>
+                <div className="h-8 w-3/4 bg-gray-200 rounded mb-4" />
+                <div className="h-6 w-1/2 bg-gray-200 rounded" />
+              </div>
+              <div className="flex items-end justify-between">
+                <div className="flex gap-12">
+                  <div>
+                    <div className="h-3 w-20 bg-gray-200 rounded mb-2" />
+                    <div className="h-7 w-16 bg-gray-200 rounded" />
+                  </div>
+                  <div>
+                    <div className="h-3 w-20 bg-gray-200 rounded mb-2" />
+                    <div className="h-7 w-24 bg-gray-200 rounded" />
+                  </div>
+                </div>
+                <div className="w-12 h-12 bg-gray-200" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : filteredPolls.length === 0 ? (
         <div className="bg-white p-12 technical-card text-center">
@@ -388,7 +412,16 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
             {filter === 'all' ? t.proposals.empty : t.proposals.noFiltered}
           </p>
           {isConnected && filter === 'all' && (
-            <p className="mt-2 text-sm text-slate-400 font-sans">{t.proposals.emptyHint}</p>
+            <>
+              <p className="mt-2 text-sm text-slate-400 font-sans">{t.proposals.emptyHint}</p>
+              <button
+                onClick={() => setShowCreatePoll(true)}
+                className="mt-6 px-8 py-4 bg-black text-white font-display font-bold uppercase text-sm tracking-widest border-2 border-black hover:bg-primary transition-colors"
+                style={{ boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)' }}
+              >
+                {t.proposals.emptyAction}
+              </button>
+            </>
           )}
         </div>
       ) : (
@@ -419,9 +452,13 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
                   </div>
 
                   {/* ── Title ── */}
-                  <h3 className="text-3xl font-display font-bold uppercase leading-tight mb-8">
+                  <h3 className="text-3xl font-display font-bold uppercase leading-tight mb-2">
                     {poll.title}
                   </h3>
+                  {poll.description && (
+                    <p className="text-sm text-slate-500 truncate mb-6">{poll.description}</p>
+                  )}
+                  {!poll.description && <div className="mb-6" />}
                 </div>
 
                 {/* ── Card Bottom Row ── */}

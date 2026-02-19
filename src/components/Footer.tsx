@@ -9,9 +9,7 @@ export function Footer() {
           {/* Brand Column */}
           <div className="md:col-span-5">
             <div className="flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 bg-black dark:bg-white flex items-center justify-center">
-                <span className="material-symbols-outlined text-white dark:text-black text-xl">security</span>
-              </div>
+              <img src="/assets/symbol.svg" alt="SIGIL" className="w-8 h-8" />
               <span className="font-display font-extrabold text-xl tracking-tighter uppercase">SIGIL</span>
             </div>
             <p className="text-base text-slate-500 max-w-sm mb-8">{t.footer.desc}</p>

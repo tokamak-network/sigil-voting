@@ -15,6 +15,11 @@ export interface Translations {
     resetConfirm: string
     resetDone: string
     technology: string
+    menu: string
+    disconnectConfirm: string
+    disconnectYes: string
+    disconnectNo: string
+    testnet: string
   }
   landing: {
     badge: string
@@ -94,6 +99,7 @@ export interface Translations {
       stepProof: string
       stepResult: string
       network: string
+      comingSoon: string
     }
     established: string
     sdkIntegration: string
@@ -245,6 +251,8 @@ export interface Translations {
     presetCustom: string
     hoursUnit: string
     minutesUnit: string
+    noDescPlaceholder: string
+    getTokens: string
   }
   voteForm: {
     title: string
@@ -280,6 +288,12 @@ export interface Translations {
     yourEthBalance: string
     lowBalance: string
     firstVoteNote: string
+    noCreditsTitle: string
+    noCreditsDesc: string
+    errorRejectedFriendly: string
+    errorGasFriendly: string
+    errorGeneric: string
+    quadraticGuide: string
   }
   keyManager: {
     title: string
@@ -366,13 +380,16 @@ export interface Translations {
     desc: string
     passed: string
     rejected: string
+    tied: string
     totalVoters: string
     totalVotes: string
     verified: string
     noVotes: string
+    noVotesYet: string
     forLabel: string
     againstLabel: string
     creditsUnit: string
+    retry: string
   }
   timer: {
     remaining: string
@@ -381,6 +398,7 @@ export interface Translations {
     minutes: string
     seconds: string
     tallyCountdown: string
+    processingHint: string
   }
   confirm: {
     title: string
@@ -402,6 +420,7 @@ export interface Translations {
       ended: string
       finalized: string
     }
+    emptyAction: string
     messages: string
     backToList: string
     voted: string
@@ -579,6 +598,16 @@ export interface Translations {
       step2: { title: string; desc: string }
       step3: { title: string; desc: string }
       step4: { title: string; desc: string }
+    }
+    pipeline: {
+      title: string
+      subtitle: string
+      total: string
+      step1: { title: string; desc: string; time: string }
+      step2: { title: string; desc: string; time: string }
+      step3: { title: string; desc: string; time: string }
+      step4: { title: string; desc: string; time: string }
+      note: string
     }
     properties: {
       title: string

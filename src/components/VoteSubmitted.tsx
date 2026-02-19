@@ -22,6 +22,8 @@ export function VoteSubmitted({
   pollId,
   pollTitle,
   choice,
+  weight,
+  cost,
   txHash,
   onBackToList,
 }: VoteSubmittedProps) {
@@ -74,6 +76,18 @@ export function VoteSubmitted({
               >
                 {choiceLabel}
               </span>
+            </div>
+          </div>
+
+          {/* Vote Stats */}
+          <div className="grid grid-cols-2 gap-4 mb-8">
+            <div className="p-4 border-2 border-slate-200">
+              <p className="text-xs font-mono text-slate-400 uppercase tracking-widest mb-1">{t.voteSubmittedPage.intensity}</p>
+              <p className="text-2xl font-display font-black">{weight} {t.voteSubmittedPage.votes}</p>
+            </div>
+            <div className="p-4 border-2 border-slate-200">
+              <p className="text-xs font-mono text-slate-400 uppercase tracking-widest mb-1">{t.voteSubmittedPage.used}</p>
+              <p className="text-2xl font-display font-black text-primary">{cost} {t.voteForm.credits}</p>
             </div>
           </div>
 

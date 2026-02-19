@@ -341,7 +341,7 @@ export function VoteFormV2({
       {/* CHOOSE DIRECTION */}
       <div>
         <h3 className="text-xs font-bold uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-          <span className="w-2 h-2 bg-[#0052FF]"></span>
+          <span className="w-2 h-2 bg-primary"></span>
           {t.voteForm.title}
         </h3>
         <div className="grid grid-cols-2 gap-4" role="radiogroup" aria-label={t.voteForm.title}>
@@ -382,7 +382,7 @@ export function VoteFormV2({
       <div>
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xs font-bold uppercase tracking-[0.2em] flex items-center gap-2">
-            <span className="w-2 h-2 bg-[#0052FF]"></span>
+            <span className="w-2 h-2 bg-primary"></span>
             {t.voteForm.weightLabel}
           </h3>
           <span className="text-xs font-mono font-bold bg-black text-white px-2 py-1 uppercase">{t.voteFormExtra.quadraticScaling}</span>
@@ -481,8 +481,8 @@ export function VoteFormV2({
         <button
           onClick={() => setShowConfirm(true)}
           disabled={choice === null || isSubmitting || !address || creditExceeded}
-          className="w-full bg-[#0052FF] text-white py-6 font-display font-black uppercase italic text-2xl tracking-widest border-2 border-black hover:translate-y-[-2px] hover:translate-x-[-2px] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:translate-x-0"
-          style={{ boxShadow: '4px 4px 0px 0px rgba(0, 82, 255, 1)' }}
+          className="w-full bg-primary text-white py-6 font-display font-black uppercase italic text-2xl tracking-widest border-2 border-black hover:translate-y-[-2px] hover:translate-x-[-2px] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:translate-x-0"
+          style={{ boxShadow: '4px 4px 0px 0px rgba(37, 99, 235, 1)' }}
           aria-busy={isSubmitting}
         >
           {isSubmitting ? t.voteForm.submitting : t.voteForm.submit}
@@ -528,7 +528,7 @@ export function VoteFormV2({
             href={`https://sepolia.etherscan.io/tx/${txHash}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-mono text-xs text-[#0052FF] underline"
+            className="font-mono text-xs text-primary underline"
           >
             {txHash.slice(0, 10)}...{txHash.slice(-6)}
           </a>

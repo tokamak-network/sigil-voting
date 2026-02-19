@@ -362,6 +362,53 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
         </div>
       </section>
 
+      {/* Tallying Pipeline */}
+      <section className="border-b-2 border-black">
+        <div className="p-6 border-b-2 border-black bg-slate-100">
+          <h3 className="font-mono text-sm font-bold uppercase tracking-[0.3em]">
+            {t.technology.pipeline.title}
+          </h3>
+        </div>
+        <div className="p-12">
+          <p className="text-lg text-slate-600 max-w-3xl mx-auto text-center mb-12">
+            {t.technology.pipeline.subtitle}
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-0 border-2 border-black max-w-5xl mx-auto">
+            {([
+              { ...t.technology.pipeline.step1, num: '01', icon: 'merge_type' },
+              { ...t.technology.pipeline.step2, num: '02', icon: 'lock_open' },
+              { ...t.technology.pipeline.step3, num: '03', icon: 'functions' },
+              { ...t.technology.pipeline.step4, num: '04', icon: 'publish' },
+            ]).map((step, i) => (
+              <div key={i} className={`p-6 ${i < 3 ? 'border-r-0 md:border-r-2' : ''} border-b-2 md:border-b-0 border-black relative`}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-8 h-8 bg-primary text-white flex items-center justify-center font-mono text-xs font-bold">
+                    {step.num}
+                  </div>
+                  <span className="font-mono text-xs font-bold text-primary">{step.time}</span>
+                </div>
+                <h4 className="font-mono font-bold text-sm uppercase tracking-wider mb-3">{step.title}</h4>
+                <p className="text-sm text-slate-600 leading-relaxed">{step.desc}</p>
+                {i < 3 && (
+                  <div className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-10 w-6 h-6 bg-white border-2 border-black items-center justify-center">
+                    <span className="material-symbols-outlined text-primary text-sm">arrow_forward</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="max-w-5xl mx-auto mt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="font-mono text-xs font-bold uppercase tracking-widest text-primary">{t.technology.pipeline.total}</p>
+          </div>
+          <div className="max-w-5xl mx-auto mt-4 p-4 border-2 border-amber-400 bg-amber-50">
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-amber-500 mt-0.5">info</span>
+              <p className="text-sm text-slate-700 leading-relaxed">{t.technology.pipeline.note}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Security Guarantees: 7-col grid */}
       <section className="border-b-2 border-black">
         <div className="p-6 border-b-2 border-black bg-slate-100">

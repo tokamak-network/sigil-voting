@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Page } from '../types'
 import { useTranslation } from '../i18n'
 
@@ -8,6 +9,8 @@ interface LandingPageProps {
 export function LandingPage({ setCurrentPage }: LandingPageProps) {
   const { t } = useTranslation()
   const titleLines = t.landing.title.split('\n')
+  const [openFaq, setOpenFaq] = useState<number | null>(null)
+  const [showDemoMsg, setShowDemoMsg] = useState(false)
 
   return (
     <main>
@@ -76,12 +79,12 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                     <span className="font-display text-xs opacity-50">SYNCED</span>
                   </div>
                   <div className="p-4 border-2 border-border-light dark:border-border-dark">
-                    <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 mb-2">
-                      <div className="bg-primary h-full w-2/3"></div>
+                    <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 mb-2 overflow-hidden">
+                      <div className="bg-primary h-full w-full animate-pulse"></div>
                     </div>
                     <div className="flex justify-between font-display text-xs">
                       <span>PROVING STATE</span>
-                      <span>67% COMPLETE</span>
+                      <span className="text-primary">READY</span>
                     </div>
                   </div>
                 </div>
@@ -293,14 +296,20 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             <p className="opacity-60">{t.landing.demo.subtitle}</p>
           </div>
           <div className="relative border-2 border-white/20 p-4 aspect-video bg-zinc-900 group">
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center flex-col gap-4">
               <button
                 className="w-20 h-20 bg-primary text-white flex items-center justify-center border-2 border-black group-hover:scale-110 transition-transform"
                 role="button"
                 aria-label="Play demo video"
+                onClick={() => setShowDemoMsg(true)}
               >
                 <span className="material-symbols-outlined text-4xl">play_arrow</span>
               </button>
+              {showDemoMsg && (
+                <span className="font-display text-sm text-white/80 bg-white/10 px-4 py-2 border border-white/20">
+                  {t.landing.demo.comingSoon}
+                </span>
+              )}
             </div>
             <div className="absolute bottom-10 left-10 right-10 flex justify-between font-display text-xs opacity-60">
               <span>CONNECT → ENCRYPT</span>
@@ -393,12 +402,17 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
               <div
                 key={i}
                 className="border-2 border-border-light dark:border-border-dark p-6 hover:border-primary transition-colors cursor-pointer group"
+                onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                aria-expanded={openFaq === i}
+                role="button"
               >
-                <div className="flex justify-between items-center mb-2">
+                <div className="flex justify-between items-center">
                   <h4 className="font-display font-bold uppercase text-base pr-4">{item.q}</h4>
-                  <span className="material-symbols-outlined text-primary shrink-0">add</span>
+                  <span className="material-symbols-outlined text-primary shrink-0 transition-transform duration-200" style={{ transform: openFaq === i ? 'rotate(45deg)' : 'none' }}>add</span>
                 </div>
-                <p className="text-base opacity-70">{item.a}</p>
+                <div className={`overflow-hidden transition-all duration-300 ${openFaq === i ? 'max-h-96 mt-2 opacity-100' : 'max-h-0 opacity-0'}`}>
+                  <p className="text-base opacity-70">{item.a}</p>
+                </div>
               </div>
             ))}
           </div>

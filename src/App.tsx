@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
-import { Header, Footer, Toast, LandingPage, MACIVotingDemo, ProposalsList, VoteSubmitted, TechnologyPage } from './components'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Header, Footer, ToastContainer, LandingPage, MACIVotingDemo, ProposalsList, VoteSubmitted, TechnologyPage } from './components'
+import type { ToastItem } from './components'
 import { CreatePollForm } from './components/CreatePollForm'
 import { LanguageProvider } from './i18n'
 import type { Page } from './types'
@@ -16,7 +17,15 @@ interface VoteSubmittedData {
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('landing')
   const [selectedPollId, setSelectedPollId] = useState<number | null>(null)
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
+  const [toasts, setToasts] = useState<ToastItem[]>([])
+  const toastIdRef = useRef(0)
+  const addToast = useCallback((message: string, type: 'success' | 'error' | 'info') => {
+    const id = ++toastIdRef.current
+    setToasts(prev => [...prev, { id, message, type }])
+  }, [])
+  const removeToast = useCallback((id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id))
+  }, [])
   const [voteSubmittedData, setVoteSubmittedData] = useState<VoteSubmittedData | null>(null)
 
   // Scroll to top on page navigation
@@ -47,7 +56,7 @@ function App() {
   return (
     <LanguageProvider>
       <div className="min-h-screen flex flex-col">
-        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+        <ToastContainer toasts={toasts} onRemove={removeToast} />
 
         <Header
           currentPage={currentPage}
