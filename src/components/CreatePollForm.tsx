@@ -1,13 +1,3 @@
-/**
- * CreatePollForm - Proposal creation form with eligibility check
- *
- * Before showing the form, checks on-chain:
- *   1. canCreatePoll(address) — is the user eligible?
- *   2. proposalGateCount() + proposalGates(i) — what tokens are required?
- *
- * Shows clear token requirements and user's current balance.
- */
-
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useAccount, usePublicClient, useReadContract } from 'wagmi'
 import { writeContract } from '../writeHelper'
@@ -19,8 +9,6 @@ import {
   MACI_ABI,
   DEFAULT_COORD_PUB_KEY_X,
   DEFAULT_COORD_PUB_KEY_Y,
-  TON_TOKEN_ADDRESS,
-  DEPLOYER_ADDRESS,
 } from '../contractV2'
 import { useTranslation } from '../i18n'
 import { TransactionModal } from './voting/TransactionModal'
@@ -29,38 +17,6 @@ interface CreatePollFormProps {
   onPollCreated: (pollId: number, pollAddress: `0x${string}`, title?: string) => void
   onSelectPoll?: (pollId: number) => void
 }
-
-interface TokenGateInfo {
-  token: `0x${string}`
-  threshold: bigint
-  symbol: string
-  userBalance: bigint
-  eligible: boolean
-}
-
-const ERC20_BALANCE_ABI = [
-  {
-    type: 'function' as const,
-    name: 'balanceOf',
-    inputs: [{ name: 'account', type: 'address' }],
-    outputs: [{ name: '', type: 'uint256' }],
-    stateMutability: 'view' as const,
-  },
-  {
-    type: 'function' as const,
-    name: 'symbol',
-    inputs: [],
-    outputs: [{ name: '', type: 'string' }],
-    stateMutability: 'view' as const,
-  },
-  {
-    type: 'function' as const,
-    name: 'decimals',
-    inputs: [],
-    outputs: [{ name: '', type: 'uint8' }],
-    stateMutability: 'view' as const,
-  },
-] as const
 
 type DurationPreset = '3d' | '7d' | '14d' | 'custom'
 
@@ -74,12 +30,11 @@ const DURATION_PRESETS: { key: DurationPreset; labelKey: 'preset3d' | 'preset7d'
 export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormProps) {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
-  const isPending = false // writeContract from writeHelper.ts
   const { t } = useTranslation()
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [durationHours, setDurationHours] = useState(168) // default 7 days
+  const [durationHours, setDurationHours] = useState(168)
   const [durationPreset, setDurationPreset] = useState<DurationPreset>('7d')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -89,17 +44,10 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
   const [createdPollAddr, setCreatedPollAddr] = useState<`0x${string}` | null>(null)
   const [createdTitle, setCreatedTitle] = useState('')
 
-  // Eligibility state
-  const [isCheckingEligibility, setIsCheckingEligibility] = useState(true)
+  // Check if user can create polls
   const [canCreate, setCanCreate] = useState(false)
-  const [gateInfo, setGateInfo] = useState<TokenGateInfo[]>([])
-  const [isOwnerOnly, setIsOwnerOnly] = useState(false)
-  const [isEnablingGate, setIsEnablingGate] = useState(false)
-  const [gateEnabled, setGateEnabled] = useState(false)
+  const [isChecking, setIsChecking] = useState(true)
 
-  const isOwner = address?.toLowerCase() === DEPLOYER_ADDRESS.toLowerCase()
-
-  // Read canCreatePoll from contract
   const { data: canCreateRaw } = useReadContract({
     address: MACI_V2_ADDRESS as `0x${string}`,
     abi: MACI_ABI,
@@ -108,111 +56,11 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
     query: { enabled: !!address },
   })
 
-  // Read gate count
-  const { data: gateCountRaw } = useReadContract({
-    address: MACI_V2_ADDRESS as `0x${string}`,
-    abi: MACI_ABI,
-    functionName: 'proposalGateCount',
-  })
-
-  // Load token gate details + user balances
   useEffect(() => {
-    if (!publicClient || !address) return
-    // Wait for both queries to load before deciding eligibility
-    if (gateCountRaw === undefined || canCreateRaw === undefined) return
-    const gateCount = Number(gateCountRaw)
-
-    if (gateCount === 0) {
-      setIsOwnerOnly(true)
-      setCanCreate(!!canCreateRaw)
-      setGateInfo([])
-      setIsCheckingEligibility(false)
-      return
-    }
-
-    setIsOwnerOnly(false)
-    setIsCheckingEligibility(true)
-
-    const loadGates = async () => {
-      const gates: TokenGateInfo[] = []
-      for (let i = 0; i < gateCount; i++) {
-        try {
-          const [token, threshold] = await publicClient.readContract({
-            address: MACI_V2_ADDRESS as `0x${string}`,
-            abi: MACI_ABI,
-            functionName: 'proposalGates',
-            args: [BigInt(i)],
-          }) as [string, bigint]
-
-          let symbol = '???'
-          let userBalance = 0n
-
-          try {
-            symbol = await publicClient.readContract({
-              address: token as `0x${string}`,
-              abi: ERC20_BALANCE_ABI,
-              functionName: 'symbol',
-            }) as string
-          } catch { /* unknown token */ }
-
-          try {
-            userBalance = await publicClient.readContract({
-              address: token as `0x${string}`,
-              abi: ERC20_BALANCE_ABI,
-              functionName: 'balanceOf',
-              args: [address],
-            }) as bigint
-          } catch { /* 0 */ }
-
-          gates.push({
-            token: token as `0x${string}`,
-            threshold: threshold,
-            symbol,
-            userBalance,
-            eligible: userBalance >= threshold,
-          })
-        } catch { /* skip broken gate */ }
-      }
-
-      setGateInfo(gates)
-      setCanCreate(gates.some((g) => g.eligible))
-      setIsCheckingEligibility(false)
-    }
-
-    loadGates()
-  }, [publicClient, address, gateCountRaw, canCreateRaw])
-
-  // Enable community proposal creation (owner adds TON token gate)
-  const handleEnableGate = useCallback(async () => {
-    if (!address || !isOwner) return
-    setIsEnablingGate(true)
-    setError(null)
-    try {
-      if (!address) throw new Error('Wallet not connected')
-      const hash = await writeContract({
-        address: MACI_V2_ADDRESS as `0x${string}`,
-        abi: MACI_ABI,
-        functionName: 'addProposalGate',
-        args: [TON_TOKEN_ADDRESS, 1n],
-        account: address,
-      })
-      if (publicClient) {
-        await publicClient.waitForTransactionReceipt({ hash })
-      }
-      setGateEnabled(true)
-      setIsOwnerOnly(false)
-      setCanCreate(true)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
-        setError(t.voteForm.errorRejected)
-      } else {
-        setError(t.createPoll.error)
-      }
-    } finally {
-      setIsEnablingGate(false)
-    }
-  }, [address, isOwner, publicClient, t])
+    if (canCreateRaw === undefined) return
+    setCanCreate(!!canCreateRaw)
+    setIsChecking(false)
+  }, [canCreateRaw])
 
   const handleSubmit = useCallback(async () => {
     if (!address || !title.trim() || !canCreate) return
@@ -224,7 +72,6 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
       const durationSeconds = BigInt(durationHours * 3600)
 
       setTxStage('confirming')
-      if (!address) throw new Error('Wallet not connected')
       const hash = await writeContract({
         address: MACI_V2_ADDRESS as `0x${string}`,
         abi: MACI_ABI,
@@ -247,7 +94,6 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
 
       if (publicClient) {
         const receipt = await publicClient.waitForTransactionReceipt({ hash })
-        // Parse DeployPoll event using ABI-aware decoding
         const deployPollEvent = {
           type: 'event' as const,
           name: 'DeployPoll' as const,
@@ -284,7 +130,6 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
             }
           } catch { /* not a DeployPoll event */ }
         }
-        // Fallback: raw parsing if viem decoding failed
         if (!parsed) {
           for (const log of receipt.logs) {
             if (log.topics.length >= 2) {
@@ -330,7 +175,6 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
   const titleValid = titleLen >= 3 && titleLen <= 200
   const descValid = descLen <= 1000
 
-  // Handle duration preset selection
   const handlePresetSelect = useCallback((preset: DurationPreset) => {
     setDurationPreset(preset)
     const found = DURATION_PRESETS.find((p) => p.key === preset)
@@ -339,7 +183,6 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
     }
   }, [])
 
-  // Compute formatted dates for display
   const formattedDuration = useMemo(() => {
     if (durationHours < 24) return `${durationHours} hours`
     const days = Math.floor(durationHours / 24)
@@ -348,10 +191,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
     return `${days}d ${remainingHours}h`
   }, [durationHours])
 
-  // Network status indicator
-  const networkOnline = !!publicClient
-
-  // ─── Transaction progress modal ──────────────────────────────────
+  // Transaction progress modal
   if (txStage !== 'idle') {
     const txSteps = [
       { key: 'submitting', label: t.createPoll.stageSubmitting },
@@ -359,7 +199,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
       { key: 'waiting', label: t.createPoll.stageWaiting },
     ]
     return (
-      <div className="w-full w-full px-6 py-16">
+      <div className="w-full px-6 py-16">
         <TransactionModal
           title={t.createPoll.submitting}
           steps={txSteps}
@@ -369,24 +209,20 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
     )
   }
 
-  // ─── Success screen ──────────────────────────────────────────────
+  // Success screen
   if (isCreated && createdPollId !== null) {
     return (
-      <div className="w-full w-full px-6 py-16">
+      <div className="w-full px-6 py-16">
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8">
-          {/* Success Icon */}
           <div className="w-20 h-20 bg-primary text-white technical-border flex items-center justify-center">
             <span className="material-symbols-outlined text-4xl">check_circle</span>
           </div>
-
           <h2 className="text-4xl md:text-5xl font-display font-black uppercase italic text-center tracking-tight">
             {t.createPoll.success}
           </h2>
           <p className="text-slate-500 text-lg text-center max-w-lg">
             {t.createPoll.successDesc}
           </p>
-
-          {/* Created proposal info */}
           <div className="technical-border bg-white p-8 w-full max-w-lg">
             <div className="border-l-4 border-primary pl-4 mb-4">
               <p className="text-xs font-mono text-slate-400 uppercase tracking-widest mb-1">{t.createPoll.titleLabel}</p>
@@ -397,7 +233,6 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               <span>{formattedDuration}</span>
             </div>
           </div>
-
           <div className="flex flex-col sm:flex-row gap-4 w-full max-w-lg">
             {onSelectPoll && (
               <button
@@ -430,7 +265,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
     )
   }
 
-  // ─── Wallet not connected ──────────────────────────────────────
+  // Wallet not connected
   if (!isConnected) {
     return (
       <div className="w-full px-6 py-16">
@@ -443,10 +278,10 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
     )
   }
 
-  // ─── Loading state ───────────────────────────────────────────────
-  if (isCheckingEligibility) {
+  // Loading
+  if (isChecking) {
     return (
-      <div className="w-full w-full px-6 py-16">
+      <div className="w-full px-6 py-16">
         <div className="flex flex-col items-center justify-center min-h-[40vh] gap-6" role="status">
           <div className="w-12 h-12 border-4 border-black border-t-primary animate-spin" />
           <span className="font-display font-bold text-lg uppercase tracking-wider">{t.createPoll.checkingEligibility}</span>
@@ -455,10 +290,10 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
     )
   }
 
-  // ─── Not eligible ────────────────────────────────────────────────
+  // Not eligible
   if (!canCreate) {
     return (
-      <div className="w-full w-full px-6 py-16">
+      <div className="w-full px-6 py-16">
         <div className="technical-border bg-white p-10 max-w-2xl mx-auto" role="status">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 bg-slate-100 technical-border flex items-center justify-center flex-shrink-0">
@@ -466,294 +301,140 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
             </div>
             <div>
               <h4 className="font-display font-black text-xl uppercase tracking-tight mb-2">{t.createPoll.notEligible}</h4>
-              {isOwnerOnly ? (
-                <p className="text-slate-500 leading-relaxed">{t.createPoll.ownerOnly}</p>
-              ) : (
-                <>
-                  <p className="text-slate-500 mb-4">{t.createPoll.tokenRequired}</p>
-                  <div className="space-y-3">
-                    {gateInfo.map((gate, i) => (
-                      <div
-                        key={i}
-                        className={`technical-border p-4 flex items-center justify-between ${gate.eligible ? 'bg-green-50 border-green-600' : 'bg-red-50 border-red-400'}`}
-                      >
-                        <div>
-                          <span className="font-mono font-bold text-lg">{gate.symbol}</span>
-                          <p className="text-xs text-slate-500 mt-1">
-                            {t.createPoll.required}: {formatTokenAmount(gate.threshold)}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-slate-500">{t.createPoll.yourBalance}</p>
-                          <p className="font-mono font-bold">{formatTokenAmount(gate.userBalance)}</p>
-                        </div>
-                        <div className={`w-8 h-8 flex items-center justify-center font-bold text-lg ${gate.eligible ? 'text-green-600' : 'text-red-500'}`}>
-                          {gate.eligible ? '\u2713' : '\u2715'}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
+              <p className="text-slate-500 leading-relaxed">{t.createPoll.ownerOnly}</p>
             </div>
           </div>
         </div>
-        {error && (
-          <div className="mt-4 max-w-2xl mx-auto bg-red-50 border-2 border-red-400 p-4 font-mono text-sm text-red-700" role="alert">
-            {error}
-          </div>
-        )}
       </div>
     )
   }
 
-  // ─── Eligible: main form ─────────────────────────────────────────
+  // Main form
   return (
-    <div className="w-full w-full px-6 py-12">
-      {/* Page Title */}
+    <div className="w-full px-6 py-12">
       <div className="mb-12">
         <h1 className="text-5xl md:text-6xl font-display font-black uppercase italic tracking-tight">
           {t.createPoll.title}
         </h1>
-        <div className="mt-4 inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 technical-border border-primary/30">
-          <span className="material-symbols-outlined text-sm">edit_note</span>
-          <span className="font-mono text-xs font-bold uppercase tracking-widest">{t.createPoll.draftPhase}</span>
-        </div>
       </div>
 
-      {/* Admin gate enable banner */}
-      {isOwner && isOwnerOnly && !gateEnabled && (
-        <div className="technical-border bg-amber-50 border-amber-400 p-6 mb-8 flex items-start gap-4">
-          <span className="material-symbols-outlined text-2xl text-amber-600 flex-shrink-0 mt-1">group_add</span>
-          <div className="flex-1">
-            <p className="text-sm text-slate-700 mb-3">{t.createPoll.enableCommunityDesc}</p>
-            <button
-              className="h-10 px-6 bg-black text-white font-display font-bold text-sm uppercase sharp-button"
-              onClick={handleEnableGate}
-              disabled={isEnablingGate}
-            >
-              {isEnablingGate ? t.createPoll.enabling : t.createPoll.enableCommunity}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Gate enabled success */}
-      {gateEnabled && (
-        <div className="technical-border bg-green-50 border-green-600 p-4 mb-8 flex items-center gap-3">
-          <span className="material-symbols-outlined text-green-600">check_circle</span>
-          <span className="text-sm font-bold text-green-700">{t.createPoll.gateEnabledSuccess}</span>
-        </div>
-      )}
-
-      {/* Eligibility pass banner */}
-      {gateInfo.length > 0 && (
-        <div className="technical-border bg-green-50 border-green-600 p-4 mb-8 flex items-center gap-3">
-          <span className="material-symbols-outlined text-green-600">verified</span>
-          <span className="text-sm font-bold text-green-700">{t.createPoll.eligible}</span>
-          <span className="text-xs font-mono text-green-600">
-            ({gateInfo.find((g) => g.eligible)?.symbol} &mdash; {formatTokenAmount(gateInfo.find((g) => g.eligible)?.userBalance || 0n)})
-          </span>
-        </div>
-      )}
-
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-        {/* ── Left Column: Form ── */}
-        <div className="lg:col-span-8 space-y-8">
-
-          {/* Proposal Title */}
-          <div>
-            <label
-              htmlFor="poll-title"
-              className="block font-display font-black text-sm uppercase tracking-widest mb-3"
-            >
-              {t.createPoll.titleLabel}
-            </label>
-            <input
-              id="poll-title"
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={t.createPoll.titlePlaceholder}
-              disabled={isSubmitting}
-              maxLength={200}
-              aria-describedby="title-counter"
-              aria-invalid={titleLen > 0 && !titleValid}
-              className="technical-input w-full h-16 px-5 text-xl font-bold font-display bg-white placeholder:text-slate-300 placeholder:font-normal"
-            />
-            <div className="flex justify-between mt-2">
-              <span className={`text-xs font-mono ${titleLen > 0 && titleLen < 3 ? 'text-red-500' : 'text-slate-400'}`}>
-                {titleLen > 0 && titleLen < 3 ? t.createPoll.titleMin : ''}
-              </span>
-              <span id="title-counter" className={`text-xs font-mono ${titleLen > 0 && !titleValid ? 'text-red-500' : 'text-slate-400'}`}>
-                {titleLen}/200
-              </span>
-            </div>
-          </div>
-
-          {/* Voting Period Duration */}
-          <div>
-            <label className="block font-display font-black text-sm uppercase tracking-widest mb-3">
-              {t.createPoll.durationLabel}
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {DURATION_PRESETS.map((preset) => (
-                <button
-                  key={preset.key}
-                  type="button"
-                  onClick={() => handlePresetSelect(preset.key)}
-                  disabled={isSubmitting}
-                  className={`h-14 border-2 border-black font-display font-bold text-sm uppercase tracking-wide transition-colors ${
-                    durationPreset === preset.key
-                      ? 'bg-black text-white'
-                      : 'bg-white text-black hover:bg-slate-50'
-                  }`}
-                >
-                  {preset.key === 'custom' ? (
-                    <span className="flex items-center justify-center gap-1">
-                      <span className="material-symbols-outlined text-sm">calendar_today</span>
-                      {t.createPoll[preset.labelKey]}
-                    </span>
-                  ) : (
-                    t.createPoll[preset.labelKey]
-                  )}
-                </button>
-              ))}
-            </div>
-            {durationPreset === 'custom' && (
-              <div className="mt-4">
-                <input
-                  type="number"
-                  min={1}
-                  max={720}
-                  value={durationHours}
-                  onChange={(e) => setDurationHours(Math.max(1, Math.min(720, Number(e.target.value))))}
-                  disabled={isSubmitting}
-                  className="technical-input w-full h-12 px-4 font-mono text-lg"
-                  placeholder={t.createPoll.hoursUnit}
-                />
-                <p className="text-xs font-mono text-slate-400 mt-1">{t.createPoll.durationHint}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Proposal Description */}
-          <div>
-            <label
-              htmlFor="poll-desc"
-              className="block font-display font-black text-sm uppercase tracking-widest mb-3"
-            >
-              {t.createPoll.descLabel}
-            </label>
-            <textarea
-              id="poll-desc"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={t.createPoll.descPlaceholder}
-              disabled={isSubmitting}
-              rows={12}
-              maxLength={1000}
-              aria-describedby="desc-counter"
-              className="technical-input w-full px-5 py-4 text-base bg-white placeholder:text-slate-300 resize-none leading-relaxed"
-            />
-            <div className="flex justify-between mt-2">
-              <span className="text-xs text-slate-400 italic">{t.createPoll.markdownSupported}</span>
-              <span
-                id="desc-counter"
-                className={`text-xs font-mono ${!descValid ? 'text-red-500' : 'text-slate-400'}`}
-              >
-                {descLen}/1000
-              </span>
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            onClick={handleSubmit}
-            disabled={!titleValid || !descValid || isSubmitting || isPending || !address}
-            className="cta-button w-full h-16 bg-primary text-white font-display font-black text-xl italic uppercase tracking-tight flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
-            aria-busy={isSubmitting}
+      <div className="max-w-3xl space-y-8">
+        {/* Proposal Title */}
+        <div>
+          <label
+            htmlFor="poll-title"
+            className="block font-display font-black text-sm uppercase tracking-widest mb-3"
           >
-            <span className="material-symbols-outlined text-2xl">bolt</span>
-            {isSubmitting ? t.createPoll.submitting : t.createPoll.generateProposal}
-          </button>
+            {t.createPoll.titleLabel}
+          </label>
+          <input
+            id="poll-title"
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={t.createPoll.titlePlaceholder}
+            disabled={isSubmitting}
+            maxLength={200}
+            className="technical-input w-full h-16 px-5 text-xl font-bold font-display bg-white placeholder:text-slate-300 placeholder:font-normal"
+          />
+          <div className="flex justify-between mt-2">
+            <span className={`text-xs font-mono ${titleLen > 0 && titleLen < 3 ? 'text-red-500' : 'text-slate-400'}`}>
+              {titleLen > 0 && titleLen < 3 ? t.createPoll.titleMin : ''}
+            </span>
+            <span className={`text-xs font-mono ${titleLen > 0 && !titleValid ? 'text-red-500' : 'text-slate-400'}`}>
+              {titleLen}/200
+            </span>
+          </div>
+        </div>
 
-          {/* Error banner */}
-          {error && (
-            <div className="bg-red-50 border-2 border-red-400 p-4 font-mono text-sm text-red-700" role="alert">
-              {error}
+        {/* Voting Period Duration */}
+        <div>
+          <label className="block font-display font-black text-sm uppercase tracking-widest mb-3">
+            {t.createPoll.durationLabel}
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {DURATION_PRESETS.map((preset) => (
+              <button
+                key={preset.key}
+                type="button"
+                onClick={() => handlePresetSelect(preset.key)}
+                disabled={isSubmitting}
+                className={`h-14 border-2 border-black font-display font-bold text-sm uppercase tracking-wide transition-colors ${
+                  durationPreset === preset.key
+                    ? 'bg-black text-white'
+                    : 'bg-white text-black hover:bg-slate-50'
+                }`}
+              >
+                {preset.key === 'custom' ? (
+                  <span className="flex items-center justify-center gap-1">
+                    <span className="material-symbols-outlined text-sm">calendar_today</span>
+                    {t.createPoll[preset.labelKey]}
+                  </span>
+                ) : (
+                  t.createPoll[preset.labelKey]
+                )}
+              </button>
+            ))}
+          </div>
+          {durationPreset === 'custom' && (
+            <div className="mt-4">
+              <input
+                type="number"
+                min={1}
+                max={720}
+                value={durationHours}
+                onChange={(e) => setDurationHours(Math.max(1, Math.min(720, Number(e.target.value))))}
+                disabled={isSubmitting}
+                className="technical-input w-full h-12 px-4 font-mono text-lg"
+                placeholder={t.createPoll.hoursUnit}
+              />
+              <p className="text-xs font-mono text-slate-400 mt-1">{t.createPoll.durationHint}</p>
             </div>
           )}
         </div>
 
-        {/* ── Right Column: Guidelines Sidebar ── */}
-        <div className="lg:col-span-4">
-          <div className="guideline-box bg-white p-8 sticky top-32">
-            <h3 className="flex items-center gap-2 text-xl font-display font-bold uppercase italic mb-8">
-              <span className="material-symbols-outlined text-primary">gavel</span>
-              {t.createPoll.guidelinesTitle}
-            </h3>
-
-            <div className="space-y-6">
-              <div className="flex gap-4">
-                <span className="text-2xl font-display font-black text-primary leading-none">01</span>
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase mb-1">{t.createPoll.stakingTitle}</p>
-                  <p className="text-sm text-slate-700 leading-relaxed">{t.createPoll.stakingDesc}</p>
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                <span className="text-2xl font-display font-black text-primary leading-none">02</span>
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase mb-1">{t.createPoll.privacyGuideTitle}</p>
-                  <p className="text-sm text-slate-700 leading-relaxed">{t.createPoll.privacyGuideDesc}</p>
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                <span className="text-2xl font-display font-black text-primary leading-none">03</span>
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase mb-1">{t.createPoll.windowTitle}</p>
-                  <p className="text-sm text-slate-700 leading-relaxed">{t.createPoll.windowDesc}</p>
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                <span className="text-2xl font-display font-black text-primary leading-none">04</span>
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase mb-1">{t.createPoll.quorumTitle}</p>
-                  <p className="text-sm text-slate-700 leading-relaxed">{t.createPoll.quorumDesc}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Network Status */}
-            <div className="mt-8 pt-6 border-t-2 border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className={`w-2.5 h-2.5 ${networkOnline ? 'bg-green-500' : 'bg-red-500'}`} />
-                <span className="text-xs font-mono text-slate-500 uppercase tracking-widest">
-                  {networkOnline ? t.createPoll.networkOptimal : t.createPoll.networkOffline}
-                </span>
-              </div>
-            </div>
+        {/* Proposal Description */}
+        <div>
+          <label
+            htmlFor="poll-desc"
+            className="block font-display font-black text-sm uppercase tracking-widest mb-3"
+          >
+            {t.createPoll.descLabel}
+          </label>
+          <textarea
+            id="poll-desc"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder={t.createPoll.descPlaceholder}
+            disabled={isSubmitting}
+            rows={8}
+            maxLength={1000}
+            className="technical-input w-full px-5 py-4 text-base bg-white placeholder:text-slate-300 resize-none leading-relaxed"
+          />
+          <div className="flex justify-end mt-2">
+            <span className={`text-xs font-mono ${!descValid ? 'text-red-500' : 'text-slate-400'}`}>
+              {descLen}/1000
+            </span>
           </div>
         </div>
+
+        {/* Submit Button */}
+        <button
+          onClick={handleSubmit}
+          disabled={!titleValid || !descValid || isSubmitting || !address}
+          className="cta-button w-full h-16 bg-primary text-white font-display font-black text-xl italic uppercase tracking-tight flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
+        >
+          <span className="material-symbols-outlined text-2xl">bolt</span>
+          {isSubmitting ? t.createPoll.submitting : t.createPoll.generateProposal}
+        </button>
+
+        {/* Error */}
+        {error && (
+          <div className="bg-red-50 border-2 border-red-400 p-4 font-mono text-sm text-red-700" role="alert">
+            {error}
+          </div>
+        )}
       </div>
     </div>
   )
-}
-
-function formatTokenAmount(amount: bigint): string {
-  const str = amount.toString()
-  if (str.length <= 18) {
-    const decimal = str.padStart(18, '0')
-    const whole = '0'
-    const frac = decimal.slice(0, 2)
-    return frac === '00' ? whole : `${whole}.${frac}`
-  }
-  const whole = str.slice(0, str.length - 18)
-  const frac = str.slice(str.length - 18, str.length - 16)
-  return frac === '00' ? whole : `${whole}.${frac}`
 }

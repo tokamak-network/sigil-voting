@@ -69,23 +69,6 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
 
   const handleConnect = () => connect({ connector: injected() })
 
-  const handleResetTestData = () => {
-    if (!address) return
-    if (!confirm(t.header.resetConfirm)) return
-    const keysToRemove: string[] = []
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      if (!key) continue
-      if (key.startsWith('maci-poll-title-') || key.startsWith('maci-poll-desc-')) continue
-      if (key.includes('maci-') || key === 'maci-polls-cache') {
-        keysToRemove.push(key)
-      }
-    }
-    keysToRemove.forEach(k => localStorage.removeItem(k))
-    alert(t.header.resetDone)
-    window.location.reload()
-  }
-
   return (
     <header className="sticky top-0 z-50 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b-2 border-border-light dark:border-border-dark">
       <div className="container mx-auto px-6 h-16 flex items-center justify-between">
@@ -121,18 +104,6 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
                 </>
               )}
             </div>
-          )}
-
-          {/* Reset test data (connected, in app pages) */}
-          {isConnected && isCorrectChain && !isLandingOrTech && (
-            <button
-              onClick={handleResetTestData}
-              className="hidden md:flex items-center gap-1 px-3 py-2 text-xs font-bold text-slate-400 hover:text-red-500 border-2 border-border-light dark:border-border-dark hover:border-red-300 transition-colors"
-              title={t.header.resetData}
-            >
-              <span className="material-symbols-outlined text-sm">delete_sweep</span>
-              {t.header.resetData}
-            </button>
           )}
 
           {/* Wrong chain warning */}
