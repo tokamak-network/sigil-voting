@@ -13,6 +13,7 @@ import { useTranslation } from '../../i18n';
 
 interface MergingStatusProps {
   pollAddress?: `0x${string}`;
+  votingEndTime?: number; // Unix seconds — when voting ended
 }
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
@@ -25,18 +26,19 @@ function formatElapsed(ms: number): string {
   return `${min}:${sec.toString().padStart(2, '0')}`;
 }
 
-export function MergingStatus({ pollAddress }: MergingStatusProps) {
+export function MergingStatus({ pollAddress, votingEndTime }: MergingStatusProps) {
   const address = pollAddress || POLL_V2_ADDRESS;
   const hasValidAddress = address !== ZERO_ADDRESS;
   const { t } = useTranslation();
 
-  const [startTime] = useState(() => Date.now());
-  const [elapsed, setElapsed] = useState(0);
+  // Use on-chain votingEndTime as base (survives page refresh), fallback to mount time
+  const [baseTime] = useState(() => votingEndTime ? votingEndTime * 1000 : Date.now());
+  const [elapsed, setElapsed] = useState(() => Date.now() - baseTime);
 
   useEffect(() => {
-    const interval = setInterval(() => setElapsed(Date.now() - startTime), 1000);
+    const interval = setInterval(() => setElapsed(Date.now() - baseTime), 1000);
     return () => clearInterval(interval);
-  }, [startTime]);
+  }, [baseTime]);
 
   const isStuck = elapsed > STUCK_THRESHOLD_MS;
 

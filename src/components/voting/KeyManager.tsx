@@ -15,6 +15,7 @@ import { writeContract } from '../../writeHelper';
 import { POLL_ABI, POLL_V2_ADDRESS } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 import { preloadCrypto } from '../../crypto/preload';
+import { getMaciNonce, incrementMaciNonce } from './voteUtils';
 
 interface KeyManagerProps {
   pollId: number;
@@ -88,7 +89,7 @@ export function KeyManager({
       );
 
       // Pack key change command
-      const nonce = BigInt(getKeyChangeNonce(address, pollId));
+      const nonce = BigInt(getMaciNonce(address, pollId));
       // Priority: global key (from signUp) > poll-specific > default 1
       const globalIdx = localStorage.getItem(`maci-stateIndex-${address}`);
       const pollIdx = localStorage.getItem(`maci-stateIndex-${address}-${pollId}`);
@@ -163,7 +164,7 @@ export function KeyManager({
       );
 
       setCurrentPubKey(newPubKey);
-      incrementKeyChangeNonce(address, pollId);
+      incrementMaciNonce(address, pollId);
       setSuccess(true);
       setShowConfirm(false);
     } catch (err) {
@@ -245,13 +246,4 @@ export function KeyManager({
   );
 }
 
-function getKeyChangeNonce(address: string, pollId: number): number {
-  const key = `maci-keychange-nonce-${address}-${pollId}`;
-  return parseInt(localStorage.getItem(key) || '1', 10);
-}
-
-function incrementKeyChangeNonce(address: string, pollId: number): void {
-  const key = `maci-keychange-nonce-${address}-${pollId}`;
-  const current = getKeyChangeNonce(address, pollId);
-  localStorage.setItem(key, String(current + 1));
-}
+// Nonce management moved to voteUtils.ts (shared counter with VoteFormV2)

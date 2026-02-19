@@ -29,6 +29,7 @@ export interface CryptoModules {
   buildPoseidon: () => Promise<any>;
   // crypto/index re-exports for signUp
   generateRandomPrivateKey: () => bigint;
+  derivePrivateKeyFromSignature: (signature: Uint8Array) => bigint;
   derivePublicKey: (sk: bigint) => Promise<PubKey>;
 }
 
@@ -65,6 +66,7 @@ export async function preloadCrypto(): Promise<CryptoModules> {
         storeEncrypted: keyStoreMod.storeEncrypted,
         buildPoseidon: circomlibMod.buildPoseidon,
         generateRandomPrivateKey: blake512Mod.generateRandomPrivateKey,
+        derivePrivateKeyFromSignature: blake512Mod.derivePrivateKeyFromSignature,
         derivePublicKey: ecdhMod.derivePublicKey,
       };
 

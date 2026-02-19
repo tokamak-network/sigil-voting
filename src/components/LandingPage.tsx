@@ -7,231 +7,182 @@ interface LandingPageProps {
 
 export function LandingPage({ setCurrentPage }: LandingPageProps) {
   const { t } = useTranslation()
-
   const titleLines = t.landing.title.split('\n')
 
   return (
-    <div className="w-full border-x-0 min-h-screen">
+    <main>
       {/* ─── 1. Hero Section ─── */}
-      <section className="grid grid-cols-12 border-b-2 border-black">
-        {/* Hero Left */}
-        <div className="col-span-12 lg:col-span-5 p-12 flex flex-col justify-between border-r-0 lg:border-r-2 border-black bg-white">
-          <div>
-            <div className="inline-block border-2 border-black px-3 py-1 mb-10">
-              <span className="font-mono text-xs font-bold uppercase tracking-widest">{t.landing.badge}</span>
+      <section className="relative pt-20 pb-32 overflow-hidden border-b-2 border-border-light dark:border-border-dark">
+        <div className="container mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Left: Text */}
+            <div className="lg:col-span-7">
+              <div className="inline-flex items-center gap-2 px-3 py-1 border-2 border-primary text-primary font-display text-xs font-bold mb-6">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                </span>
+                {t.landing.heroStatus.toUpperCase()}_
+              </div>
+              <h1 className="text-6xl md:text-8xl font-display font-extrabold leading-tight mb-8 uppercase">
+                {titleLines[0]}<br />
+                <span className="text-primary">{titleLines[1]}</span>
+              </h1>
+              <p className="text-xl max-w-xl mb-10 text-slate-600 dark:text-slate-400">
+                {t.landing.subtitle}
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <button
+                  className="bg-primary text-white font-display text-lg font-extrabold px-8 py-4 border-2 border-black hover:translate-x-1 hover:-translate-y-1 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)] uppercase"
+                  onClick={() => setCurrentPage('proposals')}
+                >
+                  {t.landing.enterApp}
+                </button>
+                <a
+                  href="https://maci.pse.dev"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="border-2 border-border-light dark:border-border-dark font-display text-lg font-extrabold px-8 py-4 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors uppercase"
+                >
+                  {t.landing.documentation}
+                </a>
+              </div>
             </div>
-            <h1 className="font-display text-6xl md:text-7xl font-bold leading-none mb-8 tracking-tighter uppercase">
-              {titleLines[0]}<br />
-              <span className="text-primary">{titleLines[1]}</span>
-            </h1>
-            <div className="space-y-4 max-w-sm mb-12">
-              <p className="text-lg font-medium leading-tight">{t.landing.subtitle}</p>
-              <p className="text-slate-500 text-sm font-mono uppercase">{t.landing.heroStatus}_</p>
-            </div>
-          </div>
-          <div>
-            <button
-              className="bg-primary text-white w-full py-6 border-2 border-black font-bold text-xl flex items-center justify-center gap-4 hover:bg-blue-700 transition-colors uppercase tracking-[0.2em]"
-              onClick={() => setCurrentPage('proposals')}
-            >
-              {t.landing.enterApp}
-              <span className="material-symbols-outlined">arrow_forward</span>
-            </button>
-          </div>
-        </div>
 
-        {/* Hero Right — bg-primary (blue) */}
-        <div className="col-span-12 lg:col-span-7 bg-primary p-12 relative overflow-hidden flex flex-col justify-between min-h-[600px]">
-          <div className="relative z-10 flex justify-between items-start">
-            <div className="font-mono text-white text-xs font-bold space-y-1">
-              <p>{t.landing.established}</p>
-              <p>{t.landing.heroVersion.toUpperCase()}</p>
-            </div>
-            <div className="w-16 h-16 border-2 border-white flex items-center justify-center">
-              <span className="material-symbols-outlined text-white text-3xl">terminal</span>
-            </div>
-          </div>
-          <div className="relative z-0 pointer-events-none">
-            <div className="text-[14rem] font-display font-bold text-white leading-none tracking-tighter opacity-90 -ml-4">SIGIL</div>
-          </div>
-          <div className="relative z-10 grid grid-cols-2 gap-4">
-            <div className="p-6 bg-black border-2 border-white text-white">
-              <p className="font-mono text-xs mb-2 text-primary">{t.landing.heroLabel1}</p>
-              <h3 className="font-bold text-lg uppercase mb-2">{t.landing.zeroExposure.title}</h3>
-              <p className="text-sm text-slate-300 leading-relaxed">{t.landing.zeroExposure.desc}</p>
-            </div>
-            <div className="p-6 bg-black border-2 border-white text-white">
-              <p className="font-mono text-xs mb-2 text-primary">{t.landing.heroLabel2}</p>
-              <h3 className="font-bold text-lg uppercase mb-2">{t.landing.maciSecured.title}</h3>
-              <p className="text-sm text-slate-300 leading-relaxed">{t.landing.maciSecured.desc}</p>
+            {/* Right: Verification Engine Panel */}
+            <div className="lg:col-span-5 relative">
+              <div className="border-2 border-border-light dark:border-border-dark p-8 bg-white dark:bg-black/40 backdrop-blur-sm relative z-10">
+                <div className="flex justify-between items-center mb-6">
+                  <span className="font-display text-xs font-bold opacity-50 uppercase">Verification Engine</span>
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 bg-red-500"></div>
+                    <div className="w-2 h-2 bg-yellow-500"></div>
+                    <div className="w-2 h-2 bg-green-500"></div>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="p-4 border-2 border-primary bg-primary/5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-primary">verified_user</span>
+                      <span className="font-display text-sm font-bold">{t.landing.zeroExposure.title}</span>
+                    </div>
+                    <span className="font-display text-xs text-primary">ACTIVE</span>
+                  </div>
+                  <div className="p-4 border-2 border-border-light dark:border-border-dark flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined">hub</span>
+                      <span className="font-display text-sm font-bold">{t.landing.maciSecured.title}</span>
+                    </div>
+                    <span className="font-display text-xs opacity-50">SYNCED</span>
+                  </div>
+                  <div className="p-4 border-2 border-border-light dark:border-border-dark">
+                    <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 mb-2">
+                      <div className="bg-primary h-full w-2/3"></div>
+                    </div>
+                    <div className="flex justify-between font-display text-[10px]">
+                      <span>PROVING STATE</span>
+                      <span>67% COMPLETE</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="absolute -top-10 -right-10 w-64 h-64 bg-primary/10 -z-0"></div>
+              <div className="absolute -bottom-10 -left-10 w-32 h-32 border-2 border-primary/20 -z-0"></div>
             </div>
           </div>
         </div>
       </section>
 
       {/* ─── 2. Stats Bar ─── */}
-      <section className="grid grid-cols-2 md:grid-cols-4 border-b-2 border-black">
-        {[
-          { count: t.landing.stats.testsCount, label: t.landing.stats.testsLabel, icon: 'group' },
-          { count: t.landing.stats.contractsCount, label: t.landing.stats.contractsLabel, icon: 'schedule' },
-          { count: t.landing.stats.propertiesCount, label: t.landing.stats.propertiesLabel, icon: 'security' },
-          { count: t.landing.stats.licenseCount, label: t.landing.stats.licenseLabel, icon: 'code' },
-        ].map((stat, i) => (
-          <div
-            key={i}
-            className={`p-8 flex flex-col items-center text-center ${i < 3 ? 'border-r-0 md:border-r-2' : ''} ${i < 2 ? 'border-b-2 md:border-b-0' : ''} border-black`}
-          >
-            <span className="material-symbols-outlined text-primary text-2xl mb-3">{stat.icon}</span>
-            <span className="font-display text-4xl md:text-5xl font-black italic tracking-tighter">{stat.count}</span>
-            <span className="font-mono text-xs font-bold uppercase tracking-widest text-slate-500 mt-2">{stat.label}</span>
-          </div>
-        ))}
-      </section>
-
-      {/* ─── 3. Core Features Section ─── */}
-      <section className="border-b-2 border-black">
-        {/* Section Header — bg-black text-white */}
-        <div className="p-6 border-b-2 border-black bg-black text-white flex justify-between items-center">
-          <h2 className="font-mono text-sm font-bold uppercase tracking-[0.3em]">
-            {t.landing.coreFeatures}
-          </h2>
-          <span className="material-symbols-outlined">lock</span>
-        </div>
-
-        {/* Feature Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4">
-          {/* Privacy */}
-          <div className="p-8 border-r-0 md:border-r-2 border-b-2 md:border-b-0 border-black group hover:bg-primary transition-colors">
-            <div className="w-12 h-12 border-2 border-black flex items-center justify-center mb-8 bg-white group-hover:bg-black group-hover:text-white transition-colors">
-              <span className="material-symbols-outlined">encrypted</span>
-            </div>
-            <h3 className="font-bold text-lg mb-4 uppercase tracking-tight group-hover:text-white transition-colors">
-              {t.landing.features.privacy.title}
-            </h3>
-            <p className="text-base font-medium leading-relaxed group-hover:text-white/90 transition-colors">{t.landing.features.privacy.desc}</p>
-          </div>
-
-          {/* Coercion */}
-          <div className="p-8 border-r-0 md:border-r-2 border-b-2 md:border-b-0 border-black group hover:bg-primary transition-colors">
-            <div className="w-12 h-12 border-2 border-black flex items-center justify-center mb-8 bg-white group-hover:bg-black group-hover:text-white transition-colors">
-              <span className="material-symbols-outlined">gpp_maybe</span>
-            </div>
-            <h3 className="font-bold text-lg mb-4 uppercase tracking-tight group-hover:text-white transition-colors">
-              {t.landing.features.coercion.title}
-            </h3>
-            <p className="text-base font-medium leading-relaxed group-hover:text-white/90 transition-colors">{t.landing.features.coercion.desc}</p>
-          </div>
-
-          {/* Fairness */}
-          <div className="p-8 border-r-0 md:border-r-2 border-b-2 md:border-b-0 border-black group hover:bg-primary transition-colors">
-            <div className="w-12 h-12 border-2 border-black flex items-center justify-center mb-8 bg-white group-hover:bg-black group-hover:text-white transition-colors">
-              <span className="material-symbols-outlined">balance</span>
-            </div>
-            <h3 className="font-bold text-lg mb-4 uppercase tracking-tight group-hover:text-white transition-colors">
-              {t.landing.features.fairness.title}
-            </h3>
-            <p className="text-base font-medium leading-relaxed group-hover:text-white/90 transition-colors">{t.landing.features.fairness.desc}</p>
-          </div>
-
-          {/* Verified */}
-          <div className="p-8 group hover:bg-primary transition-colors">
-            <div className="w-12 h-12 border-2 border-black flex items-center justify-center mb-8 bg-white group-hover:bg-black group-hover:text-white transition-colors">
-              <span className="material-symbols-outlined">rule</span>
-            </div>
-            <h3 className="font-bold text-lg mb-4 uppercase tracking-tight group-hover:text-white transition-colors">
-              {t.landing.features.verified.title}
-            </h3>
-            <p className="text-base font-medium leading-relaxed group-hover:text-white/90 transition-colors">{t.landing.features.verified.desc}</p>
+      <section className="bg-black text-white py-8 border-b-2 border-border-light dark:border-border-dark">
+        <div className="container mx-auto px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            {[
+              { count: t.landing.stats.testsCount, label: t.landing.stats.testsLabel },
+              { count: t.landing.stats.contractsCount, label: t.landing.stats.contractsLabel },
+              { count: t.landing.stats.propertiesCount, label: t.landing.stats.propertiesLabel },
+              { count: t.landing.stats.licenseCount, label: t.landing.stats.licenseLabel },
+            ].map((stat, i) => (
+              <div key={i} className="text-center md:text-left">
+                <div className="font-display text-3xl font-extrabold text-primary">{stat.count}</div>
+                <div className="font-display text-xs opacity-60 uppercase tracking-widest">{stat.label}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ─── 4. Operational Flow Section ─── */}
-      <section className="border-b-2 border-black">
-        {/* Section Header — bg-slate-100 */}
-        <div className="p-6 border-b-2 border-black bg-slate-100 flex justify-between items-center">
-          <h2 className="font-mono text-sm font-bold uppercase tracking-[0.3em]">
-            {t.landing.operationalFlow}
-          </h2>
-        </div>
-
-        {/* Steps */}
-        <div className="grid grid-cols-1 lg:grid-cols-3">
-          {/* Step 1 */}
-          <div className="p-10 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-black flex flex-col justify-between min-h-[400px]">
-            <div>
-              <span className="font-mono text-primary font-bold text-xs uppercase tracking-widest mb-4 block">STEP_01</span>
-              <h3 className="font-display text-4xl font-bold mb-6 tracking-tighter uppercase">{t.landing.lifecycle.step1.title}</h3>
-              <p className="text-base font-medium leading-relaxed">{t.landing.lifecycle.step1.desc}</p>
-            </div>
-            <div className="border-2 border-black p-4 bg-slate-50 flex items-center justify-center h-32">
-              <span className="material-symbols-outlined text-5xl text-slate-400">account_balance_wallet</span>
-            </div>
+      {/* ─── 3. Core Features ─── */}
+      <section className="py-24 grid-bg" id="features">
+        <div className="container mx-auto px-6">
+          <div className="mb-16">
+            <h2 className="font-display text-4xl font-extrabold mb-4 uppercase">{t.landing.coreFeatures}</h2>
+            <div className="w-24 h-2 bg-primary"></div>
           </div>
-
-          {/* Step 2 */}
-          <div className="p-10 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-black flex flex-col justify-between min-h-[400px]">
-            <div>
-              <span className="font-mono text-primary font-bold text-xs uppercase tracking-widest mb-4 block">STEP_02</span>
-              <h3 className="font-display text-4xl font-bold mb-6 tracking-tighter uppercase">{t.landing.lifecycle.step2.title}</h3>
-              <p className="text-base font-medium leading-relaxed">{t.landing.lifecycle.step2.desc}</p>
-            </div>
-            <div className="space-y-3">
-              <div className="p-4 border-2 border-primary bg-primary/10 flex justify-between items-center">
-                <span className="font-mono text-xs font-bold uppercase">{t.landing.optionA}</span>
-                <span className="material-symbols-outlined text-primary">check_circle</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border-2 border-border-light dark:border-border-dark">
+            {[
+              { icon: 'visibility_off', title: t.landing.features.privacy.title, desc: t.landing.features.privacy.desc },
+              { icon: 'block', title: t.landing.features.coercion.title, desc: t.landing.features.coercion.desc },
+              { icon: 'balance', title: t.landing.features.fairness.title, desc: t.landing.features.fairness.desc },
+              { icon: 'fact_check', title: t.landing.features.verified.title, desc: t.landing.features.verified.desc },
+            ].map((feat, i) => (
+              <div
+                key={i}
+                className={`p-8 ${i < 3 ? 'border-r-2 border-b-2' : 'lg:border-b-2'} border-border-light dark:border-border-dark hover:bg-primary hover:text-white transition-colors group`}
+              >
+                <span className="material-symbols-outlined text-4xl mb-6 text-primary group-hover:text-white">{feat.icon}</span>
+                <h3 className="font-display text-xl font-bold mb-4 uppercase">{feat.title}</h3>
+                <p className="text-sm leading-relaxed opacity-70 group-hover:opacity-100">{feat.desc}</p>
               </div>
-              <div className="p-4 border-2 border-black flex justify-between items-center opacity-40">
-                <span className="font-mono text-xs font-bold uppercase">{t.landing.optionB}</span>
-                <span className="material-symbols-outlined">radio_button_unchecked</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Step 3 — bg-black text-white */}
-          <div className="p-10 flex flex-col justify-between min-h-[400px] bg-black text-white">
-            <div>
-              <span className="font-mono text-primary font-bold text-xs uppercase tracking-widest mb-4 block">STEP_03</span>
-              <h3 className="font-display text-4xl font-bold mb-6 tracking-tighter uppercase">{t.landing.lifecycle.step3.title}</h3>
-              <p className="text-base font-medium text-slate-400 leading-relaxed">{t.landing.lifecycle.step3.desc}</p>
-            </div>
-            <div className="border-2 border-white p-6 bg-slate-900 flex flex-col gap-4">
-              <div className="flex items-center gap-2 text-green-400">
-                <span className="material-symbols-outlined">verified</span>
-                <span className="font-mono text-xs font-bold uppercase">{t.landing.proofVerified}_</span>
-              </div>
-              <div className="h-1 bg-slate-800 w-full">
-                <div className="h-full bg-primary w-[88%]"></div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ─── 5. Comparison Table ─── */}
-      <section className="border-b-2 border-black">
-        {/* Section Header */}
-        <div className="p-6 border-b-2 border-black bg-slate-100 flex justify-between items-center">
-          <h2 className="font-mono text-sm font-bold uppercase tracking-[0.3em]">
-            {t.landing.comparison.title}
-          </h2>
-          <span className="material-symbols-outlined">compare</span>
+      {/* ─── 4. Technical Workflow (How It Works) ─── */}
+      <section className="py-24 bg-slate-50 dark:bg-zinc-950 border-y-2 border-border-light dark:border-border-dark">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="font-display text-4xl font-extrabold uppercase">{t.landing.operationalFlow}</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            {[
+              { num: '01', title: t.landing.lifecycle.step1.title, desc: t.landing.lifecycle.step1.desc, code: 'sigil.init({ provider: window.ethereum })', color: 'text-primary' },
+              { num: '02', title: t.landing.lifecycle.step2.title, desc: t.landing.lifecycle.step2.desc, code: 'sigil.castVote(option_id, weight)', color: 'text-emerald-500' },
+              { num: '03', title: t.landing.lifecycle.step3.title, desc: t.landing.lifecycle.step3.desc, code: 'sigil.verifyProof(proof_data)', color: 'text-amber-500' },
+            ].map((step, i) => (
+              <div key={i} className="relative">
+                <div className="font-display text-8xl font-black text-slate-200 dark:text-slate-800 absolute -top-12 -left-4 -z-0">{step.num}</div>
+                <div className="relative z-10">
+                  <h4 className="font-display text-xl font-bold mb-4 uppercase">{step.title}</h4>
+                  <p className="text-slate-600 dark:text-slate-400">{step.desc}</p>
+                  <div className="mt-6 p-4 border-2 border-border-light dark:border-border-dark bg-white dark:bg-black font-display text-[10px] overflow-hidden">
+                    <code className={step.color}>{step.code}</code>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+      </section>
 
-        <div className="p-12">
-          <p className="text-lg font-medium text-slate-600 mb-10 max-w-2xl">{t.landing.comparison.subtitle}</p>
-
-          {/* Table */}
+      {/* ─── 5. Ecosystem Comparison ─── */}
+      <section className="py-24" id="comparison">
+        <div className="container mx-auto px-6">
+          <div className="mb-12">
+            <h2 className="font-display text-4xl font-extrabold uppercase">{t.landing.comparison.title}</h2>
+            <p className="font-display text-sm opacity-50 mt-2">{t.landing.comparison.subtitle}</p>
+          </div>
           <div className="overflow-x-auto">
-            <table className="w-full border-2 border-black text-sm">
+            <table className="w-full border-collapse border-2 border-border-light dark:border-border-dark font-display text-sm">
               <thead>
-                <tr className="bg-black text-white">
-                  <th className="p-4 text-left font-mono font-bold uppercase tracking-wider border-r-2 border-slate-700">{t.landing.comparison.feature}</th>
-                  <th className="p-4 text-center font-mono font-bold uppercase tracking-wider border-r-2 border-slate-700 bg-primary">SIGIL</th>
-                  <th className="p-4 text-center font-mono font-bold uppercase tracking-wider border-r-2 border-slate-700">Snapshot</th>
-                  <th className="p-4 text-center font-mono font-bold uppercase tracking-wider border-r-2 border-slate-700">Aragon</th>
-                  <th className="p-4 text-center font-mono font-bold uppercase tracking-wider border-r-2 border-slate-700">Tally</th>
-                  <th className="p-4 text-center font-mono font-bold uppercase tracking-wider">Vocdoni</th>
+                <tr className="bg-slate-100 dark:bg-zinc-900 border-b-2 border-border-light dark:border-border-dark">
+                  <th className="p-6 text-left">{t.landing.comparison.feature}</th>
+                  <th className="p-6 text-center border-l-2 border-border-light dark:border-border-dark bg-primary text-white">SIGIL</th>
+                  <th className="p-6 text-center border-l-2 border-border-light dark:border-border-dark">Snapshot</th>
+                  <th className="p-6 text-center border-l-2 border-border-light dark:border-border-dark">Aragon</th>
+                  <th className="p-6 text-center border-l-2 border-border-light dark:border-border-dark">Tally</th>
+                  <th className="p-6 text-center border-l-2 border-border-light dark:border-border-dark">Vocdoni</th>
                 </tr>
               </thead>
               <tbody>
@@ -239,51 +190,40 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                   {
                     feature: t.landing.comparison.permanentPrivacy,
                     values: [t.landing.comparison.yes, t.landing.comparison.postReveal, t.landing.comparison.yes, t.landing.comparison.no, t.landing.comparison.partial],
-                    highlights: [true, false, true, false, false],
+                    icons: ['check_circle', 'error', 'check_circle', 'cancel', 'error'],
+                    colors: ['text-emerald-500', 'text-amber-500', 'text-emerald-500', 'text-red-500', 'text-amber-500'],
                   },
                   {
                     feature: t.landing.comparison.antiBribery,
                     values: [t.landing.comparison.yes, t.landing.comparison.no, t.landing.comparison.demoStage, t.landing.comparison.no, t.landing.comparison.no],
-                    highlights: [true, false, false, false, false],
+                    icons: ['check_circle', 'cancel', 'error', 'cancel', 'cancel'],
+                    colors: ['text-emerald-500', 'text-red-500', 'text-amber-500', 'text-red-500', 'text-red-500'],
                   },
                   {
                     feature: t.landing.comparison.quadraticVoting,
                     values: [t.landing.comparison.yes, t.landing.comparison.plugin, t.landing.comparison.no, t.landing.comparison.no, t.landing.comparison.no],
-                    highlights: [true, false, false, false, false],
+                    icons: ['check_circle', 'error', 'cancel', 'cancel', 'cancel'],
+                    colors: ['text-emerald-500', 'text-amber-500', 'text-red-500', 'text-red-500', 'text-red-500'],
                   },
                   {
                     feature: t.landing.comparison.onChainVerify,
                     values: [t.landing.comparison.yes, t.landing.comparison.offchain, t.landing.comparison.yes, t.landing.comparison.yes, t.landing.comparison.ownChain],
-                    highlights: [true, false, true, true, false],
+                    icons: ['check_circle', 'error', 'check_circle', 'check_circle', 'error'],
+                    colors: ['text-emerald-500', 'text-amber-500', 'text-emerald-500', 'text-emerald-500', 'text-amber-500'],
                   },
                   {
                     feature: t.landing.comparison.automation,
                     values: [t.landing.comparison.yes, t.landing.comparison.yes, t.landing.comparison.demoStage, t.landing.comparison.yes, t.landing.comparison.yes],
-                    highlights: [true, true, false, true, true],
+                    icons: ['check_circle', 'check_circle', 'error', 'check_circle', 'check_circle'],
+                    colors: ['text-emerald-500', 'text-emerald-500', 'text-amber-500', 'text-emerald-500', 'text-emerald-500'],
                   },
                 ] as const).map((row, i) => (
-                  <tr key={i} className={`border-t-2 border-black ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-                    <td className="p-4 font-bold uppercase text-xs tracking-wider border-r-2 border-black">{row.feature}</td>
+                  <tr key={i} className="border-b-2 border-border-light dark:border-border-dark last:border-b-0">
+                    <td className="p-6 font-bold">{row.feature}</td>
                     {row.values.map((val, j) => (
-                      <td
-                        key={j}
-                        className={`p-4 text-center border-r-2 border-black last:border-r-0 font-mono font-bold text-xs uppercase ${
-                          j === 0 ? 'bg-primary/5' : ''
-                        }`}
-                      >
-                        {row.highlights[j] ? (
-                          <span className="text-emerald-600 flex items-center justify-center gap-1">
-                            <span className="material-symbols-outlined text-sm">check_circle</span>
-                            {val}
-                          </span>
-                        ) : val === t.landing.comparison.no ? (
-                          <span className="text-red-400 flex items-center justify-center gap-1">
-                            <span className="material-symbols-outlined text-sm">cancel</span>
-                            {val}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">{val}</span>
-                        )}
+                      <td key={j} className={`p-6 text-center border-l-2 border-border-light dark:border-border-dark ${row.colors[j]}`}>
+                        <span className="material-symbols-outlined">{row.icons[j]}</span>
+                        <span className="block text-[10px] mt-1 opacity-60">{val}</span>
                       </td>
                     ))}
                   </tr>
@@ -291,198 +231,106 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
               </tbody>
             </table>
           </div>
-
-          {/* Bottom note */}
-          <div className="mt-6 flex items-center gap-3">
-            <span className="w-3 h-3 bg-primary"></span>
-            <p className="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">{t.landing.comparison.onlyStack}</p>
-          </div>
         </div>
       </section>
 
-      {/* ─── 6. Demo Video Section ─── */}
-      <section className="border-b-2 border-black">
-        <div className="grid grid-cols-1 lg:grid-cols-2">
-          {/* Left: Text */}
-          <div className="p-12 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-black flex flex-col justify-center">
-            <h2 className="font-display text-5xl md:text-6xl font-black uppercase italic tracking-tighter leading-none mb-8">
-              {t.landing.demo.title}
-            </h2>
-            <p className="text-lg font-medium leading-relaxed text-slate-600 mb-8 max-w-lg">
-              {t.landing.demo.subtitle}
-            </p>
-            <div className="flex items-center gap-3 font-mono text-xs font-bold uppercase tracking-widest text-slate-400">
-              <span className="w-2 h-2 bg-primary"></span>
-              {t.landing.demo.note}
-            </div>
+      {/* ─── 6. See for Yourself (Demo) ─── */}
+      <section className="py-24 bg-black text-white">
+        <div className="container mx-auto px-6">
+          <div className="max-w-4xl mx-auto text-center mb-16">
+            <h2 className="font-display text-4xl font-extrabold uppercase mb-4">{t.landing.demo.title}</h2>
+            <p className="opacity-60">{t.landing.demo.subtitle}</p>
           </div>
-
-          {/* Right: Video Placeholder */}
-          <div className="bg-slate-900 flex items-center justify-center min-h-[400px] relative">
-            {/* Replace this div with: <iframe src="YOUR_VIDEO_URL" className="w-full h-full absolute inset-0" /> */}
-            <div className="flex flex-col items-center gap-6">
-              <div className="w-20 h-20 border-2 border-white/30 rounded-full flex items-center justify-center hover:border-primary hover:scale-110 transition-all cursor-pointer" role="button" aria-label="Play demo video">
-                <span className="material-symbols-outlined text-white text-4xl ml-1">play_arrow</span>
-              </div>
-              <p className="font-mono text-xs font-bold uppercase tracking-widest text-slate-500">{t.landing.demo.placeholder}</p>
+          <div className="relative border-2 border-white/20 p-4 aspect-video bg-zinc-900 group">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <button
+                className="w-20 h-20 bg-primary text-white flex items-center justify-center border-2 border-black group-hover:scale-110 transition-transform"
+                role="button"
+                aria-label="Play demo video"
+              >
+                <span className="material-symbols-outlined text-4xl">play_arrow</span>
+              </button>
+            </div>
+            <div className="absolute bottom-10 left-10 right-10 flex justify-between font-display text-[10px] opacity-40">
+              <span>CONNECT → ENCRYPT</span>
+              <span>SUBMIT → PROVE</span>
+              <span>VERIFY SUCCESS</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ─── 7. Why SIGIL Section ─── */}
-      <section className="grid grid-cols-12 border-b-2 border-black">
-        {/* Left: col-span-8 */}
-        <div className="col-span-12 lg:col-span-8 p-12 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-black">
-          <h2 className="font-display text-5xl font-bold mb-12 uppercase tracking-tight">
-            {t.landing.whyMaci.title}
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Coercion Resistance */}
-            <div className="p-8 border-2 border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all">
-              <h4 className="font-bold text-lg mb-4 uppercase tracking-widest flex items-center gap-2">
-                <span className="w-3 h-3 bg-primary"></span>
-                {t.landing.whyMaci.anti.title}
-              </h4>
-              <p className="text-base leading-relaxed">{t.landing.whyMaci.anti.desc}</p>
-            </div>
-
-            {/* True Secret Voting */}
-            <div className="p-8 border-2 border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all">
-              <h4 className="font-bold text-lg mb-4 uppercase tracking-widest flex items-center gap-2">
-                <span className="w-3 h-3 bg-primary"></span>
-                {t.landing.whyMaci.privacy.title}
-              </h4>
-              <p className="text-base leading-relaxed">{t.landing.whyMaci.privacy.desc}</p>
-            </div>
-
-            {/* SDK — col-span-2 */}
-            <div className="col-span-1 md:col-span-2 p-8 border-2 border-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all">
-              <div className="flex flex-col md:flex-row gap-8">
-                <div className="w-20 h-20 bg-primary border-2 border-black flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-white text-4xl">analytics</span>
-                </div>
-                <div>
-                  <h4 className="font-bold text-xl mb-2 uppercase tracking-widest">{t.landing.whyMaci.verify.title}</h4>
-                  <p className="text-base leading-relaxed max-w-2xl">{t.landing.whyMaci.verify.desc}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: col-span-4, Quick Links */}
-        <div className="col-span-12 lg:col-span-4 p-12 bg-slate-50">
-          <h3 className="font-mono text-sm font-bold mb-8 uppercase tracking-widest border-b-2 border-black pb-4">
-            {t.landing.terminalAccess}
-          </h3>
-          <div className="space-y-4">
-            <a
-              href="https://maci.pse.dev"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full p-4 bg-white text-black border-2 border-black hover:bg-primary hover:text-white transition-colors flex justify-between items-center group"
-            >
-              <span className="font-mono text-xs font-bold uppercase">{t.landing.documentation}</span>
-              <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
-            </a>
-            <a
-              href="https://github.com/tokamak-network/zk-dex"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full p-4 bg-white text-black border-2 border-black hover:bg-primary hover:text-white transition-colors flex justify-between items-center group"
-            >
-              <span className="font-mono text-xs font-bold uppercase">{t.landing.sourceCode}</span>
-              <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
-            </a>
-          </div>
-          <div className="mt-12 p-6 bg-primary/5 border-l-4 border-primary">
-            <p className="font-mono text-xs font-bold text-primary mb-1">{t.landing.demo.network}</p>
-            <p className="text-sm text-slate-600">{t.landing.cta.step1} → {t.landing.cta.step2} → {t.landing.cta.step3}</p>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── 8. Integration Section ─── */}
-      <section className="border-b-2 border-black">
-        {/* Section Header */}
-        <div className="p-6 border-b-2 border-black bg-primary text-white flex justify-between items-center">
-          <h2 className="font-mono text-sm font-bold uppercase tracking-[0.3em]">
-            {t.landing.sdkIntegration}
-          </h2>
-          <span className="font-mono text-xs font-bold uppercase tracking-widest border border-white px-3 py-1">
-            {t.landing.integration.comingSoon}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2">
-          {/* Left: Title + Trust Badges */}
-          <div className="p-12 border-r-0 lg:border-r-2 border-b-2 lg:border-b-0 border-black flex flex-col justify-between">
+      {/* ─── 7. Developer SDK ─── */}
+      <section className="py-24 grid-bg" id="sdk">
+        <div className="container mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+            {/* Left: Features */}
             <div>
-              <h2 className="font-display text-5xl md:text-6xl font-black uppercase italic tracking-tighter leading-none mb-8">
-                {t.landing.integration.title.split('\n').map((line, i) => (
-                  <span key={i}>
-                    {i === 1 ? <span className="text-primary">{line}</span> : line}
-                    {i === 0 && <br />}
-                  </span>
-                ))}
-              </h2>
-              <p className="text-lg font-medium leading-relaxed max-w-md mb-12">
+              <h2 className="font-display text-4xl font-extrabold mb-8 uppercase">{t.landing.sdkIntegration}</h2>
+              <p className="text-lg text-slate-600 dark:text-slate-400 mb-8">
                 {t.landing.integration.subtitle}
               </p>
-            </div>
-
-            {/* Trust Badges */}
-            <div>
-              <h4 className="font-mono text-xs font-bold uppercase tracking-widest text-slate-400 mb-6">
-                {t.landing.integration.trustTitle}
-              </h4>
-              <div className="space-y-3">
-                {[t.landing.integration.trust1, t.landing.integration.trust2, t.landing.integration.trust3, t.landing.integration.trust4].map((trust, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-primary text-sm">check_circle</span>
-                    <span className="text-base font-medium">{trust}</span>
+              <div className="space-y-6">
+                <div className="flex items-start gap-4">
+                  <span className="material-symbols-outlined text-primary">code</span>
+                  <div>
+                    <h4 className="font-display font-bold">{t.landing.integration.trust1.split(' — ')[0]}</h4>
+                    <p className="text-sm opacity-70">{t.landing.integration.trust1.split(' — ')[1]}</p>
                   </div>
-                ))}
+                </div>
+                <div className="flex items-start gap-4">
+                  <span className="material-symbols-outlined text-primary">layers</span>
+                  <div>
+                    <h4 className="font-display font-bold">{t.landing.integration.trust2.split(' — ')[0]}</h4>
+                    <p className="text-sm opacity-70">{t.landing.integration.trust2.split(' — ')[1]}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4">
+                  <span className="material-symbols-outlined text-primary">security</span>
+                  <div>
+                    <h4 className="font-display font-bold">{t.landing.integration.trust3.split(' — ')[0]}</h4>
+                    <p className="text-sm opacity-70">{t.landing.integration.trust3.split(' — ')[1]}</p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Right: Code Steps */}
-          <div className="p-0">
-            {[
-              { num: '01', title: t.landing.integration.step1Title, code: t.landing.integration.step1Code, desc: t.landing.integration.step1Desc },
-              { num: '02', title: t.landing.integration.step2Title, code: t.landing.integration.step2Code, desc: t.landing.integration.step2Desc },
-              { num: '03', title: t.landing.integration.step3Title, code: t.landing.integration.step3Code, desc: t.landing.integration.step3Desc },
-            ].map((step, i) => (
-              <div key={i} className={`p-8 ${i < 2 ? 'border-b-2 border-black' : ''}`}>
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="w-8 h-8 bg-black text-white flex items-center justify-center font-mono font-bold text-xs">
-                    {step.num}
-                  </span>
-                  <span className="font-bold uppercase tracking-wider text-sm">{step.title}</span>
+            {/* Right: Terminal */}
+            <div className="border-2 border-border-light dark:border-border-dark bg-slate-900 text-slate-100 p-1">
+              <div className="bg-slate-800 px-4 py-2 flex items-center justify-between border-b-2 border-border-light dark:border-border-dark">
+                <span className="font-display text-xs font-bold text-slate-400">bash — terminal</span>
+                <div className="flex gap-2">
+                  <div className="w-3 h-3 bg-slate-700"></div>
+                  <div className="w-3 h-3 bg-slate-700"></div>
                 </div>
-                <pre className="bg-slate-900 text-green-400 p-4 font-mono text-sm mb-3 overflow-x-auto whitespace-pre-wrap">
-                  {step.code}
-                </pre>
-                <p className="text-base text-slate-600">{step.desc}</p>
               </div>
-            ))}
+              <div className="p-6 font-display text-sm leading-relaxed">
+                <div className="flex gap-4 mb-4">
+                  <span className="text-slate-500">$</span>
+                  <span className="text-emerald-400">{t.landing.integration.step1Code}</span>
+                </div>
+                <div className="text-slate-400 mb-2">{'// Initialize Sigil Client'}</div>
+                <div>
+                  <span className="text-blue-400">const</span> sigil = <span className="text-blue-400">new</span> <span className="text-yellow-400">SigilClient</span>{'({'}<br />
+                  {'  '}maciAddress: <span className="text-orange-400">'0x...'</span>,<br />
+                  {'  '}provider: <span className="text-blue-400">yourProvider</span><br />
+                  {'});'}
+                </div>
+                <div className="mt-4">
+                  <span className="text-blue-400">await</span> sigil.<span className="text-yellow-400">connect</span>();<br />
+                  <span className="text-blue-400">const</span> receipt = <span className="text-blue-400">await</span> sigil.<span className="text-yellow-400">cast</span>(proposalId, vote);
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ─── 9. FAQ Section ─── */}
-      <section className="border-b-2 border-black">
-        <div className="p-6 border-b-2 border-black bg-slate-100 flex justify-between items-center">
-          <h2 className="font-mono text-sm font-bold uppercase tracking-[0.3em]">
-            {t.landing.faq.title}
-          </h2>
-          <span className="material-symbols-outlined">help</span>
-        </div>
-        <div className="p-12">
-          <p className="text-lg font-medium text-slate-600 mb-10 max-w-2xl">{t.landing.faq.subtitle}</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border-2 border-black">
+      {/* ─── 8. FAQ ─── */}
+      <section className="py-24 border-t-2 border-border-light dark:border-border-dark" id="faq">
+        <div className="container mx-auto px-6">
+          <h2 className="font-display text-4xl font-extrabold mb-12 uppercase text-center">{t.landing.faq.title}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
             {([
               { q: t.landing.faq.q1, a: t.landing.faq.a1 },
               { q: t.landing.faq.q2, a: t.landing.faq.a2 },
@@ -493,52 +341,41 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             ]).map((item, i) => (
               <div
                 key={i}
-                className={`p-8 ${i % 2 === 0 ? 'border-r-0 md:border-r-2' : ''} ${i < 4 ? 'border-b-2' : i < 5 && i % 2 === 0 ? 'border-b-2 md:border-b-0' : ''} border-black`}
+                className="border-2 border-border-light dark:border-border-dark p-6 hover:border-primary transition-colors cursor-pointer group"
               >
-                <h4 className="font-bold text-sm uppercase tracking-wide mb-4 flex items-start gap-3">
-                  <span className="w-6 h-6 bg-primary text-white flex items-center justify-center font-mono text-xs shrink-0 mt-0.5">Q</span>
-                  {item.q}
-                </h4>
-                <p className="text-base text-slate-600 leading-relaxed pl-9">{item.a}</p>
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="font-display font-bold uppercase text-sm pr-4">{item.q}</h4>
+                  <span className="material-symbols-outlined text-primary shrink-0">add</span>
+                </div>
+                <p className="text-sm opacity-60">{item.a}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ─── 10. CTA Section ─── */}
-      <section className="bg-black text-white p-20 text-center relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10 pointer-events-none select-none">
-          <div className="absolute top-0 left-0 p-8 font-display font-bold text-9xl">GOVERN</div>
-          <div className="absolute bottom-0 right-0 p-8 font-display font-bold text-9xl">PROTECT</div>
-        </div>
-        <div className="relative z-10 max-w-3xl mx-auto space-y-12">
-          <h2 className="font-display text-5xl md:text-6xl font-bold uppercase tracking-tighter leading-none">
+      {/* ─── 9. CTA ─── */}
+      <section className="py-24 bg-primary text-white border-y-2 border-black">
+        <div className="container mx-auto px-6 text-center">
+          <h2 className="font-display text-5xl md:text-7xl font-black mb-8 uppercase leading-tight">
             {t.landing.cta.title}
           </h2>
-          <div className="flex items-center justify-center gap-4 font-mono text-xs font-bold uppercase tracking-widest text-slate-400">
-            <span>{t.landing.cta.step1}</span>
-            <span className="material-symbols-outlined text-primary text-sm">arrow_forward</span>
-            <span>{t.landing.cta.step2}</span>
-            <span className="material-symbols-outlined text-primary text-sm">arrow_forward</span>
-            <span>{t.landing.cta.step3}</span>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-6 justify-center">
+          <div className="flex flex-wrap justify-center gap-6">
             <button
-              className="bg-primary text-white px-12 py-6 border-2 border-white font-bold text-lg hover:bg-blue-700 transition-all uppercase tracking-[0.2em]"
+              className="bg-black text-white font-display text-xl font-extrabold px-12 py-6 border-2 border-white hover:bg-white hover:text-black transition-all uppercase"
               onClick={() => setCurrentPage('proposals')}
             >
               {t.landing.cta.button}
             </button>
             <a
               href="mailto:monica@tokamak.network"
-              className="bg-transparent text-white px-12 py-6 border-2 border-white font-bold text-lg hover:bg-white hover:text-black transition-all uppercase tracking-[0.2em]"
+              className="bg-transparent text-white font-display text-xl font-extrabold px-12 py-6 border-2 border-white hover:bg-white hover:text-black transition-all uppercase"
             >
               {t.landing.contactSales}
             </a>
           </div>
         </div>
       </section>
-    </div>
+    </main>
   )
 }

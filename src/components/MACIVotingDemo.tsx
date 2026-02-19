@@ -33,9 +33,39 @@ import { KeyManager } from './voting/KeyManager'
 import { ResultsDisplay } from './voting/ResultsDisplay'
 import { PollTimer } from './voting/PollTimer'
 import { useTranslation } from '../i18n'
-import { preloadCrypto } from '../crypto/preload'
+import { preloadCrypto, CryptoModules } from '../crypto/preload'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
+
+const MACI_KEY_MESSAGE = 'SIGIL Voting Key v1'
+
+/**
+ * Derive MACI private key deterministically from wallet signature.
+ * Same wallet + same message = same key, every time.
+ * Falls back to localStorage cache to avoid repeated MetaMask popups.
+ */
+async function deriveKeyFromWallet(address: string, cm: CryptoModules): Promise<bigint> {
+  // Try cache first
+  const cached = await cm.loadEncrypted(`maci-sk-${address}`, address)
+  if (cached) return BigInt(cached)
+
+  // Request wallet signature (MetaMask popup)
+  const provider = (window as any).ethereum
+  if (!provider) throw new Error('No wallet provider')
+  const sig: string = await provider.request({
+    method: 'personal_sign',
+    params: [
+      `0x${Array.from(new TextEncoder().encode(MACI_KEY_MESSAGE)).map(b => b.toString(16).padStart(2, '0')).join('')}`,
+      address,
+    ],
+  })
+  const sigBytes = new Uint8Array(sig.slice(2).match(/.{2}/g)!.map(h => parseInt(h, 16)))
+  const sk = cm.derivePrivateKeyFromSignature(sigBytes)
+
+  // Cache for future use
+  await cm.storeEncrypted(`maci-sk-${address}`, sk.toString(), address)
+  return sk
+}
 
 interface VoteSubmittedData {
   pollId: number
@@ -72,6 +102,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   const [pollDescription, setPollDescription] = useState<string | null>(null)
   const [isPollExpired, setIsPollExpired] = useState(false)
   const [showReVoteForm, setShowReVoteForm] = useState(false)
+  const [votingEndTime, setVotingEndTime] = useState<number | null>(null)
 
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
   const hasPoll = pollAddress !== null
@@ -296,6 +327,12 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
           }).catch(() => null),
         ])
 
+        // Store votingEndTime for timer components
+        if (deployTimeAndDuration) {
+          const [deployTime, duration] = deployTimeAndDuration as [bigint, bigint]
+          setVotingEndTime(Number(deployTime) + Number(duration))
+        }
+
         if (isOpen) {
           setPhase(V2Phase.Voting)
           setPhaseLoaded(true)
@@ -362,7 +399,9 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
 
     try {
       const cm = await preloadCrypto()
-      const sk = cm.generateRandomPrivateKey()
+      // Derive MACI key deterministically from wallet signature
+      // This ensures the same wallet always produces the same voting key
+      const sk = await deriveKeyFromWallet(address, cm)
       const pk = await cm.eddsaDerivePublicKey(sk)
 
       const hash = await writeContract({
@@ -379,6 +418,8 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         try {
           const receipt = await publicClient.waitForTransactionReceipt({ hash })
           for (const log of receipt.logs) {
+            // Only parse logs from MACI contract (not other contracts' events)
+            if (log.address.toLowerCase() !== MACI_V2_ADDRESS.toLowerCase()) continue
             if (log.topics.length >= 2 && log.topics[0]) {
               const stateIndex = parseInt(log.topics[1] as string, 16)
               if (!isNaN(stateIndex) && stateIndex > 0) {
@@ -966,12 +1007,12 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
           <div className="max-w-3xl">
             {phase === V2Phase.Merging && pollAddress && (
               <div className="technical-card-heavy bg-white p-8">
-                <MergingStatus pollAddress={pollAddress} />
+                <MergingStatus pollAddress={pollAddress} votingEndTime={votingEndTime ?? undefined} />
               </div>
             )}
             {phase === V2Phase.Processing && (
               <div className="technical-card-heavy bg-white p-8">
-                <ProcessingStatus messageProcessorAddress={messageProcessorAddress || undefined} tallyAddress={tallyAddress || undefined} />
+                <ProcessingStatus messageProcessorAddress={messageProcessorAddress || undefined} tallyAddress={tallyAddress || undefined} votingEndTime={votingEndTime ?? undefined} />
               </div>
             )}
             {phase === V2Phase.Finalized && tallyAddress && tallyAddress !== ZERO_ADDRESS ? (

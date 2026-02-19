@@ -24,6 +24,7 @@ function formatElapsed(ms: number): string {
 interface ProcessingStatusProps {
   messageProcessorAddress?: `0x${string}`;
   tallyAddress?: `0x${string}`;
+  votingEndTime?: number; // Unix seconds — when voting ended
 }
 
 type StepStatus = 'complete' | 'active' | 'pending';
@@ -103,18 +104,20 @@ function TimerBlock({ elapsed, estimateMs, t }: { elapsed: number; estimateMs: n
 export function ProcessingStatus({
   messageProcessorAddress,
   tallyAddress,
+  votingEndTime,
 }: ProcessingStatusProps) {
   const mpAddress = messageProcessorAddress || MESSAGE_PROCESSOR_ADDRESS;
   const tAddress = tallyAddress || TALLY_V2_ADDRESS;
   const { t } = useTranslation();
 
-  const [startTime] = useState(() => Date.now());
-  const [elapsed, setElapsed] = useState(0);
+  // Use on-chain votingEndTime as base (survives page refresh), fallback to mount time
+  const [baseTime] = useState(() => votingEndTime ? votingEndTime * 1000 : Date.now());
+  const [elapsed, setElapsed] = useState(() => Date.now() - baseTime);
 
   useEffect(() => {
-    const interval = setInterval(() => setElapsed(Date.now() - startTime), 1000);
+    const interval = setInterval(() => setElapsed(Date.now() - baseTime), 1000);
     return () => clearInterval(interval);
-  }, [startTime]);
+  }, [baseTime]);
 
   const isStuck = elapsed > STUCK_THRESHOLD_MS;
   const hasValidAddresses = mpAddress !== ZERO_ADDRESS && tAddress !== ZERO_ADDRESS;

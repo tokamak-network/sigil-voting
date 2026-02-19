@@ -522,19 +522,7 @@ export function VoteFormV2({
   );
 }
 
-// Nonce management (localStorage)
-function getNonce(address: string, pollId: number): number {
-  const key = `maci-nonce-${address}-${pollId}`;
-  return parseInt(localStorage.getItem(key) || '1', 10);
-}
-
-function incrementNonce(address: string, pollId: number): void {
-  const key = `maci-nonce-${address}-${pollId}`;
-  const current = getNonce(address, pollId);
-  localStorage.setItem(key, String(current + 1));
-}
-
-// Vote history read is in voteUtils.ts (shared with MACIVotingDemo)
+// Vote history read + nonce management is in voteUtils.ts (shared with KeyManager)
 
 function saveLastVote(address: string, pollId: number, choice: number, weight: number, cost: number): void {
   const key = `maci-lastVote-${address}-${pollId}`;
@@ -549,9 +537,11 @@ function getCreditsSpent(address: string, pollId: number): number {
 
 function setCreditsSpent(address: string, pollId: number, cost: number): void {
   const key = `maci-creditsSpent-${address}-${pollId}`;
-  // Replace (not accumulate): in MACI, re-votes override previous votes,
-  // so only the latest vote's cost counts as spent credits.
-  localStorage.setItem(key, String(cost));
+  // Accumulate credits spent: in MACI first-vote-wins, re-votes are always
+  // invalid (nonce won't match), so every submission costs credits but only
+  // the first vote actually counts. This accurately tracks total spent.
+  const prev = parseInt(localStorage.getItem(key) || '0', 10);
+  localStorage.setItem(key, String(prev + cost));
 }
 
 function getStateIndex(address: string, _pollId: number): number {
@@ -610,15 +600,24 @@ async function getOrCreateMaciKeypair(
     return { sk, pubKey };
   }
 
-  const encoder = new TextEncoder();
-  const seedData = encoder.encode(`maci-keypair-${address}-${pollId}`);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', seedData);
-  const seed = new Uint8Array(hashBuffer);
-  const sk = derivePrivateKey(seed);
+  // Fallback: derive from wallet signature (deterministic, recoverable)
+  const MACI_KEY_MESSAGE = 'SIGIL Voting Key v1';
+  const provider = (window as any).ethereum;
+  if (!provider) throw new Error('No wallet provider');
+  const sig: string = await provider.request({
+    method: 'personal_sign',
+    params: [
+      `0x${Array.from(new TextEncoder().encode(MACI_KEY_MESSAGE)).map(b => b.toString(16).padStart(2, '0')).join('')}`,
+      address,
+    ],
+  });
+  const sigBytes = new Uint8Array(sig.slice(2).match(/.{2}/g)!.map(h => parseInt(h, 16)));
+  const sk = derivePrivateKey(sigBytes);
   const pubKey = await eddsaDerivePublicKey(sk);
 
-  await storeEncrypted(pollSkKey, sk.toString(), address);
-  localStorage.setItem(pollPkKey, JSON.stringify([pubKey[0].toString(), pubKey[1].toString()]));
+  // Cache globally (not per-poll, since wallet signature is always the same)
+  await storeEncrypted(globalSkKey, sk.toString(), address);
+  localStorage.setItem(globalPkKey, JSON.stringify([pubKey[0].toString(), pubKey[1].toString()]));
   return { sk, pubKey };
 }
 

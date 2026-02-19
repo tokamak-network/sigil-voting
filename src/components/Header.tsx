@@ -72,12 +72,10 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
   const handleResetTestData = () => {
     if (!address) return
     if (!confirm(t.header.resetConfirm)) return
-    // Clear registration/voting data but keep poll titles & descriptions
     const keysToRemove: string[] = []
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
       if (!key) continue
-      // Keep poll metadata (titles, descriptions)
       if (key.startsWith('maci-poll-title-') || key.startsWith('maci-poll-desc-')) continue
       if (key.includes('maci-') || key === 'maci-polls-cache') {
         keysToRemove.push(key)
@@ -89,23 +87,31 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
   }
 
   return (
-    <nav className="sticky top-0 z-50 px-6 py-4 bg-white border-b-2 border-black">
-      <div className="w-full flex items-center justify-between">
-        {/* Left: Logo + Nav */}
-        <div className="flex items-center gap-3">
-          <button onClick={() => setCurrentPage('landing')} className="flex items-center gap-3">
-            <img src="/assets/symbol.svg" alt="SIGIL" className="w-10 h-10" />
-            <span className="font-display font-bold text-2xl tracking-tighter uppercase">SIGIL</span>
-          </button>
-          <button
-            onClick={() => setCurrentPage('technology')}
-            className={`ml-4 text-sm font-bold uppercase tracking-wider transition-colors ${
-              currentPage === 'technology' ? 'text-primary' : 'text-slate-500 hover:text-black'
-            }`}
-          >
-            {t.technology.nav}
+    <header className="sticky top-0 z-50 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b-2 border-border-light dark:border-border-dark">
+      <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+        {/* Left: Brand */}
+        <div className="flex items-center gap-2">
+          <button onClick={() => setCurrentPage('landing')} className="flex items-center gap-2">
+            <img src="/assets/symbol.svg" alt="SIGIL" className="w-8 h-8" />
+            <span className="font-display font-extrabold text-xl tracking-tighter uppercase">SIGIL</span>
           </button>
         </div>
+
+        {/* Center: Anchor nav (landing/technology pages) */}
+        {isLandingOrTech && (
+          <nav className="hidden md:flex items-center gap-8 font-display text-sm font-bold">
+            <a href="#features" className="hover:text-primary transition-colors">FEATURES</a>
+            <a href="#comparison" className="hover:text-primary transition-colors">PROTOCOL</a>
+            <a href="#sdk" className="hover:text-primary transition-colors">SDK</a>
+            <a href="#faq" className="hover:text-primary transition-colors">DOCS</a>
+            <button
+              onClick={() => setCurrentPage('technology')}
+              className={`hover:text-primary transition-colors ${currentPage === 'technology' ? 'text-primary' : ''}`}
+            >
+              {t.technology.nav.toUpperCase()}
+            </button>
+          </nav>
+        )}
 
         {/* Right: Controls */}
         <div className="flex items-center gap-4">
@@ -113,10 +119,10 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
 
           {/* Balance + New Proposal (connected, in app pages) */}
           {isConnected && isCorrectChain && !isLandingOrTech && (
-            <div className="hidden lg:flex items-center border-2 border-black bg-white p-2 gap-4">
+            <div className="hidden lg:flex items-center border-2 border-border-light dark:border-border-dark bg-white p-2 gap-4">
               <div className="flex flex-col">
                 <span className="text-xs font-bold text-slate-500 uppercase leading-none">{t.header.balance}</span>
-                <span className="text-sm font-mono font-bold">{voiceCredits.toLocaleString()} {t.voteForm.credits}</span>
+                <span className="text-sm font-display font-bold">{voiceCredits.toLocaleString()} {t.voteForm.credits}</span>
               </div>
               {showNewProposal && (
                 <>
@@ -137,7 +143,7 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
           {isConnected && isCorrectChain && !isLandingOrTech && (
             <button
               onClick={handleResetTestData}
-              className="hidden md:flex items-center gap-1 px-3 py-2 text-xs font-bold text-slate-400 hover:text-red-500 border border-slate-200 hover:border-red-300 transition-colors"
+              className="hidden md:flex items-center gap-1 px-3 py-2 text-xs font-bold text-slate-400 hover:text-red-500 border-2 border-border-light dark:border-border-dark hover:border-red-300 transition-colors"
               title={t.header.resetData}
             >
               <span className="material-symbols-outlined text-sm">delete_sweep</span>
@@ -160,7 +166,7 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
           {isConnected && isCorrectChain && (
             <button
               onClick={() => disconnect()}
-              className="flex items-center border-2 border-black hover:border-red-500 transition-colors group"
+              className="flex items-center border-2 border-border-light dark:border-border-dark hover:border-red-500 transition-colors group"
               title={t.header.disconnect}
             >
               <div className="px-3 py-1 bg-black text-white text-xs font-bold group-hover:bg-red-500 transition-colors">{shortenAddress(address!)}</div>
@@ -170,10 +176,10 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
           {/* Launch App (landing / technology pages) */}
           {isLandingOrTech && (
             <button
-              className="bg-primary text-white px-6 py-2 border-2 border-black font-bold text-xs uppercase tracking-widest hover:translate-x-[2px] hover:translate-y-[2px] transition-transform"
+              className="bg-primary text-white font-display font-bold px-4 py-2 hover:translate-x-1 hover:-translate-y-1 transition-transform border-2 border-black"
               onClick={() => setCurrentPage('proposals')}
             >
-              {t.landing.enterApp}
+              {t.landing.enterApp.toUpperCase()}
             </button>
           )}
 
@@ -182,13 +188,13 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
             <button
               onClick={handleConnect}
               disabled={isConnecting}
-              className="bg-primary text-white px-6 py-2 border-2 border-black font-bold text-xs uppercase tracking-widest hover:translate-x-[2px] hover:translate-y-[2px] transition-transform"
+              className="bg-primary text-white font-display font-bold px-4 py-2 hover:translate-x-1 hover:-translate-y-1 transition-transform border-2 border-black"
             >
-              {isConnecting ? t.header.connecting : t.header.connect}
+              {isConnecting ? t.header.connecting : t.header.connect.toUpperCase()}
             </button>
           )}
         </div>
       </div>
-    </nav>
+    </header>
   )
 }

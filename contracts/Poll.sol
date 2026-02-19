@@ -78,28 +78,47 @@ contract Poll is DomainObjs {
     // ============ AccQueue Merge (post-voting) ============
 
     /// @notice Merge State AccQueue subtree roots
+    /// @dev Uses try/catch because State AccQueue is shared across all polls.
+    ///      If a previous poll already merged it, we skip gracefully.
     function mergeMaciStateAqSubRoots(uint256 _numSrQueueOps) external {
         if (block.timestamp <= deployTime + duration) revert VotingNotEnded();
-        AccQueue(stateAqAddr).mergeSubRoots(_numSrQueueOps);
+        AccQueue aq = AccQueue(stateAqAddr);
+        if (!aq.subRootsMerged()) {
+            aq.mergeSubRoots(_numSrQueueOps);
+        }
     }
 
     /// @notice Finalize State AccQueue main root
+    /// @dev Skips if already merged by a previous poll. Always sets stateAqMerged.
     function mergeMaciStateAq() external {
         if (block.timestamp <= deployTime + duration) revert VotingNotEnded();
-        AccQueue(stateAqAddr).merge();
+        AccQueue aq = AccQueue(stateAqAddr);
+        if (!aq.merged()) {
+            if (!aq.subRootsMerged()) {
+                aq.mergeSubRoots(0);
+            }
+            aq.merge();
+        }
         stateAqMerged = true;
     }
 
     /// @notice Merge Message AccQueue subtree roots
     function mergeMessageAqSubRoots(uint256 _numSrQueueOps) external {
         if (block.timestamp <= deployTime + duration) revert VotingNotEnded();
-        messageAq.mergeSubRoots(_numSrQueueOps);
+        if (!messageAq.subRootsMerged()) {
+            messageAq.mergeSubRoots(_numSrQueueOps);
+        }
     }
 
     /// @notice Finalize Message AccQueue main root
     function mergeMessageAq() external {
         if (block.timestamp <= deployTime + duration) revert VotingNotEnded();
-        messageAq.merge();
+        if (!messageAq.merged()) {
+            if (!messageAq.subRootsMerged()) {
+                messageAq.mergeSubRoots(0);
+            }
+            messageAq.merge();
+        }
         messageAqMerged = true;
     }
 

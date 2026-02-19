@@ -11,47 +11,29 @@ import "../contracts/AccQueue.sol";
 import "../contracts/MACI.sol";
 
 contract DeployMACIScript is Script {
-    // Already deployed on Sepolia (reuse)
+    // Already deployed on Sepolia (reuse across versions)
     address constant GATEKEEPER = 0x4c18984A78910Dd1976d6DFd820f6d18e7edD672;
-
-    // TON Token on Sepolia (voice credits = token balance)
-    address constant TON_TOKEN = 0xa30fe40285B8f5c0457DbC3B7C8A280373c40044;
+    address constant VOICE_CREDIT_PROXY = 0x03669FF296a2B2CCF851bE98dbEa4BB2633ecF00;
+    address constant MSG_PROCESSOR_VERIFIER = 0x47221B605bF18E92296850191A0c899fe03A27dB;
+    address constant TALLY_VERIFIER = 0xa48c2bD789EAd236fFEE36dEad220DFFE3feccF1;
+    address constant VK_REGISTRY = 0xC8f6e6AB628CC73aDa2c01054C4772ACA222852C;
 
     function run() external {
         vm.startBroadcast();
 
-        // 1. Deploy ERC20 voice credit proxy (credits = TON balance)
-        ERC20VoiceCreditProxy voiceCreditProxy = new ERC20VoiceCreditProxy(TON_TOKEN);
-        console.log("ERC20VoiceCreditProxy:", address(voiceCreditProxy));
-
-        // 2. Deploy real Groth16 verifiers
-        Groth16VerifierMsgProcessor msgProcessorVerifier = new Groth16VerifierMsgProcessor();
-        console.log("MsgProcessorVerifier:", address(msgProcessorVerifier));
-
-        Groth16VerifierTally tallyVerifier = new Groth16VerifierTally();
-        console.log("TallyVerifier:", address(tallyVerifier));
-
-        // 3. VkRegistry
-        VkRegistry vkRegistry = new VkRegistry();
-        console.log("VkRegistry:", address(vkRegistry));
-
-        // 4. AccQueue (deployed separately to avoid block gas limit)
+        // Fresh AccQueue (previous one is already-merged, can't be reused)
         AccQueue stateAq = new AccQueue(5, 2);
         console.log("AccQueue:", address(stateAq));
 
-        // 5. MACI (stateTreeDepth = 2 for dev circuits)
-        MACI maci = new MACI(GATEKEEPER, address(voiceCreditProxy), 2, address(stateAq));
+        // Fresh MACI with fixed Poll.sol (handles already-merged AccQueue)
+        MACI maci = new MACI(GATEKEEPER, VOICE_CREDIT_PROXY, 2, address(stateAq));
         console.log("MACI:", address(maci));
 
         vm.stopBroadcast();
 
-        console.log("\n=== MACI V2 Deployment Complete (ERC20 Voice Credits) ===");
-        console.log("  token:", TON_TOKEN);
-        console.log("  gatekeeper:", GATEKEEPER);
-        console.log("  voiceCreditProxy:", address(voiceCreditProxy));
-        console.log("  msgProcessorVerifier:", address(msgProcessorVerifier));
-        console.log("  tallyVerifier:", address(tallyVerifier));
-        console.log("  vkRegistry:", address(vkRegistry));
+        console.log("\n=== MACI V5 Deployment (Fixed Poll.sol) ===");
         console.log("  maci:", address(maci));
+        console.log("  stateAq:", address(stateAq));
+        console.log("  Reused: gatekeeper, voiceCreditProxy, verifiers, vkRegistry");
     }
 }
