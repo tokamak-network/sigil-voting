@@ -3,10 +3,10 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/tokamak-network/zk-dex-d1-private-voting/actions/workflows/test.yml"><img alt="CI" src="https://github.com/tokamak-network/zk-dex-d1-private-voting/actions/workflows/test.yml/badge.svg" /></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" /></a>
   <img alt="Solidity" src="https://img.shields.io/badge/Solidity-0.8.24-363636?style=flat-square&logo=solidity" />
   <img alt="Circom" src="https://img.shields.io/badge/Circom-2.1.6-orange?style=flat-square" />
-  <img alt="Network" src="https://img.shields.io/badge/Sepolia-testnet-purple?style=flat-square" />
 </p>
 
 SIGIL is an on-chain voting protocol with permanent vote privacy, quadratic voting, and anti-collusion (MACI Key Change). Built on [PSE MACI](https://maci.pse.dev) with Groth16 on-chain verification.
