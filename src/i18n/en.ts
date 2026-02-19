@@ -394,7 +394,7 @@ export const en: Translations = {
     filterEnded: 'Ended',
     daoGovernance: 'DAO Governance',
     subtitle: 'Participate in ZK-proof based anonymous voting.',
-    participants: 'Participants',
+    participants: 'Vote Messages',
     calculating: 'Calculating...',
     result: 'Result',
     statusVoting: 'Voting',
