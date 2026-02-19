@@ -18,13 +18,15 @@ interface CreatePollFormProps {
   onSelectPoll?: (pollId: number) => void
 }
 
-type DurationPreset = '3d' | '7d' | '14d' | 'custom'
+type DurationPreset = '1m' | '5m' | '1h' | '3d' | '7d' | 'custom'
 
-const DURATION_PRESETS: { key: DurationPreset; labelKey: 'preset3d' | 'preset7d' | 'preset14d' | 'presetCustom'; hours: number }[] = [
-  { key: '3d', labelKey: 'preset3d', hours: 72 },
-  { key: '7d', labelKey: 'preset7d', hours: 168 },
-  { key: '14d', labelKey: 'preset14d', hours: 336 },
-  { key: 'custom', labelKey: 'presetCustom', hours: 0 },
+const DURATION_PRESETS: { key: DurationPreset; label: string; minutes: number }[] = [
+  { key: '1m', label: '1min', minutes: 1 },
+  { key: '5m', label: '5min', minutes: 5 },
+  { key: '1h', label: '1h', minutes: 60 },
+  { key: '3d', label: '3d', minutes: 72 * 60 },
+  { key: '7d', label: '7d', minutes: 168 * 60 },
+  { key: 'custom', label: '', minutes: 0 },
 ]
 
 export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormProps) {
@@ -34,8 +36,8 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [durationHours, setDurationHours] = useState(168)
-  const [durationPreset, setDurationPreset] = useState<DurationPreset>('7d')
+  const [durationMinutes, setDurationMinutes] = useState(1)
+  const [durationPreset, setDurationPreset] = useState<DurationPreset>('1m')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [txStage, setTxStage] = useState<'idle' | 'submitting' | 'confirming' | 'waiting'>('idle')
@@ -69,7 +71,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
     setTxStage('submitting')
 
     try {
-      const durationSeconds = BigInt(durationHours * 3600)
+      const durationSeconds = BigInt(durationMinutes * 60)
 
       setTxStage('confirming')
       const hash = await writeContract({
@@ -168,7 +170,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
       setIsSubmitting(false)
       setTxStage('idle')
     }
-  }, [address, title, description, durationHours, canCreate, publicClient, onPollCreated, t])
+  }, [address, title, description, durationMinutes, canCreate, publicClient, onPollCreated, t])
 
   const titleLen = title.trim().length
   const descLen = description.length
@@ -178,18 +180,23 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
   const handlePresetSelect = useCallback((preset: DurationPreset) => {
     setDurationPreset(preset)
     const found = DURATION_PRESETS.find((p) => p.key === preset)
-    if (found && found.hours > 0) {
-      setDurationHours(found.hours)
+    if (found && found.minutes > 0) {
+      setDurationMinutes(found.minutes)
     }
   }, [])
 
   const formattedDuration = useMemo(() => {
-    if (durationHours < 24) return `${durationHours} hours`
-    const days = Math.floor(durationHours / 24)
-    const remainingHours = durationHours % 24
-    if (remainingHours === 0) return `${days} day${days > 1 ? 's' : ''}`
-    return `${days}d ${remainingHours}h`
-  }, [durationHours])
+    if (durationMinutes < 60) return `${durationMinutes}min`
+    if (durationMinutes < 1440) {
+      const h = Math.floor(durationMinutes / 60)
+      const m = durationMinutes % 60
+      return m === 0 ? `${h}h` : `${h}h ${m}m`
+    }
+    const days = Math.floor(durationMinutes / 1440)
+    const remainingH = Math.floor((durationMinutes % 1440) / 60)
+    if (remainingH === 0) return `${days} day${days > 1 ? 's' : ''}`
+    return `${days}d ${remainingH}h`
+  }, [durationMinutes])
 
   // Transaction progress modal
   if (txStage !== 'idle') {
@@ -354,7 +361,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
           <label className="block font-display font-black text-sm uppercase tracking-widest mb-3">
             {t.createPoll.durationLabel}
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
             {DURATION_PRESETS.map((preset) => (
               <button
                 key={preset.key}
@@ -370,10 +377,10 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
                 {preset.key === 'custom' ? (
                   <span className="flex items-center justify-center gap-1">
                     <span className="material-symbols-outlined text-sm">calendar_today</span>
-                    {t.createPoll[preset.labelKey]}
+                    {t.createPoll.presetCustom}
                   </span>
                 ) : (
-                  t.createPoll[preset.labelKey]
+                  preset.label
                 )}
               </button>
             ))}
@@ -383,12 +390,12 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
               <input
                 type="number"
                 min={1}
-                max={720}
-                value={durationHours}
-                onChange={(e) => setDurationHours(Math.max(1, Math.min(720, Number(e.target.value))))}
+                max={43200}
+                value={durationMinutes}
+                onChange={(e) => setDurationMinutes(Math.max(1, Math.min(43200, Number(e.target.value))))}
                 disabled={isSubmitting}
                 className="technical-input w-full h-12 px-4 font-mono text-lg"
-                placeholder={t.createPoll.hoursUnit}
+                placeholder="Minutes"
               />
               <p className="text-xs font-mono text-slate-400 mt-1">{t.createPoll.durationHint}</p>
             </div>
