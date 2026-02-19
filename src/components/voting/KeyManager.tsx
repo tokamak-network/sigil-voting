@@ -62,7 +62,7 @@ export function KeyManager({
   }, [address, pollId, isRegistered]);
 
   const handleKeyChange = useCallback(async () => {
-    if (!address) return;
+    if (!address || !pollAddress) return;
     setIsChanging(true);
     setError(null);
     setSuccess(false);
@@ -161,7 +161,7 @@ export function KeyManager({
       // Submit key change message
       if (!address) throw new Error('Wallet not connected');
       await writeContract({
-        address: pollAddress || POLL_V2_ADDRESS,
+        address: pollAddress!,
         abi: POLL_ABI,
         functionName: 'publishMessage',
         args: [

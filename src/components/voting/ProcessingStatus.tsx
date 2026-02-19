@@ -106,8 +106,8 @@ export function ProcessingStatus({
   tallyAddress,
   votingEndTime,
 }: ProcessingStatusProps) {
-  const mpAddress = messageProcessorAddress || MESSAGE_PROCESSOR_ADDRESS;
-  const tAddress = tallyAddress || TALLY_V2_ADDRESS;
+  const mpAddress = messageProcessorAddress;
+  const tAddress = tallyAddress;
   const { t } = useTranslation();
 
   // Use on-chain votingEndTime as base (survives page refresh), fallback to mount time
@@ -120,18 +120,18 @@ export function ProcessingStatus({
   }, [baseTime]);
 
   const isStuck = elapsed > STUCK_THRESHOLD_MS;
-  const hasValidAddresses = mpAddress !== ZERO_ADDRESS && tAddress !== ZERO_ADDRESS;
+  const hasValidAddresses = !!mpAddress && !!tAddress && mpAddress !== ZERO_ADDRESS && tAddress !== ZERO_ADDRESS;
   const estimateMs = 4 * 60 * 1000;
 
   const { data: processingComplete } = useReadContract({
-    address: mpAddress,
+    address: mpAddress!,
     abi: MESSAGE_PROCESSOR_ABI,
     functionName: 'processingComplete',
     query: { enabled: hasValidAddresses, refetchInterval: 10000 },
   });
 
   const { data: tallyVerified } = useReadContract({
-    address: tAddress,
+    address: tAddress!,
     abi: TALLY_ABI,
     functionName: 'tallyVerified',
     query: { enabled: hasValidAddresses, refetchInterval: 10000 },

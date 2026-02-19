@@ -96,6 +96,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     }
 
     const loadPolls = async () => {
+      setLoading(true)
       // Pre-fetch DeployPoll events to get tally addresses
       const tallyMap = new Map<number, `0x${string}`>()
       try {
@@ -192,7 +193,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     loadPolls()
   }, [nextPollId, publicClient, address, refreshKey])
 
-  const FAIL_THRESHOLD_S = 30 * 60 // 30 minutes after voting ends
+  const FAIL_THRESHOLD_S = 2 * 60 * 60 // 2 hours after voting ends (matches MACIVotingDemo)
 
   const getStatus = (poll: PollInfo): 'active' | 'ended' | 'finalized' | 'failed' => {
     if (poll.isOpen) return 'active'

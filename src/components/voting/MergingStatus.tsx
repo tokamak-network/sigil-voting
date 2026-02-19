@@ -27,8 +27,8 @@ function formatElapsed(ms: number): string {
 }
 
 export function MergingStatus({ pollAddress, votingEndTime }: MergingStatusProps) {
-  const address = pollAddress || POLL_V2_ADDRESS;
-  const hasValidAddress = address !== ZERO_ADDRESS;
+  const address = pollAddress;
+  const hasValidAddress = !!address && address !== ZERO_ADDRESS;
   const { t } = useTranslation();
 
   // Use on-chain votingEndTime as base (survives page refresh), fallback to mount time
@@ -43,14 +43,14 @@ export function MergingStatus({ pollAddress, votingEndTime }: MergingStatusProps
   const isStuck = elapsed > STUCK_THRESHOLD_MS;
 
   const { data: stateAqMerged, isPending: stateLoading } = useReadContract({
-    address,
+    address: address!,
     abi: POLL_ABI,
     functionName: 'stateAqMerged',
     query: { enabled: hasValidAddress, refetchInterval: 10000 },
   });
 
   const { data: messageAqMerged, isPending: msgLoading } = useReadContract({
-    address,
+    address: address!,
     abi: POLL_ABI,
     functionName: 'messageAqMerged',
     query: { enabled: hasValidAddress, refetchInterval: 10000 },

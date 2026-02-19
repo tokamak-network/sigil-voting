@@ -98,7 +98,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   const [messageProcessorAddress, setMessageProcessorAddress] = useState<`0x${string}` | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
-  const [, setIsSigningUp] = useState(false)
+  const [isSigningUp, setIsSigningUp] = useState(false)
   const [isLoadingPoll, setIsLoadingPoll] = useState(true)
   const [pollTitle, setPollTitle] = useState<string | null>(null)
   const [pollDescription, setPollDescription] = useState<string | null>(null)
@@ -107,6 +107,25 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   const [votingEndTime, setVotingEndTime] = useState<number | null>(null)
   const [voteJustSubmitted, setVoteJustSubmitted] = useState(false)
   const [submittedVoteData, setSubmittedVoteData] = useState<{ choice: number; weight: number; cost: number; txHash: string } | null>(null)
+
+  // Reset transient state when switching between proposals
+  useEffect(() => {
+    setPhase(V2Phase.Voting)
+    setPhaseLoaded(false)
+    setError(null)
+    setTxHash(null)
+    setIsPollExpired(false)
+    setShowReVoteForm(false)
+    setVoteJustSubmitted(false)
+    setSubmittedVoteData(null)
+    setPollAddress(null)
+    setTallyAddress(null)
+    setMessageProcessorAddress(null)
+    setPollTitle(null)
+    setPollDescription(null)
+    setVotingEndTime(null)
+    setIsLoadingPoll(true)
+  }, [propPollId])
 
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
   const hasPoll = pollAddress !== null
@@ -226,7 +245,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
     args: address ? [address, '0x'] : undefined,
     query: { enabled: isConfigured && VOICE_CREDIT_PROXY_ADDRESS !== ZERO_ADDRESS && !!address, refetchInterval: 30000 },
   })
-  const voiceCredits = voiceCreditsRaw !== undefined ? Number(voiceCreditsRaw) : (isLoadingCredits ? 100 : 0)
+  const voiceCredits = voiceCreditsRaw !== undefined ? Number(voiceCreditsRaw) : 0
 
   // Read numMessages from Poll contract for stats
   const { data: numMessagesRaw } = useReadContract({
@@ -963,7 +982,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
             <div className="flex flex-col items-end shrink-0">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
               <span className={`px-6 py-3 bg-white border-4 border-black font-black text-xl italic uppercase tracking-tighter ${
-                phase === V2Phase.Failed ? 'text-amber-600' : 'text-amber-600'
+                phase === V2Phase.Failed ? 'text-red-600' : 'text-amber-600'
               }`}>
                 {phase === V2Phase.Merging && t.merging.title.toUpperCase()}
                 {phase === V2Phase.Processing && t.processing.title.toUpperCase()}
