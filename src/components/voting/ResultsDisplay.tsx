@@ -130,20 +130,6 @@ export function ResultsDisplay({ tallyAddress, pollAddress }: ResultsDisplayProp
           </div>
         </div>
 
-        {/* Final Tally Detailed */}
-        <div className="mt-12 pt-8 border-t-2 border-black">
-          <h3 className="text-sm font-bold uppercase tracking-widest mb-4">{t.completedResults.finalTally}</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 bg-slate-50 border border-slate-200">
-              <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{t.completedResults.uniqueAddresses}</span>
-              <span className="font-mono font-bold">{votersNum.toLocaleString()}</span>
-            </div>
-            <div className="p-4 bg-slate-50 border border-slate-200">
-              <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{t.completedResults.quadraticMagnitude}</span>
-              <span className="font-mono font-bold">{totalNum.toLocaleString()} {hasVotes ? t.results.creditsUnit : ''}</span>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* ZK Verification Bar */}

@@ -74,13 +74,13 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
 
   // Clock tick for timers
   useEffect(() => {
-    const interval = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 10000)
+    const interval = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
     return () => clearInterval(interval)
   }, [])
 
   // Refresh poll data every 30 seconds
   useEffect(() => {
-    const interval = setInterval(() => setRefreshKey(k => k + 1), 30000)
+    const interval = setInterval(() => setRefreshKey(k => k + 1), 15000)
     return () => clearInterval(interval)
   }, [])
 
@@ -195,10 +195,15 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
 
   const FAIL_THRESHOLD_S = 2 * 60 * 60 // 2 hours after voting ends (matches MACIVotingDemo)
 
-  const getStatus = (poll: PollInfo): 'active' | 'ended' | 'finalized' | 'failed' => {
-    if (poll.isOpen) return 'active'
-    if (poll.isFinalized) return 'finalized'
+  const getStatus = (poll: PollInfo): 'active' | 'ended' | 'finalized' | 'failed' | 'noVotes' => {
     const votingEndTime = poll.deployTime + poll.duration
+    const locallyExpired = now >= votingEndTime
+    // If contract says open but local timer says expired, treat as ended
+    if (poll.isOpen && !locallyExpired) return 'active'
+    if (poll.isFinalized) return 'finalized'
+    // 0 votes → show "no votes" immediately
+    if (!poll.isOpen && poll.numMessages === 0) return 'noVotes'
+    if (locallyExpired && poll.numMessages === 0) return 'noVotes'
     if (now - votingEndTime > FAIL_THRESHOLD_S) return 'failed'
     return 'ended'
   }
@@ -245,7 +250,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     const status = getStatus(poll)
     if (status === 'active') return 'voting'
     if (status === 'ended') return 'processing' // ended but not finalized = processing/revealing
-    return 'ended' // finalized or failed = ended
+    return 'ended' // finalized, failed, or noVotes = ended
   }
 
   // Compute counts for filter tabs
@@ -271,6 +276,9 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     const status = getStatus(poll)
     if (status === 'active') {
       return { label: t.proposals.statusVoting, className: 'bg-primary text-white' }
+    }
+    if (status === 'noVotes') {
+      return { label: t.noVotes.title, className: 'bg-slate-400 text-white' }
     }
     if (status === 'failed') {
       return { label: t.failed.title, className: 'bg-red-500 text-white' }
@@ -436,6 +444,12 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
                       <div>
                         <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
                         <span className="text-2xl font-display font-bold">{t.proposals.calculating}</span>
+                      </div>
+                    )}
+                    {status === 'noVotes' && (
+                      <div>
+                        <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
+                        <span className="text-2xl font-display font-bold text-slate-400">{t.noVotes.title}</span>
                       </div>
                     )}
                     {status === 'failed' && (
