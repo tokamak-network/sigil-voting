@@ -120,10 +120,10 @@ export function TallyingStatus({
             {/* Badges */}
             <div className="flex items-center gap-4 mb-4">
               <span className="bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest">
-                Proposal #{pollId + 1}
+                {t.proposalDetail.proposalPrefix} #{pollId + 1}
               </span>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">
-                TALLYING PHASE
+                {t.tallying.phase}
               </span>
             </div>
 
@@ -136,7 +136,7 @@ export function TallyingStatus({
             {pollDescription && (
               <div className="p-8 border-2 border-black bg-slate-50">
                 <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4">
-                  Proposal Context
+                  {t.tallying.proposalContext}
                 </h4>
                 <p className="text-lg font-medium leading-relaxed text-slate-700 italic">
                   {pollDescription}
@@ -151,14 +151,14 @@ export function TallyingStatus({
               <span className="material-symbols-outlined text-8xl">verified_user</span>
             </div>
             <h3 className="text-primary font-bold text-xs uppercase tracking-[0.3em] mb-4">
-              Privacy Assurance
+              {t.tallying.privacyAssurance}
             </h3>
             <p className="text-3xl font-display font-black uppercase italic leading-tight relative z-10">
-              {t.landing.features.privacy.title}. {t.landing.integration.trust4.split('—')[0] || t.landing.integration.trust4}
+              {t.tallying.privacyDesc}
             </p>
             <div className="mt-6 flex items-center gap-4">
               <div className="h-[2px] flex-1 bg-primary/30"></div>
-              <span className="text-[10px] font-mono text-primary font-bold">ZK-ENCRYPTED ENVIRONMENT</span>
+              <span className="text-[10px] font-mono text-primary font-bold">{t.tallying.zkEnvironment}</span>
             </div>
           </div>
         </div>
@@ -170,7 +170,7 @@ export function TallyingStatus({
             <div className="bg-white p-8 border-2 border-black" style={{ boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)' }}>
               <h3 className="text-xs font-bold uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
                 <span className="w-2 h-2 bg-primary"></span>
-                PROCESSING STATUS
+                {t.tallying.processingStatus}
               </h3>
               <div className="space-y-0 relative">
                 {/* Vertical line */}
@@ -182,7 +182,7 @@ export function TallyingStatus({
                     <span className="material-symbols-outlined text-white text-xl">check</span>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Step 01</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.tallying.step01}</p>
                     <p className="font-bold text-lg uppercase italic">{t.timer.ended}</p>
                   </div>
                 </div>
@@ -199,7 +199,7 @@ export function TallyingStatus({
                   {!isProcessed && <div className="absolute left-4 top-9 w-1 h-10 bg-primary"></div>}
                   <div>
                     <p className={`text-[10px] font-bold uppercase tracking-widest ${isProcessed ? 'text-slate-400' : 'text-primary'}`}>
-                      {isProcessed ? 'Step 02' : 'Current Phase'}
+                      {isProcessed ? t.tallying.step02 : t.tallying.currentPhase}
                     </p>
                     <p className={`font-bold text-lg uppercase italic ${isProcessed ? 'text-black' : 'text-primary'}`}>
                       {t.processing.step2}
@@ -217,7 +217,7 @@ export function TallyingStatus({
                     </span>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Final Step</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.tallying.finalStep}</p>
                     <p className={`font-bold text-lg uppercase italic ${isFinalized ? 'text-black' : 'text-slate-300'}`}>
                       {t.processing.step3}
                     </p>
@@ -229,13 +229,13 @@ export function TallyingStatus({
             {/* Countdown Timer */}
             <div className="bg-white p-8 border-2 border-black" style={{ boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)' }}>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
-                {isOverdue ? 'Processing...' : 'Estimated Remaining'}
+                {isOverdue ? t.tallying.processing : t.tallying.estimatedRemaining}
               </span>
               <div className="flex items-baseline gap-2">
                 <span className={`text-5xl font-mono font-bold leading-none ${isOverdue ? 'text-amber-500' : 'text-primary'}`}>
                   {isOverdue ? '—:——' : `${remainingMin.toString().padStart(2, '0')}:${remainingSec.toString().padStart(2, '0')}`}
                 </span>
-                <span className="text-xs font-bold text-slate-400">{isOverdue ? '' : 'remaining'}</span>
+                <span className="text-xs font-bold text-slate-400">{isOverdue ? '' : t.tallying.remaining}</span>
               </div>
             </div>
 
@@ -243,15 +243,15 @@ export function TallyingStatus({
             <div className="grid grid-cols-2 gap-4">
               <div className="p-6 border-2 border-black bg-slate-50">
                 <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
-                  My Vote Summary
+                  {t.tallying.myVoteSummary}
                 </span>
                 <div>
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">Choice</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">{t.tallying.choice}</span>
                     <span className="text-sm font-black italic text-primary">{choiceLabel}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">Spent</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">{t.tallying.spent}</span>
                     <span className="text-sm font-mono font-bold">{myVote ? myVote.cost.toFixed(2) : '—'}</span>
                   </div>
                 </div>
@@ -259,11 +259,11 @@ export function TallyingStatus({
 
               <div className="p-6 border-2 border-black bg-white">
                 <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
-                  Participation
+                  {t.tallying.participation}
                 </span>
                 <div className="flex flex-col">
                   <span className="text-3xl font-display font-black italic leading-none">{numSignUps}</span>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase mt-1">Total Users</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase mt-1">{t.tallying.totalUsers}</span>
                 </div>
               </div>
             </div>

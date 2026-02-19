@@ -63,7 +63,7 @@ export function VoteSubmitted({
         <div className="technical-border bg-white p-8 w-full relative overflow-hidden">
           {/* Receipt ID Badge */}
           <div className="absolute top-0 right-0 p-4 border-l-2 border-b-2 border-black bg-slate-50">
-            <span className="font-mono text-xs font-bold">RECEIPT #{pollId}-ZK</span>
+            <span className="font-mono text-xs font-bold">RECEIPT #{pollId + 1}-ZK</span>
           </div>
 
           {/* Proposal Title */}

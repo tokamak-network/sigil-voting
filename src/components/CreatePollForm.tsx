@@ -33,19 +33,22 @@ interface CreatePollFormProps {
 
 type DurationPreset = '1m' | '5m' | '1h' | '3d' | '7d' | 'custom'
 
-const DURATION_PRESETS: { key: DurationPreset; label: string; minutes: number }[] = [
-  { key: '1m', label: '1min', minutes: 1 },
-  { key: '5m', label: '5min', minutes: 5 },
-  { key: '1h', label: '1h', minutes: 60 },
-  { key: '3d', label: '3d', minutes: 72 * 60 },
-  { key: '7d', label: '7d', minutes: 168 * 60 },
-  { key: 'custom', label: '', minutes: 0 },
-]
+function getDurationPresets(t: ReturnType<typeof useTranslation>['t']): { key: DurationPreset; label: string; minutes: number }[] {
+  return [
+    { key: '1m', label: t.createPoll.preset1m, minutes: 1 },
+    { key: '5m', label: t.createPoll.preset5m, minutes: 5 },
+    { key: '1h', label: t.createPoll.preset1h, minutes: 60 },
+    { key: '3d', label: t.createPoll.preset3d, minutes: 72 * 60 },
+    { key: '7d', label: t.createPoll.preset7d, minutes: 168 * 60 },
+    { key: 'custom', label: '', minutes: 0 },
+  ]
+}
 
 export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormProps) {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
   const { t } = useTranslation()
+  const DURATION_PRESETS = getDurationPresets(t)
 
   // Token gate eligibility check
   const { data: canCreate, isLoading: checkingEligibility } = useReadContract({
@@ -81,8 +84,8 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [durationMinutes, setDurationMinutes] = useState(1)
-  const [durationPreset, setDurationPreset] = useState<DurationPreset>('1m')
+  const [durationMinutes, setDurationMinutes] = useState(60)
+  const [durationPreset, setDurationPreset] = useState<DurationPreset>('1h')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [txStage, setTxStage] = useState<'idle' | 'submitting' | 'confirming' | 'waiting'>('idle')
@@ -437,7 +440,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
                 onChange={(e) => setDurationMinutes(Math.max(1, Math.min(43200, Number(e.target.value))))}
                 disabled={isSubmitting}
                 className="technical-input w-full h-12 px-4 font-mono text-lg"
-                placeholder="Minutes"
+                placeholder={t.createPoll.minutesUnit}
               />
               <p className="text-xs font-mono text-slate-400 mt-1">{t.createPoll.durationHint}</p>
             </div>
