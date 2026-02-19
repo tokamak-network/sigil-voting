@@ -189,7 +189,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                 {([
                   {
                     feature: t.landing.comparison.permanentPrivacy,
-                    values: [t.landing.comparison.yes, t.landing.comparison.postReveal, t.landing.comparison.yes, t.landing.comparison.no, t.landing.comparison.partial],
+                    values: [t.landing.comparison.yes, t.landing.comparison.postRevealDev, t.landing.comparison.yes, t.landing.comparison.no, t.landing.comparison.partial],
                     icons: ['check_circle', 'error', 'check_circle', 'cancel', 'error'],
                     colors: ['text-emerald-500', 'text-amber-500', 'text-emerald-500', 'text-red-500', 'text-amber-500'],
                   },

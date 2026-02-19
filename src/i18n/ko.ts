@@ -126,6 +126,7 @@ export const ko: Translations = {
       demoStage: '데모',
       ownChain: '자체 체인',
       postReveal: '종료 후 공개',
+      postRevealDev: '준비 중',
       onlyStack: 'SIGIL만이 다섯 가지를 모두 갖추고 있습니다.',
     },
     faq: {

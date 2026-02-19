@@ -126,6 +126,7 @@ export const en: Translations = {
       demoStage: 'Demo',
       ownChain: 'Own Chain',
       postReveal: 'Post-Reveal',
+      postRevealDev: 'Planned',
       onlyStack: 'Only SIGIL combines all five.',
     },
     faq: {
