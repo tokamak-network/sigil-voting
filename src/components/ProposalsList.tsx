@@ -167,7 +167,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
             deployTime: Number(td[0]),
             duration: Number(td[1]),
             numMessages: Number(numMsgs),
-            hasVoted: address ? parseInt(localStorage.getItem(`maci-nonce-${address}-${i}`) || '1', 10) > 1 : false,
+            hasVoted: address ? localStorage.getItem(`maci-lastVote-${address}-${i}`) !== null : false,
           } as PollInfo
         }).catch(() => null)
       })

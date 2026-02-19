@@ -33,7 +33,8 @@ import { KeyManager } from './voting/KeyManager'
 import { ResultsDisplay } from './voting/ResultsDisplay'
 import { PollTimer } from './voting/PollTimer'
 import { useTranslation } from '../i18n'
-import { preloadCrypto, CryptoModules } from '../crypto/preload'
+import { preloadCrypto } from '../crypto/preload'
+import type { CryptoModules } from '../crypto/preload'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
 
@@ -278,7 +279,8 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
             const tx = await publicClient.getTransaction({ hash: log.transactionHash })
             if (tx.from.toLowerCase() === address.toLowerCase()) {
               // User already registered on-chain — restore localStorage
-              const stateIndex = log.topics[1] ? parseInt(log.topics[1], 16) : 1
+              const rawIndex = log.topics[1] ? parseInt(log.topics[1] as string, 16) : NaN
+              const stateIndex = !isNaN(rawIndex) && rawIndex > 0 ? rawIndex : 1
               localStorage.setItem(`maci-signup-${address}`, 'true')
               localStorage.setItem(`maci-stateIndex-${address}`, String(stateIndex))
               setSignedUp(true)
@@ -460,10 +462,8 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   const myVote = address ? getLastVote(address, propPollId) : null
   const hasVoted = myVote !== null
 
-  // Generate a pseudo receipt ID from the vote data
-  const receiptId = myVote
-    ? String(propPollId * 1000 + myVote.choice * 500 + myVote.weight * 100 + myVote.cost).padStart(4, '0')
-    : null
+  // Receipt ID: use the actual tx hash stored in localStorage (real on-chain proof)
+  const receiptId = txHash ? `${txHash.slice(0, 8)}...${txHash.slice(-6)}` : null
 
   // === Not configured ===
   if (!isConfigured) {
