@@ -25,7 +25,7 @@ export function Footer() {
                 <span className="font-display font-bold">X</span>
               </a>
               <a
-                href="https://github.com/tokamak-network/zk-dex"
+                href="https://github.com/tokamak-network/zk-dex-d1-private-voting"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-10 h-10 border-2 border-border-light dark:border-border-dark flex items-center justify-center hover:bg-primary hover:text-white transition-colors"
@@ -48,7 +48,7 @@ export function Footer() {
             <h5 className="font-display font-bold mb-6 uppercase text-base">Resources</h5>
             <ul className="space-y-4 text-base text-slate-500">
               <li><a href="https://maci.pse.dev" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">MACI Protocol</a></li>
-              <li><a href="https://github.com/tokamak-network/zk-dex" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Source Code</a></li>
+              <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Source Code</a></li>
             </ul>
           </div>
 
@@ -61,9 +61,7 @@ export function Footer() {
               rel="noopener noreferrer"
               className="flex items-center gap-4 group cursor-pointer"
             >
-              <div className="w-12 h-12 bg-black flex items-center justify-center p-2">
-                <img src="/assets/symbol.svg" alt="Tokamak Network" className="w-full h-full object-contain" />
-              </div>
+              <img src="/assets/symbol.svg" alt="Tokamak Network" className="w-10 h-10" />
               <div>
                 <div className="font-display font-bold text-sm uppercase group-hover:text-primary transition-colors">Tokamak Network</div>
                 <div className="text-xs opacity-60 font-display uppercase">Core Infrastructure</div>
