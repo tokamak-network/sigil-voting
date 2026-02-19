@@ -537,8 +537,9 @@ function getCreditsSpent(address: string, pollId: number): number {
 
 function setCreditsSpent(address: string, pollId: number, cost: number): void {
   const key = storageKey.creditsSpent(address, pollId);
-  const prev = parseInt(localStorage.getItem(key) || '0', 10);
-  localStorage.setItem(key, String(prev + cost));
+  // Replace (not accumulate): only one vote is valid in MACI (first vote wins).
+  // Re-votes are rejected, so creditsSpent should reflect the latest vote cost only.
+  localStorage.setItem(key, String(cost));
 }
 
 function getStateIndex(address: string, _pollId: number): number {

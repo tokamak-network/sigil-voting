@@ -445,10 +445,10 @@ contract MACITest is Test {
 
     // ============ 12. test_TokenGate_MultiToken ============
 
-    function test_TokenGate_NoGate_OwnerOnly() public {
-        // No gates set → only owner can create polls
+    function test_TokenGate_NoGate_AnyoneCanCreate() public {
+        // No gates set → anyone can create polls
         assertTrue(maci.canCreatePoll(address(this)));
-        assertFalse(maci.canCreatePoll(address(0xBEEF)));
+        assertTrue(maci.canCreatePoll(address(0xBEEF)));
     }
 
     function test_TokenGate_SingleToken() public {

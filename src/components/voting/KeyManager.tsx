@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, usePublicClient } from 'wagmi';
 import { writeContract } from '../../writeHelper';
 import { POLL_ABI, POLL_V2_ADDRESS } from '../../contractV2';
 import { useTranslation } from '../../i18n';
@@ -34,6 +34,7 @@ export function KeyManager({
   isRegistered,
 }: KeyManagerProps) {
   const { address } = useAccount();
+  const publicClient = usePublicClient();
   const [currentPubKey, setCurrentPubKey] = useState<[bigint, bigint] | null>(null);
   const [isChanging, setIsChanging] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -160,7 +161,7 @@ export function KeyManager({
 
       // Submit key change message
       if (!address) throw new Error('Wallet not connected');
-      await writeContract({
+      const txHash = await writeContract({
         address: pollAddress!,
         abi: POLL_ABI,
         functionName: 'publishMessage',
@@ -173,7 +174,15 @@ export function KeyManager({
         account: address,
       });
 
-      // Save new keypair (private key encrypted)
+      // Wait for on-chain confirmation before saving state
+      if (publicClient) {
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+        if (receipt.status === 'reverted') {
+          throw new Error('Key change transaction reverted on-chain');
+        }
+      }
+
+      // Save new keypair only after confirmed (private key encrypted)
       localStorage.setItem(
         storageKey.pubkey(address, pollId),
         JSON.stringify([newPubKey[0].toString(), newPubKey[1].toString()]),

@@ -105,6 +105,7 @@ contract Tally is DomainObjs {
         uint256 _perOptionSpentRoot
     ) external onlyCoordinator {
         if (tallyCommitment == 0) revert TallyNotComputed();
+        if (tallyVerified) revert AlreadyTallied();
         // Verify: poseidon_3(tallyResultsRoot, totalSpent, perOptionSpentRoot) == tallyCommitment
         uint256 computedCommitment = PoseidonT4.hash([_tallyResultsRoot, _totalSpent, _perOptionSpentRoot]);
         if (computedCommitment != tallyCommitment) revert TallyCommitmentMismatch();
