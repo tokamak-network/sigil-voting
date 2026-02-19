@@ -36,9 +36,12 @@ contract AccQueue {
         _;
     }
 
+    error ZeroAddress();
+
     /// @notice Transfer ownership (e.g., deployer → MACI contract)
     function transferOwnership(address _newOwner) external {
         if (msg.sender != owner) revert NotOwner();
+        if (_newOwner == address(0)) revert ZeroAddress();
         owner = _newOwner;
     }
 

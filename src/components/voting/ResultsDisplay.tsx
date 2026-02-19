@@ -17,23 +17,45 @@ interface ResultsDisplayProps {
 export function ResultsDisplay({ tallyAddress, pollAddress }: ResultsDisplayProps) {
   const { t } = useTranslation();
 
-  const { data: forVotes } = useReadContract({
+  const { data: forVotes, isLoading: loadingFor, isError: errorFor } = useReadContract({
     address: tallyAddress,
     abi: TALLY_ABI,
     functionName: 'forVotes',
   });
 
-  const { data: againstVotes } = useReadContract({
+  const { data: againstVotes, isLoading: loadingAgainst, isError: errorAgainst } = useReadContract({
     address: tallyAddress,
     abi: TALLY_ABI,
     functionName: 'againstVotes',
   });
 
-  const { data: totalVoters } = useReadContract({
+  const { data: totalVoters, isLoading: loadingVoters } = useReadContract({
     address: tallyAddress,
     abi: TALLY_ABI,
     functionName: 'totalVoters',
   });
+
+  const isLoading = loadingFor || loadingAgainst || loadingVoters;
+  const hasError = errorFor || errorAgainst;
+
+  if (isLoading) {
+    return (
+      <div className="border-2 border-black bg-white p-12 flex flex-col items-center justify-center gap-4">
+        <span className="spinner" aria-hidden="true" />
+        <span className="text-sm font-mono text-slate-500 uppercase tracking-wider">{t.maci.waiting.processing}</span>
+      </div>
+    );
+  }
+
+  if (hasError) {
+    return (
+      <div className="border-2 border-red-300 bg-red-50 p-8 flex flex-col items-center gap-3">
+        <span className="material-symbols-outlined text-4xl text-red-400">error</span>
+        <p className="text-sm font-bold text-red-700 uppercase">{t.results.title}</p>
+        <p className="text-xs text-red-600">{t.voteForm.error}</p>
+      </div>
+    );
+  }
 
   const forNum = Number(forVotes || 0n);
   const againstNum = Number(againstVotes || 0n);

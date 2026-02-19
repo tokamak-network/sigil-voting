@@ -118,8 +118,8 @@ contract MACI is DomainObjs {
     }
 
     /// @notice Reset state AccQueue merge state so new signups can occur after poll processing.
-    ///         Anyone can call this — it's needed after every poll's merge.
-    function resetStateAqMerge() external {
+    ///         Only owner (coordinator) can call this after each poll's processing.
+    function resetStateAqMerge() external onlyOwner {
         stateAq.resetMerge();
     }
 
