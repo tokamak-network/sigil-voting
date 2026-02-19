@@ -1,65 +1,117 @@
-# SIGIL
+<p align="center">
+  <h1 align="center">SIGIL</h1>
+  <p align="center">Private Voting Infrastructure for DAOs</p>
+  <p align="center">
+    <a href="https://github.com/nickmura/zk-dex-d1-private-voting/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg" /></a>
+    <img alt="Solidity" src="https://img.shields.io/badge/Solidity-0.8.24-363636?logo=solidity" />
+    <img alt="Circom" src="https://img.shields.io/badge/Circom-2.1.6-orange" />
+    <img alt="React" src="https://img.shields.io/badge/React-19-61DAFB?logo=react" />
+    <img alt="Tests" src="https://img.shields.io/badge/Tests-116%20passing-brightgreen" />
+    <img alt="Network" src="https://img.shields.io/badge/Network-Sepolia-purple" />
+  </p>
+</p>
 
-> Private Voting Infrastructure — Permanently Secret Votes, Anti-Collusion, Quadratic Fairness
+---
 
-## What is SIGIL?
+DAO votes are public. Whales dominate. Bribes go unchecked.
 
-SIGIL is a ZK-based voting protocol that combines three technologies into one service:
+**SIGIL** is a ZK voting protocol that solves all three by combining permanent privacy, quadratic fairness, and anti-collusion into a single on-chain system. No other protocol offers this combination.
 
-| Technology | What it does |
-|-----------|-------------|
-| **D1 Private Voting** | Individual votes are permanently secret (no reveal phase) |
-| **D2 Quadratic Voting** | Prevents whale domination (cost = votes²) |
-| **MACI Anti-Collusion** | Key Change mechanism defeats bribery and coercion |
+## Features
 
-No other protocol combines all three. SIGIL is designed as an SDK/Widget platform so any DAO, DeFi, or NFT community can integrate private voting into their governance.
+| | Feature | How |
+|---|---------|-----|
+| **Privacy** | Votes are permanently secret | Poseidon DuplexSponge encryption — no reveal phase, ever |
+| **Anti-Bribery** | Coercion is pointless | MACI Key Change — voters can silently override forced votes |
+| **Fairness** | Whales can't dominate | Quadratic voting — 10 votes cost 100 credits |
+| **Verifiable** | Results are trustless | Groth16 proofs verified on Ethereum |
+
+## Architecture
+
+```
+                         ┌──────────────┐
+                         │   Frontend   │  React 19 · Wagmi · i18n
+                         │              │  EdDSA key derivation
+                         │  encrypt     │  DuplexSponge encryption
+                         └──────┬───────┘
+                                │ publishMessage()
+                         ┌──────▼───────┐
+                         │  Contracts   │  Solidity 0.8.24
+                         │              │  MACI → Poll → AccQueue
+                         │  on-chain    │  Groth16 verification
+                         └──────┬───────┘
+                                │ auto-trigger
+                         ┌──────▼───────┐
+                         │ Coordinator  │  TypeScript auto-runner
+                         │              │  merge → process → prove
+                         │  off-chain   │  reverse-order processing
+                         └──────┬───────┘
+                                │ snarkjs
+                         ┌──────▼───────┐
+                         │  ZK Circuits │  Circom · Groth16
+                         │              │  MessageProcessor
+                         │  prove       │  TallyVotes
+                         └──────────────┘
+```
 
 ## How It Works
 
-### For Users
-1. Connect wallet
-2. Sign up with one click (EdDSA key derived from wallet)
-3. Choose a proposal, pick For/Against, set vote weight
-4. Done — your vote is encrypted and permanently private
-
-### Under the Hood
 ```
-User votes → EdDSA sign → DuplexSponge encrypt → on-chain message
-                                                        ↓
-                              Coordinator (auto-runner, 30s polling)
-                                                        ↓
-                    Merge AccQueues → Process messages (reverse order)
-                                                        ↓
-                         Groth16 ZK proofs → On-chain verification
-                                                        ↓
-                              Tally results (aggregate only, no individual votes)
+1. Vote       Voter encrypts choice with coordinator's public key (ECDH + DuplexSponge)
+2. On-chain   Encrypted message stored in Poll contract's AccQueue
+3. Process    Coordinator decrypts all messages in reverse order (last message = highest priority)
+4. Prove      Groth16 proof generated for each batch — any tampering breaks the proof
+5. Tally      Only aggregate results published on-chain. Individual votes: never revealed.
 ```
 
-Key Change defense: If someone forces you to vote a certain way, you can change your MACI key afterward. Only the **last key's vote counts** — the coercer can never tell if their forced vote was overridden.
+**Anti-bribery:** If coerced, change your key and re-vote. The coercer sees two identical-looking messages on-chain and can never tell which is the real vote.
 
-## Quadratic Voting
+## Cryptography
 
-Prevents wealthy voters from dominating:
+| Primitive | Spec | Role |
+|-----------|------|------|
+| Poseidon DuplexSponge | t=4, rate=3 | Message encryption / decryption |
+| Baby Jubjub EdDSA | BLAKE2b-512 key derivation | Command signing |
+| ECDH | Ephemeral Diffie-Hellman | Shared key (voter ↔ coordinator) |
+| Groth16 | snarkjs, Powers of Tau | On-chain proof verification |
+| SHA256 | 253-bit field mapping | Public input compression |
+| Poseidon Hash | Arity 2–6 | State leaf, ballot, tally commitment |
 
-| Votes | Cost (credits) |
-|-------|---------------|
-| 1 | 1 |
-| 3 | 9 |
-| 5 | 25 |
-| 10 | 100 |
-
-## Deployed Contracts (Sepolia V8)
+## Contracts (Sepolia)
 
 | Contract | Address |
 |----------|---------|
-| **MACI** | [`0xAd4D82bF06d612CC5Ec3C6C9536c0AEc6A61f746`](https://sepolia.etherscan.io/address/0xAd4D82bF06d612CC5Ec3C6C9536c0AEc6A61f746) |
-| AccQueue | [`0x51C1835C96bfae2aff5D675Ef59b5BF23534396F`](https://sepolia.etherscan.io/address/0x51C1835C96bfae2aff5D675Ef59b5BF23534396F) |
-| MsgProcessor Verifier | [`0x47221B605bF18E92296850191A0c899fe03A27dB`](https://sepolia.etherscan.io/address/0x47221B605bF18E92296850191A0c899fe03A27dB) |
-| Tally Verifier | [`0xa48c2bD789EAd236fFEE36dEad220DFFE3feccF1`](https://sepolia.etherscan.io/address/0xa48c2bD789EAd236fFEE36dEad220DFFE3feccF1) |
-| VkRegistry | [`0xC8f6e6AB628CC73aDa2c01054C4772ACA222852C`](https://sepolia.etherscan.io/address/0xC8f6e6AB628CC73aDa2c01054C4772ACA222852C) |
-| Gatekeeper | [`0x4c18984A78910Dd1976d6DFd820f6d18e7edD672`](https://sepolia.etherscan.io/address/0x4c18984A78910Dd1976d6DFd820f6d18e7edD672) |
-| VoiceCreditProxy (ERC20) | [`0x03669FF296a2B2CCF851bE98dbEa4BB2633ecF00`](https://sepolia.etherscan.io/address/0x03669FF296a2B2CCF851bE98dbEa4BB2633ecF00) |
-| TON Token | [`0xa30fe40285B8f5c0457DbC3B7C8A280373c40044`](https://sepolia.etherscan.io/address/0xa30fe40285B8f5c0457DbC3B7C8A280373c40044) |
+| **MACI** | [`0xAd4D82bF...61f746`](https://sepolia.etherscan.io/address/0xAd4D82bF06d612CC5Ec3C6C9536c0AEc6A61f746) |
+| AccQueue | [`0x51C1835C...4396F`](https://sepolia.etherscan.io/address/0x51C1835C96bfae2aff5D675Ef59b5BF23534396F) |
+| MessageProcessor Verifier | [`0x47221B60...A27dB`](https://sepolia.etherscan.io/address/0x47221B605bF18E92296850191A0c899fe03A27dB) |
+| Tally Verifier | [`0xa48c2bD7...ccF1`](https://sepolia.etherscan.io/address/0xa48c2bD789EAd236fFEE36dEad220DFFE3feccF1) |
+| VkRegistry | [`0xC8f6e6AB...852C`](https://sepolia.etherscan.io/address/0xC8f6e6AB628CC73aDa2c01054C4772ACA222852C) |
+| VoiceCreditProxy | [`0x03669FF2...F00`](https://sepolia.etherscan.io/address/0x03669FF296a2B2CCF851bE98dbEa4BB2633ecF00) |
+| TON Token | [`0xa30fe402...044`](https://sepolia.etherscan.io/address/0xa30fe40285B8f5c0457DbC3B7C8A280373c40044) |
+
+## Security Properties
+
+SIGIL enforces all seven MACI security guarantees:
+
+| Property | Guarantee |
+|----------|-----------|
+| Collusion Resistance | Key Change makes bribe verification impossible |
+| Receipt-freeness | No receipt — voter cannot prove how they voted |
+| Privacy | Individual votes never revealed, only aggregates |
+| Uncensorability | Omitting a message causes the ZK proof to fail |
+| Unforgeability | EdDSA signatures prevent vote fabrication |
+| Non-repudiation | Signed votes are permanent, cannot be deleted |
+| Correct Execution | Groth16 proofs guarantee honest computation |
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Circuits | Circom 2.1.6, Groth16 (snarkjs 0.7.6) |
+| Contracts | Solidity 0.8.24, Foundry, Hardhat |
+| Frontend | React 19, Vite 7, Wagmi 3, TypeScript 5.9 |
+| Crypto | circomlibjs, @noble/hashes, @semaphore-protocol |
+| Network | Ethereum Sepolia |
 
 ## Quick Start
 
@@ -67,68 +119,23 @@ Prevents wealthy voters from dominating:
 npm install
 npm run dev
 ```
-Open http://localhost:5173
 
-## Architecture
+## Testing
 
-```
-┌─────────────────────────────────────────────────────┐
-│  Frontend (React 19 + Vite 7 + Wagmi 3)             │
-│  - Wallet connect, EdDSA key derivation              │
-│  - DuplexSponge encryption, vote submission           │
-│  - i18n (KO/EN), proposal list, credit tracking       │
-└──────────────────────┬──────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────┐
-│  Smart Contracts (Solidity 0.8.24)                   │
-│  MACI → Poll → MessageProcessor → Tally             │
-│  - AccQueue (quinary Merkle tree)                     │
-│  - Groth16 on-chain verification                      │
-│  - Token-gated proposal creation                      │
-└──────────────────────┬──────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────┐
-│  Coordinator (TypeScript)                            │
-│  - Auto-Runner: poll → merge → process → prove → tally │
-│  - In-circuit DuplexSponge decryption                 │
-│  - Reverse-order message processing (MACI spec)       │
-└──────────────────────┬──────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────┐
-│  ZK Circuits (Circom 2.2, Groth16)                 │
-│  - MessageProcessor: EdDSA verify + decrypt + state   │
-│  - TallyVotes: aggregate counting with commitment     │
-│  - SHA256Hasher, QuinaryMerkleProof, DuplexSponge     │
-└─────────────────────────────────────────────────────┘
+```bash
+forge test            # 50 contract tests
+npx vitest run        # 66 crypto + circuit + property tests
 ```
 
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Circuits | Circom 2.2, Groth16 (snarkjs) |
-| Contracts | Solidity 0.8.24, Foundry |
-| Frontend | React 19, Vite 7, Wagmi 3, TypeScript |
-| Crypto | Poseidon hash, Baby Jubjub (EdDSA), DuplexSponge |
-| Network | Ethereum Sepolia testnet |
-
-## Security Properties (MACI)
-
-1. **Collusion Resistance** — Key Change makes bribe verification impossible
-2. **Receipt-freeness** — No way to prove how you voted
-3. **Privacy** — Individual votes are never revealed, only aggregate results
-4. **Uncensorability** — All valid messages are processed
-5. **Unforgeability** — EdDSA signatures prevent vote tampering
-6. **Non-repudiation** — Signed votes cannot be denied
-7. **Correct Execution** — Groth16 proofs guarantee honest computation
+116 tests, 0 failures. Includes 20 MACI property tests covering all 7 security attributes.
 
 ## References
 
 - [D1 Private Voting Spec](https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d1-private-voting.md)
 - [D2 Quadratic Voting Spec](https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d2-quadratic.md)
-- [MACI Protocol (PSE)](https://maci.pse.dev)
+- [MACI Protocol — PSE](https://maci.pse.dev)
 - [Tokamak Network](https://tokamak.network)
 
 ## License
 
-MIT
+[MIT](LICENSE)
