@@ -46,5 +46,9 @@ circuits/build/
 *.r1cs
 *.sym
 
+# Test artifacts
+playwright-report/
+test-results/
+
 # External directories
 stitch_sigil_privacy_first_dao_voting_landing_page/

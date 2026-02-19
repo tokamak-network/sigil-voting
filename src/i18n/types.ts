@@ -294,6 +294,8 @@ export interface Translations {
     errorRejectedFriendly: string
     errorGasFriendly: string
     errorGeneric: string
+    errorTimeout: string
+    errorEncryption: string
     quadraticGuide: string
   }
   keyManager: {

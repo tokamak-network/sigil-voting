@@ -159,11 +159,17 @@ export function VoteFormV2({
         const newPubKey = await crypto.eddsaDerivePublicKey(newSk);
 
         // ECDH for key change message
-        const kcEphemeral = await crypto.generateEphemeralKeyPair();
-        const kcSharedKey = await crypto.generateECDHSharedKey(
-          kcEphemeral.sk,
-          [coordinatorPubKeyX, coordinatorPubKeyY],
-        );
+        let kcEphemeral: Awaited<ReturnType<typeof crypto.generateEphemeralKeyPair>>;
+        let kcSharedKey: Awaited<ReturnType<typeof crypto.generateECDHSharedKey>>;
+        try {
+          kcEphemeral = await crypto.generateEphemeralKeyPair();
+          kcSharedKey = await crypto.generateECDHSharedKey(
+            kcEphemeral.sk,
+            [coordinatorPubKeyX, coordinatorPubKeyY],
+          );
+        } catch (ecdhErr) {
+          throw new Error('ECDH key exchange failed: ' + (ecdhErr instanceof Error ? ecdhErr.message : String(ecdhErr)));
+        }
 
         const kcNonce = BigInt(getMaciNonce(address, pollId));
         const stateIndex = BigInt(getStateIndex(address, pollId));
@@ -209,9 +215,9 @@ export function VoteFormV2({
 
         setTxStage('waiting');
 
-        // Wait for on-chain confirmation
+        // Wait for on-chain confirmation (2 min timeout)
         if (publicClient) {
-          const receipt = await publicClient.waitForTransactionReceipt({ hash: kcHash });
+          const receipt = await publicClient.waitForTransactionReceipt({ hash: kcHash, timeout: 120_000 });
           if (receipt.status === 'reverted') {
             throw new Error('Key change transaction reverted on-chain');
           }
@@ -237,11 +243,17 @@ export function VoteFormV2({
       // --- Step B: Send vote message ---
       setTxStage('encrypting');
 
-      const ephemeral = await crypto.generateEphemeralKeyPair();
-      const sharedKey = await crypto.generateECDHSharedKey(
-        ephemeral.sk,
-        [coordinatorPubKeyX, coordinatorPubKeyY],
-      );
+      let ephemeral: Awaited<ReturnType<typeof crypto.generateEphemeralKeyPair>>;
+      let sharedKey: Awaited<ReturnType<typeof crypto.generateECDHSharedKey>>;
+      try {
+        ephemeral = await crypto.generateEphemeralKeyPair();
+        sharedKey = await crypto.generateECDHSharedKey(
+          ephemeral.sk,
+          [coordinatorPubKeyX, coordinatorPubKeyY],
+        );
+      } catch (ecdhErr) {
+        throw new Error('ECDH key exchange failed: ' + (ecdhErr instanceof Error ? ecdhErr.message : String(ecdhErr)));
+      }
 
       const nonce = BigInt(getMaciNonce(address, pollId));
       const stateIndex = BigInt(getStateIndex(address, pollId));
@@ -302,9 +314,9 @@ export function VoteFormV2({
       setTxStage('waiting');
       setTxHash(hash);
 
-      // Wait for on-chain confirmation before saving state
+      // Wait for on-chain confirmation before saving state (2 min timeout)
       if (publicClient) {
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 120_000 });
         if (receipt.status === 'reverted') {
           throw new Error('Transaction reverted on-chain');
         }
@@ -328,6 +340,10 @@ export function VoteFormV2({
         setError(t.voteForm.errorRejectedFriendly);
       } else if (msg.includes('insufficient funds') || msg.includes('exceeds the balance')) {
         setError(t.voteForm.errorGasFriendly);
+      } else if (msg.includes('timed out') || msg.includes('timeout') || msg.includes('Timed out')) {
+        setError(t.voteForm.errorTimeout);
+      } else if (msg.includes('ECDH') || msg.includes('shared key') || msg.includes('invalid point')) {
+        setError(t.voteForm.errorEncryption);
       } else {
         console.error('Vote error detail:', msg);
         setError(t.voteForm.errorGeneric);
@@ -747,7 +763,9 @@ async function publishWithRetry(
   ephemeralPubKey: [bigint, bigint],
   account: `0x${string}`,
   setTxStage: (stage: TxStage) => void,
+  maxRetries = 5,
 ): Promise<`0x${string}`> {
+  let retries = 0;
   while (true) {
     try {
       const hash = await writeContract({
@@ -765,7 +783,8 @@ async function publishWithRetry(
       return hash;
     } catch (retryErr) {
       const retryMsg = retryErr instanceof Error ? retryErr.message : '';
-      if (retryMsg.includes('underpriced') || retryMsg.includes('nonce') || retryMsg.includes('already known')) {
+      if ((retryMsg.includes('underpriced') || retryMsg.includes('nonce') || retryMsg.includes('already known')) && retries < maxRetries) {
+        retries++;
         setTxStage('confirming');
         await new Promise(r => setTimeout(r, 10_000));
         continue;

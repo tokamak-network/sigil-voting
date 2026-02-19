@@ -312,6 +312,8 @@ export const en: Translations = {
     errorRejectedFriendly: 'You cancelled the transaction',
     errorGasFriendly: 'Insufficient ETH balance',
     errorGeneric: 'A temporary error occurred. Please try again.',
+    errorTimeout: 'Transaction timed out. Please check Etherscan and try again.',
+    errorEncryption: 'Encryption error. Please refresh and try again.',
     quadraticGuide: '1 vote = 1 credit, 3 votes = 9 credits',
   },
   keyManager: {
