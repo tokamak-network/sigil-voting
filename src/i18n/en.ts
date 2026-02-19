@@ -379,6 +379,11 @@ export const en: Translations = {
     againstLabel: 'Against',
     creditsUnit: 'credits',
   },
+  noVotes: {
+    title: 'No Votes',
+    desc: 'No one voted on this proposal. There are no results to tally.',
+    status: 'No Votes',
+  },
   timer: {
     remaining: 'Time left',
     ended: 'Voting ended',

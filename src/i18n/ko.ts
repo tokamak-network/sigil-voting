@@ -379,6 +379,11 @@ export const ko: Translations = {
     againstLabel: '반대',
     creditsUnit: '크레딧',
   },
+  noVotes: {
+    title: '투표 없음',
+    desc: '이 제안에 투표한 사람이 없어 집계할 결과가 없습니다.',
+    status: '투표 없음',
+  },
   timer: {
     remaining: '남은 시간',
     ended: '투표 종료',

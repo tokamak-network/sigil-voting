@@ -34,6 +34,7 @@ export const V2Phase = {
   Processing: 'processing',
   Finalized: 'finalized',
   Failed: 'failed',
+  NoVotes: 'noVotes',
 } as const;
 export type V2Phase = (typeof V2Phase)[keyof typeof V2Phase];
 

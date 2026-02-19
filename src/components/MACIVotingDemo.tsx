@@ -345,7 +345,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
     const checkPhase = async () => {
       try {
         // Parallel: fetch all poll state in one batch
-        const [isOpen, stateMerged, msgMerged, deployTimeAndDuration] = await Promise.all([
+        const [isOpen, stateMerged, msgMerged, deployTimeAndDuration, numMessages] = await Promise.all([
           publicClient.readContract({
             address: pollAddress,
             abi: POLL_ABI,
@@ -366,6 +366,11 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
             abi: POLL_ABI,
             functionName: 'getDeployTimeAndDuration',
           }).catch(() => null),
+          publicClient.readContract({
+            address: pollAddress,
+            abi: POLL_ABI,
+            functionName: 'numMessages',
+          }).catch(() => 0n),
         ])
 
         // Store votingEndTime for timer components
@@ -381,6 +386,13 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
           } else {
             setPhase(V2Phase.Voting)
           }
+          setPhaseLoaded(true)
+          return
+        }
+
+        // No votes cast — show empty result immediately
+        if (Number(numMessages) === 0) {
+          setPhase(V2Phase.NoVotes)
           setPhaseLoaded(true)
           return
         }
@@ -1032,10 +1044,11 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
             <div className="flex flex-col items-end shrink-0">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
               <span className={`px-6 py-3 bg-white border-4 border-black font-black text-xl italic uppercase tracking-tighter ${
-                phase === V2Phase.Failed ? 'text-red-600' : 'text-amber-600'
+                phase === V2Phase.Failed ? 'text-red-600' : phase === V2Phase.NoVotes ? 'text-slate-500' : 'text-amber-600'
               }`}>
                 {phase === V2Phase.Merging && t.merging.title.toUpperCase()}
                 {phase === V2Phase.Processing && t.processing.title.toUpperCase()}
+                {phase === V2Phase.NoVotes && t.noVotes.title.toUpperCase()}
                 {phase === V2Phase.Failed && (
                   <span className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-lg">schedule</span>
@@ -1273,6 +1286,21 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                 <p>{t.completedResults.votingStrategy}</p>
                 <p>{t.completedResults.shieldedVoting}</p>
               </div>
+            </div>
+          </div>
+        ) : phase === V2Phase.NoVotes ? (
+          <div className="w-full">
+            <div className="bg-white p-12 border-2 border-black text-center">
+              <span className="material-symbols-outlined text-6xl text-slate-300 mb-4">how_to_vote</span>
+              <h2 className="font-display text-3xl font-black uppercase italic mb-4">{t.noVotes?.title || '투표 없음'}</h2>
+              <p className="text-slate-500 text-lg mb-8">{t.noVotes?.desc || '이 제안에 투표한 사람이 없어 집계할 결과가 없습니다.'}</p>
+              <button
+                onClick={onBack}
+                className="bg-black text-white px-8 py-4 font-display font-black uppercase italic text-sm tracking-widest border-2 border-black hover:bg-slate-800 transition-colors"
+                style={{ boxShadow: '4px 4px 0px 0px rgba(0,0,0,1)' }}
+              >
+                {t.proposals.backToList}
+              </button>
             </div>
           </div>
         ) : (

@@ -33,7 +33,7 @@ import { generateProcessProof, generateTallyProof, computePublicInputHash, type 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, '../..');
 
-const POLL_CHECK_INTERVAL = 30_000; // 30s between checks
+const POLL_CHECK_INTERVAL = 10_000; // 10s between checks
 const STATE_TREE_DEPTH = 2;        // Dev params (5^2 = 25 leaves)
 const BATCH_SIZE = 2;              // Dev params (messages per batch)
 const TALLY_BATCH_SIZE = 2;        // Dev params (voters per tally batch)
