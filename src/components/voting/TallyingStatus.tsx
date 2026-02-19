@@ -77,8 +77,22 @@ export function TallyingStatus({
   const isProcessed = processingComplete === true
   const isFinalized = tallyVerified === true
 
-  // Elapsed time since voting ended
-  const endTimeMs = votingEndTime ? votingEndTime * 1000 : Date.now()
+  // Adaptive countdown: adjusts remaining time based on actual on-chain progress
+  // Total ~3min: merge ~50s, processing ~50s, tally ~25s, publish ~20s
+  const allMerged = stateAqMerged === true && messageAqMerged === true
+  const remainingFromStep = isFinalized ? 0
+    : isProcessed ? 45   // tally + publish remaining
+    : allMerged ? 95     // processing + tally + publish
+    : 180                // full pipeline
+
+  // Track when each step was first detected to anchor the countdown
+  const [stepAnchor, setStepAnchor] = useState<{ step: number; time: number }>({ step: 0, time: votingEndTime ? votingEndTime * 1000 : Date.now() })
+  const currentStep = isFinalized ? 3 : isProcessed ? 2 : allMerged ? 1 : 0
+  useEffect(() => {
+    if (currentStep > stepAnchor.step) {
+      setStepAnchor({ step: currentStep, time: Date.now() })
+    }
+  }, [currentStep, stepAnchor.step])
 
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
@@ -86,9 +100,11 @@ export function TallyingStatus({
     return () => clearInterval(iv)
   }, [])
 
-  const elapsedMs = Math.max(0, now - endTimeMs)
-  const elapsedMin = Math.floor(elapsedMs / 60000)
-  const elapsedSec = Math.floor((elapsedMs % 60000) / 1000)
+  const elapsedSinceAnchor = (now - stepAnchor.time) / 1000
+  const remainingSec_raw = Math.max(0, remainingFromStep - elapsedSinceAnchor)
+  const remainingMin = Math.floor(remainingSec_raw / 60)
+  const remainingSec = Math.floor(remainingSec_raw % 60)
+  const isOverdue = remainingSec_raw === 0 && !isFinalized
 
   const choiceLabel = myVote
     ? myVote.choice === 1
@@ -221,16 +237,16 @@ export function TallyingStatus({
               </div>
             </div>
 
-            {/* Elapsed Timer */}
+            {/* Countdown Timer */}
             <div className="bg-white p-8 border-2 border-black" style={{ boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)' }}>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
-                {t.tallying.elapsed}
+                {isOverdue ? t.tallying.processing : t.tallying.estimatedRemaining}
               </span>
               <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-mono font-bold leading-none text-primary">
-                  {`${elapsedMin.toString().padStart(2, '0')}:${elapsedSec.toString().padStart(2, '0')}`}
+                <span className={`text-5xl font-mono font-bold leading-none ${isOverdue ? 'text-amber-500' : 'text-primary'}`}>
+                  {isOverdue ? '—:——' : `${remainingMin.toString().padStart(2, '0')}:${remainingSec.toString().padStart(2, '0')}`}
                 </span>
-                <span className="text-xs font-bold text-slate-400">{t.tallying.elapsedUnit}</span>
+                <span className="text-xs font-bold text-slate-400">{isOverdue ? '' : t.tallying.remaining}</span>
               </div>
             </div>
 

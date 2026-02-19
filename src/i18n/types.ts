@@ -354,8 +354,8 @@ export interface Translations {
     currentPhase: string
     finalStep: string
     processing: string
-    elapsed: string
-    elapsedUnit: string
+    estimatedRemaining: string
+    remaining: string
     myVoteSummary: string
     choice: string
     spent: string
