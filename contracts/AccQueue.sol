@@ -377,4 +377,13 @@ contract AccQueue {
     function isMerged() external view returns (bool) {
         return merged;
     }
+
+    /// @notice Reset merge state so new enqueues can be accepted.
+    ///         Called by MACI after poll processing to allow future signups.
+    ///         Leaves and subtrees are preserved — only merge flags are reset.
+    function resetMerge() external onlyOwner {
+        merged = false;
+        subRootsMerged = false;
+        mergeProgress = 0;
+    }
 }

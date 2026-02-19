@@ -117,6 +117,12 @@ contract MACI is DomainObjs {
         emit SignUp(stateIndex, _pubKeyX, _pubKeyY, voiceCreditBalance, block.timestamp);
     }
 
+    /// @notice Reset state AccQueue merge state so new signups can occur after poll processing.
+    ///         Anyone can call this — it's needed after every poll's merge.
+    function resetStateAqMerge() external {
+        stateAq.resetMerge();
+    }
+
     /// @notice Add a token gate for proposal creation (owner only)
     /// @param _token ERC20 token address
     /// @param _threshold Minimum balance required

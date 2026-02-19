@@ -93,6 +93,7 @@ export const MACI_ABI = [
   'function nextPollId() view returns (uint256)',
   'function polls(uint256) view returns (address)',
   'function numSignUps() view returns (uint256)',
+  'function resetStateAqMerge()',
   'event SignUp(uint256 indexed stateIndex, uint256 indexed pubKeyX, uint256 pubKeyY, uint256 voiceCreditBalance, uint256 timestamp)',
   'event DeployPoll(uint256 indexed pollId, address pollAddr, address messageProcessorAddr, address tallyAddr)',
 ];
@@ -572,21 +573,31 @@ async function processAndSubmitProofs(
 
       // 5a. Signature check
       const cmdHash = crypto.hashCommand(cmd);
-      if (!crypto.verifyEdDSA(cmdHash, sig, [currentLeaf.pubKeyX, currentLeaf.pubKeyY])) isValid = false;
+      const sigOk = crypto.verifyEdDSA(cmdHash, sig, [currentLeaf.pubKeyX, currentLeaf.pubKeyY]);
+      if (!sigOk) { isValid = false; if (batch[mi]) log(`    [DEBUG] sig FAIL: stateIdx=${stateIdx} cmdHash=${cmdHash.toString().slice(0,20)}... leaf.pk=[${currentLeaf.pubKeyX.toString().slice(0,15)}..., ${currentLeaf.pubKeyY.toString().slice(0,15)}...]`); }
 
       // 5b. Range check
-      if (stateIdx >= numSignUps || stateIdx <= 0) isValid = false;
+      const rangeOk = stateIdx < numSignUps && stateIdx > 0;
+      if (!rangeOk) { isValid = false; if (batch[mi]) log(`    [DEBUG] range FAIL: stateIdx=${stateIdx} numSignUps=${numSignUps}`); }
 
       // 5c. Nonce check
-      if (cmd.nonce !== currentBallot.nonce + 1n) isValid = false;
+      const nonceOk = cmd.nonce === currentBallot.nonce + 1n;
+      if (!nonceOk) { isValid = false; if (batch[mi]) log(`    [DEBUG] nonce FAIL: cmd.nonce=${cmd.nonce} expected=${currentBallot.nonce + 1n}`); }
 
       // 5d. Credit check
       const currentWeight = currentBallot.votes[voteOptIdx] ?? 0n;
       const creditChange = currentWeight * currentWeight - cmd.newVoteWeight * cmd.newVoteWeight;
-      if (currentLeaf.voiceCreditBalance + creditChange < 0n) isValid = false;
+      const creditOk = currentLeaf.voiceCreditBalance + creditChange >= 0n;
+      if (!creditOk) { isValid = false; if (batch[mi]) log(`    [DEBUG] credit FAIL: balance=${currentLeaf.voiceCreditBalance} change=${creditChange}`); }
 
       // 5e. Vote option range
-      if (voteOptIdx >= MAX_VOTE_OPTIONS || voteOptIdx < 0) isValid = false;
+      const voteOptOk = voteOptIdx < MAX_VOTE_OPTIONS && voteOptIdx >= 0;
+      if (!voteOptOk) { isValid = false; if (batch[mi]) log(`    [DEBUG] voteOpt FAIL: idx=${voteOptIdx} max=${MAX_VOTE_OPTIONS}`); }
+
+      if (batch[mi] && !decryptFailed) {
+        log(`    [DEBUG] msg[${msg.messageIndex}] checks: sig=${sigOk} range=${rangeOk} nonce=${nonceOk} credit=${creditOk} voteOpt=${voteOptOk} → ${isValid ? 'VALID' : 'INVALID'}`);
+        log(`    [DEBUG] cmd: stateIdx=${cmd.stateIndex} voteOpt=${cmd.voteOptionIndex} weight=${cmd.newVoteWeight} nonce=${cmd.nonce} pollId=${cmd.pollId}`);
+      }
 
       if (isValid && batch[mi]) {
         // Apply valid transition
@@ -916,6 +927,19 @@ export async function processPoll(
   const { stateLeaves, messages } = await fetchEvents(maci, addrs.poll, provider, deployBlock);
   log(`  Found ${stateLeaves.length} signups, ${messages.length} messages`);
 
+  // Skip if no real votes (only padding message exists)
+  if (stateLeaves.length === 0) {
+    log('  ⚠ No voters signed up — skipping processing (nothing to tally)');
+    return;
+  }
+
+  // Check if all messages are padding (encPubKey = 0,0)
+  const realMessages = messages.filter(m => m.encPubKeyX !== 0n || m.encPubKeyY !== 0n);
+  if (realMessages.length === 0) {
+    log('  ⚠ No real votes — only padding messages. Skipping processing.');
+    return;
+  }
+
   // Initialize trees (needed for both message processing and tally)
   const initTrees = async () => {
     const stTree = new QuinaryMerkleTree(STATE_TREE_DEPTH);
@@ -963,6 +987,16 @@ export async function processPoll(
   // Steps 6-7: Tally + publish
   await tallyAndPublish(pollId, addrs, numSignUps, stateMap, ballotMap, stateTree, newStateRoot, newBallotRoot, signer, crypto);
 
+  // Reset State AccQueue merge state so future signups are possible
+  try {
+    const maciWithSigner = maci.connect(signer) as ethers.Contract;
+    const resetTx = await maciWithSigner.resetStateAqMerge();
+    await resetTx.wait();
+    log('  State AccQueue merge reset (new signups enabled)');
+  } catch (err) {
+    log(`  ⚠ resetStateAqMerge failed: ${(err as Error).message?.slice(0, 80)}`);
+  }
+
   log(`  ★ Poll ${pollId} processing complete!`);
 }
 
@@ -1005,6 +1039,9 @@ async function main() {
 
   // Track processed polls to avoid re-processing
   const processedPolls = new Set<number>();
+  // Track polls that permanently failed (e.g. EdDSA sig mismatch) — stop retrying
+  const failedPolls = new Map<number, number>(); // pollId → failCount
+  const MAX_RETRIES = 2;
 
   while (true) {
     try {
@@ -1034,6 +1071,8 @@ async function main() {
 
         for (let i = 0; i < nextPollId; i++) {
           if (processedPolls.has(i)) continue;
+          const fc = failedPolls.get(i) ?? 0;
+          if (fc >= MAX_RETRIES) continue; // permanently failed, stop retrying
 
           const addrs = pollMap.get(i);
           if (!addrs) {
@@ -1076,7 +1115,14 @@ async function main() {
             await processPoll(i, addrs, maci, provider, signer, config.coordinatorSk, crypto, config.deployBlock);
             processedPolls.add(i);
           } catch (err) {
-            log(`  ✗ Poll ${i} failed: ${(err as Error).message?.slice(0, 150)}`);
+            const newCount = (failedPolls.get(i) ?? 0) + 1;
+            failedPolls.set(i, newCount);
+            if (newCount >= MAX_RETRIES) {
+              log(`  ✗ Poll ${i} permanently failed (${newCount}/${MAX_RETRIES}): ${(err as Error).message?.slice(0, 120)}`);
+              log(`    → Will not retry. Create a new poll to continue.`);
+            } else {
+              log(`  ✗ Poll ${i} failed (${newCount}/${MAX_RETRIES}): ${(err as Error).message?.slice(0, 150)}`);
+            }
           }
         }
       }
