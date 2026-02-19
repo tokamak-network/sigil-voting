@@ -48,7 +48,7 @@ export const ko: Translations = {
       anti: {
         title: '유일한 통합 기술',
         sub: '',
-        desc: 'ZK 비밀투표, 이차투표 공정성, MACI 담합방지를 하나의 시스템에 결합한 거버넌스 프로토콜은 SIGIL이 유일합니다.',
+        desc: 'ZK 비밀투표, 이차투표 공정성, MACI 담합방지를 하나의 시스템에 결합한 투표 프로토콜은 SIGIL이 유일합니다.',
       },
       privacy: {
         title: '키 변경 방어',
@@ -58,7 +58,7 @@ export const ko: Translations = {
       verify: {
         title: '모든 DAO를 위한 SDK',
         sub: '',
-        desc: 'SIGIL SDK와 임베드 위젯으로 프로젝트에 비밀 거버넌스를 통합하세요. 별도의 스마트 컨트랙트 개발이 필요 없습니다.',
+        desc: 'SIGIL SDK와 임베드 위젯으로 프로젝트에 비밀 투표를 통합하세요. 별도의 스마트 컨트랙트 개발이 필요 없습니다.',
       },
     },
     terminalAccess: '바로가기',
@@ -110,7 +110,7 @@ export const ko: Translations = {
     },
     comparison: {
       title: 'SIGIL vs 경쟁사',
-      subtitle: '영구 비공개 + 매수방지 + 이차투표 — 세 가지를 모두 갖춘 유일한 거버넌스 프로토콜.',
+      subtitle: '영구 비공개 + 매수방지 + 이차투표 — 세 가지를 모두 갖춘 유일한 투표 프로토콜.',
       feature: '기능',
       permanentPrivacy: '영구 비공개',
       antiBribery: '매수 방지',
@@ -412,7 +412,7 @@ export const ko: Translations = {
     noVote: '이 제안에 투표하지 않았습니다.',
   },
   footer: {
-    desc: '이더리움 기반 오픈소스 거버넌스 프로토콜. Tokamak Network가 만들었습니다.',
+    desc: '이더리움 기반 오픈소스 비밀투표 프로토콜. Tokamak Network가 만들었습니다.',
     resources: '리소스',
     whitepaper: 'MACI 프로토콜',
     audit: '소스 코드',
@@ -422,7 +422,7 @@ export const ko: Translations = {
     secured: '영지식 증명으로 봉인',
     builtBy: '제작',
     systemOperational: '시스템 정상',
-    protocolVersion: 'MACI 프로토콜 v2.4',
+    protocolVersion: 'MACI 프로토콜',
     node: '노드: SIGIL-01-AMS',
     privacyFirst: '비공개 우선',
     antiBribery: '매수 방지',
@@ -462,7 +462,7 @@ export const ko: Translations = {
     author: '작성자',
     description: '설명',
     readFull: '제안 설명 전문 보기',
-    defaultDesc: '이 제안은 SIGIL 거버넌스 프로토콜을 통해 생성되었으며, ZK 증명으로 검증된 비밀 투표가 진행되었습니다. 모든 투표는 MACI 담합방지 인프라로 암호화되었고 이더리움에서 Groth16 영지식 증명으로 집계되었습니다.',
+    defaultDesc: '이 제안은 SIGIL 비밀투표 프로토콜을 통해 생성되었으며, ZK 증명으로 검증된 비밀 투표가 진행되었습니다. 모든 투표는 MACI 담합방지 인프라로 암호화되었고 이더리움에서 Groth16 영지식 증명으로 집계되었습니다.',
     votingStrategy: '투표 전략: 이차투표 v2',
     shieldedVoting: '비밀투표: 활성화',
   },
@@ -536,7 +536,7 @@ export const ko: Translations = {
     },
     combined: {
       title: '함께하면 더 강력합니다',
-      desc: 'SIGIL은 세 가지 기술을 모두 결합한 유일한 거버넌스 프로토콜입니다. Snapshot, Aragon, Tally, Vocdoni — 어떤 서비스도 ZK 영구 비공개 + 이차 공정성 + MACI 담합방지를 하나의 시스템으로 제공하지 않습니다. 이 세 레이어의 시너지는 개별 기술만으로는 달성할 수 없는 보안을 만듭니다.',
+      desc: 'SIGIL은 세 가지 기술을 모두 결합한 유일한 투표 프로토콜입니다. Snapshot, Aragon, Tally, Vocdoni — 어떤 서비스도 ZK 영구 비공개 + 이차 공정성 + MACI 담합방지를 하나의 시스템으로 제공하지 않습니다. 이 세 레이어의 시너지는 개별 기술만으로는 달성할 수 없는 보안을 만듭니다.',
     },
     specs: {
       title: '기술 사양',
@@ -569,7 +569,7 @@ export const ko: Translations = {
     },
     developers: {
       title: '개발자를 위해\n설계했습니다',
-      subtitle: 'Web3 프로젝트에 비밀 거버넌스를 추가하는 데 필요한 모든 것.',
+      subtitle: 'Web3 프로젝트에 비밀 투표를 추가하는 데 필요한 모든 것.',
       sdkTitle: 'TypeScript SDK',
       sdkDesc: '완전한 타입 안전성과 자동완성. 투표 생성, 투표 참여, 결과 조회까지 — 백엔드 없이 클라이언트에서 전부 처리.',
       sdkCode: 'const sigil = new SigilClient({ maciAddress })\nconst results = await sigil.getResults(pollId)',
