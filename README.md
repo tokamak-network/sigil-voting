@@ -1,6 +1,6 @@
 # SIGIL
 
-> Private Governance Protocol — Permanently Secret Votes, Anti-Collusion, Quadratic Fairness
+> Private Voting Infrastructure — Permanently Secret Votes, Anti-Collusion, Quadratic Fairness
 
 ## What is SIGIL?
 
@@ -12,7 +12,7 @@ SIGIL is a ZK-based voting protocol that combines three technologies into one se
 | **D2 Quadratic Voting** | Prevents whale domination (cost = votes²) |
 | **MACI Anti-Collusion** | Key Change mechanism defeats bribery and coercion |
 
-No other protocol combines all three. SIGIL is designed as an SDK/Widget platform so any DAO, DeFi, or NFT community can integrate private governance.
+No other protocol combines all three. SIGIL is designed as an SDK/Widget platform so any DAO, DeFi, or NFT community can integrate private voting into their governance.
 
 ## How It Works
 
