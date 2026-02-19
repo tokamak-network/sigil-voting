@@ -228,8 +228,8 @@ export function VoteFormV2({
       saveLastVote(address, pollId, choice, weight, cost);
       setCreditsSpent(address, pollId, cost);
 
-      setTxStage('done');
       onVoteSubmitted?.(hash);
+      setTxStage('done');
     } catch (err) {
       console.error('Vote error:', err);
       setTxStage('error');
