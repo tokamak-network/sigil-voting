@@ -124,7 +124,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
       setTxStage('waiting')
 
       if (publicClient) {
-        const receipt = await publicClient.waitForTransactionReceipt({ hash })
+        const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 120_000 })
         const deployPollEvent = {
           type: 'event' as const,
           name: 'DeployPoll' as const,
@@ -192,6 +192,8 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
         setError(t.voteForm.errorRejected)
       } else if (msg.includes('InsufficientTokens')) {
         setError(t.createPoll.errorTokens)
+      } else if (msg.includes('timed out') || msg.includes('timeout') || msg.includes('Timed out')) {
+        setError(t.voteForm.errorTimeout)
       } else {
         setError(t.createPoll.error)
       }

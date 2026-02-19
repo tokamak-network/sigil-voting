@@ -122,6 +122,13 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
     setIsLoadingPoll(true)
   }, [propPollId])
 
+  // Reset vote form when account changes (e.g. MetaMask account switch)
+  useEffect(() => {
+    setShowReVoteForm(false)
+    setError(null)
+    setTxHash(null)
+  }, [address])
+
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
   const hasPoll = pollAddress !== null
 
@@ -492,6 +499,8 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
 
       // Auto-retry on nonce conflict (coordinator might be sending tx simultaneously)
       let hash: `0x${string}` = '0x' as `0x${string}`;
+      let signUpRetries = 0;
+      const maxSignUpRetries = 5;
       while (true) {
         try {
           hash = await writeContract({
@@ -505,7 +514,8 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
           break
         } catch (retryErr) {
           const retryMsg = retryErr instanceof Error ? retryErr.message : ''
-          if (retryMsg.includes('underpriced') || retryMsg.includes('nonce') || retryMsg.includes('already known')) {
+          if ((retryMsg.includes('underpriced') || retryMsg.includes('nonce') || retryMsg.includes('already known')) && signUpRetries < maxSignUpRetries) {
+            signUpRetries++
             await new Promise(r => setTimeout(r, 10_000))
             continue
           }
@@ -513,10 +523,10 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         }
       }
 
-      // Parse SignUp event to get stateIndex
+      // Parse SignUp event to get stateIndex (2 min timeout)
       if (publicClient) {
         try {
-          const receipt = await publicClient.waitForTransactionReceipt({ hash })
+          const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 120_000 })
           for (const log of receipt.logs) {
             // Only parse logs from MACI contract (not other contracts' events)
             if (log.address.toLowerCase() !== MACI_V2_ADDRESS.toLowerCase()) continue

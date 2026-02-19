@@ -73,7 +73,6 @@ export function TallyingStatus({
   })
 
   // Determine current step (1-based)
-  void (stateAqMerged === true && messageAqMerged === true)
   const isProcessed = processingComplete === true
   const isFinalized = tallyVerified === true
 

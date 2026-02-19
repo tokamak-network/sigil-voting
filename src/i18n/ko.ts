@@ -312,6 +312,8 @@ export const ko: Translations = {
     errorRejectedFriendly: '거래를 취소하셨습니다',
     errorGasFriendly: 'ETH 잔액이 부족합니다',
     errorGeneric: '일시적 오류가 발생했습니다. 다시 시도해주세요.',
+    errorTimeout: '거래 처리 시간이 초과되었습니다. Etherscan에서 확인 후 다시 시도해주세요.',
+    errorEncryption: '암호화 오류가 발생했습니다. 새로고침 후 다시 시도해주세요.',
     quadraticGuide: '1표 = 1크레딧, 3표 = 9크레딧',
   },
   keyManager: {
