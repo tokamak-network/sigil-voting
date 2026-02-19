@@ -211,8 +211,8 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
 
   const handlePollCreated = (newPollId: number, newPollAddress: `0x${string}`, title?: string) => {
     setShowCreatePoll(false)
-    // Add the new poll to the list immediately
-    setPolls(prev => [{
+    // Add the new poll to the list immediately and persist to cache
+    const newPoll: PollInfo = {
       id: newPollId,
       address: newPollAddress,
       title: title || `Proposal #${newPollId + 1}`,
@@ -222,7 +222,12 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
       duration: 3600, // default, will be overridden on next load
       numMessages: 0,
       hasVoted: false,
-    }, ...prev])
+    }
+    setPolls(prev => {
+      const updated = [newPoll, ...prev]
+      saveCachedPolls(updated)
+      return updated
+    })
   }
 
   // Map internal status to filter category
