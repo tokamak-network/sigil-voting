@@ -223,11 +223,15 @@ export interface Translations {
     quorumDesc: string
     networkOptimal: string
     networkOffline: string
+    preset1m: string
+    preset5m: string
+    preset1h: string
     preset3d: string
     preset7d: string
     preset14d: string
     presetCustom: string
     hoursUnit: string
+    minutesUnit: string
   }
   voteForm: {
     title: string
@@ -311,6 +315,26 @@ export interface Translations {
     stuck: string
     stuckDesc: string
     timelineNote: string
+  }
+  tallying: {
+    phase: string
+    proposalContext: string
+    privacyAssurance: string
+    zkEnvironment: string
+    processingStatus: string
+    step01: string
+    step02: string
+    currentPhase: string
+    finalStep: string
+    processing: string
+    estimatedRemaining: string
+    remaining: string
+    myVoteSummary: string
+    choice: string
+    spent: string
+    participation: string
+    totalUsers: string
+    privacyDesc: string
   }
   failed: {
     title: string
@@ -451,6 +475,7 @@ export interface Translations {
     defaultDesc: string
     votingStrategy: string
     shieldedVoting: string
+    contractLabel: string
   }
   voteSubmittedPage: {
     title: string

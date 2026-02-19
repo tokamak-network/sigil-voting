@@ -169,7 +169,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
           return {
             id: i,
             address: pollAddr,
-            title: (onChainTitle as string) || localStorage.getItem(storageKey.pollTitle(i)) || `Proposal #${i + 1}`,
+            title: (onChainTitle as string) || localStorage.getItem(storageKey.pollTitle(i)) || `#${i + 1}`,
             isOpen: isOpen as boolean,
             isFinalized,
             deployTime: Number(td[0]),
@@ -224,7 +224,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     const newPoll: PollInfo = {
       id: newPollId,
       address: newPollAddress,
-      title: title || `Proposal #${newPollId + 1}`,
+      title: title || `#${newPollId + 1}`,
       isOpen: true,
       isFinalized: false,
       deployTime: Math.floor(Date.now() / 1000),
@@ -284,7 +284,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   // Not configured fallback
   if (!isConfigured) {
     return (
-      <div className="w-full px-4 py-16">
+      <div className="container mx-auto px-6 py-16">
         <div className="bg-white p-8 technical-card">
           <h2 className="text-2xl font-display font-bold uppercase">{t.maci.notDeployed}</h2>
           <p className="mt-2 text-slate-600">{t.maci.notDeployedDesc}</p>
@@ -294,7 +294,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   }
 
   return (
-    <div className="w-full px-4 py-12">
+    <div className="container mx-auto px-6 py-12">
       {/* ── Header Section ── */}
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
         <div>
@@ -452,7 +452,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
                         <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposals.result}</span>
                         <div className="flex items-center gap-2">
                           <span className="material-symbols-outlined text-emerald-500 text-xl">check_circle</span>
-                          <span className="text-2xl font-display font-bold text-emerald-500">{t.proposals.statusEnded}</span>
+                          <span className="text-2xl font-display font-bold text-emerald-500">{t.proposals.status.finalized}</span>
                         </div>
                       </div>
                     )}
@@ -466,7 +466,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
 
                 {/* ── Proposal # (absolute bottom-left) ── */}
                 <div className="absolute bottom-4 left-8 text-xs font-bold text-slate-300 uppercase">
-                  {t.proposals.title} #{poll.id}
+                  {t.proposalDetail.proposalPrefix} #{poll.id + 1}
                 </div>
               </button>
             )
