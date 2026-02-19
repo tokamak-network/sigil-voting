@@ -14,9 +14,9 @@ contract DeployMACIScript is Script {
     // Already deployed on Sepolia (reuse across versions)
     address constant GATEKEEPER = 0x4c18984A78910Dd1976d6DFd820f6d18e7edD672;
     address constant VOICE_CREDIT_PROXY = 0x03669FF296a2B2CCF851bE98dbEa4BB2633ecF00;
-    address constant MSG_PROCESSOR_VERIFIER = 0x47221B605bF18E92296850191A0c899fe03A27dB;
-    address constant TALLY_VERIFIER = 0xa48c2bD789EAd236fFEE36dEad220DFFE3feccF1;
-    address constant VK_REGISTRY = 0xC8f6e6AB628CC73aDa2c01054C4772ACA222852C;
+    address constant MSG_PROCESSOR_VERIFIER = 0x352522b121Ac377f39AaD59De6D5C07C43Af5D59;
+    address constant TALLY_VERIFIER = 0xF1ecb18a649cf7060f746Cc155638992E83f1DD7;
+    address constant VK_REGISTRY = 0xCCcE4703D53fc112057C8fF4F1bC397C7F68732b;
 
     function run() external {
         vm.startBroadcast();

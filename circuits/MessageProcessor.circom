@@ -3,7 +3,7 @@ pragma circom 2.1.6;
 include "circomlib/circuits/poseidon.circom";
 include "circomlib/circuits/babyjub.circom";
 include "circomlib/circuits/escalarmulany.circom";
-include "circomlib/circuits/eddsaposeidon.circom";
+include "utils/eddsaSoft.circom";
 include "circomlib/circuits/comparators.circom";
 include "circomlib/circuits/mux1.circom";
 include "circomlib/circuits/bitify.circom";
@@ -124,13 +124,16 @@ template MessageProcessor(
     // Command hash for EdDSA
     component cmdHash[batchSize];
 
-    // EdDSA verification
+    // EdDSA verification (soft — returns boolean, does NOT assert)
     component sigVerify[batchSize];
 
     // Validity checks
     component indexCheck[batchSize];
     component nonceCheck[batchSize];
     component validityAnd[batchSize];
+
+    // Combined validity: index AND nonce AND signature
+    signal msgValid[batchSize];
 
     // Mux for index 0 routing
     component targetIndexMux[batchSize];
@@ -234,9 +237,10 @@ template MessageProcessor(
         cmdHash[i].inputs[3] <== unpack[i].newVoteWeight;
         cmdHash[i].inputs[4] <== decrypt[i].plaintext[3]; // salt
 
-        // ---- 3.5 EdDSA Signature Verification ----
-        // encKeyIsZero already computed above (before DuplexSponge)
-        sigVerify[i] = EdDSAPoseidonVerifier();
+        // ---- 3.5 EdDSA Signature Verification (SOFT) ----
+        // Returns sigVerify[i].valid (0 or 1) instead of asserting.
+        // Invalid signatures → valid=0 → message routed to index 0 (no-op).
+        sigVerify[i] = EdDSAPoseidonVerifierSoft();
         sigVerify[i].enabled <== 1 - encKeyIsZero[i].out;
         sigVerify[i].Ax <== stateLeaves[i][0]; // Current pubKey X
         sigVerify[i].Ay <== stateLeaves[i][1]; // Current pubKey Y
@@ -257,17 +261,21 @@ template MessageProcessor(
         nonceCheck[i].in[0] <== unpack[i].nonce;
         nonceCheck[i].in[1] <== ballots[i][0] + 1;
 
-        // Combined validity
+        // Combined validity (index AND nonce)
         validityAnd[i] = AND();
         validityAnd[i].a <== indexCheck[i].out;
         validityAnd[i].b <== nonceCheck[i].out;
+
+        // Full validity: index AND nonce AND signature
+        // Invalid signature → msgValid=0 → message routed to index 0 (no-op)
+        msgValid[i] <== validityAnd[i].out * sigVerify[i].valid;
 
         // ---- 3.7 Index 0 Routing (MACI Core) ----
         // invalid → index 0 (blank leaf); valid → actual stateIndex
         targetIndexMux[i] = Mux1();
         targetIndexMux[i].c[0] <== 0;
         targetIndexMux[i].c[1] <== unpack[i].stateIndex;
-        targetIndexMux[i].s <== validityAnd[i].out;
+        targetIndexMux[i].s <== msgValid[i];
 
         // ---- 3.8 State Leaf Verification ----
         stateLeafHash[i] = Poseidon(4);
@@ -297,19 +305,19 @@ template MessageProcessor(
         pkXMux[i] = Mux1();
         pkXMux[i].c[0] <== stateLeaves[i][0];
         pkXMux[i].c[1] <== decrypt[i].plaintext[1]; // newPubKeyX
-        pkXMux[i].s <== validityAnd[i].out;
+        pkXMux[i].s <== msgValid[i];
         finalPkX[i] <== pkXMux[i].out;
 
         pkYMux[i] = Mux1();
         pkYMux[i].c[0] <== stateLeaves[i][1];
         pkYMux[i].c[1] <== decrypt[i].plaintext[2]; // newPubKeyY
-        pkYMux[i].s <== validityAnd[i].out;
+        pkYMux[i].s <== msgValid[i];
         finalPkY[i] <== pkYMux[i].out;
 
         balMux[i] = Mux1();
         balMux[i].c[0] <== stateLeaves[i][2];
         balMux[i].c[1] <== newBalance[i];
-        balMux[i].s <== validityAnd[i].out;
+        balMux[i].s <== msgValid[i];
         finalBalance[i] <== balMux[i].out;
 
         // New state leaf hash
@@ -349,7 +357,7 @@ template MessageProcessor(
         nonceMux[i] = Mux1();
         nonceMux[i].c[0] <== ballots[i][0];
         nonceMux[i].c[1] <== ballots[i][0] + 1;
-        nonceMux[i].s <== validityAnd[i].out;
+        nonceMux[i].s <== msgValid[i];
         newNonce[i] <== nonceMux[i].out;
 
         newBallotHash[i] = Poseidon(2);

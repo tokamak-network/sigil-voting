@@ -199,18 +199,33 @@ export function VoteFormV2({
         return;
       }
 
-      const hash = await writeContract({
-        address: pollAddress,
-        abi: POLL_ABI,
-        functionName: 'publishMessage',
-        args: [
-          encMessage as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint],
-          ephemeral.pubKey[0],
-          ephemeral.pubKey[1],
-        ],
-        gas: 500_000n,
-        account: address,
-      });
+      // Auto-retry on nonce conflict (coordinator might be sending tx simultaneously)
+      let hash: `0x${string}` = '0x' as `0x${string}`;
+      while (true) {
+        try {
+          hash = await writeContract({
+            address: pollAddress,
+            abi: POLL_ABI,
+            functionName: 'publishMessage',
+            args: [
+              encMessage as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint],
+              ephemeral.pubKey[0],
+              ephemeral.pubKey[1],
+            ],
+            gas: 500_000n,
+            account: address,
+          });
+          break;
+        } catch (retryErr) {
+          const retryMsg = retryErr instanceof Error ? retryErr.message : '';
+          if (retryMsg.includes('underpriced') || retryMsg.includes('nonce') || retryMsg.includes('already known')) {
+            setTxStage('confirming');
+            await new Promise(r => setTimeout(r, 10_000));
+            continue;
+          }
+          throw retryErr;
+        }
+      }
 
       setTxStage('waiting');
       setTxHash(hash);

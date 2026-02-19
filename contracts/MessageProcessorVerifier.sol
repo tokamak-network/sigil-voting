@@ -20,7 +20,7 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-contract Groth16VerifierMsgProcessor {
+contract Groth16Verifier {
     // Scalar field size
     uint256 constant r = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
     // Base field size
@@ -53,21 +53,6 @@ contract Groth16VerifierMsgProcessor {
     uint16 constant pPairing = 128;
 
     uint16 constant pLastMem = 896;
-
-    /// @notice IVerifier-compatible wrapper (dynamic-length pubSignals)
-    function verifyProof(
-        uint256[2] calldata _pA,
-        uint256[2][2] calldata _pB,
-        uint256[2] calldata _pC,
-        uint256[] calldata _pubSignals
-    ) external view returns (bool) {
-        require(_pubSignals.length == 1, "Expected 1 public signal");
-        uint256[1] calldata s;
-        assembly {
-            s := _pubSignals.offset
-        }
-        return this.verifyProof(_pA, _pB, _pC, s);
-    }
 
     function verifyProof(
         uint256[2] calldata _pA,

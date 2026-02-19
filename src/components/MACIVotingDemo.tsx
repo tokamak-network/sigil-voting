@@ -265,7 +265,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
 
   // 2 steps: 0=Vote, 1=Result
   // Ended proposals -> always show result (step 1), regardless of registration
-  const currentStep = (hasPoll && phase !== V2Phase.Voting) ? 1 : 0
+  const currentStep = (hasPoll && (phase !== V2Phase.Voting || isPollExpired)) ? 1 : 0
 
   // Read numSignUps from MACI
   const { data: numSignUpsRaw, refetch: refetchSignUps } = useReadContract({
@@ -375,7 +375,12 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         }
 
         if (isOpen) {
-          setPhase(V2Phase.Voting)
+          if (isPollExpired) {
+            // Timer expired locally but contract still says open — show processing UI
+            setPhase(V2Phase.Merging)
+          } else {
+            setPhase(V2Phase.Voting)
+          }
           setPhaseLoaded(true)
           return
         }
@@ -475,14 +480,28 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
       const sk = await deriveKeyFromWallet(address, cm)
       const pk = await cm.eddsaDerivePublicKey(sk)
 
-      const hash = await writeContract({
-        address: MACI_V2_ADDRESS,
-        abi: MACI_ABI,
-        functionName: 'signUp',
-        args: [pk[0], pk[1], '0x' as `0x${string}`, '0x' as `0x${string}`],
-        gas: 500_000n,
-        account: address,
-      })
+      // Auto-retry on nonce conflict (coordinator might be sending tx simultaneously)
+      let hash: `0x${string}` = '0x' as `0x${string}`;
+      while (true) {
+        try {
+          hash = await writeContract({
+            address: MACI_V2_ADDRESS,
+            abi: MACI_ABI,
+            functionName: 'signUp',
+            args: [pk[0], pk[1], '0x' as `0x${string}`, '0x' as `0x${string}`],
+            gas: 500_000n,
+            account: address,
+          })
+          break
+        } catch (retryErr) {
+          const retryMsg = retryErr instanceof Error ? retryErr.message : ''
+          if (retryMsg.includes('underpriced') || retryMsg.includes('nonce') || retryMsg.includes('already known')) {
+            await new Promise(r => setTimeout(r, 10_000))
+            continue
+          }
+          throw retryErr
+        }
+      }
 
       // Parse SignUp event to get stateIndex
       if (publicClient) {
