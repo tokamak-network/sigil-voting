@@ -105,9 +105,27 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   const [isPollExpired, setIsPollExpired] = useState(false)
   const [showReVoteForm, setShowReVoteForm] = useState(false)
   const [votingEndTime, setVotingEndTime] = useState<number | null>(null)
+  const [voteJustSubmitted, setVoteJustSubmitted] = useState(false)
+  const [submittedVoteData, setSubmittedVoteData] = useState<{ choice: number; weight: number; cost: number; txHash: string } | null>(null)
 
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
   const hasPoll = pollAddress !== null
+
+  // Read tally results for dynamic PASSED/REJECTED badge
+  const tallyReady = !!tallyAddress && tallyAddress !== ZERO_ADDRESS && phase === V2Phase.Finalized
+  const { data: tallyFor } = useReadContract({
+    address: tallyAddress!,
+    abi: TALLY_ABI,
+    functionName: 'forVotes',
+    query: { enabled: tallyReady },
+  })
+  const { data: tallyAgainst } = useReadContract({
+    address: tallyAddress!,
+    abi: TALLY_ABI,
+    functionName: 'againstVotes',
+    query: { enabled: tallyReady },
+  })
+  const isPassed = Number(tallyFor || 0n) >= Number(tallyAgainst || 0n)
 
   // Load poll address from contract using propPollId
   useEffect(() => {
@@ -534,6 +552,109 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
 
   const displayTitle = pollTitle || `Proposal #${propPollId + 1}`
 
+  // === Vote Just Submitted (Page 4 - Full-page Confirmation) ===
+  if (voteJustSubmitted && submittedVoteData) {
+    const receiptCode = submittedVoteData.txHash.slice(2, 6).toUpperCase()
+    return (
+      <div className="min-h-screen bg-white">
+        <main className="flex-grow flex flex-col items-center justify-center p-6 lg:p-12">
+          <div className="max-w-2xl w-full">
+            {/* Centered success icon */}
+            <div className="text-center mb-10">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-primary text-white mb-6 border-2 border-black">
+                <span className="material-symbols-outlined text-5xl">check_circle</span>
+              </div>
+              <h1 className="text-4xl md:text-5xl font-display font-black uppercase italic tracking-tighter leading-none mb-2">
+                {t.voteSubmittedPage.title}
+              </h1>
+              <p className="font-mono text-sm font-bold text-slate-500 uppercase tracking-widest">
+                {t.voteSubmittedPage.txHash}: {submittedVoteData.txHash.slice(0, 6)}...{submittedVoteData.txHash.slice(-4)}
+              </p>
+            </div>
+
+            {/* Receipt card */}
+            <div className="border-2 border-black bg-white p-8 md:p-12 mb-8 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 border-l-2 border-b-2 border-black bg-slate-50">
+                <span className="font-mono text-[10px] font-bold">RECEIPT #{receiptCode}-ZK</span>
+              </div>
+
+              <div className="mb-10">
+                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">{t.voteSubmittedPage.proposal}</span>
+                <h2 className="text-2xl font-display font-bold uppercase italic border-l-4 border-black pl-4">
+                  {displayTitle}
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                <div className="p-6 border-2 border-black bg-slate-50">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">{t.voteSubmittedPage.myChoice}</span>
+                  <div className="flex items-center gap-4 text-primary">
+                    <span className="material-symbols-outlined text-4xl">
+                      {submittedVoteData.choice === 1 ? 'thumb_up' : 'thumb_down'}
+                    </span>
+                    <span className="font-display font-black text-3xl uppercase tracking-tighter">
+                      {submittedVoteData.choice === 1 ? t.voteForm.for : t.voteForm.against}
+                    </span>
+                  </div>
+                </div>
+                <div className="p-6 border-2 border-black border-dashed">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">{t.voteSubmittedPage.votingStats}</span>
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-xs font-bold text-slate-500 uppercase">{t.voteSubmittedPage.intensity}:</span>
+                      <span className="font-mono font-bold">{submittedVoteData.weight} {t.voteSubmittedPage.votes}</span>
+                    </div>
+                    <div className="flex justify-between items-baseline pt-1 border-t border-slate-200">
+                      <span className="text-xs font-bold text-slate-500 uppercase">{t.voteSubmittedPage.used}:</span>
+                      <span className="font-mono font-bold text-primary">{submittedVoteData.cost} {t.voteForm.credits}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <a
+                href={`https://sepolia.etherscan.io/tx/${submittedVoteData.txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full text-center py-4 border-2 border-black font-bold text-xs uppercase tracking-widest hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-sm">open_in_new</span>
+                {t.voteSubmittedPage.viewOnExplorer}
+              </a>
+            </div>
+
+            {/* Return to list button */}
+            <button
+              onClick={() => { setVoteJustSubmitted(false); onBack() }}
+              className="w-full bg-black text-white py-6 text-xl font-display font-bold uppercase italic tracking-[0.2em] border-2 border-black mb-12"
+              style={{ boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)' }}
+            >
+              {t.voteSubmittedPage.returnToList}
+            </button>
+
+            {/* Privacy + Proofs badges */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-3 p-4 bg-slate-100 border-2 border-slate-200">
+                <span className="material-symbols-outlined text-primary">shield_with_heart</span>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold uppercase tracking-tight text-slate-400 leading-none mb-1">{t.voteSubmittedPage.privacyStatus}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest">{t.voteSubmittedPage.maciShield}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-4 bg-slate-100 border-2 border-slate-200">
+                <span className="material-symbols-outlined text-primary">analytics</span>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold uppercase tracking-tight text-slate-400 leading-none mb-1">{t.voteSubmittedPage.proofs}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest">{t.voteSubmittedPage.zkProofGenerated}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   // === Voting Phase (Page 5 / Page 6) ===
   if (currentStep === 0 && phase === V2Phase.Voting) {
     return (
@@ -548,7 +669,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
               </div>
               <button
                 onClick={() => setShowReVoteForm(true)}
-                className="bg-white text-black px-6 py-2 text-xs font-bold uppercase tracking-widest border-2 border-black hover:bg-slate-100 transition-colors whitespace-nowrap"
+                className="bg-primary text-white px-6 py-2 text-[10px] font-bold uppercase tracking-widest border-2 border-black hover:bg-blue-600 transition-colors whitespace-nowrap"
               >
                 {t.proposalDetail.reVote}
               </button>
@@ -684,19 +805,22 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                     onVoteSubmitted={(voteTxHash) => {
                       setTxHash(voteTxHash)
                       setShowReVoteForm(false)
+                      // Show Page 4 confirmation view
+                      const vote = address ? getLastVote(address, propPollId) : null
+                      if (vote) {
+                        setSubmittedVoteData({ choice: vote.choice, weight: vote.weight, cost: vote.cost, txHash: voteTxHash })
+                        setVoteJustSubmitted(true)
+                      }
                       // Notify parent with vote data
-                      if (onVoteSubmitted && address) {
-                        const vote = getLastVote(address, propPollId)
-                        if (vote) {
-                          onVoteSubmitted({
-                            pollId: propPollId,
-                            pollTitle: displayTitle,
-                            choice: vote.choice,
-                            weight: vote.weight,
-                            cost: vote.cost,
-                            txHash: voteTxHash,
-                          })
-                        }
+                      if (onVoteSubmitted && address && vote) {
+                        onVoteSubmitted({
+                          pollId: propPollId,
+                          pollTitle: displayTitle,
+                          choice: vote.choice,
+                          weight: vote.weight,
+                          cost: vote.cost,
+                          txHash: voteTxHash,
+                        })
                       }
                     }}
                   />
@@ -722,7 +846,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                         {/* Your Selection */}
                         <div className="flex flex-col">
                           <span className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">{t.proposalDetail.yourSelection}</span>
-                          <div className={`text-4xl font-display font-black italic ${myVote!.choice === 1 ? 'text-emerald-500' : 'text-red-500'}`}>
+                          <div className="text-4xl font-display font-black italic text-black">
                             {myVote!.choice === 1 ? t.voteForm.for : t.voteForm.against}
                           </div>
                         </div>
@@ -809,40 +933,50 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
           {t.proposals.backToList}
         </button>
 
-        {/* Proposal Header */}
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-12">
-          <div className="flex-1">
-            <div className="flex items-center gap-4 mb-4">
-              <span className="bg-black text-white text-xs font-bold px-3 py-1 uppercase tracking-widest">
+        {/* Proposal Header — Finalized uses Page 2 layout (COMPLETED RESULTS + PASSED badge) */}
+        {phase === V2Phase.Finalized ? (
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="bg-black text-white text-[10px] font-bold px-2 py-1 uppercase font-mono">
                 Proposal #{propPollId + 1}
               </span>
+              <span className={`${isPassed ? 'bg-green-500' : 'bg-red-500'} text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest`}>
+                {isPassed ? t.results.passed : t.results.rejected}
+              </span>
             </div>
-            <h1 className="font-display text-5xl lg:text-7xl font-black uppercase italic leading-[0.9] tracking-tighter max-w-4xl">
-              {displayTitle}
+            <h1 className="text-5xl font-display font-black uppercase italic leading-none tracking-tighter">
+              {t.completedResults.title}
             </h1>
           </div>
-          <div className="flex flex-col items-end shrink-0">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
-            <span className={`px-6 py-3 bg-white border-4 border-black font-black text-xl italic uppercase tracking-tighter ${
-              phase === V2Phase.Finalized ? 'text-green-600' : phase === V2Phase.Failed ? 'text-amber-600' : 'text-amber-600'
-            }`}>
-              {phase === V2Phase.Merging && t.merging.title.toUpperCase()}
-              {phase === V2Phase.Processing && t.processing.title.toUpperCase()}
-              {phase === V2Phase.Failed && (
-                <span className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg">schedule</span>
-                  {t.failed.title.toUpperCase()}
+        ) : (
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-12">
+            <div className="flex-1">
+              <div className="flex items-center gap-4 mb-4">
+                <span className="bg-black text-white text-xs font-bold px-3 py-1 uppercase tracking-widest">
+                  Proposal #{propPollId + 1}
                 </span>
-              )}
-              {phase === V2Phase.Finalized && (
-                <span className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg">check_circle</span>
-                  {t.proposals.status.finalized.toUpperCase()}
-                </span>
-              )}
-            </span>
+              </div>
+              <h1 className="font-display text-5xl lg:text-7xl font-black uppercase italic leading-[0.9] tracking-tighter max-w-4xl">
+                {displayTitle}
+              </h1>
+            </div>
+            <div className="flex flex-col items-end shrink-0">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
+              <span className={`px-6 py-3 bg-white border-4 border-black font-black text-xl italic uppercase tracking-tighter ${
+                phase === V2Phase.Failed ? 'text-amber-600' : 'text-amber-600'
+              }`}>
+                {phase === V2Phase.Merging && t.merging.title.toUpperCase()}
+                {phase === V2Phase.Processing && t.processing.title.toUpperCase()}
+                {phase === V2Phase.Failed && (
+                  <span className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg">schedule</span>
+                    {t.failed.title.toUpperCase()}
+                  </span>
+                )}
+              </span>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* My Vote Summary Banner */}
         {myVote && (
@@ -1004,6 +1138,74 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
               </div>
             </div>
           </div>
+        ) : phase === V2Phase.Finalized ? (
+          /* Finalized Phase: Full-width 3-column grid layout matching Page 2 mockup */
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column: Voting Breakdown + ZK Verification */}
+            <div className="lg:col-span-2">
+              {tallyAddress && tallyAddress !== ZERO_ADDRESS ? (
+                <ResultsDisplay tallyAddress={tallyAddress} pollAddress={pollAddress || undefined} />
+              ) : (
+                <div className="border-2 border-black bg-white p-8 text-center">
+                  <h3 className="font-display text-2xl font-black uppercase mb-2">{t.results.title}</h3>
+                  <p className="text-slate-600">{t.results.desc}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Right Column: Proposal Details + Metadata */}
+            <div className="space-y-6">
+              {/* Proposal Details Card */}
+              <div className="border-2 border-black bg-white p-8 h-fit">
+                <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-400 mb-8 border-b-2 border-slate-100 pb-2">
+                  {t.completedResults.proposalDetails}
+                </h2>
+
+                <div className="space-y-6 mb-6">
+                  <div>
+                    <p className="text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-1">
+                      {t.completedResults.titleLabel}
+                    </p>
+                    <p className="text-xl font-display font-bold uppercase leading-tight">
+                      {displayTitle}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-1">
+                      {t.proposalDetail.currentStatus}
+                    </p>
+                    <span className="inline-block px-3 py-1 bg-green-500 text-white text-xs font-mono font-bold uppercase tracking-wider">
+                      {t.proposals.status.finalized}
+                    </span>
+                  </div>
+
+                  {pollDescription && (
+                    <div className="pt-6 border-t-2 border-black">
+                      <p className="text-xs text-slate-500 leading-relaxed mb-6">
+                        {pollDescription}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Back to List Button */}
+                <button
+                  onClick={onBack}
+                  className="w-full bg-black text-white px-4 py-3 text-sm font-mono font-bold uppercase tracking-wider hover:bg-slate-800 transition-colors"
+                >
+                  {t.proposals.backToList}
+                </button>
+              </div>
+
+              {/* Metadata Box */}
+              <div className="border-2 border-slate-200 p-4 font-mono text-[10px] text-slate-400 uppercase leading-relaxed">
+                <p>Proposal #{propPollId + 1}</p>
+                <p>{t.completedResults.votingStrategy}</p>
+                <p>{t.completedResults.shieldedVoting}</p>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="max-w-3xl">
             {phase === V2Phase.Merging && pollAddress && (
@@ -1016,16 +1218,6 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                 <ProcessingStatus messageProcessorAddress={messageProcessorAddress || undefined} tallyAddress={tallyAddress || undefined} votingEndTime={votingEndTime ?? undefined} />
               </div>
             )}
-            {phase === V2Phase.Finalized && tallyAddress && tallyAddress !== ZERO_ADDRESS ? (
-              <div className="technical-card-heavy bg-white p-8">
-                <ResultsDisplay tallyAddress={tallyAddress} />
-              </div>
-            ) : phase === V2Phase.Finalized ? (
-              <div className="technical-card-heavy bg-white p-8 text-center">
-                <h3 className="font-display text-2xl font-black uppercase mb-2">{t.results.title}</h3>
-                <p className="text-slate-600">{t.results.desc}</p>
-              </div>
-            ) : null}
           </div>
         )}
       </div>
