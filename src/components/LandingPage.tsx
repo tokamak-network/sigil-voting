@@ -139,7 +139,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
         </div>
       </section>
 
-      {/* ─── 4. Technical Workflow (How It Works) ─── */}
+      {/* ─── 4. How Privacy Is Guaranteed ─── */}
       <section className="py-24 bg-slate-50 dark:bg-zinc-950 border-y-2 border-border-light dark:border-border-dark">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
@@ -147,21 +147,73 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             {[
-              { num: '01', title: t.landing.lifecycle.step1.title, desc: t.landing.lifecycle.step1.desc, code: 'sigil.init({ provider: window.ethereum })', color: 'text-primary' },
-              { num: '02', title: t.landing.lifecycle.step2.title, desc: t.landing.lifecycle.step2.desc, code: 'sigil.castVote(option_id, weight)', color: 'text-emerald-500' },
-              { num: '03', title: t.landing.lifecycle.step3.title, desc: t.landing.lifecycle.step3.desc, code: 'sigil.verifyProof(proof_data)', color: 'text-amber-500' },
+              { num: '01', title: t.landing.lifecycle.step1.title, desc: t.landing.lifecycle.step1.desc, icon: 'lock', code: 'sharedKey = ECDH(myKey, coordPub)\ncipher = Poseidon.encrypt(vote, sharedKey)', color: 'text-primary' },
+              { num: '02', title: t.landing.lifecycle.step2.title, desc: t.landing.lifecycle.step2.desc, icon: 'shield', code: 'keyChange(newKey)  // looks identical\nrevote(newKey, trueChoice)', color: 'text-emerald-500' },
+              { num: '03', title: t.landing.lifecycle.step3.title, desc: t.landing.lifecycle.step3.desc, icon: 'verified', code: 'proof = Groth16.prove(tally, msgs)\ncontract.verify(proof) // on-chain', color: 'text-amber-500' },
             ].map((step, i) => (
               <div key={i} className="relative">
                 <div className="font-display text-8xl font-black text-slate-200 dark:text-slate-800 absolute -top-12 -left-4 -z-0">{step.num}</div>
                 <div className="relative z-10">
-                  <h4 className="font-display text-xl font-bold mb-4 uppercase">{step.title}</h4>
-                  <p className="text-slate-600 dark:text-slate-400">{step.desc}</p>
-                  <div className="mt-6 p-4 border-2 border-border-light dark:border-border-dark bg-white dark:bg-black font-display text-xs overflow-hidden">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className={`material-symbols-outlined text-2xl ${step.color}`}>{step.icon}</span>
+                    <h4 className="font-display text-xl font-bold uppercase">{step.title}</h4>
+                  </div>
+                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{step.desc}</p>
+                  <div className="mt-6 p-4 border-2 border-border-light dark:border-border-dark bg-white dark:bg-black font-mono text-xs overflow-hidden whitespace-pre-wrap">
                     <code className={step.color}>{step.code}</code>
                   </div>
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── 4.5. Transparency: What's On-Chain ─── */}
+      <section className="py-16 border-b-2 border-border-light dark:border-border-dark">
+        <div className="container mx-auto px-6">
+          <h3 className="font-display text-3xl font-extrabold uppercase text-center mb-12">{t.landing.transparency.title}</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border-2 border-border-light dark:border-border-dark max-w-4xl mx-auto">
+            {/* Visible */}
+            <div className="p-8 border-b-2 md:border-b-0 md:border-r-2 border-border-light dark:border-border-dark">
+              <div className="flex items-center gap-2 mb-6">
+                <span className="material-symbols-outlined text-emerald-500">visibility</span>
+                <h4 className="font-display font-bold uppercase">{t.landing.transparency.visibleTitle}</h4>
+              </div>
+              <ul className="space-y-4">
+                {[t.landing.transparency.visible1, t.landing.transparency.visible2, t.landing.transparency.visible3].map((item, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <span className="material-symbols-outlined text-emerald-500 text-sm mt-1">check_circle</span>
+                    <span className="text-slate-600 dark:text-slate-400">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {/* Hidden */}
+            <div className="p-8">
+              <div className="flex items-center gap-2 mb-6">
+                <span className="material-symbols-outlined text-red-500">visibility_off</span>
+                <h4 className="font-display font-bold uppercase">{t.landing.transparency.hiddenTitle}</h4>
+              </div>
+              <ul className="space-y-4">
+                {[t.landing.transparency.hidden1, t.landing.transparency.hidden2, t.landing.transparency.hidden3].map((item, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <span className="material-symbols-outlined text-red-500 text-sm mt-1">cancel</span>
+                    <span className="text-slate-600 dark:text-slate-400">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          {/* Coordinator Note */}
+          <div className="max-w-4xl mx-auto mt-8 p-6 border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30">
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-amber-500 mt-0.5">info</span>
+              <div>
+                <h4 className="font-display font-bold text-sm uppercase mb-2">{t.landing.transparency.coordinatorTitle}</h4>
+                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{t.landing.transparency.coordinatorNote}</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>

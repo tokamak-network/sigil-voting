@@ -117,6 +117,19 @@ export interface Translations {
       postRevealDev: string
       onlyStack: string
     }
+    transparency: {
+      title: string
+      visibleTitle: string
+      hiddenTitle: string
+      visible1: string
+      visible2: string
+      visible3: string
+      hidden1: string
+      hidden2: string
+      hidden3: string
+      coordinatorNote: string
+      coordinatorTitle: string
+    }
     faq: {
       title: string
       subtitle: string
