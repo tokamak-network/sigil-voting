@@ -63,31 +63,11 @@ Prevents wealthy voters from dominating:
 
 ## Quick Start
 
-### Frontend
 ```bash
 npm install
 npm run dev
 ```
 Open http://localhost:5173
-
-### Coordinator (Auto-Runner)
-```bash
-cd coordinator
-npm install
-npx tsx src/run.ts
-```
-Requires `.env` in the project root with `PRIVATE_KEY` and `COORDINATOR_PRIVATE_KEY`.
-
-The coordinator polls for ended votes every 30 seconds and automatically processes messages, generates Groth16 proofs, and publishes tally results on-chain.
-
-### Tests
-```bash
-# Smart contracts (Foundry)
-forge test                  # 50 tests
-
-# Crypto + circuits + frontend (Vitest)
-npx vitest run              # 66 tests
-```
 
 ## Architecture
 
