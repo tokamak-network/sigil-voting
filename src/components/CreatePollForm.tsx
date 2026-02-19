@@ -328,7 +328,9 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
   }
 
   // Not eligible - show token requirement
-  if (canCreate === false && Number(gateCount || 0) > 0) {
+  // Block when gates exist and canCreate is NOT explicitly true
+  // (covers: false, undefined from RPC errors, loading edge cases)
+  if (Number(gateCount || 0) > 0 && canCreate !== true) {
     const threshold = gateInfo ? formatEther((gateInfo as [string, bigint])[1]) : '100'
     const balance = tonBalance ? formatEther(tonBalance as bigint) : '0'
     return (
