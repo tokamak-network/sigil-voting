@@ -10,7 +10,11 @@
     "preview": "vite preview",
     "deploy": "npx hardhat run scripts/deploy_final.cjs --network sepolia",
     "deploy:local": "npx hardhat run scripts/deploy_final.cjs --network localhost",
+    "test": "vitest run --config vitest.config.ts",
+    "test:watch": "vitest --config vitest.config.ts",
+    "test:components": "vitest run --config vitest.config.ts test/components",
     "test:e2e": "npx tsx e2e/test-full-flow.ts",
+    "test:e2e:browser": "playwright test",
     "dev:full": "npx tsx coordinator/src/run.ts & vite",
     "coordinator": "npx tsx coordinator/src/run.ts"
   },
@@ -35,6 +39,10 @@
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@playwright/test": "^1.58.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
@@ -46,10 +54,12 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
     "hardhat": "^2.19.0",
+    "jsdom": "^28.1.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vitest": "^4.0.18"
   }
 }
