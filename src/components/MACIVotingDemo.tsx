@@ -28,7 +28,6 @@ import {
 import { VoteFormV2 } from './voting/VoteFormV2'
 import { getLastVote } from './voting/voteUtils'
 import { TallyingStatus } from './voting/TallyingStatus'
-import { KeyManager } from './voting/KeyManager'
 import { ResultsDisplay } from './voting/ResultsDisplay'
 import { PollTimer } from './voting/PollTimer'
 import { useTranslation } from '../i18n'
@@ -97,7 +96,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   const [messageProcessorAddress, setMessageProcessorAddress] = useState<`0x${string}` | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
-  const [isSigningUp, setIsSigningUp] = useState(false)
+  const [_isSigningUp, setIsSigningUp] = useState(false)
   const [isLoadingPoll, setIsLoadingPoll] = useState(true)
   const [pollTitle, setPollTitle] = useState<string | null>(null)
   const [pollDescription, setPollDescription] = useState<string | null>(null)
@@ -237,7 +236,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   const coordPubKeyY = coordPubKeyYRaw ? BigInt(coordPubKeyYRaw as any) : DEFAULT_COORD_PUB_KEY_Y
 
   // Read voice credits from VoiceCreditProxy (user's token balance = credits)
-  const { data: voiceCreditsRaw, isLoading: isLoadingCredits } = useReadContract({
+  const { data: voiceCreditsRaw, isLoading: _isLoadingCredits } = useReadContract({
     address: VOICE_CREDIT_PROXY_ADDRESS,
     abi: VOICE_CREDIT_PROXY_ABI,
     functionName: 'getVoiceCredits',
@@ -756,14 +755,6 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                 </div>
               </div>
 
-              {/* Key Manager (advanced, collapsible) */}
-              <KeyManager
-                pollId={propPollId}
-                coordinatorPubKeyX={coordPubKeyX}
-                coordinatorPubKeyY={coordPubKeyY}
-                pollAddress={pollAddress!}
-                isRegistered={signedUp}
-              />
             </div>
 
             {/* Right Column - Vote Form or Voted Summary */}
@@ -799,7 +790,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                   />
                 ) : (
                   /* Voted Summary Card (Page 6) */
-                  <div className="bg-white border-4 border-black sticky top-32" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>
+                  <div className="bg-white border-4 border-black static md:sticky md:top-32" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>
                     {/* Card Header */}
                     <div className="p-8 border-b-2 border-black bg-slate-50 flex items-center justify-between">
                       <h3 className="text-xl font-display font-black text-primary tracking-tight italic flex items-center gap-2">

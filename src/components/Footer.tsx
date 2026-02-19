@@ -59,7 +59,7 @@ export function Footer() {
               rel="noopener noreferrer"
               className="flex items-center gap-4 group cursor-pointer"
             >
-              <img src="/assets/symbol.svg" alt="Tokamak Network" className="w-10 h-10" />
+              <img src="/assets/tokamak-symbol.svg" alt="Tokamak Network" className="w-10 h-10" />
               <div>
                 <div className="font-display font-bold text-sm uppercase group-hover:text-primary transition-colors">Tokamak Network</div>
                 <div className="text-xs opacity-60 font-display uppercase">{t.footer.coreInfra}</div>

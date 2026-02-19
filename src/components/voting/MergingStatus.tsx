@@ -8,7 +8,7 @@
 
 import { useState, useEffect } from 'react';
 import { useReadContract } from 'wagmi';
-import { POLL_ABI, POLL_V2_ADDRESS } from '../../contractV2';
+import { POLL_ABI } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 
 interface MergingStatusProps {
