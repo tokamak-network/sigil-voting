@@ -14,6 +14,7 @@ export interface Translations {
     resetData: string
     resetConfirm: string
     resetDone: string
+    technology: string
   }
   landing: {
     badge: string

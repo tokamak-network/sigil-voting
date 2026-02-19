@@ -14,6 +14,7 @@ export const en: Translations = {
     resetData: 'Reset Test Data',
     resetConfirm: 'This will delete all test data (registration, vote history, keys) for this account. Continue?',
     resetDone: 'Reset complete! Refreshing page.',
+    technology: 'Technology',
   },
   landing: {
     badge: 'ZK Private Voting Protocol',

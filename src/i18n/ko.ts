@@ -14,6 +14,7 @@ export const ko: Translations = {
     resetData: '테스트 초기화',
     resetConfirm: '이 계정의 모든 테스트 데이터(등록, 투표 기록, 키)를 삭제합니다. 계속할까요?',
     resetDone: '초기화 완료! 페이지를 새로고침합니다.',
+    technology: '기술 소개',
   },
   landing: {
     badge: 'ZK 비밀투표 프로토콜',
