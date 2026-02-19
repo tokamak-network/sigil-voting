@@ -24,10 +24,6 @@ interface TallyingStatusProps {
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
 
-function formatTime(date: Date): string {
-  return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
-}
-
 export function TallyingStatus({
   pollAddress,
   messageProcessorAddress,
@@ -82,16 +78,22 @@ export function TallyingStatus({
   const isFinalized = tallyVerified === true
 
   // Estimated completion: votingEndTime + ~7 minutes
-  const estimatedCompletion = votingEndTime
-    ? new Date((votingEndTime + 7 * 60) * 1000)
-    : new Date(Date.now() + 7 * 60 * 1000)
+  // Estimated total processing time: ~7 minutes after voting ends
+  const estimatedEndMs = votingEndTime
+    ? (votingEndTime + 7 * 60) * 1000
+    : Date.now() + 7 * 60 * 1000
 
-  // Elapsed timer
+  // Countdown timer
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
     const iv = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(iv)
   }, [])
+
+  const remainingMs = Math.max(0, estimatedEndMs - now)
+  const remainingMin = Math.floor(remainingMs / 60000)
+  const remainingSec = Math.floor((remainingMs % 60000) / 1000)
+  const isOverdue = remainingMs === 0 && !isFinalized
 
   const choiceLabel = myVote
     ? myVote.choice === 1
@@ -224,16 +226,16 @@ export function TallyingStatus({
               </div>
             </div>
 
-            {/* Estimated Completion */}
+            {/* Countdown Timer */}
             <div className="bg-white p-8 border-2 border-black" style={{ boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)' }}>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
-                Estimated Completion
+                {isOverdue ? 'Processing...' : 'Estimated Remaining'}
               </span>
               <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-mono font-bold text-primary leading-none">
-                  ~{formatTime(estimatedCompletion)}
+                <span className={`text-5xl font-mono font-bold leading-none ${isOverdue ? 'text-amber-500' : 'text-primary'}`}>
+                  {isOverdue ? '—:——' : `${remainingMin.toString().padStart(2, '0')}:${remainingSec.toString().padStart(2, '0')}`}
                 </span>
-                <span className="text-xs font-bold text-slate-400">UTC</span>
+                <span className="text-xs font-bold text-slate-400">{isOverdue ? '' : 'remaining'}</span>
               </div>
             </div>
 
