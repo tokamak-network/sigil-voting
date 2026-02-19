@@ -81,16 +81,20 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
         </div>
 
         {/* Center: Nav */}
-        {isLandingOrTech && (
-          <nav className="hidden md:flex items-center gap-6">
-            <button
-              onClick={() => setCurrentPage('technology')}
-              className={`font-display font-bold text-sm uppercase tracking-wide transition-colors ${currentPage === 'technology' ? 'text-primary' : 'text-slate-500 hover:text-black dark:hover:text-white'}`}
-            >
-              {t.header.technology}
-            </button>
-          </nav>
-        )}
+        <nav className="hidden md:flex items-center gap-6">
+          <button
+            onClick={() => setCurrentPage('proposals')}
+            className={`font-display font-bold text-sm uppercase tracking-wide transition-colors ${currentPage === 'proposals' || currentPage === 'proposal-detail' || currentPage === 'create-proposal' ? 'text-primary' : 'text-slate-500 hover:text-black dark:hover:text-white'}`}
+          >
+            {t.header.vote}
+          </button>
+          <button
+            onClick={() => setCurrentPage('technology')}
+            className={`font-display font-bold text-sm uppercase tracking-wide transition-colors ${currentPage === 'technology' ? 'text-primary' : 'text-slate-500 hover:text-black dark:hover:text-white'}`}
+          >
+            {t.header.technology}
+          </button>
+        </nav>
 
         {/* Right: Controls */}
         <div className="flex items-center gap-4">

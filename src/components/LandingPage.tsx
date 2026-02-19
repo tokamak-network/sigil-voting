@@ -128,7 +128,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             ].map((feat, i) => (
               <div
                 key={i}
-                className={`p-8 ${i < 3 ? 'border-r-2 border-b-2' : 'lg:border-b-2'} border-border-light dark:border-border-dark hover:bg-primary hover:text-white transition-colors group`}
+                className={`p-8 ${i < 3 ? 'md:border-r-2 border-b-2' : 'lg:border-b-2'} border-border-light dark:border-border-dark hover:bg-primary hover:text-white transition-colors group`}
               >
                 <span className="material-symbols-outlined text-4xl mb-6 text-primary group-hover:text-white">{feat.icon}</span>
                 <h3 className="font-display text-xl font-bold mb-4 uppercase">{feat.title}</h3>

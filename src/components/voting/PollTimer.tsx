@@ -67,7 +67,7 @@ export function PollTimer({ pollAddress, onExpired }: PollTimerProps) {
 
   return (
     <div role="timer" aria-live="polite">
-      <h4 className="text-xs font-bold uppercase tracking-[0.3em] text-slate-400 mb-8 text-center">{t.timer.tallyCountdown}</h4>
+      <h4 className="text-xs font-bold uppercase tracking-[0.3em] text-slate-400 mb-8 text-center">{t.timer.remaining}</h4>
       <div className="flex justify-center items-center gap-8">
         <div className="text-center">
           <span className="text-7xl lg:text-8xl font-mono font-bold text-primary tracking-tighter">{pad(hours)}</span>

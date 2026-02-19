@@ -351,7 +351,7 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
               </div>
             </div>
             <div className="mt-12 p-6 bg-black text-white">
-              <p className="font-mono text-xs uppercase tracking-widest mb-2 text-slate-400">Protocol Stack</p>
+              <p className="font-mono text-xs uppercase tracking-widest mb-2 text-slate-400">{t.technology.developers.protocolStack}</p>
               <p className="font-mono text-xs leading-relaxed">
                 POSEIDON HASH | EDDSA KEYS<br />
                 GROTH16 PROOFS | BABY JUBJUB<br />
@@ -381,7 +381,7 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
           ]).map(({ key }, i) => (
             <div
               key={key}
-              className={`group p-8 ${i < 6 ? 'border-r-2' : ''} border-b-2 border-black hover:bg-primary transition-colors flex flex-col items-center justify-center gap-2`}
+              className={`group p-8 ${i < 6 ? 'lg:border-r-2' : ''} border-b-2 border-black hover:bg-primary transition-colors flex flex-col items-center justify-center gap-2`}
             >
               <p className="font-mono text-xs font-bold group-hover:text-white transition-colors">{t.technology.properties[key].title}</p>
               <p className="font-mono text-xs text-slate-500 uppercase group-hover:text-white/70 transition-colors">{t.technology.properties[key].desc}</p>

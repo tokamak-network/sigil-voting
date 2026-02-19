@@ -414,6 +414,7 @@ export interface Translations {
     terms: string
     privacy: string
     poweredBy: string
+    coreInfra: string
   }
   proposalDetail: {
     currentStatus: string
@@ -431,6 +432,7 @@ export interface Translations {
     totalCost: string
     changedMind: string
     encryptedProof: string
+    proposalPrefix: string
   }
   completedResults: {
     title: string
@@ -573,6 +575,7 @@ export interface Translations {
       trust2: string
       trust3: string
       trust4: string
+      protocolStack: string
     }
     cta: {
       title: string

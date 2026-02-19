@@ -397,7 +397,7 @@ export function VoteFormV2({
             className="w-full h-1 bg-black appearance-none cursor-pointer"
             type="range"
             min="1"
-            max={MAX_WEIGHT * MAX_WEIGHT}
+            max={Math.max(1, MAX_WEIGHT * MAX_WEIGHT)}
             step="1"
             value={cost}
             onChange={(e) => {

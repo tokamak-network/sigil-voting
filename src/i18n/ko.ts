@@ -432,6 +432,7 @@ export const ko: Translations = {
     terms: '이용약관',
     privacy: '개인정보처리방침',
     poweredBy: '프로토콜 제공',
+    coreInfra: '핵심 인프라',
   },
   proposalDetail: {
     currentStatus: '현재 상태',
@@ -449,6 +450,7 @@ export const ko: Translations = {
     totalCost: '총 비용',
     changedMind: '키를 변경하셨나요? 재투표하세요.',
     encryptedProof: '온체인 암호화 증명 생성됨',
+    proposalPrefix: '제안',
   },
   completedResults: {
     title: '투표 결과 완료',
@@ -591,6 +593,7 @@ export const ko: Translations = {
       trust2: 'PSE MACI 프로토콜 — 이더리움 재단 Privacy & Scaling Explorations 연구 기반',
       trust3: '온체인 Groth16 — 모든 집계가 서버가 아닌 스마트 컨트랙트로 검증',
       trust4: '영지식 증명 — 코디네이터가 집계하지만 개별 투표는 절대 공개되지 않음',
+      protocolStack: '프로토콜 스택',
     },
     cta: {
       title: '직접 체험해보세요',
