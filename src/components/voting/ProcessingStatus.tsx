@@ -8,7 +8,7 @@
 
 import { useState, useEffect } from 'react';
 import { useReadContract } from 'wagmi';
-import { MESSAGE_PROCESSOR_ABI, MESSAGE_PROCESSOR_ADDRESS, TALLY_ABI, TALLY_V2_ADDRESS } from '../../contractV2';
+import { MESSAGE_PROCESSOR_ABI, TALLY_ABI } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';

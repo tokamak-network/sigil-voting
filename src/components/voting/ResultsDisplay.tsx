@@ -70,7 +70,7 @@ export function ResultsDisplay({ tallyAddress, pollAddress }: ResultsDisplayProp
 
   const forPct = totalNum > 0 ? Math.round((forNum / totalNum) * 100) : 0;
   const againstPct = totalNum > 0 ? 100 - forPct : 0;
-  const hasVotes = totalNum > 0;
+  void (totalNum > 0);
 
   const explorerAddr = pollAddress || tallyAddress;
 

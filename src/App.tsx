@@ -23,6 +23,8 @@ function App() {
     const id = ++toastIdRef.current
     setToasts(prev => [...prev, { id, message, type }])
   }, [])
+  // Expose addToast for future use (toast stacking system)
+  void addToast
   const removeToast = useCallback((id: number) => {
     setToasts(prev => prev.filter(t => t.id !== id))
   }, [])

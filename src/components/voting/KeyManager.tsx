@@ -12,7 +12,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAccount, usePublicClient } from 'wagmi';
 import { writeContract } from '../../writeHelper';
-import { POLL_ABI, POLL_V2_ADDRESS } from '../../contractV2';
+import { POLL_ABI } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 import { preloadCrypto } from '../../crypto/preload';
 import { getMaciNonce, incrementMaciNonce } from './voteUtils';

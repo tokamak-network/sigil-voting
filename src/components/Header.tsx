@@ -31,7 +31,6 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
 
   const isCorrectChain = chainId === sepolia.id
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
-  const showNewProposal = currentPage === 'proposals'
 
   const { data: voiceCreditsRaw } = useReadContract({
     address: VOICE_CREDIT_PROXY_ADDRESS,
@@ -132,18 +131,14 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
                 <span className="text-xs font-bold text-slate-500 uppercase leading-none">{t.header.balance}</span>
                 <span className="text-sm font-display font-bold">{voiceCredits.toLocaleString()} {t.voteForm.credits}</span>
               </div>
-              {showNewProposal && (
-                <>
-                  <div className="h-8 w-[1px] bg-slate-200"></div>
-                  <button
-                    onClick={() => setCurrentPage('create-proposal')}
-                    className="bg-black text-white px-4 py-2 text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-sm">add</span>
-                    {t.header.newProposal}
-                  </button>
-                </>
-              )}
+              <div className="h-8 w-[1px] bg-slate-200"></div>
+              <button
+                onClick={() => setCurrentPage('create-proposal')}
+                className="bg-black text-white px-4 py-2 text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors"
+              >
+                <span className="material-symbols-outlined text-sm">add</span>
+                {t.header.newProposal}
+              </button>
             </div>
           )}
 
