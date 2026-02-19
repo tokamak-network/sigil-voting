@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect, useMemo } from 'react'
-import { useAccount, usePublicClient, useReadContract } from 'wagmi'
+import { useState, useCallback, useMemo } from 'react'
+import { useAccount, usePublicClient } from 'wagmi'
 import { writeContract } from '../writeHelper'
 import {
   MACI_V2_ADDRESS,
@@ -46,26 +46,8 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
   const [createdPollAddr, setCreatedPollAddr] = useState<`0x${string}` | null>(null)
   const [createdTitle, setCreatedTitle] = useState('')
 
-  // Check if user can create polls
-  const [canCreate, setCanCreate] = useState(false)
-  const [isChecking, setIsChecking] = useState(true)
-
-  const { data: canCreateRaw } = useReadContract({
-    address: MACI_V2_ADDRESS as `0x${string}`,
-    abi: MACI_ABI,
-    functionName: 'canCreatePoll',
-    args: address ? [address] : undefined,
-    query: { enabled: !!address },
-  })
-
-  useEffect(() => {
-    if (canCreateRaw === undefined) return
-    setCanCreate(!!canCreateRaw)
-    setIsChecking(false)
-  }, [canCreateRaw])
-
   const handleSubmit = useCallback(async () => {
-    if (!address || !title.trim() || !canCreate) return
+    if (!address || !title.trim()) return
     setIsSubmitting(true)
     setError(null)
     setTxStage('submitting')
@@ -170,7 +152,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
       setIsSubmitting(false)
       setTxStage('idle')
     }
-  }, [address, title, description, durationMinutes, canCreate, publicClient, onPollCreated, t])
+  }, [address, title, description, durationMinutes, publicClient, onPollCreated, t])
 
   const titleLen = title.trim().length
   const descLen = description.length
@@ -280,37 +262,6 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
           <span className="material-symbols-outlined text-6xl text-slate-300 mb-4" aria-hidden="true">account_balance_wallet</span>
           <h2 className="font-display text-3xl font-black uppercase mb-4">{t.createPoll.title}</h2>
           <p className="text-slate-600">{t.maci.connectWallet}</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Loading
-  if (isChecking) {
-    return (
-      <div className="w-full px-6 py-16">
-        <div className="flex flex-col items-center justify-center min-h-[40vh] gap-6" role="status">
-          <div className="w-12 h-12 border-4 border-black border-t-primary animate-spin" />
-          <span className="font-display font-bold text-lg uppercase tracking-wider">{t.createPoll.checkingEligibility}</span>
-        </div>
-      </div>
-    )
-  }
-
-  // Not eligible
-  if (!canCreate) {
-    return (
-      <div className="w-full px-6 py-16">
-        <div className="technical-border bg-white p-10 max-w-2xl mx-auto" role="status">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-slate-100 technical-border flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined text-2xl text-slate-400">block</span>
-            </div>
-            <div>
-              <h4 className="font-display font-black text-xl uppercase tracking-tight mb-2">{t.createPoll.notEligible}</h4>
-              <p className="text-slate-500 leading-relaxed">{t.createPoll.ownerOnly}</p>
-            </div>
-          </div>
         </div>
       </div>
     )
