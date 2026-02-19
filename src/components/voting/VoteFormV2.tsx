@@ -253,13 +253,12 @@ export function VoteFormV2({
       if (msg.startsWith('signup:')) {
         setError(msg.slice(7));
       } else if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
-        setError(t.voteForm.errorRejected);
+        setError(t.voteForm.errorRejectedFriendly);
       } else if (msg.includes('insufficient funds') || msg.includes('exceeds the balance')) {
-        setError(t.voteForm.errorGas);
+        setError(t.voteForm.errorGasFriendly);
       } else {
-        // Show actual error for debugging instead of generic message
-        const shortMsg = msg.length > 200 ? msg.slice(0, 200) + '...' : msg;
-        setError(`${t.voteForm.error} (${shortMsg})`);
+        console.error('Vote error detail:', msg);
+        setError(t.voteForm.errorGeneric);
       }
     } finally {
       setIsSubmitting(false);
@@ -312,7 +311,7 @@ export function VoteFormV2({
   }
 
   return (
-    <div className="bg-white p-8 border-4 border-black flex flex-col gap-10 sticky top-32" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>
+    <div className="bg-white p-8 border-4 border-black flex flex-col gap-10 md:sticky md:top-32" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>
 
       {/* Vote history banner */}
       {hasVoted && lastVote && (
@@ -335,6 +334,25 @@ export function VoteFormV2({
         <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-2 border-blue-200">
           <span className="material-symbols-outlined text-[16px] text-blue-500" aria-hidden="true">info</span>
           <span className="text-xs font-bold text-blue-600 uppercase tracking-wide">{t.voteForm.autoRegisterNotice}</span>
+        </div>
+      )}
+
+      {/* Zero credits notice */}
+      {voiceCredits === 0 && (
+        <div className="flex flex-col gap-2 px-4 py-4 bg-amber-50 border-2 border-amber-300" role="alert">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[16px] text-amber-600" aria-hidden="true">warning</span>
+            <span className="text-sm font-bold text-amber-700 uppercase tracking-wide">{t.voteForm.noCreditsTitle}</span>
+          </div>
+          <p className="text-xs text-amber-600">{t.voteForm.noCreditsDesc}</p>
+          <a
+            href="https://sepolia.etherscan.io/address/0xa30fe40285B8f5c0457DbC3B7C8A280373c40044"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-bold text-primary underline"
+          >
+            Get TON Tokens
+          </a>
         </div>
       )}
 
@@ -426,6 +444,7 @@ export function VoteFormV2({
             <span>{t.voteFormExtra.minCredit}</span>
             <span>{t.voteFormExtra.maxCredits.replace('{n}', String(MAX_WEIGHT * MAX_WEIGHT))}</span>
           </div>
+          <p className="mt-3 text-xs text-center text-slate-400 font-mono">{t.voteForm.quadraticGuide}</p>
         </div>
       </div>
 

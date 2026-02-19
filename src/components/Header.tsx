@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react'
 import { useAccount, useConnect, useDisconnect, useSwitchChain, useReadContract } from 'wagmi'
 import { injected } from 'wagmi/connectors'
 import { sepolia } from '../wagmi'
@@ -24,6 +25,9 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
   const { disconnect } = useDisconnect()
   const { switchChain, isPending: isSwitching } = useSwitchChain()
   const { t } = useTranslation()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false)
+  const disconnectRef = useRef<HTMLDivElement>(null)
 
   const isCorrectChain = chainId === sepolia.id
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
@@ -37,6 +41,18 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
     query: { enabled: isConfigured && VOICE_CREDIT_PROXY_ADDRESS !== ZERO_ADDRESS && !!address, refetchInterval: 30000 },
   })
   const voiceCredits = voiceCreditsRaw !== undefined ? Number(voiceCreditsRaw) : 0
+
+  // Close disconnect confirm on outside click
+  useEffect(() => {
+    if (!showDisconnectConfirm) return
+    const handleClick = (e: MouseEvent) => {
+      if (disconnectRef.current && !disconnectRef.current.contains(e.target as Node)) {
+        setShowDisconnectConfirm(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [showDisconnectConfirm])
 
   const handleSwitchNetwork = async () => {
     try {
@@ -70,16 +86,19 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b-2 border-border-light dark:border-border-dark">
-      <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-        {/* Left: Brand */}
+      <div className="container mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
+        {/* Left: Brand + Testnet badge */}
         <div className="flex items-center gap-2">
           <button onClick={() => setCurrentPage('landing')} className="flex items-center gap-2">
             <img src="/assets/symbol.svg" alt="SIGIL" className="w-8 h-8" />
             <span className="font-display font-extrabold text-xl tracking-tighter uppercase">SIGIL</span>
           </button>
+          <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold uppercase tracking-wider border border-amber-300 rounded-sm">
+            {t.header.testnet}
+          </span>
         </div>
 
-        {/* Center: Nav */}
+        {/* Center: Nav (desktop) */}
         <nav className="hidden md:flex items-center gap-6">
           <button
             onClick={() => setCurrentPage('proposals')}
@@ -96,10 +115,17 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
         </nav>
 
         {/* Right: Controls */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           <LanguageSwitcher />
 
-          {/* Balance + New Proposal (connected) */}
+          {/* Mobile balance (connected) */}
+          {isConnected && isCorrectChain && (
+            <span className="lg:hidden text-xs font-display font-bold text-slate-600">
+              {voiceCredits.toLocaleString()} {t.voteForm.credits}
+            </span>
+          )}
+
+          {/* Balance + New Proposal (connected, desktop) */}
           {isConnected && isCorrectChain && (
             <div className="hidden lg:flex items-center border-2 border-border-light dark:border-border-dark bg-white p-2 gap-4">
               <div className="flex flex-col">
@@ -132,15 +158,36 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
             </button>
           )}
 
-          {/* Wallet address (connected) */}
+          {/* Wallet address with disconnect confirm (connected) */}
           {isConnected && isCorrectChain && (
-            <button
-              onClick={() => disconnect()}
-              className="flex items-center border-2 border-border-light dark:border-border-dark hover:border-red-500 transition-colors group"
-              title={t.header.disconnect}
-            >
-              <div className="px-3 py-1 bg-black text-white text-xs font-bold group-hover:bg-red-500 transition-colors">{shortenAddress(address!)}</div>
-            </button>
+            <div className="relative" ref={disconnectRef}>
+              <button
+                onClick={() => setShowDisconnectConfirm(!showDisconnectConfirm)}
+                className="flex items-center border-2 border-border-light dark:border-border-dark hover:border-red-500 transition-colors group"
+                title={t.header.disconnect}
+              >
+                <div className="px-3 py-1 bg-black text-white text-xs font-bold group-hover:bg-red-500 transition-colors">{shortenAddress(address!)}</div>
+              </button>
+              {showDisconnectConfirm && (
+                <div className="absolute right-0 top-full mt-2 bg-white border-2 border-black p-3 min-w-[200px] z-50" style={{ boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)' }}>
+                  <p className="text-xs font-bold text-slate-700 mb-3">{t.header.disconnectConfirm}</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { disconnect(); setShowDisconnectConfirm(false); }}
+                      className="flex-1 bg-red-500 text-white text-xs font-bold py-1.5 px-3 hover:bg-red-600 transition-colors"
+                    >
+                      {t.header.disconnectYes}
+                    </button>
+                    <button
+                      onClick={() => setShowDisconnectConfirm(false)}
+                      className="flex-1 bg-slate-100 text-black text-xs font-bold py-1.5 px-3 hover:bg-slate-200 transition-colors border border-slate-300"
+                    >
+                      {t.header.disconnectNo}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Connect wallet (not connected) */}
@@ -153,8 +200,40 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
               {isConnecting ? t.header.connecting : t.header.connect.toUpperCase()}
             </button>
           )}
+
+          {/* Mobile hamburger menu */}
+          <button
+            className="md:hidden flex flex-col justify-center items-center w-8 h-8 gap-1.5"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={t.header.menu}
+          >
+            <span className={`block w-5 h-0.5 bg-black transition-transform ${mobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`} />
+            <span className={`block w-5 h-0.5 bg-black transition-opacity ${mobileMenuOpen ? 'opacity-0' : ''}`} />
+            <span className={`block w-5 h-0.5 bg-black transition-transform ${mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+          </button>
         </div>
       </div>
+
+      {/* Mobile dropdown menu */}
+      {mobileMenuOpen && (
+        <>
+          <div className="fixed inset-0 top-16 bg-black/30 z-40 md:hidden" onClick={() => setMobileMenuOpen(false)} />
+          <nav className="absolute left-0 right-0 top-16 bg-white border-b-2 border-black z-50 md:hidden flex flex-col">
+            <button
+              onClick={() => { setCurrentPage('proposals'); setMobileMenuOpen(false); }}
+              className={`px-6 py-4 text-left font-display font-bold text-sm uppercase tracking-wide border-b border-slate-100 ${currentPage === 'proposals' || currentPage === 'proposal-detail' || currentPage === 'create-proposal' ? 'text-primary bg-blue-50' : 'text-slate-700 hover:bg-slate-50'}`}
+            >
+              {t.header.vote}
+            </button>
+            <button
+              onClick={() => { setCurrentPage('technology'); setMobileMenuOpen(false); }}
+              className={`px-6 py-4 text-left font-display font-bold text-sm uppercase tracking-wide ${currentPage === 'technology' ? 'text-primary bg-blue-50' : 'text-slate-700 hover:bg-slate-50'}`}
+            >
+              {t.header.technology}
+            </button>
+          </nav>
+        </>
+      )}
     </header>
   )
 }

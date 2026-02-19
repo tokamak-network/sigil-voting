@@ -40,15 +40,15 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
         </div>
         <div className="col-span-12 lg:col-span-4 bg-primary p-12 flex flex-col justify-end">
           <div className="space-y-6">
-            <a href="#pillar-1" className="block border-t-2 border-white pt-4 hover:opacity-80 transition-opacity">
+            <button onClick={() => document.getElementById('pillar-1')?.scrollIntoView({ behavior: 'smooth' })} className="block border-t-2 border-white pt-4 hover:opacity-80 transition-opacity w-full text-left">
               <p className="font-mono text-white font-bold italic">01. {t.technology.zkVoting.badge.toUpperCase()}</p>
-            </a>
-            <a href="#pillar-2" className="block border-t-2 border-white pt-4 hover:opacity-80 transition-opacity">
+            </button>
+            <button onClick={() => document.getElementById('pillar-2')?.scrollIntoView({ behavior: 'smooth' })} className="block border-t-2 border-white pt-4 hover:opacity-80 transition-opacity w-full text-left">
               <p className="font-mono text-white font-bold italic">02. {t.technology.quadratic.badge.toUpperCase()}</p>
-            </a>
-            <a href="#pillar-3" className="block border-t-2 border-white pt-4 hover:opacity-80 transition-opacity">
+            </button>
+            <button onClick={() => document.getElementById('pillar-3')?.scrollIntoView({ behavior: 'smooth' })} className="block border-t-2 border-white pt-4 hover:opacity-80 transition-opacity w-full text-left">
               <p className="font-mono text-white font-bold italic">03. {t.technology.antiCollusion.badge.toUpperCase()}</p>
-            </a>
+            </button>
           </div>
         </div>
       </section>
@@ -225,7 +225,7 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
           ]).map((spec, i) => (
             <div
               key={i}
-              className={`p-8 ${i % 3 < 2 ? 'border-r-0 lg:border-r-2' : ''} ${i < 3 ? 'border-b-2' : ''} ${i % 2 === 0 && i < 4 ? 'md:border-r-2 lg:border-r-2' : i % 2 === 0 ? 'md:border-r-2 lg:border-r-0' : ''} border-black`}
+              className={`p-8 border-black ${(i + 1) % 3 !== 0 ? 'lg:border-r-2' : ''} ${i < 3 ? 'border-b-2' : ''} ${i % 2 === 0 ? 'md:border-r-2' : ''}`}
             >
               <div className="flex items-center gap-3 mb-4">
                 <span className="material-symbols-outlined text-primary">{spec.icon}</span>
@@ -311,7 +311,7 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
                     </div>
                     <h4 className="font-bold uppercase text-sm tracking-wider mb-3">{item.title}</h4>
                     <p className="text-base text-slate-600 leading-relaxed mb-4">{item.desc}</p>
-                    <pre className="bg-slate-900 text-green-400 p-3 font-mono text-xs leading-relaxed overflow-x-auto">
+                    <pre className="bg-slate-900 text-green-400 p-3 font-mono text-xs leading-relaxed overflow-x-auto max-w-full">
                       {item.code}
                     </pre>
                   </div>
@@ -416,7 +416,7 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
             {t.technology.properties.title} — {t.technology.properties.subtitle}
           </h3>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 text-center">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 text-center">
           {([
             { key: 'collusion' as const },
             { key: 'receipt' as const },
@@ -428,7 +428,7 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
           ]).map(({ key }, i) => (
             <div
               key={key}
-              className={`group p-8 ${i < 6 ? 'lg:border-r-2' : ''} border-b-2 border-black hover:bg-primary transition-colors flex flex-col items-center justify-center gap-2`}
+              className={`group p-8 border-b-2 border-black hover:bg-primary transition-colors flex flex-col items-center justify-center gap-2 ${(i + 1) % 4 !== 0 ? 'md:border-r-2' : ''}`}
             >
               <p className="font-mono text-xs font-bold group-hover:text-white transition-colors">{t.technology.properties[key].title}</p>
               <p className="font-mono text-xs text-slate-500 uppercase group-hover:text-white/70 transition-colors">{t.technology.properties[key].desc}</p>
