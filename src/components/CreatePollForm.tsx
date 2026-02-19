@@ -318,7 +318,9 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
         </h1>
       </div>
 
-      <div className="max-w-3xl space-y-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+      {/* Left: Form */}
+      <div className="lg:col-span-8 space-y-8">
         {/* Proposal Title */}
         <div>
           <label
@@ -434,6 +436,33 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
             {error}
           </div>
         )}
+      </div>
+
+      {/* Right: Guidelines */}
+      <div className="lg:col-span-4">
+        <div className="bg-white p-8 border-2 border-border-light dark:border-border-dark sticky top-32">
+          <h3 className="flex items-center gap-2 text-xl font-display font-bold uppercase mb-8">
+            <span className="material-symbols-outlined text-primary">gavel</span>
+            {t.createPoll.guidelinesTitle}
+          </h3>
+          <div className="space-y-6">
+            {([
+              { num: '01', title: t.createPoll.stakingTitle, desc: t.createPoll.stakingDesc },
+              { num: '02', title: t.createPoll.privacyGuideTitle, desc: t.createPoll.privacyGuideDesc },
+              { num: '03', title: t.createPoll.windowTitle, desc: t.createPoll.windowDesc },
+              { num: '04', title: t.createPoll.quorumTitle, desc: t.createPoll.quorumDesc },
+            ]).map((item) => (
+              <div key={item.num} className="flex gap-4">
+                <span className="text-2xl font-display font-black text-primary leading-none">{item.num}</span>
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase mb-1">{item.title}</p>
+                  <p className="text-sm text-slate-700 leading-relaxed">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
       </div>
     </div>
   )
