@@ -48,7 +48,7 @@ export const en: Translations = {
       anti: {
         title: 'The Only Combined Stack',
         sub: '',
-        desc: 'No other governance protocol combines ZK private voting, quadratic fairness, and MACI anti-collusion in one system. SIGIL is the only platform offering all three.',
+        desc: 'No other voting protocol combines ZK private voting, quadratic fairness, and MACI anti-collusion in one system. SIGIL is the only platform offering all three.',
       },
       privacy: {
         title: 'Key Change Defense',
@@ -58,7 +58,7 @@ export const en: Translations = {
       verify: {
         title: 'Open SDK for Any DAO',
         sub: '',
-        desc: 'Integrate private governance into your project with the SIGIL SDK and embeddable widget. No custom smart contract development required.',
+        desc: 'Integrate private voting into your project with the SIGIL SDK and embeddable widget. No custom smart contract development required.',
       },
     },
     terminalAccess: 'Quick Links',
@@ -110,7 +110,7 @@ export const en: Translations = {
     },
     comparison: {
       title: 'How SIGIL Compares',
-      subtitle: 'The only governance protocol with all three: permanent privacy, anti-bribery, and quadratic fairness.',
+      subtitle: 'The only voting protocol with all three: permanent privacy, anti-bribery, and quadratic fairness.',
       feature: 'Feature',
       permanentPrivacy: 'Permanent Privacy',
       antiBribery: 'Anti-Bribery',
@@ -396,7 +396,7 @@ export const en: Translations = {
     calculating: 'Calculating...',
     result: 'Result',
     statusVoting: 'Voting',
-    statusRevealing: 'Revealing',
+    statusRevealing: 'Tallying',
     statusEnded: 'Ended',
   },
   voteHistory: {
@@ -412,7 +412,7 @@ export const en: Translations = {
     noVote: 'You did not vote on this proposal.',
   },
   footer: {
-    desc: 'Open-source governance protocol on Ethereum. Built by Tokamak Network.',
+    desc: 'Open-source private voting infrastructure on Ethereum. Built by Tokamak Network.',
     resources: 'Resources',
     whitepaper: 'MACI Protocol',
     audit: 'Source Code',
@@ -422,7 +422,7 @@ export const en: Translations = {
     secured: 'Sealed by Zero-Knowledge Proofs',
     builtBy: 'Built by',
     systemOperational: 'System Operational',
-    protocolVersion: 'MACI Protocol v2.4',
+    protocolVersion: 'MACI Protocol',
     node: 'NODE: SIGIL-01-AMS',
     privacyFirst: 'Privacy First',
     antiBribery: 'Anti-Bribery',
@@ -462,7 +462,7 @@ export const en: Translations = {
     author: 'Author',
     description: 'Description',
     readFull: 'Read Full Proposal Description',
-    defaultDesc: 'This proposal was created through SIGIL governance protocol with ZK-proof verified private voting. All votes were encrypted using MACI anti-collusion infrastructure and tallied with Groth16 zero-knowledge proofs on Ethereum.',
+    defaultDesc: 'This proposal was created through SIGIL private voting protocol with ZK-proof verified secret ballots. All votes were encrypted using MACI anti-collusion infrastructure and tallied with Groth16 zero-knowledge proofs on Ethereum.',
     votingStrategy: 'Voting Strategy: Quadratic v2',
     shieldedVoting: 'Shielded Voting: Enabled',
   },
@@ -536,7 +536,7 @@ export const en: Translations = {
     },
     combined: {
       title: 'Stronger Together',
-      desc: 'SIGIL is the only governance protocol that combines all three technologies. Snapshot, Aragon, Tally, Vocdoni — none offers ZK permanent privacy + quadratic fairness + MACI anti-collusion in a single system. These three layers create synergy that no individual technology can achieve alone.',
+      desc: 'SIGIL is the only voting protocol that combines all three technologies. Snapshot, Aragon, Tally, Vocdoni — none offers ZK permanent privacy + quadratic fairness + MACI anti-collusion in a single system. These three layers create synergy that no individual technology can achieve alone.',
     },
     specs: {
       title: 'Technical Specifications',
@@ -569,7 +569,7 @@ export const en: Translations = {
     },
     developers: {
       title: 'Built for\nDevelopers',
-      subtitle: 'Everything you need to add private governance to any Web3 project.',
+      subtitle: 'Everything you need to add private voting to any Web3 project.',
       sdkTitle: 'TypeScript SDK',
       sdkDesc: 'Full type safety with autocompletion. Create polls, cast votes, and read results — all client-side with zero backend.',
       sdkCode: 'const sigil = new SigilClient({ maciAddress })\nconst results = await sigil.getResults(pollId)',
