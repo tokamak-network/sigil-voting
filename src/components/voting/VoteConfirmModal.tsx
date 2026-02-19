@@ -5,6 +5,7 @@
  * Prevents accidental votes.
  */
 
+import { useEffect } from 'react';
 import { useTranslation } from '../../i18n';
 
 interface VoteConfirmModalProps {
@@ -23,6 +24,12 @@ export function VoteConfirmModal({
   onCancel,
 }: VoteConfirmModalProps) {
   const { t } = useTranslation();
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel(); };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [onCancel]);
 
   const choiceLabel = choice === 1 ? t.voteForm.for : t.voteForm.against;
 

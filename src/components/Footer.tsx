@@ -45,10 +45,10 @@ export function Footer() {
 
           {/* Links */}
           <div className="md:col-span-4">
-            <h5 className="font-display font-bold mb-6 uppercase text-base">Resources</h5>
+            <h5 className="font-display font-bold mb-6 uppercase text-base">{t.footer.resources}</h5>
             <ul className="space-y-4 text-base text-slate-500">
-              <li><a href="https://maci.pse.dev" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">MACI Protocol</a></li>
-              <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">Source Code</a></li>
+              <li><a href="https://maci.pse.dev" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{t.footer.whitepaper}</a></li>
+              <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{t.footer.audit}</a></li>
             </ul>
           </div>
 
@@ -64,7 +64,7 @@ export function Footer() {
               <img src="/assets/symbol.svg" alt="Tokamak Network" className="w-10 h-10" />
               <div>
                 <div className="font-display font-bold text-sm uppercase group-hover:text-primary transition-colors">Tokamak Network</div>
-                <div className="text-xs opacity-60 font-display uppercase">Core Infrastructure</div>
+                <div className="text-xs opacity-60 font-display uppercase">{t.footer.coreInfra}</div>
               </div>
             </a>
           </div>

@@ -432,6 +432,7 @@ export const en: Translations = {
     terms: 'Terms',
     privacy: 'Privacy Policy',
     poweredBy: 'Protocol Powered By',
+    coreInfra: 'Core Infrastructure',
   },
   proposalDetail: {
     currentStatus: 'Current Status',
@@ -449,6 +450,7 @@ export const en: Translations = {
     totalCost: 'Total Cost',
     changedMind: 'Changed your key? Re-vote now.',
     encryptedProof: 'Encrypted on-chain proof generated',
+    proposalPrefix: 'Proposal',
   },
   completedResults: {
     title: 'Completed Results',
@@ -591,6 +593,7 @@ export const en: Translations = {
       trust2: 'PSE MACI Protocol — Built on Ethereum Foundation Privacy & Scaling Explorations research',
       trust3: 'On-chain Groth16 — Every tally verified by smart contract, not a server',
       trust4: 'Zero Knowledge — Coordinator tallies votes but individual choices are never published',
+      protocolStack: 'Protocol Stack',
     },
     cta: {
       title: 'See It in Action',

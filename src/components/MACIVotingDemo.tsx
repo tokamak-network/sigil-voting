@@ -106,6 +106,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   const [votingEndTime, setVotingEndTime] = useState<number | null>(null)
   const [voteJustSubmitted, setVoteJustSubmitted] = useState(false)
   const [submittedVoteData, setSubmittedVoteData] = useState<{ choice: number; weight: number; cost: number; txHash: string } | null>(null)
+  const [phaseCheckTrigger, setPhaseCheckTrigger] = useState(0)
 
   // Reset transient state when switching between proposals
   useEffect(() => {
@@ -379,11 +380,41 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
           return
         }
 
+        // If tallyAddress not yet known, re-discover from deploy logs
+        let checkTallyAddr = tallyAddress
+        if ((!checkTallyAddr || checkTallyAddr === ZERO_ADDRESS) && !isOpen) {
+          try {
+            const deployLogs = await publicClient.getLogs({
+              address: MACI_V2_ADDRESS,
+              event: {
+                type: 'event',
+                name: 'DeployPoll',
+                inputs: [
+                  { name: 'pollId', type: 'uint256', indexed: true },
+                  { name: 'pollAddr', type: 'address', indexed: false },
+                  { name: 'messageProcessorAddr', type: 'address', indexed: false },
+                  { name: 'tallyAddr', type: 'address', indexed: false },
+                ],
+              },
+              fromBlock: MACI_DEPLOY_BLOCK,
+              toBlock: 'latest',
+            })
+            for (const dl of deployLogs) {
+              const dArgs = dl.args as { pollId?: bigint; tallyAddr?: `0x${string}`; messageProcessorAddr?: `0x${string}` }
+              if (dArgs.pollId !== undefined && Number(dArgs.pollId) === propPollId) {
+                if (dArgs.tallyAddr) { checkTallyAddr = dArgs.tallyAddr; setTallyAddress(dArgs.tallyAddr) }
+                if (dArgs.messageProcessorAddr) setMessageProcessorAddress(dArgs.messageProcessorAddr)
+                break
+              }
+            }
+          } catch { /* ignore */ }
+        }
+
         // Check if tally is verified first (success path)
-        if (tallyAddress && tallyAddress !== ZERO_ADDRESS) {
+        if (checkTallyAddr && checkTallyAddr !== ZERO_ADDRESS) {
           try {
             const verified = await publicClient.readContract({
-              address: tallyAddress,
+              address: checkTallyAddr,
               abi: TALLY_ABI,
               functionName: 'tallyVerified',
             })
@@ -424,12 +455,12 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
     }
 
     checkPhase()
-    // Voting phase: slow poll (15s). Merging/Processing: faster (8s). Finalized: stop.
+    // Voting phase: 5s poll. Merging/Processing: 8s. Finalized: stop.
     if (phase === V2Phase.Finalized) return
-    const ms = phase === V2Phase.Voting ? 15000 : 8000
+    const ms = phase === V2Phase.Voting ? 5000 : 8000
     const interval = setInterval(checkPhase, ms)
     return () => clearInterval(interval)
-  }, [pollAddress, publicClient, tallyAddress, phase])
+  }, [pollAddress, publicClient, tallyAddress, phase, propPollId, phaseCheckTrigger])
 
   // === SignUp (called by VoteFormV2 via callback) ===
   const handleSignUp = useCallback(async () => {
@@ -507,7 +538,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   if (!isConfigured) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="w-full px-6 py-20">
+        <div className="container mx-auto px-6 py-20">
           <div className="technical-card-heavy bg-white p-12 text-center">
             <span className="material-symbols-outlined text-6xl text-slate-300 mb-4" aria-hidden="true">settings</span>
             <h2 className="font-display text-3xl font-black uppercase mb-4">{t.maci.title}</h2>
@@ -523,7 +554,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   if (!isConnected && (!hasPoll || phase === V2Phase.Voting)) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="w-full px-6 py-20">
+        <div className="container mx-auto px-6 py-20">
           <div className="technical-card-heavy bg-white p-12 text-center">
             <span className="material-symbols-outlined text-6xl text-slate-300 mb-4" aria-hidden="true">account_balance_wallet</span>
             <h2 className="font-display text-3xl font-black uppercase mb-4">{t.maci.title}</h2>
@@ -538,7 +569,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   if (isLoadingPoll || (hasPoll && !phaseLoaded)) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="w-full px-6 py-20">
+        <div className="container mx-auto px-6 py-20">
           <div className="flex flex-col items-center justify-center gap-4" role="status" aria-busy="true">
             <span className="spinner" aria-hidden="true" />
             <span className="text-sm font-mono text-slate-500 uppercase tracking-wider">{t.maci.waiting.processing}</span>
@@ -552,7 +583,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   if (!hasPoll) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="w-full px-6 py-20">
+        <div className="container mx-auto px-6 py-20">
           <button
             onClick={onBack}
             className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-500 hover:text-black transition-colors mb-6 group"
@@ -569,7 +600,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
     )
   }
 
-  const displayTitle = pollTitle || `Proposal #${propPollId + 1}`
+  const displayTitle = pollTitle || `${t.proposalDetail.proposalPrefix} #${propPollId + 1}`
 
   // === Vote Just Submitted (Page 4 - Full-page Confirmation) ===
   if (voteJustSubmitted && submittedVoteData) {
@@ -680,7 +711,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
       <div className="min-h-screen bg-white">
         {/* Re-vote banner - only shown if user has already voted and not in re-vote mode */}
         {hasVoted && !showReVoteForm && (
-          <div className="w-full px-6 mt-8">
+          <div className="container mx-auto px-6 mt-8">
             <div className="p-4 border-2 border-black bg-slate-900 text-white flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-primary" aria-hidden="true">info</span>
@@ -699,7 +730,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         {/* Error / Tx banners */}
         {error && (
           <div className="bg-red-50 border-b-2 border-red-500">
-            <div className="w-full px-6 py-3 flex items-center justify-between">
+            <div className="container mx-auto px-6 py-3 flex items-center justify-between">
               <span className="text-red-700 text-sm">{error}</span>
               <button className="text-red-700 text-xs font-bold underline" onClick={() => setError(null)}>{t.maci.signup.retry}</button>
             </div>
@@ -707,7 +738,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         )}
         {txHash && (
           <div className="bg-green-50 border-b-2 border-green-500">
-            <div className="w-full px-6 py-3 flex items-center gap-2">
+            <div className="container mx-auto px-6 py-3 flex items-center gap-2">
               <span className="text-green-700 text-sm">{t.maci.lastTx}</span>
               <a
                 href={`https://sepolia.etherscan.io/tx/${txHash}`}
@@ -721,7 +752,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
           </div>
         )}
 
-        <div className="w-full px-6 py-8 lg:py-12">
+        <div className="container mx-auto px-6 py-8 lg:py-12">
           {/* Back button */}
           <button
             onClick={onBack}
@@ -736,7 +767,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
             <div className="flex-1">
               <div className="flex items-center gap-4 mb-4">
                 <span className="bg-black text-white text-xs font-bold px-3 py-1 uppercase tracking-widest">
-                  Proposal #{propPollId + 1}
+                  {t.proposalDetail.proposalPrefix} #{propPollId + 1}
                 </span>
               </div>
               <h1 className="font-display text-5xl lg:text-7xl font-black uppercase italic leading-[0.9] tracking-tighter max-w-4xl">
@@ -765,7 +796,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
 
               {/* Timer */}
               <div className="p-10 border-4 border-black bg-white" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>
-                <PollTimer pollAddress={pollAddress!} onExpired={() => setIsPollExpired(true)} />
+                <PollTimer pollAddress={pollAddress!} onExpired={() => { setIsPollExpired(true); setPhaseCheckTrigger(n => n + 1) }} />
               </div>
 
               {/* Stats */}
@@ -854,7 +885,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                       </h3>
                       {receiptId && (
                         <span className="text-xs font-mono font-bold bg-black text-white px-2 py-1 uppercase">
-                          Receipt ID: {receiptId}
+                          {t.proposalDetail.receiptId}: {receiptId}
                         </span>
                       )}
                     </div>
@@ -920,7 +951,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
       {/* Error / Tx banners */}
       {error && (
         <div className="bg-red-50 border-b-2 border-red-500">
-          <div className="w-full px-6 py-3 flex items-center justify-between">
+          <div className="container mx-auto px-6 py-3 flex items-center justify-between">
             <span className="text-red-700 text-sm">{error}</span>
             <button className="text-red-700 text-xs font-bold underline" onClick={() => setError(null)}>{t.maci.signup.retry}</button>
           </div>
@@ -928,7 +959,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
       )}
       {txHash && (
         <div className="bg-green-50 border-b-2 border-green-500">
-          <div className="w-full px-6 py-3 flex items-center gap-2">
+          <div className="container mx-auto px-6 py-3 flex items-center gap-2">
             <span className="text-green-700 text-sm">{t.maci.lastTx}</span>
             <a
               href={`https://sepolia.etherscan.io/tx/${txHash}`}
@@ -942,7 +973,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         </div>
       )}
 
-      <div className="w-full px-6 py-8 lg:py-12">
+      <div className="container mx-auto px-6 py-8 lg:py-12">
         {/* Back button */}
         <button
           onClick={onBack}
@@ -957,7 +988,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-2">
               <span className="bg-black text-white text-[10px] font-bold px-2 py-1 uppercase font-mono">
-                Proposal #{propPollId + 1}
+                {t.proposalDetail.proposalPrefix} #{propPollId + 1}
               </span>
               <span className={`${isPassed ? 'bg-green-500' : 'bg-red-500'} text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest`}>
                 {isPassed ? t.results.passed : t.results.rejected}
@@ -972,7 +1003,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
             <div className="flex-1">
               <div className="flex items-center gap-4 mb-4">
                 <span className="bg-black text-white text-xs font-bold px-3 py-1 uppercase tracking-widest">
-                  Proposal #{propPollId + 1}
+                  {t.proposalDetail.proposalPrefix} #{propPollId + 1}
                 </span>
               </div>
               <h1 className="font-display text-5xl lg:text-7xl font-black uppercase italic leading-[0.9] tracking-tighter max-w-4xl">
@@ -1151,7 +1182,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
 
               {/* Metadata Box */}
               <div className="border-2 border-slate-200 p-4 font-mono text-xs text-slate-400 uppercase leading-relaxed">
-                <p>Proposal #{propPollId + 1}</p>
+                <p>{t.proposalDetail.proposalPrefix} #{propPollId + 1}</p>
                 <p>{t.completedResults.votingStrategy}</p>
                 <p>{t.completedResults.shieldedVoting}</p>
               </div>
@@ -1219,7 +1250,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
 
               {/* Metadata Box */}
               <div className="border-2 border-slate-200 p-4 font-mono text-[10px] text-slate-400 uppercase leading-relaxed">
-                <p>Proposal #{propPollId + 1}</p>
+                <p>{t.proposalDetail.proposalPrefix} #{propPollId + 1}</p>
                 <p>{t.completedResults.votingStrategy}</p>
                 <p>{t.completedResults.shieldedVoting}</p>
               </div>
