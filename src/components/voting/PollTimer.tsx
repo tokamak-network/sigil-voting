@@ -55,6 +55,7 @@ export function PollTimer({ pollAddress, onExpired }: PollTimerProps) {
       <div className="text-center py-4" role="timer" aria-label={t.timer.ended}>
         <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">timer_off</span>
         <p className="font-display font-bold text-lg uppercase text-slate-500">{t.timer.ended}</p>
+        <p className="text-sm text-slate-400 mt-2">{t.timer.processingHint}</p>
       </div>
     );
   }

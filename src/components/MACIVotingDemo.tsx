@@ -104,8 +104,6 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
   const [isPollExpired, setIsPollExpired] = useState(false)
   const [showReVoteForm, setShowReVoteForm] = useState(false)
   const [votingEndTime, setVotingEndTime] = useState<number | null>(null)
-  const [voteJustSubmitted, setVoteJustSubmitted] = useState(false)
-  const [submittedVoteData, setSubmittedVoteData] = useState<{ choice: number; weight: number; cost: number; txHash: string } | null>(null)
   const [phaseCheckTrigger, setPhaseCheckTrigger] = useState(0)
 
   // Reset transient state when switching between proposals
@@ -116,8 +114,6 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
     setTxHash(null)
     setIsPollExpired(false)
     setShowReVoteForm(false)
-    setVoteJustSubmitted(false)
-    setSubmittedVoteData(null)
     setPollAddress(null)
     setTallyAddress(null)
     setMessageProcessorAddress(null)
@@ -636,110 +632,8 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
 
   const displayTitle = pollTitle || `${t.proposalDetail.proposalPrefix} #${propPollId + 1}`
 
-  // === Vote Just Submitted (Page 4 - Full-page Confirmation) ===
-  if (voteJustSubmitted && submittedVoteData) {
-    const receiptCode = submittedVoteData.txHash.slice(2, 6).toUpperCase()
-    return (
-      <div className="min-h-screen bg-white">
-        <main className="flex-grow flex flex-col items-center justify-center p-6 lg:p-12">
-          <div className="max-w-2xl w-full">
-            {/* Centered success icon */}
-            <div className="text-center mb-10">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-primary text-white mb-6 border-2 border-black">
-                <span className="material-symbols-outlined text-5xl">check_circle</span>
-              </div>
-              <h1 className="text-4xl md:text-5xl font-display font-black uppercase italic tracking-tighter leading-none mb-2">
-                {t.voteSubmittedPage.title}
-              </h1>
-              <p className="font-mono text-sm font-bold text-slate-500 uppercase tracking-widest">
-                {t.voteSubmittedPage.txHash}: {submittedVoteData.txHash.slice(0, 6)}...{submittedVoteData.txHash.slice(-4)}
-              </p>
-            </div>
-
-            {/* Receipt card */}
-            <div className="border-2 border-black bg-white p-8 md:p-12 mb-8 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 border-l-2 border-b-2 border-black bg-slate-50">
-                <span className="font-mono text-[10px] font-bold">RECEIPT #{receiptCode}-ZK</span>
-              </div>
-
-              <div className="mb-10">
-                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">{t.voteSubmittedPage.proposal}</span>
-                <h2 className="text-2xl font-display font-bold uppercase italic border-l-4 border-black pl-4">
-                  {displayTitle}
-                </h2>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-                <div className="p-6 border-2 border-black bg-slate-50">
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">{t.voteSubmittedPage.myChoice}</span>
-                  <div className="flex items-center gap-4 text-primary">
-                    <span className="material-symbols-outlined text-4xl">
-                      {submittedVoteData.choice === 1 ? 'thumb_up' : 'thumb_down'}
-                    </span>
-                    <span className="font-display font-black text-3xl uppercase tracking-tighter">
-                      {submittedVoteData.choice === 1 ? t.voteForm.for : t.voteForm.against}
-                    </span>
-                  </div>
-                </div>
-                <div className="p-6 border-2 border-black border-dashed">
-                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">{t.voteSubmittedPage.votingStats}</span>
-                  <div className="space-y-1">
-                    <div className="flex justify-between items-baseline">
-                      <span className="text-xs font-bold text-slate-500 uppercase">{t.voteSubmittedPage.intensity}:</span>
-                      <span className="font-mono font-bold">{submittedVoteData.weight} {t.voteSubmittedPage.votes}</span>
-                    </div>
-                    <div className="flex justify-between items-baseline pt-1 border-t border-slate-200">
-                      <span className="text-xs font-bold text-slate-500 uppercase">{t.voteSubmittedPage.used}:</span>
-                      <span className="font-mono font-bold text-primary">{submittedVoteData.cost} {t.voteForm.credits}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <a
-                href={`https://sepolia.etherscan.io/tx/${submittedVoteData.txHash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full text-center py-4 border-2 border-black font-bold text-xs uppercase tracking-widest hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
-              >
-                <span className="material-symbols-outlined text-sm">open_in_new</span>
-                {t.voteSubmittedPage.viewOnExplorer}
-              </a>
-            </div>
-
-            {/* Return to list button */}
-            <button
-              onClick={() => { setVoteJustSubmitted(false); onBack() }}
-              className="w-full bg-black text-white py-6 text-xl font-display font-bold uppercase italic tracking-[0.2em] border-2 border-black mb-12"
-              style={{ boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)' }}
-            >
-              {t.voteSubmittedPage.returnToList}
-            </button>
-
-            {/* Privacy + Proofs badges */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-3 p-4 bg-slate-100 border-2 border-slate-200">
-                <span className="material-symbols-outlined text-primary">shield_with_heart</span>
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold uppercase tracking-tight text-slate-400 leading-none mb-1">{t.voteSubmittedPage.privacyStatus}</span>
-                  <span className="text-[10px] font-bold uppercase tracking-widest">{t.voteSubmittedPage.maciShield}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-4 bg-slate-100 border-2 border-slate-200">
-                <span className="material-symbols-outlined text-primary">analytics</span>
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold uppercase tracking-tight text-slate-400 leading-none mb-1">{t.voteSubmittedPage.proofs}</span>
-                  <span className="text-[10px] font-bold uppercase tracking-widest">{t.voteSubmittedPage.zkProofGenerated}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
-    )
-  }
-
   // === Voting Phase (Page 5 / Page 6) ===
+  // Note: Vote confirmation (Page 4) is handled by VoteSubmitted component in App.tsx
   if (currentStep === 0 && phase === V2Phase.Voting) {
     return (
       <div className="min-h-screen bg-white">
@@ -889,13 +783,8 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                     onVoteSubmitted={(voteTxHash) => {
                       setTxHash(voteTxHash)
                       setShowReVoteForm(false)
-                      // Show Page 4 confirmation view
+                      // Notify parent to navigate to VoteSubmitted page
                       const vote = address ? getLastVote(address, propPollId) : null
-                      if (vote) {
-                        setSubmittedVoteData({ choice: vote.choice, weight: vote.weight, cost: vote.cost, txHash: voteTxHash })
-                        setVoteJustSubmitted(true)
-                      }
-                      // Notify parent with vote data
                       if (onVoteSubmitted && address && vote) {
                         onVoteSubmitted({
                           pollId: propPollId,

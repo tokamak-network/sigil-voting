@@ -53,6 +53,12 @@ export function ResultsDisplay({ tallyAddress, pollAddress }: ResultsDisplayProp
         <span className="material-symbols-outlined text-4xl text-red-400">error</span>
         <p className="text-sm font-bold text-red-700 uppercase">{t.results.title}</p>
         <p className="text-xs text-red-600">{t.voteForm.error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-2 px-4 py-2 border-2 border-red-400 text-red-700 text-xs font-bold uppercase hover:bg-red-100 transition-colors"
+        >
+          {t.results.retry}
+        </button>
       </div>
     );
   }
@@ -67,6 +73,15 @@ export function ResultsDisplay({ tallyAddress, pollAddress }: ResultsDisplayProp
   const hasVotes = totalNum > 0;
 
   const explorerAddr = pollAddress || tallyAddress;
+
+  if (totalNum === 0) {
+    return (
+      <div className="border-2 border-black bg-white p-12 flex flex-col items-center justify-center gap-4">
+        <span className="material-symbols-outlined text-5xl text-slate-300">how_to_vote</span>
+        <p className="text-lg font-display font-bold uppercase text-slate-500">{t.results.noVotesYet}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6" role="region" aria-label={t.results.title}>
@@ -116,7 +131,7 @@ export function ResultsDisplay({ tallyAddress, pollAddress }: ResultsDisplayProp
             </div>
             <div className="w-full h-12 bg-slate-100 border-2 border-black">
               <div
-                className="h-full bg-black transition-all duration-700"
+                className="h-full bg-slate-700 transition-all duration-700"
                 style={{ width: `${againstPct}%` }}
                 role="progressbar"
                 aria-valuenow={againstPct}

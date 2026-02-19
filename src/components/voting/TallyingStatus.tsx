@@ -77,11 +77,10 @@ export function TallyingStatus({
   const isProcessed = processingComplete === true
   const isFinalized = tallyVerified === true
 
-  // Estimated completion: votingEndTime + ~7 minutes
-  // Estimated total processing time: ~7 minutes after voting ends
+  // Estimated total processing time: ~3 minutes after voting ends
   const estimatedEndMs = votingEndTime
-    ? (votingEndTime + 7 * 60) * 1000
-    : Date.now() + 7 * 60 * 1000
+    ? (votingEndTime + 3 * 60) * 1000
+    : Date.now() + 3 * 60 * 1000
 
   // Countdown timer
   const [now, setNow] = useState(Date.now())
@@ -104,7 +103,7 @@ export function TallyingStatus({
   return (
     <div>
       {/* Top Banner */}
-      <div className="w-full bg-amber-400 border-b-2 border-black px-6 py-3 -mx-6 -mt-6 mb-8" style={{ width: 'calc(100% + 3rem)' }}>
+      <div className="w-full bg-amber-400 border-b-2 border-black px-6 py-3 mb-8">
         <div className="flex items-center justify-center gap-3">
           <span className="material-symbols-outlined font-bold">event_busy</span>
           <span className="font-display font-black text-lg italic uppercase tracking-widest">
@@ -252,7 +251,7 @@ export function TallyingStatus({
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] font-bold text-slate-500 uppercase">{t.tallying.spent}</span>
-                    <span className="text-sm font-mono font-bold">{myVote ? myVote.cost.toFixed(2) : '—'}</span>
+                    <span className="text-sm font-mono font-bold">{myVote ? (Number.isInteger(myVote.cost) ? myVote.cost : myVote.cost.toFixed(2)) : '—'}</span>
                   </div>
                 </div>
               </div>

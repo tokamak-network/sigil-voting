@@ -19,7 +19,7 @@ export function LanguageSwitcher() {
         aria-label="한국어로 전환"
         aria-pressed={lang === 'ko'}
       >
-        KR
+        KO
       </button>
     </div>
   )

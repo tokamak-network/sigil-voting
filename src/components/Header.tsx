@@ -27,7 +27,6 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
 
   const isCorrectChain = chainId === sepolia.id
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
-  const isLandingOrTech = currentPage === 'landing' || currentPage === 'technology'
   const showNewProposal = currentPage === 'proposals'
 
   const { data: voiceCreditsRaw } = useReadContract({
@@ -100,8 +99,8 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
         <div className="flex items-center gap-4">
           <LanguageSwitcher />
 
-          {/* Balance + New Proposal (connected, in app pages) */}
-          {isConnected && isCorrectChain && !isLandingOrTech && (
+          {/* Balance + New Proposal (connected) */}
+          {isConnected && isCorrectChain && (
             <div className="hidden lg:flex items-center border-2 border-border-light dark:border-border-dark bg-white p-2 gap-4">
               <div className="flex flex-col">
                 <span className="text-xs font-bold text-slate-500 uppercase leading-none">{t.header.balance}</span>
@@ -144,18 +143,8 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
             </button>
           )}
 
-          {/* Launch App (landing / technology pages) */}
-          {isLandingOrTech && (
-            <button
-              className="bg-primary text-white font-display font-bold px-4 py-2 hover:translate-x-1 hover:-translate-y-1 transition-transform border-2 border-black"
-              onClick={() => setCurrentPage('proposals')}
-            >
-              {t.landing.enterApp.toUpperCase()}
-            </button>
-          )}
-
-          {/* Connect wallet (not connected, in app pages) */}
-          {!isConnected && !isLandingOrTech && (
+          {/* Connect wallet (not connected) */}
+          {!isConnected && (
             <button
               onClick={handleConnect}
               disabled={isConnecting}
