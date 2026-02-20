@@ -110,6 +110,7 @@ export const POLL_ABI = [
   'function mergeMaciStateAq()',
   'function mergeMessageAqSubRoots(uint256 _numSrQueueOps)',
   'function mergeMessageAq()',
+  'function numSignUpsAtDeployment() view returns (uint256)',
   'event MessagePublished(uint256 indexed messageIndex, uint256[10] encMessage, uint256 encPubKeyX, uint256 encPubKeyY)',
 ];
 
@@ -876,9 +877,15 @@ async function tallyAndPublish(
   const againstVotes = currentTally[0] ?? 0n;
   const forVotes = currentTally[1] ?? 0n;
   const abstainVotes = currentTally[2] ?? 0n;
-  const totalVoters = numSignUps - 1; // Exclude blank leaf
 
-  log(`  Results: FOR=${forVotes}, AGAINST=${againstVotes}, ABSTAIN=${abstainVotes}, voters=${totalVoters}`);
+  // Read numSignUpsAtDeployment from Poll contract to cap totalVoters
+  // Tally.publishResults() reverts with VoterCountExceedsSignups if totalVoters > numSignUpsAtDeployment
+  // This happens when users sign up AFTER poll deployment (auto-registration on first vote)
+  const pollContract = new ethers.Contract(addrs.poll, POLL_ABI, signer.provider);
+  const numSignUpsAtDeploy = Number(await retryRpc(() => pollContract.numSignUpsAtDeployment()));
+  const totalVoters = Math.min(numSignUps - 1, numSignUpsAtDeploy); // Exclude blank leaf, cap at deployment count
+
+  log(`  Results: FOR=${forVotes}, AGAINST=${againstVotes}, ABSTAIN=${abstainVotes}, voters=${totalVoters} (allSignUps=${numSignUps - 1}, atDeployment=${numSignUpsAtDeploy})`);
 
   // Publish results on-chain
   log('  [7/7] Publishing results on-chain...');
