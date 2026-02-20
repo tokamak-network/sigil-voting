@@ -58,12 +58,8 @@ describe('LandingPage', () => {
     expect(setCurrentPage).toHaveBeenCalledWith('proposals')
   })
 
-  it('shows "coming soon" message when play button is clicked', async () => {
-    const user = userEvent.setup()
+  it('renders deployed contract addresses', () => {
     renderWithProviders(<LandingPage setCurrentPage={setCurrentPage} />)
-    const playButton = screen.getByLabelText('Play demo video')
-    await user.click(playButton)
-    // Should show "coming soon" text
-    expect(screen.getByText(/coming soon|준비 중/i)).toBeInTheDocument()
+    expect(screen.getByText(/0x26428484/)).toBeInTheDocument()
   })
 })
