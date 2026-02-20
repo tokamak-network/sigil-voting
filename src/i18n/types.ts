@@ -393,6 +393,7 @@ export interface Translations {
     verified: string
     noVotes: string
     noVotesYet: string
+    allInvalid: string
     forLabel: string
     againstLabel: string
     creditsUnit: string

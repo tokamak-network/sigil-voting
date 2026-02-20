@@ -332,22 +332,31 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
           toBlock: 'latest',
         })
 
+        // Find the LAST (most recent) signUp from this address
+        let lastMatch: { stateIndex: number; pubKeyX: string; pubKeyY: string } | null = null
         for (const log of logs) {
           if (!log.transactionHash) continue
           try {
             const tx = await publicClient.getTransaction({ hash: log.transactionHash })
             if (tx.from.toLowerCase() === address.toLowerCase()) {
-              // User already registered on-chain — restore localStorage
               const rawIndex = log.topics[1] ? parseInt(log.topics[1] as string, 16) : NaN
               const stateIndex = !isNaN(rawIndex) && rawIndex > 0 ? rawIndex : 1
-              localStorage.setItem(storageKey.signup(address), 'true')
-              localStorage.setItem(storageKey.stateIndex(address), String(stateIndex))
-              setSignedUp(true)
-              return
+              // pubKeyX is indexed (topics[2]), pubKeyY is in args
+              const pubKeyX = log.topics[2] ? BigInt(log.topics[2]).toString() : '0'
+              const pubKeyY = log.args?.pubKeyY?.toString() ?? '0'
+              lastMatch = { stateIndex, pubKeyX, pubKeyY }
+              // Don't break — keep iterating to find the LAST (most recent) match
             }
           } catch {
             // Skip if tx fetch fails
           }
+        }
+        if (lastMatch) {
+          localStorage.setItem(storageKey.signup(address), 'true')
+          localStorage.setItem(storageKey.stateIndex(address), String(lastMatch.stateIndex))
+          // Store registered pubKey so we can verify key match before voting
+          localStorage.setItem(storageKey.pk(address), JSON.stringify([lastMatch.pubKeyX, lastMatch.pubKeyY]))
+          setSignedUp(true)
         }
       } catch {
         // On-chain check failed — leave as unregistered

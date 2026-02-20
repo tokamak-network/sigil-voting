@@ -411,6 +411,7 @@ export const en: Translations = {
     verified: 'Verified on-chain',
     noVotes: 'No votes',
     noVotesYet: 'No vote results yet',
+    allInvalid: 'No valid votes. All votes were invalidated due to key mismatch.',
     forLabel: 'For',
     againstLabel: 'Against',
     creditsUnit: 'credits',

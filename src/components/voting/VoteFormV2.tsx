@@ -138,11 +138,37 @@ export function VoteFormV2({
       let currentSk: bigint;
       let currentPubKey: [bigint, bigint];
       {
-        const kp = await getOrCreateMaciKeypair(
+        let kp = await getOrCreateMaciKeypair(
           address, pollId, crypto.derivePrivateKey, crypto.eddsaDerivePublicKey, crypto.loadEncrypted, crypto.storeEncrypted,
         );
         currentSk = kp.sk;
         currentPubKey = kp.pubKey;
+
+        // Verify local key matches on-chain registered key
+        // If they differ (e.g., E2E test registered with random key), re-register
+        const storedPk = localStorage.getItem(storageKey.pk(address));
+        if (storedPk) {
+          try {
+            const parsed = JSON.parse(storedPk);
+            const regPkX = parsed[0].toString();
+            const regPkY = parsed[1].toString();
+            if (regPkX !== currentPubKey[0].toString() || regPkY !== currentPubKey[1].toString()) {
+              // Key mismatch — re-register with wallet-derived key to get a new stateIndex
+              if (onSignUp) {
+                setTxStage('registering');
+                await onSignUp();
+                // Re-derive keypair after re-registration (stateIndex and key updated)
+                kp = await getOrCreateMaciKeypair(
+                  address, pollId, crypto.derivePrivateKey, crypto.eddsaDerivePublicKey, crypto.loadEncrypted, crypto.storeEncrypted,
+                );
+                currentSk = kp.sk;
+                currentPubKey = kp.pubKey;
+              }
+            }
+          } catch {
+            // If parsing fails, proceed with current key
+          }
+        }
       }
 
       // Determine the keypair that will sign the vote message

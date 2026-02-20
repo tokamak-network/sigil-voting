@@ -75,6 +75,16 @@ export function ResultsDisplay({ tallyAddress, pollAddress }: ResultsDisplayProp
   const explorerAddr = pollAddress || tallyAddress;
 
   if (totalNum === 0) {
+    // If totalVoters > 0 but for+against = 0, votes were verified but all invalid
+    if (votersNum > 0) {
+      return (
+        <div className="border-2 border-black bg-white p-12 flex flex-col items-center justify-center gap-4">
+          <span className="material-symbols-outlined text-5xl text-amber-400">verified</span>
+          <p className="text-lg font-display font-bold uppercase text-slate-700">{t.results.verified}</p>
+          <p className="text-sm text-slate-500">{t.results.allInvalid}</p>
+        </div>
+      );
+    }
     return (
       <div className="border-2 border-black bg-white p-12 flex flex-col items-center justify-center gap-4">
         <span className="material-symbols-outlined text-5xl text-slate-300">how_to_vote</span>

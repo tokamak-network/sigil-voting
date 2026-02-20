@@ -411,6 +411,7 @@ export const ko: Translations = {
     verified: '온체인 검증 완료',
     noVotes: '투표 없음',
     noVotesYet: '아직 투표 결과가 없습니다',
+    allInvalid: '유효한 투표가 없습니다. 투표 키가 일치하지 않아 모든 투표가 무효 처리되었습니다.',
     forLabel: '찬성',
     againstLabel: '반대',
     creditsUnit: '크레딧',
