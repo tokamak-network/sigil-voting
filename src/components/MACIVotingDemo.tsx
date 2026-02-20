@@ -897,6 +897,21 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         </div>
       )}
 
+      {/* Tallying phases (Merging/Processing) use full-page TallyingStatus layout */}
+      {phase !== V2Phase.Failed && phase !== V2Phase.Finalized && phase !== V2Phase.NoVotes ? (
+        <TallyingStatus
+          pollAddress={pollAddress || undefined}
+          messageProcessorAddress={messageProcessorAddress || undefined}
+          tallyAddress={tallyAddress || undefined}
+          votingEndTime={votingEndTime ?? undefined}
+          pollTitle={displayTitle}
+          pollDescription={pollDescription}
+          pollId={propPollId}
+          myVote={myVote}
+          numSignUps={numSignUps}
+          onBack={onBack}
+        />
+      ) : (
       <div className="container mx-auto px-6 py-8 lg:py-12">
         {/* Back button */}
         <button
@@ -937,10 +952,8 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
             <div className="flex flex-col items-end shrink-0">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
               <span className={`px-6 py-3 bg-white border-4 border-black font-black text-xl italic uppercase tracking-tighter ${
-                phase === V2Phase.Failed ? 'text-red-600' : phase === V2Phase.NoVotes ? 'text-slate-500' : 'text-amber-600'
+                phase === V2Phase.Failed ? 'text-red-600' : 'text-slate-500'
               }`}>
-                {phase === V2Phase.Merging && t.merging.title.toUpperCase()}
-                {phase === V2Phase.Processing && t.processing.title.toUpperCase()}
                 {phase === V2Phase.NoVotes && t.noVotes.title.toUpperCase()}
                 {phase === V2Phase.Failed && (
                   <span className="flex items-center gap-2">
@@ -1184,22 +1197,9 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
               </button>
             </div>
           </div>
-        ) : (
-          <div className="w-full">
-            <TallyingStatus
-              pollAddress={pollAddress || undefined}
-              messageProcessorAddress={messageProcessorAddress || undefined}
-              tallyAddress={tallyAddress || undefined}
-              votingEndTime={votingEndTime ?? undefined}
-              pollTitle={displayTitle}
-              pollDescription={pollDescription}
-              pollId={propPollId}
-              myVote={myVote}
-              numSignUps={numSignUps}
-            />
-          </div>
-        )}
+        ) : null}
       </div>
+      )}
     </div>
   )
 }

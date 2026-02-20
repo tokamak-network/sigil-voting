@@ -35,7 +35,7 @@ contract DeployMACIScript is Script {
 
         vm.stopBroadcast();
 
-        console.log("\n=== MACI V5 Deployment (Fixed Poll.sol) ===");
+        console.log("\n=== MACI V9 Deployment (Security Hardening) ===");
         console.log("  maci:", address(maci));
         console.log("  stateAq:", address(stateAq));
         console.log("  Reused: gatekeeper, voiceCreditProxy, verifiers, vkRegistry");
