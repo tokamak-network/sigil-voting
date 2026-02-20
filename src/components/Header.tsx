@@ -56,7 +56,7 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
     args: address ? [address] : undefined,
     query: { enabled: isConfigured && !!address },
   })
-  const showNewProposal = Number(gateCount || 0) === 0 || canCreatePoll === true
+  const showNewProposal = canCreatePoll === true
 
   // Close disconnect confirm on outside click
   useEffect(() => {
