@@ -33,6 +33,8 @@ contract Tally is DomainObjs {
     error TallyNotComputed();
     error TallyCommitmentMismatch();
     error AlreadyTallied();
+    error ZeroAddress();
+    error VoterCountExceedsSignups();
 
     modifier onlyCoordinator() {
         if (msg.sender != coordinator) revert NotCoordinator();
@@ -45,6 +47,9 @@ contract Tally is DomainObjs {
     );
 
     constructor(address _poll, address _mp, address _verifier, address _vkRegistry, address _coordinator) {
+        if (_poll == address(0) || _mp == address(0) || _verifier == address(0) || _coordinator == address(0)) {
+            revert ZeroAddress();
+        }
         poll = _poll;
         messageProcessor = _mp;
         verifier = _verifier;
@@ -106,6 +111,11 @@ contract Tally is DomainObjs {
     ) external onlyCoordinator {
         if (tallyCommitment == 0) revert TallyNotComputed();
         if (tallyVerified) revert AlreadyTallied();
+
+        // Voter count sanity: cannot exceed signups at poll deployment
+        uint256 maxVoters = Poll(poll).numSignUpsAtDeployment();
+        if (_totalVoters > maxVoters) revert VoterCountExceedsSignups();
+
         // Verify: poseidon_3(tallyResultsRoot, totalSpent, perOptionSpentRoot) == tallyCommitment
         uint256 computedCommitment = PoseidonT4.hash([_tallyResultsRoot, _totalSpent, _perOptionSpentRoot]);
         if (computedCommitment != tallyCommitment) revert TallyCommitmentMismatch();

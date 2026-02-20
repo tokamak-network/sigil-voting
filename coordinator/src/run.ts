@@ -296,7 +296,7 @@ export async function initCrypto(): Promise<CryptoKit> {
 
   function unpackCommandFn(packed: bigint): Command {
     const m50 = (1n << 50n) - 1n;
-    return {
+    const cmd: Command = {
       stateIndex: packed & m50,
       voteOptionIndex: (packed >> 50n) & m50,
       newVoteWeight: (packed >> 100n) & m50,
@@ -306,6 +306,18 @@ export async function initCrypto(): Promise<CryptoKit> {
       newPubKeyY: 0n,
       salt: 0n,
     };
+
+    // Range validation: clamp out-of-bounds values to prevent undefined behavior
+    if (cmd.voteOptionIndex >= BigInt(MAX_VOTE_OPTIONS)) {
+      log(`  ⚠ unpackCommand: voteOptionIndex ${cmd.voteOptionIndex} out of range (max ${MAX_VOTE_OPTIONS}), clamping to 0`);
+      cmd.voteOptionIndex = 0n;
+    }
+    if (cmd.nonce >= (1n << 50n)) {
+      log(`  ⚠ unpackCommand: nonce ${cmd.nonce} out of range, clamping to 0`);
+      cmd.nonce = 0n;
+    }
+
+    return cmd;
   }
 
   return {
@@ -684,7 +696,10 @@ async function processAndSubmitProofs(
       // Update state commitment tracker (matches contract's currentStateCommitment)
       currentStateCommitmentTracker = newStateCommitment;
     } catch (err) {
-      log(`  Proof generation/submission failed: ${(err as Error).message?.slice(0, 120)}`);
+      // Sanitize: only log error type and short message, never raw stack or secrets
+      const errType = (err as Error).constructor?.name ?? 'Error';
+      const errMsg = (err as Error).message?.slice(0, 80)?.replace(/0x[a-fA-F0-9]{40,}/g, '[REDACTED]') ?? 'unknown';
+      log(`  Proof generation/submission failed: [${errType}] ${errMsg}`);
       log(`  Off-chain processing continues (results will be available for manual submission)`);
       // Still update tracker for next batch's circuit input
       currentStateCommitmentTracker = newStateCommitment;
@@ -844,7 +859,8 @@ async function tallyAndPublish(
       await tx.wait();
       log(`  Tally batch ${batchNum + 1} proof submitted`);
     } catch (err) {
-      log(`  Tally batch ${batchNum + 1} failed: ${(err as Error).message?.slice(0, 120)}`);
+      const errMsg = (err as Error).message?.slice(0, 80)?.replace(/0x[a-fA-F0-9]{40,}/g, '[REDACTED]') ?? 'unknown';
+      log(`  Tally batch ${batchNum + 1} failed: ${errMsg}`);
     }
 
     // Update running accumulators for next batch
@@ -880,7 +896,8 @@ async function tallyAndPublish(
     await tx.wait();
     log(`  Results published! FOR=${forVotes} AGAINST=${againstVotes} ABSTAIN=${abstainVotes}`);
   } catch (err) {
-    log(`  publishResults failed: ${(err as Error).message?.slice(0, 120)}`);
+    const errMsg = (err as Error).message?.slice(0, 80)?.replace(/0x[a-fA-F0-9]{40,}/g, '[REDACTED]') ?? 'unknown';
+    log(`  publishResults failed: ${errMsg}`);
   }
 }
 
@@ -988,13 +1005,27 @@ export async function processPoll(
   await tallyAndPublish(pollId, addrs, numSignUps, stateMap, ballotMap, stateTree, newStateRoot, newBallotRoot, signer, crypto);
 
   // Reset State AccQueue merge state so future signups are possible
-  try {
-    const maciWithSigner = maci.connect(signer) as ethers.Contract;
-    const resetTx = await maciWithSigner.resetStateAqMerge();
-    await resetTx.wait();
-    log('  State AccQueue merge reset (new signups enabled)');
-  } catch (err) {
-    log(`  ⚠ resetStateAqMerge failed: ${(err as Error).message?.slice(0, 80)}`);
+  // Retry up to 3 times (5s interval) since this is critical for system health
+  let resetSuccess = false;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const maciWithSigner = maci.connect(signer) as ethers.Contract;
+      const resetTx = await maciWithSigner.resetStateAqMerge();
+      await resetTx.wait();
+      log('  State AccQueue merge reset (new signups enabled)');
+      resetSuccess = true;
+      break;
+    } catch (err) {
+      const errMsg = (err as Error).message?.slice(0, 80) ?? 'unknown';
+      log(`  ⚠ resetStateAqMerge attempt ${attempt}/3 failed: ${errMsg}`);
+      if (attempt < 3) {
+        await new Promise(r => setTimeout(r, 5000));
+      }
+    }
+  }
+  if (!resetSuccess) {
+    log('  ✗ CRITICAL: resetStateAqMerge failed after 3 attempts — new signups will be blocked!');
+    process.exit(1);
   }
 
   log(`  ★ Poll ${pollId} processing complete!`);
@@ -1145,7 +1176,9 @@ async function main() {
 const isDirectRun = process.argv[1]?.endsWith('run.ts') || process.argv[1]?.endsWith('run.js');
 if (isDirectRun) {
   main().catch(err => {
-    console.error('Fatal error:', err);
+    // Sanitize fatal errors — never log raw stack or private keys
+    const errMsg = (err as Error).message?.slice(0, 120)?.replace(/0x[a-fA-F0-9]{40,}/g, '[REDACTED]') ?? 'unknown';
+    console.error(`Fatal error: ${errMsg}`);
     process.exit(1);
   });
 }

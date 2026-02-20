@@ -434,13 +434,14 @@ contract MACITest is Test {
         tally.tallyVotes(commitment, pA, pB, pC);
 
         // Publish results with Poseidon-verified commitment
-        tally.publishResults(50, 30, 20, 5, tallyResultsRoot, totalSpent, perOptionSpentRoot);
+        // totalVoters must not exceed numSignUpsAtDeployment (= 1 in this test)
+        tally.publishResults(50, 30, 20, 1, tallyResultsRoot, totalSpent, perOptionSpentRoot);
 
         assertTrue(tally.tallyVerified());
         assertEq(tally.forVotes(), 50);
         assertEq(tally.againstVotes(), 30);
         assertEq(tally.abstainVotes(), 20);
-        assertEq(tally.totalVoters(), 5);
+        assertEq(tally.totalVoters(), 1);
     }
 
     // ============ 12. test_TokenGate_MultiToken ============

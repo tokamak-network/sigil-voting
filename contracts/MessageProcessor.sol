@@ -29,6 +29,8 @@ contract MessageProcessor is DomainObjs {
     error InvalidProcessProof();
     error NotAllBatchesProcessed();
     error ExpectedBatchCountAlreadySet();
+    error ZeroAddress();
+    error ZeroBatchCount();
 
     modifier onlyCoordinator() {
         if (msg.sender != coordinator) revert NotCoordinator();
@@ -39,6 +41,7 @@ contract MessageProcessor is DomainObjs {
     event ProcessingCompleted(uint256 finalStateCommitment);
 
     constructor(address _poll, address _verifier, address _vkRegistry, address _coordinator) {
+        if (_poll == address(0) || _verifier == address(0) || _coordinator == address(0)) revert ZeroAddress();
         poll = _poll;
         verifier = _verifier;
         vkRegistry = _vkRegistry;
@@ -91,6 +94,7 @@ contract MessageProcessor is DomainObjs {
     /// @notice Set the expected number of batches (must be called before completeProcessing)
     function setExpectedBatchCount(uint256 _count) external onlyCoordinator {
         if (expectedBatchCount != 0) revert ExpectedBatchCountAlreadySet();
+        if (_count == 0) revert ZeroBatchCount();
         expectedBatchCount = _count;
     }
 

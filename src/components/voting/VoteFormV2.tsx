@@ -176,8 +176,9 @@ export function VoteFormV2({
         // Key change command: voteOption=0, weight=0
         const kcPackedCommand = stateIndex | (0n << 50n) | (0n << 100n) | (kcNonce << 150n) | (BigInt(pollId) << 200n);
 
+        const SNARK_SCALAR_FIELD_KC = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
         const kcSaltBytes = globalThis.crypto.getRandomValues(new Uint8Array(31));
-        const kcSalt = BigInt('0x' + Array.from(kcSaltBytes).map(b => b.toString(16).padStart(2, '0')).join(''));
+        const kcSalt = BigInt('0x' + Array.from(kcSaltBytes).map(b => b.toString(16).padStart(2, '0')).join('')) % SNARK_SCALAR_FIELD_KC;
 
         // cmdHash: Poseidon(stateIndex, newPubKeyX, newPubKeyY, weight=0, salt)
         const kcCmdHashF = poseidon([
@@ -267,8 +268,9 @@ export function VoteFormV2({
 
       setTxStage('signing');
 
+      const SNARK_SCALAR_FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
       const saltBytes = globalThis.crypto.getRandomValues(new Uint8Array(31));
-      const salt = BigInt('0x' + Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join(''));
+      const salt = BigInt('0x' + Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('')) % SNARK_SCALAR_FIELD;
 
       // cmdHash must match circuit: Poseidon(stateIndex, newPubKeyX, newPubKeyY, newVoteWeight, salt)
       const cmdHashF = poseidon([
@@ -330,7 +332,10 @@ export function VoteFormV2({
       onVoteSubmitted?.(hash);
       setTxStage('done');
     } catch (err) {
-      console.error('Vote error:', err);
+      // Only log error type in production — never raw error objects with keys/signatures
+      if (import.meta.env.DEV) {
+        console.error('Vote error:', err);
+      }
       setTxStage('error');
       const msg = err instanceof Error ? err.message : String(err);
       // Signup errors come pre-translated with 'signup:' prefix
@@ -345,7 +350,6 @@ export function VoteFormV2({
       } else if (msg.includes('ECDH') || msg.includes('shared key') || msg.includes('invalid point')) {
         setError(t.voteForm.errorEncryption);
       } else {
-        console.error('Vote error detail:', msg);
         setError(t.voteForm.errorGeneric);
       }
     } finally {
@@ -729,7 +733,11 @@ async function getOrCreateMaciKeypair(
       address,
     ],
   });
-  const sigBytes = new Uint8Array(sig.slice(2).match(/.{2}/g)!.map(h => parseInt(h, 16)));
+  const sigHex = sig.slice(2);
+  if (sigHex.length < 130) throw new Error('Invalid signature: too short');
+  const sigMatches = sigHex.match(/.{2}/g);
+  if (!sigMatches) throw new Error('Invalid signature format');
+  const sigBytes = new Uint8Array(sigMatches.map(h => parseInt(h, 16)));
   const sk = derivePrivateKey(sigBytes);
   const pubKey = await eddsaDerivePublicKey(sk);
 

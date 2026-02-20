@@ -44,6 +44,9 @@ contract MACI is DomainObjs {
     error SameVerifier();
     error AlreadyInitialized();
     error NotInitialized();
+    error ZeroDuration();
+    error ZeroMessageTreeDepth();
+    error ZeroThreshold();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -62,6 +65,8 @@ contract MACI is DomainObjs {
     );
 
     event DeployPoll(uint256 indexed pollId, address pollAddr, address messageProcessorAddr, address tallyAddr);
+    event ProposalGateAdded(address indexed token, uint256 threshold);
+    event ProposalGatesCleared();
 
     bool public initialized;
 
@@ -127,12 +132,16 @@ contract MACI is DomainObjs {
     /// @param _token ERC20 token address
     /// @param _threshold Minimum balance required
     function addProposalGate(address _token, uint256 _threshold) external onlyOwner {
+        if (_token == address(0)) revert ZeroAddress();
+        if (_threshold == 0) revert ZeroThreshold();
         proposalGates.push(TokenGate(_token, _threshold));
+        emit ProposalGateAdded(_token, _threshold);
     }
 
     /// @notice Remove all proposal gates (owner only)
     function clearProposalGates() external onlyOwner {
         delete proposalGates;
+        emit ProposalGatesCleared();
     }
 
     /// @notice Get number of proposal gates
@@ -182,6 +191,8 @@ contract MACI is DomainObjs {
         if (!canCreatePoll(msg.sender)) revert InsufficientTokens();
         if (_mpVerifier == address(0) || _tallyVerifier == address(0)) revert InvalidVerifier();
         if (_mpVerifier == _tallyVerifier) revert SameVerifier();
+        if (_duration == 0) revert ZeroDuration();
+        if (_messageTreeDepth == 0) revert ZeroMessageTreeDepth();
         pollId = nextPollId++;
 
         Poll poll = new Poll(

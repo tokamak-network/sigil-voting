@@ -13,6 +13,9 @@ contract Poll is DomainObjs {
     // ============ Errors ============
     error VotingEnded();
     error VotingNotEnded();
+    error ZeroStateAq();
+    error ZeroDuration();
+    error ZeroEncPubKey();
 
     // ============ Config ============
     string public title;
@@ -46,6 +49,9 @@ contract Poll is DomainObjs {
         uint256 _numSignUps,
         uint8 _messageTreeDepth
     ) {
+        if (_stateAq == address(0)) revert ZeroStateAq();
+        if (_duration == 0) revert ZeroDuration();
+
         title = _title;
         deployTime = block.timestamp;
         duration = _duration;
@@ -64,6 +70,7 @@ contract Poll is DomainObjs {
     /// @param _encPubKeyY Ephemeral public key Y
     function publishMessage(uint256[10] calldata _encMessage, uint256 _encPubKeyX, uint256 _encPubKeyY) external {
         if (block.timestamp > deployTime + duration) revert VotingEnded();
+        if (_encPubKeyX == 0 && _encPubKeyY == 0) revert ZeroEncPubKey();
 
         // Hash message + pubkey into a single leaf
         uint256 leaf = hashMessageAndEncPubKey(_encMessage, _encPubKeyX, _encPubKeyY);

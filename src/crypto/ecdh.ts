@@ -76,14 +76,20 @@ export async function generateEphemeralKeyPair(): Promise<{
   await init()
   const babyjub = babyjubInstance
 
-  // Generate random scalar in BabyJubjub subgroup
-  const bytes = new Uint8Array(32)
-  crypto.getRandomValues(bytes)
-  let value = 0n
-  for (let i = 0; i < 32; i++) {
-    value = (value << 8n) | BigInt(bytes[i])
+  // Generate random scalar in BabyJubjub subgroup via rejection sampling
+  // Avoids modular bias from simple modulo reduction
+  let sk = 0n
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const bytes = new Uint8Array(32)
+    crypto.getRandomValues(bytes)
+    let value = 0n
+    for (let i = 0; i < 32; i++) {
+      value = (value << 8n) | BigInt(bytes[i])
+    }
+    sk = value % BABYJUB_SUBORDER
+    if (sk !== 0n) break
   }
-  const sk = value % BABYJUB_SUBORDER
+  if (sk === 0n) throw new Error('Failed to generate non-zero ephemeral key')
 
   // Derive public key: pk = sk * G (Base8)
   const pubKeyPoint = babyjub.mulPointEscalar(babyjub.Base8, sk)

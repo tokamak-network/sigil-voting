@@ -95,6 +95,7 @@ contract AccQueue {
     event Enqueued(uint256 indexed index, uint256 leaf);
     event SubTreeMerged(uint256 indexed subTreeIndex, uint256 subTreeRoot);
     event Merged(uint256 mainRoot);
+    event MergeReset();
 
     // ============ Constructor ============
 
@@ -388,5 +389,6 @@ contract AccQueue {
         merged = false;
         subRootsMerged = false;
         mergeProgress = 0;
+        emit MergeReset();
     }
 }
