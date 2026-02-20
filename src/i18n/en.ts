@@ -9,7 +9,7 @@ export const en: Translations = {
     disconnect: 'Disconnect',
     wrongNetwork: 'Wrong Network',
     switching: 'Switching...',
-    balance: 'Available Balance',
+    balance: 'Voting Power (per proposal)',
     newProposal: 'New Proposal',
     resetData: 'Reset Test Data',
     resetConfirm: 'This will delete all test data (registration, vote history, keys) for this account. Continue?',

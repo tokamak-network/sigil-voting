@@ -9,7 +9,7 @@ export const ko: Translations = {
     disconnect: '연결 해제',
     wrongNetwork: '네트워크 변경',
     switching: '변경 중...',
-    balance: '가용 잔액',
+    balance: '투표력 (제안당)',
     newProposal: '새 제안',
     resetData: '테스트 초기화',
     resetConfirm: '이 계정의 모든 테스트 데이터(등록, 투표 기록, 키)를 삭제합니다. 계속할까요?',
