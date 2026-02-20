@@ -66,6 +66,22 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
 
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
 
+  // Gate check: hide "Create Proposal" if user doesn't meet token threshold
+  const { data: gateCount } = useReadContract({
+    address: MACI_V2_ADDRESS as `0x${string}`,
+    abi: MACI_ABI,
+    functionName: 'proposalGateCount',
+    query: { enabled: isConfigured && !!address },
+  })
+  const { data: canCreatePoll } = useReadContract({
+    address: MACI_V2_ADDRESS as `0x${string}`,
+    abi: MACI_ABI,
+    functionName: 'canCreatePoll',
+    args: address ? [address] : undefined,
+    query: { enabled: isConfigured && !!address },
+  })
+  const showNewProposal = Number(gateCount || 0) === 0 || canCreatePoll === true
+
   const { data: nextPollId } = useReadContract({
     address: MACI_V2_ADDRESS,
     abi: MACI_ABI,
@@ -354,8 +370,8 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
         </div>
       )}
 
-      {/* ── Create Proposal Toggle ── */}
-      {isConnected && (
+      {/* ── Create Proposal Toggle (hidden when token threshold not met) ── */}
+      {isConnected && showNewProposal && (
         <div className="mb-8">
           <button
             onClick={() => setShowCreatePoll(!showCreatePoll)}

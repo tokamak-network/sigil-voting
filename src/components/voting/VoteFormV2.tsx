@@ -377,14 +377,12 @@ export function VoteFormV2({
     ];
 
     return (
-      <div className="bg-white p-8 border-4 border-black" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>
-        <TransactionModal
-          title={t.voteForm.processing}
-          steps={txSteps}
-          currentStep={txStage}
-          subtitle={stageMessages[txStage]}
-        />
-      </div>
+      <TransactionModal
+        title={t.voteForm.processing}
+        steps={txSteps}
+        currentStep={txStage}
+        subtitle={stageMessages[txStage]}
+      />
     );
   }
 

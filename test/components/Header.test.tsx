@@ -15,14 +15,21 @@ let mockAccountState = {
   chainId: 11155111 as number | undefined,
 }
 
-let mockReadContractData: unknown = undefined
+let mockVoiceCredits: unknown = undefined
+let mockGateCount: unknown = 0n
+let mockCanCreate: unknown = true
 
 vi.mock('wagmi', () => ({
   useAccount: () => mockAccountState,
   useConnect: () => ({ connect: mockConnect, isPending: false }),
   useDisconnect: () => ({ disconnect: mockDisconnect }),
   useSwitchChain: () => ({ switchChain: mockSwitchChain, isPending: false }),
-  useReadContract: () => ({ data: mockReadContractData }),
+  useReadContract: (config: any) => {
+    if (config?.functionName === 'getVoiceCredits') return { data: mockVoiceCredits, isLoading: false }
+    if (config?.functionName === 'proposalGateCount') return { data: mockGateCount, isLoading: false }
+    if (config?.functionName === 'canCreatePoll') return { data: mockCanCreate, isLoading: false }
+    return { data: undefined, isLoading: false }
+  },
 }))
 
 vi.mock('wagmi/connectors', () => ({
@@ -35,6 +42,7 @@ vi.mock('../../src/wagmi', () => ({
 
 vi.mock('../../src/contractV2', () => ({
   MACI_V2_ADDRESS: '0x0000000000000000000000000000000000000001',
+  MACI_ABI: [],
   VOICE_CREDIT_PROXY_ADDRESS: '0x0000000000000000000000000000000000000002',
   VOICE_CREDIT_PROXY_ABI: [],
 }))
@@ -49,7 +57,9 @@ describe('Header', () => {
       isConnected: false,
       chainId: 11155111,
     }
-    mockReadContractData = undefined
+    mockVoiceCredits = undefined
+    mockGateCount = 0n
+    mockCanCreate = true
   })
 
   it('renders the SIGIL brand name', () => {
