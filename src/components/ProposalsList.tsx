@@ -136,10 +136,15 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
           const args = log.args as { pollId?: bigint; tallyAddr?: `0x${string}` }
           if (args.pollId !== undefined && args.tallyAddr) {
             tallyMap.set(Number(args.pollId), args.tallyAddr)
+            localStorage.setItem(storageKey.pollTitle(Number(args.pollId)) + ':tally', args.tallyAddr)
           }
         }
       } catch {
-        // Event reading may fail on some RPCs
+        // Event reading may fail on some RPCs — restore from localStorage
+        for (let i = 0; i < count; i++) {
+          const cached = localStorage.getItem(storageKey.pollTitle(i) + ':tally') as `0x${string}` | null
+          if (cached) tallyMap.set(i, cached)
+        }
       }
 
       // Parallel: fetch all poll addresses at once
@@ -370,7 +375,17 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
         </div>
       )}
 
-      {/* ── Create Proposal Toggle (hidden when token threshold not met) ── */}
+      {/* ── Token requirement notice (shown when user can't create proposals) ── */}
+      {isConnected && canCreatePoll === false && (
+        <div className="mb-8 p-4 border-2 border-slate-200 bg-slate-50 flex items-center gap-3">
+          <span className="material-symbols-outlined text-slate-400">info</span>
+          <p className="text-sm text-slate-600">
+            {Number(gateCount || 0) > 0 ? t.createPoll.tokenRequired : t.createPoll.ownerOnly}
+          </p>
+        </div>
+      )}
+
+      {/* ── Create Proposal Toggle ── */}
       {isConnected && showNewProposal && (
         <div className="mb-8">
           <button

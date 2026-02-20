@@ -231,7 +231,7 @@ export const en: Translations = {
     checkingEligibility: 'Checking eligibility...',
     notEligible: 'Only admins can create proposals',
     ownerOnly: 'Currently, only the system administrator can create new proposals. Please contact the admin.',
-    tokenRequired: 'You need to hold at least one of the following tokens:',
+    tokenRequired: 'You need at least 100 TON to create a proposal.',
     required: 'Required',
     yourBalance: 'Your balance',
     eligible: 'Eligible',
@@ -365,6 +365,7 @@ export const en: Translations = {
     timelineNote: 'The coordinator generates ZK proofs and submits them to Ethereum. Results appear automatically when complete.',
   },
   tallying: {
+    banner: 'Voting Closed \u2014 Tallying Results',
     phase: 'Tallying Phase',
     proposalContext: 'Proposal Context',
     privacyAssurance: 'Privacy Assurance',
@@ -383,6 +384,9 @@ export const en: Translations = {
     participation: 'Participation',
     totalUsers: 'Total Users',
     privacyDesc: 'Votes are permanently private. Not even the coordinator can reveal individual votes.',
+    systemOperational: 'System Operational',
+    zkProofActive: 'ZK-Proof Generation Active',
+    copyright: '\u00A9 2024 SIGIL Foundation // Trustless Governance',
   },
   failed: {
     title: 'Awaiting Tally',

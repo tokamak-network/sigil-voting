@@ -347,6 +347,7 @@ export interface Translations {
     timelineNote: string
   }
   tallying: {
+    banner: string
     phase: string
     proposalContext: string
     privacyAssurance: string
@@ -365,6 +366,9 @@ export interface Translations {
     participation: string
     totalUsers: string
     privacyDesc: string
+    systemOperational: string
+    zkProofActive: string
+    copyright: string
   }
   failed: {
     title: string

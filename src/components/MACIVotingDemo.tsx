@@ -210,10 +210,25 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
         for (const log of logs) {
           const args = log.args as { pollId?: bigint; pollAddr?: `0x${string}`; messageProcessorAddr?: `0x${string}`; tallyAddr?: `0x${string}` }
           if (args.pollId !== undefined && Number(args.pollId) === propPollId) {
-            if (args.tallyAddr) setTallyAddress(args.tallyAddr)
-            if (args.messageProcessorAddr) setMessageProcessorAddress(args.messageProcessorAddr)
+            if (args.tallyAddr) {
+              setTallyAddress(args.tallyAddr)
+              localStorage.setItem(storageKey.pollTitle(propPollId) + ':tally', args.tallyAddr)
+            }
+            if (args.messageProcessorAddr) {
+              setMessageProcessorAddress(args.messageProcessorAddr)
+              localStorage.setItem(storageKey.pollTitle(propPollId) + ':mp', args.messageProcessorAddr)
+            }
             break
           }
+        }
+        // Fallback: restore from localStorage if events returned empty
+        if (!tallyAddress) {
+          const cached = localStorage.getItem(storageKey.pollTitle(propPollId) + ':tally') as `0x${string}` | null
+          if (cached) setTallyAddress(cached)
+        }
+        if (!messageProcessorAddress) {
+          const cached = localStorage.getItem(storageKey.pollTitle(propPollId) + ':mp') as `0x${string}` | null
+          if (cached) setMessageProcessorAddress(cached)
         }
       } catch {
         // Poll doesn't exist
@@ -402,34 +417,51 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
           return
         }
 
-        // If tallyAddress not yet known, re-discover from deploy logs
+        // If tallyAddress not yet known, re-discover from deploy logs or localStorage
         let checkTallyAddr = tallyAddress
         if ((!checkTallyAddr || checkTallyAddr === ZERO_ADDRESS) && !isOpen) {
-          try {
-            const deployLogs = await publicClient.getLogs({
-              address: MACI_V2_ADDRESS,
-              event: {
-                type: 'event',
-                name: 'DeployPoll',
-                inputs: [
-                  { name: 'pollId', type: 'uint256', indexed: true },
-                  { name: 'pollAddr', type: 'address', indexed: false },
-                  { name: 'messageProcessorAddr', type: 'address', indexed: false },
-                  { name: 'tallyAddr', type: 'address', indexed: false },
-                ],
-              },
-              fromBlock: MACI_DEPLOY_BLOCK,
-              toBlock: 'latest',
-            })
-            for (const dl of deployLogs) {
-              const dArgs = dl.args as { pollId?: bigint; tallyAddr?: `0x${string}`; messageProcessorAddr?: `0x${string}` }
-              if (dArgs.pollId !== undefined && Number(dArgs.pollId) === propPollId) {
-                if (dArgs.tallyAddr) { checkTallyAddr = dArgs.tallyAddr; setTallyAddress(dArgs.tallyAddr) }
-                if (dArgs.messageProcessorAddr) setMessageProcessorAddress(dArgs.messageProcessorAddr)
-                break
+          // Try localStorage first (fast, no RPC)
+          const cachedTally = localStorage.getItem(storageKey.pollTitle(propPollId) + ':tally') as `0x${string}` | null
+          if (cachedTally && cachedTally !== ZERO_ADDRESS) {
+            checkTallyAddr = cachedTally
+            setTallyAddress(cachedTally)
+          } else {
+            // Fallback: query events from RPC
+            try {
+              const deployLogs = await publicClient.getLogs({
+                address: MACI_V2_ADDRESS,
+                event: {
+                  type: 'event',
+                  name: 'DeployPoll',
+                  inputs: [
+                    { name: 'pollId', type: 'uint256', indexed: true },
+                    { name: 'pollAddr', type: 'address', indexed: false },
+                    { name: 'messageProcessorAddr', type: 'address', indexed: false },
+                    { name: 'tallyAddr', type: 'address', indexed: false },
+                  ],
+                },
+                fromBlock: MACI_DEPLOY_BLOCK,
+                toBlock: 'latest',
+              })
+              for (const dl of deployLogs) {
+                const dArgs = dl.args as { pollId?: bigint; tallyAddr?: `0x${string}`; messageProcessorAddr?: `0x${string}` }
+                if (dArgs.pollId !== undefined && Number(dArgs.pollId) === propPollId) {
+                  if (dArgs.tallyAddr) {
+                    checkTallyAddr = dArgs.tallyAddr
+                    setTallyAddress(dArgs.tallyAddr)
+                    localStorage.setItem(storageKey.pollTitle(propPollId) + ':tally', dArgs.tallyAddr)
+                  }
+                  if (dArgs.messageProcessorAddr) {
+                    setMessageProcessorAddress(dArgs.messageProcessorAddr)
+                    localStorage.setItem(storageKey.pollTitle(propPollId) + ':mp', dArgs.messageProcessorAddr)
+                  }
+                  break
+                }
               }
+            } catch (e) {
+              if (process.env.NODE_ENV === 'development') console.warn('[checkPhase] getLogs failed:', e)
             }
-          } catch { /* ignore */ }
+          }
         }
 
         // Check if tally is verified first (success path)

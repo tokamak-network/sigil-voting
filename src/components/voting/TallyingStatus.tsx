@@ -1,8 +1,9 @@
 /**
- * TallyingStatus - Unified tallying phase UI
+ * TallyingStatus - Unified tallying phase UI (full-page layout)
  *
  * Matches Stitch design #7: sigil_privacy-first_dao_voting_landing_page_7
  * Replaces MergingStatus + ProcessingStatus with a single 2-column layout.
+ * Renders as a full-page component (banner full-width, content in container).
  */
 
 import { useState, useEffect } from 'react'
@@ -20,6 +21,7 @@ interface TallyingStatusProps {
   pollId: number
   myVote?: { choice: number; weight: number; cost: number } | null
   numSignUps: number
+  onBack: () => void
 }
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
@@ -34,6 +36,7 @@ export function TallyingStatus({
   pollId,
   myVote,
   numSignUps,
+  onBack,
 }: TallyingStatusProps) {
   const { t } = useTranslation()
   const addr = pollAddress || ZERO_ADDRESS
@@ -107,181 +110,212 @@ export function TallyingStatus({
     ? myVote.choice === 1
       ? t.voteForm.for.toUpperCase()
       : t.voteForm.against.toUpperCase()
-    : '—'
+    : '\u2014'
 
   return (
     <div>
-      {/* Top Banner */}
-      <div className="w-full bg-black text-white px-6 py-4 mb-8">
-        <div className="flex items-center justify-center gap-3">
-          <span className="material-symbols-outlined font-bold">encrypted</span>
+      {/* Full-width yellow banner (design #7) */}
+      <div className="w-full border-b-2 border-black px-6 py-3" style={{ backgroundColor: '#FFB800' }}>
+        <div className="max-w-7xl mx-auto flex items-center justify-center gap-3">
+          <span className="material-symbols-outlined font-bold">event_busy</span>
           <span className="font-display font-black text-lg italic uppercase tracking-widest">
-            {t.processing.title}
+            {t.tallying.banner}
           </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-        {/* Left Column */}
-        <div className="lg:col-span-7">
-          <div className="mb-12">
-            {/* Badges */}
-            <div className="flex items-center gap-4 mb-4">
-              <span className="bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest">
-                {t.proposalDetail.proposalPrefix} #{pollId + 1}
-              </span>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">
-                {t.tallying.phase}
-              </span>
-            </div>
-
-            {/* Title */}
-            <h1 className="text-5xl lg:text-7xl font-display font-black uppercase italic leading-[0.9] tracking-tighter max-w-4xl mb-8">
-              {pollTitle}
-            </h1>
-
-            {/* Proposal Context */}
-            {pollDescription && (
-              <div className="p-8 border-2 border-black bg-slate-50">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4">
-                  {t.tallying.proposalContext}
-                </h4>
-                <p className="text-lg font-medium leading-relaxed text-slate-700 italic">
-                  {pollDescription}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Privacy Assurance */}
-          <div className="p-10 border-4 border-black bg-slate-900 text-white relative overflow-hidden" style={{ boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)' }}>
-            <div className="absolute top-0 right-0 p-4 opacity-20">
-              <span className="material-symbols-outlined text-8xl">verified_user</span>
-            </div>
-            <h3 className="text-primary font-bold text-xs uppercase tracking-[0.3em] mb-4">
-              {t.tallying.privacyAssurance}
-            </h3>
-            <p className="text-3xl font-display font-black uppercase italic leading-tight relative z-10">
-              {t.tallying.privacyDesc}
-            </p>
-            <div className="mt-6 flex items-center gap-4">
-              <div className="h-[2px] flex-1 bg-primary/30"></div>
-              <span className="text-xs font-mono font-bold text-primary uppercase tracking-widest">
-                {t.tallying.zkEnvironment}
-              </span>
-            </div>
-          </div>
+      {/* Container content */}
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* Back button */}
+        <div className="mb-8">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 hover:text-black transition-colors group"
+          >
+            <span className="material-symbols-outlined text-sm group-hover:-translate-x-1 transition-transform">arrow_back</span>
+            {t.proposals.backToList}
+          </button>
         </div>
 
-        {/* Right Column */}
-        <div className="lg:col-span-5">
-          <div className="flex flex-col gap-8">
-            {/* Processing Status */}
-            <div className="bg-white p-8 border-2 border-black" style={{ boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)' }}>
-              <h3 className="text-xs font-bold uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
-                <span className="w-2 h-2 bg-primary"></span>
-                {t.tallying.processingStatus}
+        {/* 2-column grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+          {/* Left Column */}
+          <div className="lg:col-span-7">
+            <div className="mb-12">
+              {/* Badges */}
+              <div className="flex items-center gap-4 mb-4">
+                <span className="bg-black text-white text-[10px] font-bold px-3 py-1 uppercase tracking-widest">
+                  {t.proposalDetail.proposalPrefix} #{pollId + 1}
+                </span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">
+                  {t.tallying.phase}
+                </span>
+              </div>
+
+              {/* Title */}
+              <h1 className="text-5xl lg:text-7xl font-display font-black uppercase italic leading-[0.9] tracking-tighter max-w-4xl mb-8">
+                {pollTitle}
+              </h1>
+
+              {/* Proposal Context */}
+              {pollDescription && (
+                <div className="p-8 border-2 border-black bg-slate-50">
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4">
+                    {t.tallying.proposalContext}
+                  </h4>
+                  <p className="text-lg font-medium leading-relaxed text-slate-700 italic">
+                    {pollDescription}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Privacy Assurance */}
+            <div className="p-10 border-4 border-black bg-slate-900 text-white relative overflow-hidden" style={{ boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)' }}>
+              <div className="absolute top-0 right-0 p-4 opacity-20">
+                <span className="material-symbols-outlined text-8xl">verified_user</span>
+              </div>
+              <h3 className="text-primary font-bold text-xs uppercase tracking-[0.3em] mb-4">
+                {t.tallying.privacyAssurance}
               </h3>
-              <div className="space-y-0 relative">
-                {/* Vertical line */}
-                <div className="absolute left-4 top-4 bottom-4 w-1 bg-slate-100"></div>
-
-                {/* Step 1: Voting Closed */}
-                <div className="relative flex items-center gap-6 pb-10">
-                  <div className="w-9 h-9 bg-black flex items-center justify-center z-10 border-2 border-black shrink-0">
-                    <span className="material-symbols-outlined text-white text-xl">check</span>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.tallying.step01}</p>
-                    <p className="font-bold text-lg uppercase italic">{t.timer.ended}</p>
-                  </div>
-                </div>
-
-                {/* Step 2: Generating ZK-Proofs */}
-                <div className="relative flex items-center gap-6 pb-10">
-                  <div className={`w-9 h-9 flex items-center justify-center z-10 border-2 border-black shrink-0 ${
-                    isProcessed ? 'bg-black' : 'bg-primary'
-                  }`} style={!isProcessed ? { animation: 'pulse 2s cubic-bezier(0.4,0,0.6,1) infinite' } : undefined}>
-                    <span className="material-symbols-outlined text-white text-xl">
-                      {isProcessed ? 'check' : 'settings_b_roll'}
-                    </span>
-                  </div>
-                  {!isProcessed && <div className="absolute left-4 top-9 w-1 h-10 bg-primary"></div>}
-                  <div>
-                    <p className={`text-[10px] font-bold uppercase tracking-widest ${isProcessed ? 'text-slate-400' : 'text-primary'}`}>
-                      {isProcessed ? t.tallying.step02 : t.tallying.currentPhase}
-                    </p>
-                    <p className={`font-bold text-lg uppercase italic ${isProcessed ? 'text-black' : 'text-primary'}`}>
-                      {t.processing.step2}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Step 3: Final Tally Published */}
-                <div className="relative flex items-center gap-6">
-                  <div className={`w-9 h-9 flex items-center justify-center z-10 border-2 shrink-0 ${
-                    isFinalized ? 'bg-black border-black' : 'bg-white border-slate-200'
-                  }`}>
-                    <span className={`material-symbols-outlined text-xl ${isFinalized ? 'text-white' : 'text-slate-300'}`}>
-                      {isFinalized ? 'check' : 'publish'}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.tallying.finalStep}</p>
-                    <p className={`font-bold text-lg uppercase italic ${isFinalized ? 'text-black' : 'text-slate-300'}`}>
-                      {t.processing.step3}
-                    </p>
-                  </div>
-                </div>
+              <p className="text-3xl font-display font-black uppercase italic leading-tight relative z-10">
+                {t.tallying.privacyDesc}
+              </p>
+              <div className="mt-6 flex items-center gap-4">
+                <div className="h-[2px] flex-1 bg-primary/30"></div>
+                <span className="text-[10px] font-mono font-bold text-primary uppercase tracking-widest">
+                  {t.tallying.zkEnvironment}
+                </span>
               </div>
             </div>
+          </div>
 
-            {/* Estimated Remaining */}
-            <div className="bg-slate-50 p-8 border-2 border-black" style={{ boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)' }}>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
-                {t.tallying.estimatedRemaining}
-              </span>
-              <div className="flex items-baseline gap-2">
-                <span className={`text-5xl font-mono font-bold leading-none ${isOverdue ? 'text-amber-500' : 'text-primary'}`}>
-                  {isOverdue
-                    ? t.tallying.processing
-                    : `~${Math.floor(remainingSec_raw / 60)}:${String(Math.floor(remainingSec_raw % 60)).padStart(2, '0')}`}
-                </span>
-                {!isOverdue && <span className="text-xs font-bold text-slate-400">{t.tallying.remaining}</span>}
-              </div>
-            </div>
+          {/* Right Column */}
+          <div className="lg:col-span-5">
+            <div className="flex flex-col gap-8">
+              {/* Processing Status */}
+              <div className="bg-white p-8 border-2 border-black" style={{ boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)' }}>
+                <h3 className="text-xs font-bold uppercase tracking-[0.2em] mb-8 flex items-center gap-2">
+                  <span className="w-2 h-2 bg-primary"></span>
+                  {t.tallying.processingStatus}
+                </h3>
+                <div className="space-y-0 relative">
+                  {/* Vertical line */}
+                  <div className="absolute left-4 top-4 bottom-4 w-1 bg-slate-100"></div>
 
-            {/* My Vote Summary + Participation */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-6 border-2 border-black bg-slate-50">
-                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
-                  {t.tallying.myVoteSummary}
-                </span>
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">{t.tallying.choice}</span>
-                    <span className="text-sm font-black italic text-primary">{choiceLabel}</span>
+                  {/* Step 1: Voting Closed */}
+                  <div className="relative flex items-center gap-6 pb-10">
+                    <div className="w-9 h-9 bg-black flex items-center justify-center z-10 border-2 border-black shrink-0">
+                      <span className="material-symbols-outlined text-white text-xl">check</span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.tallying.step01}</p>
+                      <p className="font-bold text-lg uppercase italic">{t.timer.ended}</p>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase">{t.tallying.spent}</span>
-                    <span className="text-sm font-mono font-bold">{myVote ? (Number.isInteger(myVote.cost) ? myVote.cost : myVote.cost.toFixed(2)) : '—'}</span>
+
+                  {/* Step 2: Generating ZK-Proofs */}
+                  <div className="relative flex items-center gap-6 pb-10">
+                    <div className={`w-9 h-9 flex items-center justify-center z-10 border-2 border-black shrink-0 ${
+                      isProcessed ? 'bg-black' : 'bg-primary'
+                    }`} style={!isProcessed ? { animation: 'pulse 2s cubic-bezier(0.4,0,0.6,1) infinite' } : undefined}>
+                      <span className="material-symbols-outlined text-white text-xl">
+                        {isProcessed ? 'check' : 'settings_b_roll'}
+                      </span>
+                    </div>
+                    {!isProcessed && <div className="absolute left-4 top-9 w-1 h-10 bg-primary"></div>}
+                    <div>
+                      <p className={`text-[10px] font-bold uppercase tracking-widest ${isProcessed ? 'text-slate-400' : 'text-primary'}`}>
+                        {isProcessed ? t.tallying.step02 : t.tallying.currentPhase}
+                      </p>
+                      <p className={`font-bold text-lg uppercase italic ${isProcessed ? 'text-black' : 'text-primary'}`}>
+                        {t.processing.step2}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Step 3: Final Tally Published */}
+                  <div className="relative flex items-center gap-6">
+                    <div className={`w-9 h-9 flex items-center justify-center z-10 border-2 shrink-0 ${
+                      isFinalized ? 'bg-black border-black' : 'bg-white border-slate-200'
+                    }`}>
+                      <span className={`material-symbols-outlined text-xl ${isFinalized ? 'text-white' : 'text-slate-300'}`}>
+                        {isFinalized ? 'check' : 'publish'}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.tallying.finalStep}</p>
+                      <p className={`font-bold text-lg uppercase italic ${isFinalized ? 'text-black' : 'text-slate-300'}`}>
+                        {t.processing.step3}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="p-6 border-2 border-black bg-white">
-                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
-                  {t.tallying.participation}
+              {/* Estimated Completion */}
+              <div className="bg-white p-8 border-2 border-black" style={{ boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)' }}>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
+                  {t.tallying.estimatedRemaining}
                 </span>
-                <div className="flex flex-col">
-                  <span className="text-3xl font-display font-black italic leading-none">{numSignUps}</span>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase mt-1">{t.tallying.totalUsers}</span>
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-5xl font-mono font-bold leading-none ${isOverdue ? 'text-amber-500' : 'text-primary'}`}>
+                    {isOverdue
+                      ? t.tallying.processing
+                      : `~${Math.floor(remainingSec_raw / 60)}:${String(Math.floor(remainingSec_raw % 60)).padStart(2, '0')}`}
+                  </span>
+                  {!isOverdue && <span className="text-xs font-bold text-slate-400">{t.tallying.remaining}</span>}
+                </div>
+              </div>
+
+              {/* My Vote Summary + Participation */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-6 border-2 border-black bg-slate-50">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
+                    {t.tallying.myVoteSummary}
+                  </span>
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">{t.tallying.choice}</span>
+                      <span className="text-sm font-black italic text-primary">{choiceLabel}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase">{t.tallying.spent}</span>
+                      <span className="text-sm font-mono font-bold">{myVote ? (Number.isInteger(myVote.cost) ? myVote.cost : myVote.cost.toFixed(2)) : '\u2014'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 border-2 border-black bg-white">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
+                    {t.tallying.participation}
+                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-3xl font-display font-black italic leading-none">{numSignUps}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase mt-1">{t.tallying.totalUsers}</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+
+        {/* Footer */}
+        <div className="mt-24 pt-8 border-t-2 border-black flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex flex-wrap items-center gap-6 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+            <span className="text-black flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+              {t.tallying.systemOperational}
+            </span>
+            <span className="w-1 h-1 bg-slate-300"></span>
+            <span className="text-primary flex items-center gap-2">
+              <span className="w-2 h-2 bg-primary" style={{ animation: 'pulse 2s cubic-bezier(0.4,0,0.6,1) infinite' }}></span>
+              {t.tallying.zkProofActive}
+            </span>
+          </div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.tallying.copyright}</p>
+        </div>
+      </main>
     </div>
   )
 }

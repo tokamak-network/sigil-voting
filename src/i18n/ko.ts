@@ -231,7 +231,7 @@ export const ko: Translations = {
     checkingEligibility: '제안 생성 자격을 확인하고 있습니다...',
     notEligible: '제안 만들기는 관리자만 가능합니다',
     ownerOnly: '현재 이 투표 시스템의 관리자만 새 제안을 만들 수 있습니다. 관리자에게 문의하세요.',
-    tokenRequired: '아래 토큰 중 하나 이상을 보유해야 제안을 생성할 수 있습니다:',
+    tokenRequired: '제안을 생성하려면 100 TON 이상 보유해야 합니다.',
     required: '필요 수량',
     yourBalance: '내 보유량',
     eligible: '자격 확인됨',
@@ -365,6 +365,7 @@ export const ko: Translations = {
     timelineNote: '코디네이터가 ZK 증명을 생성하고 이더리움에 제출합니다. 완료되면 자동으로 결과가 표시됩니다.',
   },
   tallying: {
+    banner: '투표 마감 \u2014 결과 집계 중',
     phase: '집계 단계',
     proposalContext: '제안 배경',
     privacyAssurance: '프라이버시 보장',
@@ -383,6 +384,9 @@ export const ko: Translations = {
     participation: '참여',
     totalUsers: '전체 참여자',
     privacyDesc: '투표는 영구 비공개입니다. 코디네이터도 개별 투표를 공개할 수 없습니다.',
+    systemOperational: '시스템 정상',
+    zkProofActive: 'ZK 증명 생성 중',
+    copyright: '\u00A9 2024 SIGIL Foundation // Trustless Governance',
   },
   failed: {
     title: '집계 대기 중',
