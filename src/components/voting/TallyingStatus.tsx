@@ -101,8 +101,6 @@ export function TallyingStatus({
 
   const elapsedSinceAnchor = (now - stepAnchor.time) / 1000
   const remainingSec_raw = Math.max(0, remainingFromStep - elapsedSinceAnchor)
-  const remainingMin = Math.floor(remainingSec_raw / 60)
-  const remainingSec = Math.floor(remainingSec_raw % 60)
   const isOverdue = remainingSec_raw === 0 && !isFinalized
 
   const choiceLabel = myVote
@@ -114,9 +112,9 @@ export function TallyingStatus({
   return (
     <div>
       {/* Top Banner */}
-      <div className="w-full bg-amber-400 border-b-2 border-black px-6 py-3 mb-8">
+      <div className="w-full bg-black text-white px-6 py-4 mb-8">
         <div className="flex items-center justify-center gap-3">
-          <span className="material-symbols-outlined font-bold">event_busy</span>
+          <span className="material-symbols-outlined font-bold">encrypted</span>
           <span className="font-display font-black text-lg italic uppercase tracking-widest">
             {t.processing.title}
           </span>
@@ -168,7 +166,7 @@ export function TallyingStatus({
             </p>
             <div className="mt-6 flex items-center gap-4">
               <div className="h-[2px] flex-1 bg-primary/30"></div>
-              <span className="text-[10px] font-mono text-primary font-bold">{t.tallying.zkEnvironment}</span>
+              <span className="material-symbols-outlined text-primary text-sm">verified_user</span>
             </div>
           </div>
         </div>
@@ -236,16 +234,18 @@ export function TallyingStatus({
               </div>
             </div>
 
-            {/* Countdown Timer */}
-            <div className="bg-white p-8 border-2 border-black" style={{ boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)' }}>
+            {/* Estimated Completion */}
+            <div className="bg-slate-50 p-8 border-2 border-black" style={{ boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)' }}>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
-                {isOverdue ? t.tallying.processing : t.tallying.estimatedRemaining}
+                {t.tallying.estimatedRemaining}
               </span>
               <div className="flex items-baseline gap-2">
                 <span className={`text-5xl font-mono font-bold leading-none ${isOverdue ? 'text-amber-500' : 'text-primary'}`}>
-                  {isOverdue ? '—:——' : `${remainingMin.toString().padStart(2, '0')}:${remainingSec.toString().padStart(2, '0')}`}
+                  {isOverdue
+                    ? t.tallying.processing
+                    : `~${new Date(Date.now() + remainingSec_raw * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}`}
                 </span>
-                <span className="text-xs font-bold text-slate-400">{isOverdue ? '' : t.tallying.remaining}</span>
+                <span className="text-xs font-bold text-slate-400">UTC</span>
               </div>
             </div>
 

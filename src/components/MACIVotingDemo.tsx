@@ -1105,12 +1105,6 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                 </button>
               </div>
 
-              {/* Metadata Box */}
-              <div className="border-2 border-slate-200 p-4 font-mono text-xs text-slate-400 uppercase leading-relaxed">
-                <p>{t.proposalDetail.proposalPrefix} #{propPollId + 1}</p>
-                <p>{t.completedResults.votingStrategy}</p>
-                <p>{t.completedResults.shieldedVoting}</p>
-              </div>
             </div>
           </div>
         ) : phase === V2Phase.Finalized ? (
@@ -1173,12 +1167,6 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                 </button>
               </div>
 
-              {/* Metadata Box */}
-              <div className="border-2 border-slate-200 p-4 font-mono text-[10px] text-slate-400 uppercase leading-relaxed">
-                <p>{t.proposalDetail.proposalPrefix} #{propPollId + 1}</p>
-                <p>{t.completedResults.votingStrategy}</p>
-                <p>{t.completedResults.shieldedVoting}</p>
-              </div>
             </div>
           </div>
         ) : phase === V2Phase.NoVotes ? (
@@ -1198,19 +1186,17 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
           </div>
         ) : (
           <div className="w-full">
-            <div className="bg-white p-6 border-2 border-black">
-              <TallyingStatus
-                pollAddress={pollAddress || undefined}
-                messageProcessorAddress={messageProcessorAddress || undefined}
-                tallyAddress={tallyAddress || undefined}
-                votingEndTime={votingEndTime ?? undefined}
-                pollTitle={displayTitle}
-                pollDescription={pollDescription}
-                pollId={propPollId}
-                myVote={myVote}
-                numSignUps={numSignUps}
-              />
-            </div>
+            <TallyingStatus
+              pollAddress={pollAddress || undefined}
+              messageProcessorAddress={messageProcessorAddress || undefined}
+              tallyAddress={tallyAddress || undefined}
+              votingEndTime={votingEndTime ?? undefined}
+              pollTitle={displayTitle}
+              pollDescription={pollDescription}
+              pollId={propPollId}
+              myVote={myVote}
+              numSignUps={numSignUps}
+            />
           </div>
         )}
       </div>

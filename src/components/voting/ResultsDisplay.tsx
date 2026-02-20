@@ -156,7 +156,7 @@ export function ResultsDisplay({ tallyAddress, pollAddress }: ResultsDisplayProp
           <div>
             <h4 className="font-bold uppercase italic text-sm">{t.completedResults.zkVerified}</h4>
             <p className="text-[10px] text-slate-400 font-mono">
-              {t.completedResults.contractLabel}: {tallyAddress.slice(0, 6)}...{tallyAddress.slice(-4)}
+              Ethereum Sepolia
             </p>
           </div>
         </div>

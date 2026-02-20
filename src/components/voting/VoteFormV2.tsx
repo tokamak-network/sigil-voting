@@ -491,7 +491,7 @@ export function VoteFormV2({
             <span className="w-2 h-2 bg-primary"></span>
             {t.voteForm.weightLabel}
           </h3>
-          <span className="text-xs font-mono font-bold bg-black text-white px-2 py-1 uppercase">{t.voteFormExtra.quadraticScaling}</span>
+          <span className="text-xs font-mono font-bold bg-black text-white px-2 py-1 uppercase">{t.voteForm.cost} = {t.voteForm.weightLabel}²</span>
         </div>
         <div className="flex items-center gap-4 mb-8">
           <button
