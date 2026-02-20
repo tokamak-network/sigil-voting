@@ -158,10 +158,10 @@ contract MACI is DomainObjs {
     }
 
     /// @notice Check if an address can create a poll
-    /// @dev No gates = anyone can create. With gates = must meet at least one threshold.
+    /// @dev No gates = owner only. With gates = must meet at least one threshold.
     function canCreatePoll(address _user) public view returns (bool) {
         uint256 len = proposalGates.length;
-        if (len == 0) return true;
+        if (len == 0) return _user == owner;
         for (uint256 i = 0; i < len;) {
             (bool ok, bytes memory data) =
                 proposalGates[i].token.staticcall(abi.encodeWithSignature("balanceOf(address)", _user));
@@ -177,7 +177,7 @@ contract MACI is DomainObjs {
     }
 
     /// @notice Deploy a new Poll with associated MessageProcessor and Tally
-    /// @dev No gates = anyone can create. With gates = must meet at least one threshold.
+    /// @dev No gates = owner only. With gates = must meet at least one threshold.
     function deployPoll(
         string calldata _title,
         uint256 _duration,

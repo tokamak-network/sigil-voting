@@ -80,7 +80,7 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     args: address ? [address] : undefined,
     query: { enabled: isConfigured && !!address },
   })
-  const showNewProposal = Number(gateCount || 0) === 0 || canCreatePoll === true
+  const showNewProposal = canCreatePoll === true
 
   const { data: nextPollId } = useReadContract({
     address: MACI_V2_ADDRESS,
