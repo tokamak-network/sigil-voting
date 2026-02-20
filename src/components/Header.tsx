@@ -7,6 +7,7 @@ import { useTranslation } from '../i18n'
 import { LanguageSwitcher } from './LanguageSwitcher'
 import {
   MACI_V2_ADDRESS,
+  MACI_ABI,
   VOICE_CREDIT_PROXY_ADDRESS,
   VOICE_CREDIT_PROXY_ABI,
 } from '../contractV2'
@@ -40,6 +41,22 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
     query: { enabled: isConfigured && VOICE_CREDIT_PROXY_ADDRESS !== ZERO_ADDRESS && !!address, refetchInterval: 30000 },
   })
   const voiceCredits = voiceCreditsRaw !== undefined ? Number(voiceCreditsRaw) : 0
+
+  // Gate check: hide "New Proposal" if user doesn't meet token threshold
+  const { data: gateCount } = useReadContract({
+    address: MACI_V2_ADDRESS as `0x${string}`,
+    abi: MACI_ABI,
+    functionName: 'proposalGateCount',
+    query: { enabled: isConfigured && !!address },
+  })
+  const { data: canCreatePoll } = useReadContract({
+    address: MACI_V2_ADDRESS as `0x${string}`,
+    abi: MACI_ABI,
+    functionName: 'canCreatePoll',
+    args: address ? [address] : undefined,
+    query: { enabled: isConfigured && !!address },
+  })
+  const showNewProposal = Number(gateCount || 0) === 0 || canCreatePoll === true
 
   // Close disconnect confirm on outside click
   useEffect(() => {
@@ -131,14 +148,18 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
                 <span className="text-xs font-bold text-slate-500 uppercase leading-none">{t.header.balance}</span>
                 <span className="text-sm font-display font-bold">{voiceCredits.toLocaleString()} {t.voteForm.credits}</span>
               </div>
-              <div className="h-8 w-[1px] bg-slate-200"></div>
-              <button
-                onClick={() => setCurrentPage('create-proposal')}
-                className="bg-black text-white px-4 py-2 text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors"
-              >
-                <span className="material-symbols-outlined text-sm">add</span>
-                {t.header.newProposal}
-              </button>
+              {showNewProposal && (
+                <>
+                  <div className="h-8 w-[1px] bg-slate-200"></div>
+                  <button
+                    onClick={() => setCurrentPage('create-proposal')}
+                    className="bg-black text-white px-4 py-2 text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">add</span>
+                    {t.header.newProposal}
+                  </button>
+                </>
+              )}
             </div>
           )}
 

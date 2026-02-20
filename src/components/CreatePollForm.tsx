@@ -58,7 +58,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
     query: { enabled: !!address },
   })
 
-  const { data: gateCount } = useReadContract({
+  const { data: gateCount, isLoading: loadingGateCount } = useReadContract({
     address: MACI_V2_ADDRESS as `0x${string}`,
     abi: MACI_ABI,
     functionName: 'proposalGateCount',
@@ -78,7 +78,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
     abi: ERC20_BALANCE_ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    query: { enabled: !!address && Number(gateCount || 0) > 0 },
+    query: { enabled: !!address },
   })
 
   const [title, setTitle] = useState('')
@@ -237,13 +237,11 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
       { key: 'waiting', label: t.createPoll.stageWaiting },
     ]
     return (
-      <div className="w-full px-6 py-16">
-        <TransactionModal
-          title={t.createPoll.submitting}
-          steps={txSteps}
-          currentStep={txStage}
-        />
-      </div>
+      <TransactionModal
+        title={t.createPoll.submitting}
+        steps={txSteps}
+        currentStep={txStage}
+      />
     )
   }
 
@@ -316,8 +314,8 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
     )
   }
 
-  // Checking eligibility
-  if (checkingEligibility) {
+  // Checking eligibility (wait for BOTH gateCount and canCreatePoll to load)
+  if (checkingEligibility || loadingGateCount) {
     return (
       <div className="w-full px-6 py-16">
         <div className="flex items-center justify-center gap-3">
@@ -487,6 +485,14 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
           <span className="material-symbols-outlined text-2xl">bolt</span>
           {isSubmitting ? t.createPoll.submitting : t.createPoll.generateProposal}
         </button>
+
+        {/* Token balance info */}
+        {Number(gateCount || 0) > 0 && tonBalance !== undefined && (
+          <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+            <span className="material-symbols-outlined text-sm">token</span>
+            <span>TON: {Number(formatEther(tonBalance as bigint)).toLocaleString()} / {gateInfo ? Number(formatEther((gateInfo as [string, bigint])[1])).toLocaleString() : '100'} {t.createPoll.required.toLowerCase()}</span>
+          </div>
+        )}
 
         {/* Error */}
         {error && (

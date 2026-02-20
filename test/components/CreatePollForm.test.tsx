@@ -8,16 +8,22 @@ let mockAccountState = {
   isConnected: false,
 }
 
-let mockReadContractData: unknown = undefined
-let mockReadContractLoading = false
+let mockCanCreate: unknown = undefined
+let mockGateCount: unknown = 0n
+let mockGateInfo: unknown = undefined
+let mockTonBalance: unknown = undefined
+let mockLoading = false
 
 vi.mock('wagmi', () => ({
   useAccount: () => mockAccountState,
   usePublicClient: () => ({}),
-  useReadContract: () => ({
-    data: mockReadContractData,
-    isLoading: mockReadContractLoading,
-  }),
+  useReadContract: (config: any) => {
+    if (config?.functionName === 'canCreatePoll') return { data: mockCanCreate, isLoading: mockLoading }
+    if (config?.functionName === 'proposalGateCount') return { data: mockGateCount, isLoading: mockLoading }
+    if (config?.functionName === 'proposalGates') return { data: mockGateInfo, isLoading: false }
+    if (config?.functionName === 'balanceOf') return { data: mockTonBalance, isLoading: false }
+    return { data: undefined, isLoading: false }
+  },
 }))
 
 vi.mock('../../src/contractV2', () => ({
@@ -49,8 +55,11 @@ describe('CreatePollForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockAccountState = { address: undefined, isConnected: false }
-    mockReadContractData = undefined
-    mockReadContractLoading = false
+    mockCanCreate = undefined
+    mockGateCount = 0n
+    mockGateInfo = undefined
+    mockTonBalance = undefined
+    mockLoading = false
   })
 
   it('shows connect wallet message when not connected', () => {
@@ -62,7 +71,7 @@ describe('CreatePollForm', () => {
 
   it('shows loading state while checking eligibility', () => {
     mockAccountState = { address: '0x1234567890abcdef1234567890abcdef12345678', isConnected: true }
-    mockReadContractLoading = true
+    mockLoading = true
     renderWithProviders(<CreatePollForm onPollCreated={onPollCreated} />)
     const body = document.body.textContent || ''
     expect(body).toMatch(/확인|checking|loading/i)
@@ -70,8 +79,9 @@ describe('CreatePollForm', () => {
 
   it('renders the form when connected and eligible', () => {
     mockAccountState = { address: '0x1234567890abcdef1234567890abcdef12345678', isConnected: true }
-    mockReadContractData = true // canCreate = true
-    mockReadContractLoading = false
+    mockCanCreate = true
+    mockGateCount = 0n // no gates = anyone can create
+    mockLoading = false
     renderWithProviders(<CreatePollForm onPollCreated={onPollCreated} />)
     // Should render form with title input or duration presets
     const body = document.body.textContent || ''
