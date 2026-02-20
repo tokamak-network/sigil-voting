@@ -95,9 +95,9 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     return () => clearInterval(interval)
   }, [])
 
-  // Refresh poll data every 30 seconds
+  // Refresh poll data every 30 seconds (silent — no loading flash)
   useEffect(() => {
-    const interval = setInterval(() => setRefreshKey(k => k + 1), 15000)
+    const interval = setInterval(() => setRefreshKey(k => k + 1), 30000)
     return () => clearInterval(interval)
   }, [])
 
@@ -113,7 +113,8 @@ export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     }
 
     const loadPolls = async () => {
-      setLoading(true)
+      // Only show loading spinner on initial load, not on background refresh
+      if (polls.length === 0) setLoading(true)
       // Pre-fetch DeployPoll events to get tally addresses
       const tallyMap = new Map<number, `0x${string}`>()
       try {
