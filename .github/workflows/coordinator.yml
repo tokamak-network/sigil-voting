@@ -1,0 +1,53 @@
+name: SIGIL Coordinator Cron
+
+on:
+  schedule:
+    # Every 5 minutes
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Manual trigger button
+
+jobs:
+  coordinator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: coordinator/package-lock.json
+
+      - name: Restore circuit files cache
+        id: cache-circuits
+        uses: actions/cache@v4
+        with:
+          path: circuits/build_maci
+          key: circuit-files-v1
+
+      - name: Download circuit files from release
+        if: steps.cache-circuits.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p circuits/build_maci/MessageProcessor_js
+          mkdir -p circuits/build_maci/TallyVotes_js
+          gh release download circuits-v1 \
+            --pattern "MessageProcessor_final.zkey" --dir circuits/build_maci \
+            --pattern "TallyVotes_final.zkey" --dir circuits/build_maci \
+            --pattern "MessageProcessor.wasm" --dir circuits/build_maci/MessageProcessor_js \
+            --pattern "TallyVotes.wasm" --dir circuits/build_maci/TallyVotes_js
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install coordinator dependencies
+        run: cd coordinator && npm ci
+
+      - name: Run coordinator (one-shot)
+        run: cd coordinator && npx tsx src/cron.ts
+        env:
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          COORDINATOR_PRIVATE_KEY: ${{ secrets.COORDINATOR_PRIVATE_KEY }}
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
