@@ -53,5 +53,8 @@ test-results/
 # Marketing (local only, not committed)
 marketing/
 
+# Claude Code personal settings
+.claude/settings.local.json
+
 # External directories
 stitch_sigil_privacy_first_dao_voting_landing_page/
