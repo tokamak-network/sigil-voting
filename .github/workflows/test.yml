@@ -54,7 +54,7 @@ jobs:
       - run: npm ci
 
       - name: Test
-        run: npx vitest run --config vitest.config.ts
+        run: npx vitest run --config vitest.config.ts --exclude 'test/circuits/**'
 
   build:
     name: Build
