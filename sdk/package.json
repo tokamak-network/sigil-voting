@@ -1,8 +1,9 @@
 {
-  "name": "@sigil/sdk",
+  "name": "sigil-sdk",
   "version": "0.1.0",
   "description": "SIGIL — Private, fair, collusion-resistant governance SDK for DAOs",
   "type": "module",
+  "sideEffects": false,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -41,7 +42,19 @@
     "anti-collusion",
     "ethereum"
   ],
+  "author": "Tokamak Network",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tokamak-network/sigil-sdk.git"
+  },
+  "homepage": "https://sigil.vote",
+  "bugs": {
+    "url": "https://github.com/tokamak-network/sigil-sdk/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "circomlibjs": "^0.1.7",
     "@noble/hashes": "^2.0.1"

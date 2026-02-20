@@ -30,6 +30,8 @@ vi.mock('wagmi', () => ({
 vi.mock('../../src/contractV2', () => ({
   MACI_V2_ADDRESS: '0xABCDEF1234567890abcdef1234567890abcdef12',
   POLL_ABI: [],
+  VOICE_CREDIT_PROXY_ADDRESS: '0x0000000000000000000000000000000000000000',
+  ERC20_VOICE_CREDIT_PROXY_ABI: [],
 }))
 
 vi.mock('../../src/writeHelper', () => ({

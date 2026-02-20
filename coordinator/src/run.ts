@@ -18,6 +18,7 @@
  *   PRIVATE_KEY             — Ethereum private key for on-chain tx
  *   COORDINATOR_PRIVATE_KEY — Baby Jubjub private key for MACI ECDH
  *   SEPOLIA_RPC_URL         — RPC endpoint (default: publicnode)
+ *   CIRCUIT_MODE            — 'dev' or 'prod' (default: 'dev')
  */
 
 import { ethers } from 'ethers';
@@ -34,16 +35,30 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, '../..');
 
 const POLL_CHECK_INTERVAL = 10_000; // 10s between checks
-const STATE_TREE_DEPTH = 2;        // Dev params (5^2 = 25 leaves)
-const BATCH_SIZE = 2;              // Dev params (messages per batch)
-const TALLY_BATCH_SIZE = 2;        // Dev params (voters per tally batch)
-const MAX_VOTE_OPTIONS = 25;       // 5^stateTreeDepth (for MessageProcessor)
-const TALLY_NUM_OPTIONS = 5;       // 5^voteOptionTreeDepth (for TallyVotes, depth=1)
 
-const MP_WASM = resolve(PROJECT_ROOT, 'circuits/build_maci/MessageProcessor_js/MessageProcessor.wasm');
-const MP_ZKEY = resolve(PROJECT_ROOT, 'circuits/build_maci/MessageProcessor_final.zkey');
-const TV_WASM = resolve(PROJECT_ROOT, 'circuits/build_maci/TallyVotes_js/TallyVotes.wasm');
-const TV_ZKEY = resolve(PROJECT_ROOT, 'circuits/build_maci/TallyVotes_final.zkey');
+// Circuit mode: 'prod' or 'dev' (from env or default)
+const CIRCUIT_MODE = process.env.CIRCUIT_MODE ?? 'dev';
+const IS_PROD = CIRCUIT_MODE === 'prod';
+
+// Tree params: dev (depth=2, batch=2) or prod (depth=4, batch=5)
+const STATE_TREE_DEPTH = IS_PROD ? 4 : 2;
+const BATCH_SIZE = IS_PROD ? 5 : 2;
+const TALLY_BATCH_SIZE = IS_PROD ? 5 : 2;
+const MAX_VOTE_OPTIONS = IS_PROD ? 25 : 25; // 5^voteOptionTreeDepth (depth=2 for both)
+const TALLY_NUM_OPTIONS = IS_PROD ? 25 : 5; // prod: 5^2=25, dev: 5^1=5
+
+const MP_WASM = IS_PROD
+  ? resolve(PROJECT_ROOT, 'circuits/build_prod/MessageProcessor_prod_js/MessageProcessor_prod.wasm')
+  : resolve(PROJECT_ROOT, 'circuits/build_maci/MessageProcessor_js/MessageProcessor.wasm');
+const MP_ZKEY = IS_PROD
+  ? resolve(PROJECT_ROOT, 'circuits/build_prod/MessageProcessor_prod_final.zkey')
+  : resolve(PROJECT_ROOT, 'circuits/build_maci/MessageProcessor_final.zkey');
+const TV_WASM = IS_PROD
+  ? resolve(PROJECT_ROOT, 'circuits/build_prod/TallyVotes_prod_js/TallyVotes_prod.wasm')
+  : resolve(PROJECT_ROOT, 'circuits/build_maci/TallyVotes_js/TallyVotes.wasm');
+const TV_ZKEY = IS_PROD
+  ? resolve(PROJECT_ROOT, 'circuits/build_prod/TallyVotes_prod_final.zkey')
+  : resolve(PROJECT_ROOT, 'circuits/build_maci/TallyVotes_final.zkey');
 
 // ─── Load Configuration ───────────────────────────────────────────────
 
@@ -1054,6 +1069,7 @@ async function main() {
   }
 
   const config = loadConfig();
+  log(`Circuit mode: ${CIRCUIT_MODE} (depth=${STATE_TREE_DEPTH}, batch=${BATCH_SIZE}, maxVoters=${5 ** STATE_TREE_DEPTH - 1})`);
   log(`RPC: ${config.rpcUrl}`);
   log(`MACI: ${config.maciAddress}`);
 

@@ -14,10 +14,10 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { useAccount, usePublicClient, useBalance } from 'wagmi';
+import { useAccount, usePublicClient, useBalance, useReadContract } from 'wagmi';
 import { formatEther } from 'viem';
 import { writeContract } from '../../writeHelper';
-import { POLL_ABI } from '../../contractV2';
+import { POLL_ABI, VOICE_CREDIT_PROXY_ADDRESS, ERC20_VOICE_CREDIT_PROXY_ABI } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 import { VoteConfirmModal } from './VoteConfirmModal';
 import { TransactionModal } from './TransactionModal';
@@ -61,6 +61,14 @@ export function VoteFormV2({
   const [txStage, setTxStage] = useState<TxStage>('idle');
   const [estimatedGasEth, setEstimatedGasEth] = useState<string | null>(null);
   const { t } = useTranslation();
+
+  // Read token address from voiceCreditProxy for dynamic links
+  const { data: vcTokenAddress } = useReadContract({
+    address: VOICE_CREDIT_PROXY_ADDRESS,
+    abi: ERC20_VOICE_CREDIT_PROXY_ABI,
+    functionName: 'token',
+    query: { enabled: VOICE_CREDIT_PROXY_ADDRESS !== '0x0000000000000000000000000000000000000000' },
+  });
 
   // writeContract from writeHelper.ts — bypasses wagmi connector
 
@@ -464,12 +472,12 @@ export function VoteFormV2({
           </div>
           <p className="text-xs text-amber-600">{t.voteForm.noCreditsDesc}</p>
           <a
-            href="https://sepolia.etherscan.io/address/0xa30fe40285B8f5c0457DbC3B7C8A280373c40044"
+            href={`https://sepolia.etherscan.io/address/${vcTokenAddress || ''}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs font-bold text-primary underline"
           >
-            Get TON Tokens
+            {t.createPoll.getTokens}
           </a>
         </div>
       )}

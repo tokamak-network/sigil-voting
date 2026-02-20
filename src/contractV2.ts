@@ -296,6 +296,66 @@ export const MESSAGE_PROCESSOR_ABI = [
 ] as const;
 
 // Tally ABI
+// ERC20VoiceCreditProxy ABI (read token address + decimals from proxy)
+export const ERC20_VOICE_CREDIT_PROXY_ABI = [
+  {
+    type: 'function',
+    name: 'token',
+    inputs: [],
+    outputs: [{ name: '', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'tokenDecimals',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint8' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getVoiceCredits',
+    inputs: [
+      { name: '_user', type: 'address' },
+      { name: '_data', type: 'bytes' },
+    ],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+] as const;
+
+// Standard ERC20 ABI (read symbol/name/decimals/balanceOf from any ERC20)
+export const ERC20_ABI = [
+  {
+    type: 'function',
+    name: 'symbol',
+    inputs: [],
+    outputs: [{ name: '', type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'name',
+    inputs: [],
+    outputs: [{ name: '', type: 'string' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'decimals',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint8' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'balanceOf',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+] as const;
+
 export const TALLY_ABI = [
   {
     type: 'function',

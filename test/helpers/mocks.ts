@@ -45,5 +45,7 @@ export function mockContractV2() {
     VOICE_CREDIT_PROXY_ADDRESS: '0x0000000000000000000000000000000000000002' as `0x${string}`,
     VOICE_CREDIT_PROXY_ABI: [],
     POLL_ABI: [],
+    ERC20_VOICE_CREDIT_PROXY_ABI: [],
+    ERC20_ABI: [],
   }))
 }

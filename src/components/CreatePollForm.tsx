@@ -1,10 +1,9 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useAccount, usePublicClient, useReadContract } from 'wagmi'
-import { formatEther } from 'viem'
+import { formatUnits } from 'viem'
 import { writeContract } from '../writeHelper'
 import {
   MACI_V2_ADDRESS,
-  TON_TOKEN_ADDRESS,
   MSG_PROCESSOR_VERIFIER_ADDRESS,
   TALLY_VERIFIER_ADDRESS,
   VK_REGISTRY_ADDRESS,
@@ -15,16 +14,7 @@ import {
 import { storageKey } from '../storageKeys'
 import { useTranslation } from '../i18n'
 import { TransactionModal } from './voting/TransactionModal'
-
-const ERC20_BALANCE_ABI = [
-  {
-    type: 'function' as const,
-    name: 'balanceOf' as const,
-    inputs: [{ name: 'account', type: 'address' as const }],
-    outputs: [{ name: '', type: 'uint256' as const }],
-    stateMutability: 'view' as const,
-  },
-] as const
+import { useVoiceCreditToken } from '../hooks/useVoiceCreditToken'
 
 interface CreatePollFormProps {
   onPollCreated: (pollId: number, pollAddress: `0x${string}`, title?: string, durationSeconds?: number) => void
@@ -73,13 +63,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
     query: { enabled: !!address && Number(gateCount || 0) > 0 },
   })
 
-  const { data: tonBalance } = useReadContract({
-    address: TON_TOKEN_ADDRESS as `0x${string}`,
-    abi: ERC20_BALANCE_ABI,
-    functionName: 'balanceOf',
-    args: address ? [address] : undefined,
-    query: { enabled: !!address },
-  })
+  const token = useVoiceCreditToken()
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -330,8 +314,8 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
   // Block when canCreatePoll is NOT explicitly true
   // (no gates = owner only, with gates = must meet token threshold)
   if (canCreate !== true) {
-    const threshold = gateInfo ? formatEther((gateInfo as [string, bigint])[1]) : '100'
-    const balance = tonBalance ? formatEther(tonBalance as bigint) : '0'
+    const threshold = gateInfo ? formatUnits((gateInfo as [string, bigint])[1], token.decimals) : '100'
+    const balance = token.balance !== undefined ? formatUnits(token.balance, token.decimals) : '0'
     return (
       <div className="w-full px-6 py-16">
         <div className="flex flex-col items-center justify-center min-h-[40vh] gap-8">
@@ -346,7 +330,7 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
           </p>
           <div className="technical-border bg-white p-8 w-full max-w-lg">
             <div className="flex items-center justify-between py-3 border-b border-slate-200">
-              <span className="font-display font-bold uppercase text-sm">TON</span>
+              <span className="font-display font-bold uppercase text-sm">{token.symbol}</span>
               <div className="text-right">
                 <div className="text-xs text-slate-400 uppercase tracking-widest">{t.createPoll.required}</div>
                 <div className="text-xl font-mono font-bold">{Number(threshold).toLocaleString()}</div>
@@ -487,10 +471,10 @@ export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormPr
         </button>
 
         {/* Token balance info */}
-        {Number(gateCount || 0) > 0 && tonBalance !== undefined && (
+        {Number(gateCount || 0) > 0 && token.balance !== undefined && (
           <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
             <span className="material-symbols-outlined text-sm">token</span>
-            <span>TON: {Number(formatEther(tonBalance as bigint)).toLocaleString()} / {gateInfo ? Number(formatEther((gateInfo as [string, bigint])[1])).toLocaleString() : '100'} {t.createPoll.required.toLowerCase()}</span>
+            <span>{token.symbol}: {Number(formatUnits(token.balance, token.decimals)).toLocaleString()} / {gateInfo ? Number(formatUnits((gateInfo as [string, bigint])[1], token.decimals)).toLocaleString() : '100'} {t.createPoll.required.toLowerCase()}</span>
           </div>
         )}
 
