@@ -10,7 +10,6 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
   const { t } = useTranslation()
   const titleLines = t.landing.title.split('\n')
   const [openFaq, setOpenFaq] = useState<number | null>(null)
-  const [showDemoMsg, setShowDemoMsg] = useState(false)
 
   return (
     <main>
@@ -319,34 +318,37 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
         </div>
       </section>
 
-      {/* ─── 6. See for Yourself (Demo) ─── */}
+      {/* ─── 6. Try It Now (replaces dead demo video) ─── */}
       <section className="py-24 bg-black text-white">
         <div className="container mx-auto px-6">
           <div className="max-w-4xl mx-auto text-center mb-16">
             <h2 className="font-display text-4xl font-extrabold uppercase mb-4">{t.landing.demo.title}</h2>
             <p className="opacity-60">{t.landing.demo.subtitle}</p>
           </div>
-          <div className="relative border-2 border-white/20 p-4 aspect-video bg-zinc-900 group">
-            <div className="absolute inset-0 flex items-center justify-center flex-col gap-4">
-              <button
-                className="w-20 h-20 bg-primary text-white flex items-center justify-center border-2 border-black group-hover:scale-110 transition-transform"
-                role="button"
-                aria-label="Play demo video"
-                onClick={() => setShowDemoMsg(true)}
-              >
-                <span className="material-symbols-outlined text-4xl">play_arrow</span>
-              </button>
-              {showDemoMsg && (
-                <span className="font-display text-sm text-white/80 bg-white/10 px-4 py-2 border border-white/20">
-                  {t.landing.demo.comingSoon}
-                </span>
-              )}
-            </div>
-            <div className="absolute bottom-10 left-10 right-10 flex justify-between font-display text-xs opacity-60">
-              <span>CONNECT → ENCRYPT</span>
-              <span>SUBMIT → PROVE</span>
-              <span>VERIFY SUCCESS</span>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-2 border-white/20 max-w-4xl mx-auto">
+            {[
+              { num: '01', icon: 'lock', title: t.landing.cta.step1, desc: t.landing.demo.stepSubmit },
+              { num: '02', icon: 'verified', title: t.landing.cta.step2, desc: t.landing.demo.stepProof },
+              { num: '03', icon: 'how_to_vote', title: t.landing.cta.step3, desc: t.landing.demo.stepResult },
+            ].map((step, i) => (
+              <div key={i} className={`p-8 ${i < 2 ? 'md:border-r-2 border-b-2 md:border-b-0' : ''} border-white/20`}>
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="font-display text-xs font-bold text-primary">{step.num}</span>
+                  <span className="material-symbols-outlined text-primary">{step.icon}</span>
+                </div>
+                <h4 className="font-display font-bold uppercase mb-2">{step.title}</h4>
+                <p className="text-sm text-white/60 leading-relaxed">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="max-w-4xl mx-auto mt-8 text-center">
+            <button
+              className="bg-primary text-white font-display text-lg font-extrabold px-12 py-5 border-2 border-white hover:bg-white hover:text-black transition-all uppercase"
+              onClick={() => setCurrentPage('proposals')}
+            >
+              {t.landing.demo.comingSoon}
+            </button>
+            <p className="font-display text-xs text-white/40 mt-4 uppercase tracking-widest">{t.landing.demo.network}</p>
           </div>
         </div>
       </section>
@@ -452,7 +454,77 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
         </div>
       </section>
 
-      {/* ─── 9. CTA ─── */}
+      {/* ─── 9. Deployed Contracts ─── */}
+      <section className="py-16 border-b-2 border-border-light dark:border-border-dark">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-12">
+            <h2 className="font-display text-3xl font-extrabold uppercase mb-2">{t.landing.contracts.title}</h2>
+            <p className="text-sm text-slate-600 dark:text-slate-400">{t.landing.contracts.subtitle}</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-2 border-border-light dark:border-border-dark max-w-4xl mx-auto">
+            {([
+              { label: t.landing.contracts.maci, addr: '0x26428484F192D1dA677111A47615378Bc889d441' },
+              { label: t.landing.contracts.accQueue, addr: '0x5321607ABc8171397Fac7c77FbB567847AF4d2ff' },
+              { label: t.landing.contracts.token, addr: '0xa30fe40285B8f5c0457DbC3B7C8A280373c40044' },
+            ]).map((c, i) => (
+              <div key={i} className={`p-6 ${i < 2 ? 'md:border-r-2 border-b-2 md:border-b-0' : ''} border-border-light dark:border-border-dark`}>
+                <p className="font-display text-xs font-bold uppercase tracking-widest text-primary mb-2">{c.label}</p>
+                <p className="font-mono text-xs break-all opacity-60 mb-3">{c.addr}</p>
+                <a
+                  href={`https://sepolia.etherscan.io/address/${c.addr}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-display font-bold text-primary hover:underline uppercase"
+                >
+                  {t.landing.contracts.viewOn}
+                  <span className="material-symbols-outlined text-sm">open_in_new</span>
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── 10. Roadmap ─── */}
+      <section className="py-24 grid-bg">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="font-display text-4xl font-extrabold uppercase mb-4">{t.landing.roadmap.title}</h2>
+            <p className="text-slate-600 dark:text-slate-400">{t.landing.roadmap.subtitle}</p>
+            <div className="w-24 h-2 bg-primary mx-auto mt-4"></div>
+          </div>
+          <div className="max-w-3xl mx-auto space-y-0">
+            {([
+              t.landing.roadmap.phase1,
+              t.landing.roadmap.phase2,
+              t.landing.roadmap.phase3,
+              t.landing.roadmap.phase4,
+              t.landing.roadmap.phase5,
+              t.landing.roadmap.phase6,
+            ]).map((phase, i) => {
+              const isComplete = phase.status === 'Complete' || phase.status === '완료'
+              const isActive = phase.status === 'In Progress' || phase.status === '진행 중'
+              return (
+                <div key={i} className="flex items-start gap-6">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-6 h-6 border-2 flex items-center justify-center shrink-0 ${isComplete ? 'bg-primary border-primary' : isActive ? 'border-primary' : 'border-slate-300 dark:border-slate-600'}`}>
+                      {isComplete && <span className="material-symbols-outlined text-white text-sm">check</span>}
+                      {isActive && <span className="w-2 h-2 bg-primary animate-pulse"></span>}
+                    </div>
+                    {i < 5 && <div className={`w-0.5 h-12 ${isComplete ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`} />}
+                  </div>
+                  <div className="pb-6">
+                    <h4 className={`font-display font-bold uppercase text-sm ${isComplete ? 'text-primary' : isActive ? '' : 'opacity-50'}`}>{phase.title}</h4>
+                    <span className={`font-display text-xs uppercase tracking-widest ${isComplete ? 'text-primary' : isActive ? 'text-amber-500' : 'text-slate-400'}`}>{phase.status}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── 11. CTA ─── */}
       <section className="py-24 bg-primary text-white border-y-2 border-black">
         <div className="container mx-auto px-6 text-center">
           <h2 className="font-display text-5xl md:text-7xl font-black mb-8 uppercase leading-tight">

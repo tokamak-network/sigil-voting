@@ -193,17 +193,33 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
       </section>
 
       {/* Stronger Together */}
-      <section className="p-12 lg:p-24 bg-black text-white text-center border-b-2 border-black">
-        <h2 className="font-display text-5xl md:text-7xl font-black italic uppercase mb-8 tracking-tighter">
-          {t.technology.combined.title}
-        </h2>
-        <p className="text-xl max-w-3xl mx-auto mb-12 font-medium leading-relaxed">
-          {t.technology.combined.desc}
-        </p>
-        <div className="inline-flex gap-4 border-2 border-white p-2">
-          <div className="w-4 h-4 bg-primary" />
-          <div className="w-4 h-4 bg-primary" />
-          <div className="w-4 h-4 bg-primary" />
+      <section className="p-12 lg:p-24 bg-black text-white border-b-2 border-black">
+        <div className="text-center mb-16">
+          <h2 className="font-display text-5xl md:text-7xl font-black italic uppercase mb-8 tracking-tighter">
+            {t.technology.combined.title}
+          </h2>
+          <p className="text-xl max-w-3xl mx-auto mb-12 font-medium leading-relaxed">
+            {t.technology.combined.desc}
+          </p>
+          <div className="inline-flex gap-4 border-2 border-white p-2">
+            <div className="w-4 h-4 bg-primary" />
+            <div className="w-4 h-4 bg-primary" />
+            <div className="w-4 h-4 bg-primary" />
+          </div>
+        </div>
+        {/* MACI Diff */}
+        <div className="max-w-3xl mx-auto mt-16">
+          <h3 className="font-mono text-xs font-bold uppercase tracking-widest text-primary mb-8 text-center">
+            {t.technology.combined.diffTitle}
+          </h3>
+          <div className="space-y-4">
+            {[t.technology.combined.diff1, t.technology.combined.diff2, t.technology.combined.diff3, t.technology.combined.diff4, t.technology.combined.diff5].map((diff, i) => (
+              <div key={i} className="flex items-start gap-4 p-4 border border-white/20">
+                <span className="font-mono text-xs font-bold text-primary mt-0.5">0{i + 1}</span>
+                <p className="text-sm text-white/80 leading-relaxed">{diff}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -222,10 +238,13 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
             { ...t.technology.specs.keyCurve, icon: 'key' },
             { ...t.technology.specs.cipherSuite, icon: 'lock' },
             { ...t.technology.specs.treeDepth, icon: 'account_tree' },
+            { ...t.technology.specs.msgConstraints, icon: 'memory' },
+            { ...t.technology.specs.tallyConstraints, icon: 'calculate' },
+            { ...t.technology.specs.ptau, icon: 'group_work' },
           ]).map((spec, i) => (
             <div
               key={i}
-              className={`p-8 border-black ${(i + 1) % 3 !== 0 ? 'lg:border-r-2' : ''} ${i < 3 ? 'border-b-2' : ''} ${i % 2 === 0 ? 'md:border-r-2' : ''}`}
+              className={`p-8 border-black ${(i + 1) % 3 !== 0 ? 'lg:border-r-2' : ''} ${i < 6 ? 'border-b-2' : ''} ${i % 2 === 0 ? 'md:border-r-2' : ''}`}
             >
               <div className="flex items-center gap-3 mb-4">
                 <span className="material-symbols-outlined text-primary">{spec.icon}</span>
@@ -486,6 +505,26 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
             {t.technology.cta.button}
             <span className="material-symbols-outlined">arrow_forward</span>
           </button>
+          <div className="flex justify-center gap-8 pt-4">
+            <a
+              href="https://github.com/tokamak-network/sigil-voting"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-primary transition-colors"
+            >
+              <span className="material-symbols-outlined text-base">code</span>
+              GitHub
+            </a>
+            <a
+              href="https://www.npmjs.com/package/@sigil/sdk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-primary transition-colors"
+            >
+              <span className="material-symbols-outlined text-base">package_2</span>
+              NPM — @sigil/sdk
+            </a>
+          </div>
         </div>
       </section>
     </div>

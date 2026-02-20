@@ -151,6 +151,24 @@ export interface Translations {
       widget: { title: string; desc: string }
       autoTally: { title: string; desc: string }
     }
+    contracts: {
+      title: string
+      subtitle: string
+      maci: string
+      accQueue: string
+      token: string
+      viewOn: string
+    }
+    roadmap: {
+      title: string
+      subtitle: string
+      phase1: { title: string; status: string }
+      phase2: { title: string; status: string }
+      phase3: { title: string; status: string }
+      phase4: { title: string; status: string }
+      phase5: { title: string; status: string }
+      phase6: { title: string; status: string }
+    }
     faq: {
       title: string
       subtitle: string
@@ -610,6 +628,12 @@ export interface Translations {
     combined: {
       title: string
       desc: string
+      diffTitle: string
+      diff1: string
+      diff2: string
+      diff3: string
+      diff4: string
+      diff5: string
     }
     specs: {
       title: string
@@ -620,6 +644,9 @@ export interface Translations {
       keyCurve: { label: string; value: string; desc: string }
       cipherSuite: { label: string; value: string; desc: string }
       treeDepth: { label: string; value: string; desc: string }
+      msgConstraints: { label: string; value: string; desc: string }
+      tallyConstraints: { label: string; value: string; desc: string }
+      ptau: { label: string; value: string; desc: string }
     }
     architecture: {
       title: string
