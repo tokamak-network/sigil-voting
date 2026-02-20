@@ -112,6 +112,8 @@ export interface Translations {
       quadraticVoting: string
       onChainVerify: string
       automation: string
+      erc20Support: string
+      serverlessTally: string
       yes: string
       no: string
       partial: string
@@ -121,6 +123,9 @@ export interface Translations {
       ownChain: string
       postReveal: string
       postRevealDev: string
+      native: string
+      free: string
+      selfHosted: string
       onlyStack: string
     }
     transparency: {
@@ -136,6 +141,16 @@ export interface Translations {
       coordinatorNote: string
       coordinatorTitle: string
     }
+    advantages: {
+      title: string
+      subtitle: string
+      erc20: { title: string; desc: string }
+      serverless: { title: string; desc: string }
+      l2: { title: string; desc: string }
+      tokenGate: { title: string; desc: string }
+      widget: { title: string; desc: string }
+      autoTally: { title: string; desc: string }
+    }
     faq: {
       title: string
       subtitle: string
@@ -145,6 +160,8 @@ export interface Translations {
       q4: string; a4: string
       q5: string; a5: string
       q6: string; a6: string
+      q7: string; a7: string
+      q8: string; a8: string
     }
     cta: {
       title: string
@@ -656,6 +673,16 @@ export interface Translations {
       trust3: string
       trust4: string
       protocolStack: string
+    }
+    infrastructure: {
+      title: string
+      subtitle: string
+      serverless: { title: string; desc: string }
+      erc20: { title: string; desc: string }
+      l2: { title: string; desc: string }
+      tokenGate: { title: string; desc: string }
+      autoTally: { title: string; desc: string }
+      customServer: { title: string; desc: string }
     }
     cta: {
       title: string

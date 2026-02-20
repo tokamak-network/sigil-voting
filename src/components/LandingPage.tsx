@@ -209,6 +209,37 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
         </div>
       </section>
 
+      {/* ─── 4.7. Operational Advantages ─── */}
+      <section className="py-24 grid-bg">
+        <div className="container mx-auto px-6">
+          <div className="mb-16">
+            <h2 className="font-display text-4xl font-extrabold mb-4 uppercase">{t.landing.advantages.title}</h2>
+            <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl">{t.landing.advantages.subtitle}</p>
+            <div className="w-24 h-2 bg-primary mt-4"></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 border-2 border-border-light dark:border-border-dark">
+            {[
+              { icon: 'token', ...t.landing.advantages.erc20 },
+              { icon: 'cloud_off', ...t.landing.advantages.serverless },
+              { icon: 'speed', ...t.landing.advantages.l2 },
+              { icon: 'groups', ...t.landing.advantages.tokenGate },
+              { icon: 'code', ...t.landing.advantages.widget },
+              { icon: 'smart_toy', ...t.landing.advantages.autoTally },
+            ].map((item, i) => (
+              <div
+                key={i}
+                className={`p-8 border-border-light dark:border-border-dark hover:bg-primary hover:text-white transition-colors group
+                  ${i < 3 ? 'border-b-2' : ''} ${(i + 1) % 3 !== 0 ? 'lg:border-r-2' : ''} ${i % 2 === 0 && i < 4 ? 'md:border-r-2 lg:border-r-0' : ''}`}
+              >
+                <span className="material-symbols-outlined text-3xl mb-4 text-primary group-hover:text-white">{item.icon}</span>
+                <h3 className="font-display text-lg font-bold mb-2 uppercase">{item.title}</h3>
+                <p className="text-sm leading-relaxed opacity-80 group-hover:opacity-100">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ─── 5. Ecosystem Comparison ─── */}
       <section className="py-24" id="comparison">
         <div className="container mx-auto px-6">
@@ -259,6 +290,18 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                     values: [t.landing.comparison.yes, t.landing.comparison.yes, t.landing.comparison.demoStage, t.landing.comparison.yes, t.landing.comparison.yes],
                     icons: ['check_circle', 'check_circle', 'error', 'check_circle', 'check_circle'],
                     colors: ['text-emerald-500', 'text-emerald-500', 'text-amber-500', 'text-emerald-500', 'text-emerald-500'],
+                  },
+                  {
+                    feature: t.landing.comparison.erc20Support,
+                    values: [t.landing.comparison.native, t.landing.comparison.no, t.landing.comparison.yes, t.landing.comparison.yes, t.landing.comparison.no],
+                    icons: ['check_circle', 'cancel', 'check_circle', 'check_circle', 'cancel'],
+                    colors: ['text-emerald-500', 'text-red-500', 'text-emerald-500', 'text-emerald-500', 'text-red-500'],
+                  },
+                  {
+                    feature: t.landing.comparison.serverlessTally,
+                    values: [t.landing.comparison.free, t.landing.comparison.selfHosted, t.landing.comparison.selfHosted, t.landing.comparison.selfHosted, t.landing.comparison.selfHosted],
+                    icons: ['check_circle', 'error', 'error', 'error', 'error'],
+                    colors: ['text-emerald-500', 'text-amber-500', 'text-amber-500', 'text-amber-500', 'text-amber-500'],
                   },
                 ] as const).map((row, i) => (
                   <tr key={i} className="border-b-2 border-border-light dark:border-border-dark last:border-b-0">
@@ -386,6 +429,8 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
               { q: t.landing.faq.q4, a: t.landing.faq.a4 },
               { q: t.landing.faq.q5, a: t.landing.faq.a5 },
               { q: t.landing.faq.q6, a: t.landing.faq.a6 },
+              { q: t.landing.faq.q7, a: t.landing.faq.a7 },
+              { q: t.landing.faq.q8, a: t.landing.faq.a8 },
             ]).map((item, i) => (
               <div
                 key={i}
