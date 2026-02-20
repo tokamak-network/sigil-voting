@@ -82,7 +82,7 @@ interface MACIVotingDemoProps {
   onVoteSubmitted?: (data: VoteSubmittedData) => void
 }
 
-export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: MACIVotingDemoProps) {
+export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: MACIVotingDemoProps) {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
   // writeContract from writeHelper.ts — bypasses wagmi connector entirely

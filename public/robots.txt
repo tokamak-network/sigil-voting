@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /circuits/
+
+Sitemap: https://sigil-voting.vercel.app/sitemap.xml

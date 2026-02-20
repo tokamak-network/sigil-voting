@@ -33,7 +33,7 @@ function getDurationPresets(t: ReturnType<typeof useTranslation>['t']): { key: D
   ]
 }
 
-export function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormProps) {
+export default function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePollFormProps) {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
   const { t } = useTranslation()

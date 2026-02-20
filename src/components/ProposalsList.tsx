@@ -18,7 +18,7 @@ import {
 } from '../contractV2'
 import { useTranslation } from '../i18n'
 import { storageKey } from '../storageKeys'
-import { CreatePollForm } from './CreatePollForm'
+import CreatePollForm from './CreatePollForm'
 
 interface PollInfo {
   id: number
@@ -53,7 +53,7 @@ function saveCachedPolls(polls: PollInfo[]): void {
   try { localStorage.setItem(storageKey.pollsCache, JSON.stringify(polls)) } catch { /* quota */ }
 }
 
-export function ProposalsList({ onSelectPoll }: ProposalsListProps) {
+export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
   const { t } = useTranslation()
