@@ -45,3 +45,23 @@ export interface SigilEvent {
   txHash?: string;
   data?: Record<string, unknown>;
 }
+
+export interface SignUpResult {
+  txHash: string;
+  stateIndex: number;
+  pubKey: [bigint, bigint];
+}
+
+export interface VoteOptions {
+  /** Auto-register if not yet signed up (default: true) */
+  autoRegister?: boolean;
+  /** Auto key-change on re-vote for anti-collusion (default: true) */
+  autoKeyChange?: boolean;
+  /** Custom salt for the vote command (generated if not provided) */
+  salt?: bigint;
+}
+
+export interface KeyChangeResult {
+  txHash: string;
+  newPubKey: [bigint, bigint];
+}

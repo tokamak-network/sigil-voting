@@ -14,5 +14,46 @@
  *   - On-chain verified (Groth16 ZK-SNARK proofs)
  */
 
+// Main client
 export { SigilClient, type SigilConfig } from './client.js';
-export { type Poll, type PollStatus, type PollResults, type VoteChoice } from './types.js';
+
+// Types
+export {
+  type Poll, type PollStatus, type PollResults, type VoteChoice,
+  type VoteReceipt, type KeyPair, type SigilEvent,
+  type SignUpResult, type VoteOptions, type KeyChangeResult,
+} from './types.js';
+
+// Storage
+export {
+  type SigilStorage, MemoryStorage, BrowserStorage, createDefaultStorage,
+} from './storage.js';
+
+// Key management
+export { KeyManager, type MaciKeypair } from './keyManager.js';
+export { createStorageKeys, type StorageKeys } from './storageKeys.js';
+
+// Command packing
+export {
+  packCommand, unpackCommand, computeCommandHash, generateSalt,
+  SNARK_SCALAR_FIELD,
+} from './command.js';
+
+// Message encryption
+export {
+  buildEncryptedVoteMessage, buildEncryptedKeyChangeMessage,
+  type MessageParams, type KeyChangeMessageParams, type EncryptedMessage,
+} from './message.js';
+
+// Crypto primitives
+export {
+  generateECDHSharedKey, generateEphemeralKeyPair, derivePublicKey,
+  BABYJUB_SUBORDER, type PubKey,
+} from './crypto/ecdh.js';
+export { poseidonEncrypt, poseidonDecrypt } from './crypto/duplexSponge.js';
+export {
+  eddsaSign, eddsaVerify, eddsaDerivePublicKey, type EdDSASignature,
+} from './crypto/eddsa.js';
+export {
+  derivePrivateKey, generateRandomPrivateKey, derivePrivateKeyFromSignature,
+} from './crypto/blake512.js';

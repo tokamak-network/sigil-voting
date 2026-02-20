@@ -19,7 +19,17 @@
  */
 
 import { ethers } from 'ethers';
-import type { Poll, PollStatus, PollResults, VoteChoice, VoteReceipt } from './types.js';
+import type {
+  Poll, PollStatus, PollResults, VoteChoice, VoteReceipt,
+  SignUpResult, VoteOptions, KeyChangeResult,
+} from './types.js';
+import type { SigilStorage } from './storage.js';
+import { createDefaultStorage } from './storage.js';
+import { createStorageKeys, type StorageKeys } from './storageKeys.js';
+import { KeyManager } from './keyManager.js';
+import { buildEncryptedVoteMessage, buildEncryptedKeyChangeMessage } from './message.js';
+import { eddsaDerivePublicKey } from './crypto/eddsa.js';
+import { derivePrivateKey } from './crypto/blake512.js';
 
 export interface SigilConfig {
   /** MACI contract address */
@@ -30,6 +40,8 @@ export interface SigilConfig {
   signer?: ethers.Signer;
   /** Coordinator public key [X, Y] — defaults to on-chain value */
   coordinatorPubKey?: [bigint, bigint];
+  /** Custom storage backend (defaults to localStorage or MemoryStorage) */
+  storage?: SigilStorage;
 }
 
 // Minimal ABIs for SDK operations
@@ -38,6 +50,7 @@ const MACI_ABI = [
   'function nextPollId() view returns (uint256)',
   'function polls(uint256) view returns (address)',
   'function numSignUps() view returns (uint256)',
+  'event SignUp(uint256 indexed _stateIndex, uint256 indexed _pubKeyX, uint256 indexed _pubKeyY, uint256 _voiceCreditBalance, uint256 _timestamp)',
   'event DeployPoll(uint256 indexed pollId, address pollAddr, address messageProcessorAddr, address tallyAddr)',
 ];
 
@@ -60,12 +73,17 @@ const TALLY_ABI = [
   'function totalVoters() view returns (uint256)',
 ];
 
+const MACI_KEY_MESSAGE = 'SIGIL Voting Key v1';
+
 export class SigilClient {
   private provider: ethers.Provider;
   private signer?: ethers.Signer;
   private maci: ethers.Contract;
   private maciAddress: string;
   private coordinatorPubKey?: [bigint, bigint];
+  private keyManager: KeyManager;
+  private storageKeys: StorageKeys;
+  private storage: SigilStorage;
 
   constructor(config: SigilConfig) {
     this.provider = config.provider;
@@ -73,6 +91,9 @@ export class SigilClient {
     this.maciAddress = config.maciAddress;
     this.coordinatorPubKey = config.coordinatorPubKey;
     this.maci = new ethers.Contract(config.maciAddress, MACI_ABI, config.signer ?? config.provider);
+    this.storage = config.storage ?? createDefaultStorage();
+    this.storageKeys = createStorageKeys(config.maciAddress);
+    this.keyManager = new KeyManager(this.storage, this.storageKeys);
   }
 
   /** Get total number of deployed polls */
@@ -85,7 +106,6 @@ export class SigilClient {
     const count = await this.getPollCount();
     if (count === 0) return [];
 
-    // Fetch DeployPoll events for MP/Tally addresses
     const filter = this.maci.filters.DeployPoll();
     const events = await this.maci.queryFilter(filter);
     const tallyMap = new Map<number, string>();
@@ -118,7 +138,6 @@ export class SigilClient {
             if (await tally.tallyVerified()) status = 'finalized';
           } catch { /* skip */ }
         }
-        // Check if still merging
         try {
           const stateM = await poll.stateAqMerged();
           const msgM = await poll.messageAqMerged();
@@ -187,39 +206,158 @@ export class SigilClient {
   }
 
   /**
-   * Cast a vote
+   * Register a user for MACI voting.
+   *
+   * Generates a Baby Jubjub EdDSA keypair from a wallet signature and
+   * registers on-chain via MACI.signUp().
+   *
+   * @param signatureHex - Optional pre-signed message hex (0x-prefixed).
+   *   If not provided, the signer will be prompted to sign MACI_KEY_MESSAGE.
+   */
+  async signUp(signatureHex?: string): Promise<SignUpResult> {
+    if (!this.signer) throw new Error('Signer required for signUp');
+
+    const address = await this.signer.getAddress();
+
+    // Check if already registered
+    if (this.keyManager.isSignedUp(address)) {
+      const stateIndex = this.keyManager.getStateIndex(address, 0);
+      const kp = await this.keyManager.loadKeypair(address, 0);
+      if (kp) {
+        return { txHash: '', stateIndex, pubKey: kp.pubKey };
+      }
+    }
+
+    // Get or request signature for key derivation
+    let sigBytes: Uint8Array;
+    if (signatureHex) {
+      sigBytes = hexToBytes(signatureHex);
+    } else {
+      const sig = await this.signer.signMessage(MACI_KEY_MESSAGE);
+      sigBytes = hexToBytes(sig);
+    }
+
+    // Derive EdDSA keypair from signature
+    const sk = derivePrivateKey(sigBytes);
+    const pubKey = await eddsaDerivePublicKey(sk);
+
+    // Call MACI.signUp on-chain
+    const tx = await this.maci.signUp(
+      pubKey[0],
+      pubKey[1],
+      '0x',
+      '0x',
+    );
+    const receipt = await tx.wait();
+
+    // Parse SignUp event to get stateIndex
+    let stateIndex = 1;
+    for (const log of receipt.logs) {
+      try {
+        const parsed = this.maci.interface.parseLog({ topics: [...log.topics], data: log.data });
+        if (parsed && parsed.name === 'SignUp') {
+          stateIndex = Number(parsed.args._stateIndex);
+          break;
+        }
+      } catch { /* skip non-matching logs */ }
+    }
+
+    // Store keypair and mark as registered
+    this.storage.setItem(this.storageKeys.sk(address), sk.toString());
+    this.storage.setItem(
+      this.storageKeys.pk(address),
+      JSON.stringify([pubKey[0].toString(), pubKey[1].toString()]),
+    );
+    this.keyManager.markSignedUp(address, stateIndex);
+
+    return { txHash: receipt.hash, stateIndex, pubKey };
+  }
+
+  /**
+   * Cast a vote.
    *
    * Auto-registers if the user hasn't signed up yet.
+   * Auto-changes key on re-vote for MACI anti-collusion.
    * Encrypts the vote with the coordinator's public key.
    * Uses quadratic cost: numVotes² credits.
    *
    * @param pollId — Which proposal to vote on
    * @param choice — 'for', 'against', or 'abstain'
    * @param numVotes — Number of votes (cost = numVotes²)
+   * @param options — Additional options
    * @returns Vote receipt with tx hash
    */
-  async vote(pollId: number, choice: VoteChoice, numVotes: number = 1): Promise<VoteReceipt> {
+  async vote(
+    pollId: number,
+    choice: VoteChoice,
+    numVotes: number = 1,
+    options: VoteOptions = {},
+  ): Promise<VoteReceipt> {
     if (!this.signer) throw new Error('Signer required for voting');
 
-    // TODO: Implement full vote flow:
-    // 1. Auto-register (signUp) if not already
-    // 2. Generate EdDSA keypair (Baby Jubjub)
-    // 3. Pack command (stateIndex, voteOption, weight, nonce, pollId, salt)
-    // 4. Sign with EdDSA
-    // 5. Encrypt with DuplexSponge (ECDH shared key with coordinator)
-    // 6. Call publishMessage on Poll contract
-
-    const choiceMap = { against: 0, for: 1, abstain: 2 };
+    const address = await this.signer.getAddress();
+    const { autoRegister = true, autoKeyChange = true } = options;
     const creditsSpent = numVotes * numVotes;
 
-    throw new Error(
-      'SDK vote() not yet implemented. Use the SIGIL web app at https://sigil.vote or ' +
-      'integrate the React components from @sigil/widget.'
-    );
+    // Auto-register if needed
+    if (!this.keyManager.isSignedUp(address) && autoRegister) {
+      await this.signUp();
+    }
 
-    // Placeholder return (unreachable)
+    if (!this.keyManager.isSignedUp(address)) {
+      throw new Error('User not registered. Call signUp() first.');
+    }
+
+    // Get coordinator pub key
+    const coordPubKey = await this.getCoordinatorPubKey(pollId);
+
+    // Get current keypair
+    const kp = await this.keyManager.getOrCreateKeypair(address, pollId);
+    let voteSk = kp.sk;
+    let votePubKey = kp.pubKey;
+
+    // Auto key change on re-vote
+    const nonce = this.keyManager.getNonce(address, pollId);
+    const isReVote = nonce > 1;
+
+    if (isReVote && autoKeyChange) {
+      const kcResult = await this.changeKeyInternal(pollId, address, voteSk, coordPubKey);
+      voteSk = kcResult.newSk;
+      votePubKey = kcResult.newPubKey;
+    }
+
+    // Map choice to number
+    const choiceMap: Record<VoteChoice, number> = { against: 0, for: 1, abstain: 2 };
+    const choiceNum = choiceMap[choice];
+
+    // Build encrypted vote message
+    const stateIndex = BigInt(this.keyManager.getStateIndex(address, pollId));
+    const currentNonce = BigInt(this.keyManager.getNonce(address, pollId));
+
+    const { encMessage, ephemeralPubKey } = await buildEncryptedVoteMessage({
+      stateIndex,
+      voteOptionIndex: BigInt(choiceNum),
+      newVoteWeight: BigInt(numVotes),
+      nonce: currentNonce,
+      pollId: BigInt(pollId),
+      voterSk: voteSk,
+      voterPubKey: votePubKey,
+      coordinatorPubKey: coordPubKey,
+    });
+
+    // Get poll contract address
+    const pollAddr = await this.maci.polls(pollId);
+    const poll = new ethers.Contract(pollAddr, POLL_ABI, this.signer);
+
+    // Submit on-chain
+    const tx = await poll.publishMessage(encMessage, ephemeralPubKey[0], ephemeralPubKey[1]);
+    const receipt = await tx.wait();
+
+    // Update nonce
+    this.keyManager.incrementNonce(address, pollId);
+
     return {
-      txHash: '',
+      txHash: receipt.hash,
       pollId,
       choice,
       numVotes,
@@ -229,15 +367,96 @@ export class SigilClient {
   }
 
   /**
-   * Register a user for MACI voting
+   * Change EdDSA key for MACI anti-collusion.
    *
-   * Generates a Baby Jubjub EdDSA keypair and registers on-chain.
-   * Called automatically by vote() if the user isn't registered.
+   * Generates a new random keypair, submits a key change message,
+   * and stores the new key. Previous votes signed with the old key
+   * become invalid (MACI processes messages in reverse order).
    */
-  async signUp(): Promise<{ txHash: string; stateIndex: number }> {
-    if (!this.signer) throw new Error('Signer required for signUp');
+  async changeKey(pollId: number): Promise<KeyChangeResult> {
+    if (!this.signer) throw new Error('Signer required for changeKey');
 
-    // TODO: Implement signUp with real EdDSA keypair generation
-    throw new Error('SDK signUp() not yet implemented. Use the SIGIL web app.');
+    const address = await this.signer.getAddress();
+    const coordPubKey = await this.getCoordinatorPubKey(pollId);
+
+    const kp = await this.keyManager.getOrCreateKeypair(address, pollId);
+
+    const result = await this.changeKeyInternal(pollId, address, kp.sk, coordPubKey);
+
+    return {
+      txHash: result.txHash,
+      newPubKey: result.newPubKey,
+    };
   }
+
+  /**
+   * Internal key change implementation (shared by vote re-vote and explicit changeKey).
+   */
+  private async changeKeyInternal(
+    pollId: number,
+    address: string,
+    currentSk: bigint,
+    coordinatorPubKey: [bigint, bigint],
+  ): Promise<{ txHash: string; newSk: bigint; newPubKey: [bigint, bigint] }> {
+    // Generate new keypair
+    const newKp = await this.keyManager.generateNewKeypair(address, pollId);
+
+    const stateIndex = BigInt(this.keyManager.getStateIndex(address, pollId));
+    const nonce = BigInt(this.keyManager.getNonce(address, pollId));
+
+    const { encMessage, ephemeralPubKey } = await buildEncryptedKeyChangeMessage({
+      stateIndex,
+      nonce,
+      pollId: BigInt(pollId),
+      currentSk,
+      newPubKey: newKp.pubKey,
+      coordinatorPubKey,
+    });
+
+    // Get poll contract
+    const pollAddr = await this.maci.polls(pollId);
+    const poll = new ethers.Contract(pollAddr, POLL_ABI, this.signer!);
+
+    // Submit on-chain
+    const tx = await poll.publishMessage(encMessage, ephemeralPubKey[0], ephemeralPubKey[1]);
+    const receipt = await tx.wait();
+
+    // Increment nonce (key changes use the shared counter)
+    this.keyManager.incrementNonce(address, pollId);
+
+    return {
+      txHash: receipt.hash,
+      newSk: newKp.sk,
+      newPubKey: newKp.pubKey,
+    };
+  }
+
+  /**
+   * Get coordinator public key, fetching from chain if not cached.
+   */
+  private async getCoordinatorPubKey(pollId: number): Promise<[bigint, bigint]> {
+    if (this.coordinatorPubKey) return this.coordinatorPubKey;
+
+    const pollAddr = await this.maci.polls(pollId);
+    const poll = new ethers.Contract(pollAddr, POLL_ABI, this.provider);
+    const [x, y] = await Promise.all([
+      poll.coordinatorPubKeyX(),
+      poll.coordinatorPubKeyY(),
+    ]);
+
+    this.coordinatorPubKey = [BigInt(x), BigInt(y)];
+    return this.coordinatorPubKey;
+  }
+
+  /** Access the internal key manager (for advanced use) */
+  getKeyManager(): KeyManager {
+    return this.keyManager;
+  }
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  const clean = hex.startsWith('0x') ? hex.slice(2) : hex;
+  const matches = clean.match(/.{2}/g);
+  if (!matches) throw new Error('Invalid hex string');
+  return new Uint8Array(matches.map(h => parseInt(h, 16)));
 }
