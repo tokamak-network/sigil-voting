@@ -65,6 +65,8 @@ contract DeployProdScript is Script {
         console.log("\nNext steps:");
         console.log("  1. Update src/config.json with new addresses");
         console.log("  2. Set CIRCUIT_MODE=prod in .env for coordinator");
-        console.log("  3. Deploy a poll: MACI.deployPoll(title, duration, coordPubX, coordPubY, mpVerifier, tallyVerifier, vkRegistry, 4)");
+        console.log(
+            "  3. Deploy a poll: MACI.deployPoll(title, duration, coordPubX, coordPubY, mpVerifier, tallyVerifier, vkRegistry, 4)"
+        );
     }
 }

@@ -159,6 +159,7 @@ interface CryptoKit {
   hashBallot: (b: Ballot) => bigint;
   hashCommand: (c: Command) => bigint;
   unpackCommand: (packed: bigint) => Command;
+  quinaryTreeRoot: (leaves: bigint[]) => bigint;
 }
 
 interface Command {
@@ -336,6 +337,22 @@ export async function initCrypto(): Promise<CryptoKit> {
     return cmd;
   }
 
+  // Compute root of a quinary tree from leaves (e.g., 25 leaves → depth 2)
+  // 5 leaves per node, hashed with Poseidon(5)
+  function quinaryTreeRoot(leaves: bigint[]): bigint {
+    let level = [...leaves];
+    while (level.length > 1) {
+      const next: bigint[] = [];
+      for (let i = 0; i < level.length; i += 5) {
+        const children = level.slice(i, i + 5);
+        while (children.length < 5) children.push(0n);
+        next.push(hash(...children));
+      }
+      level = next;
+    }
+    return level[0] ?? 0n;
+  }
+
   return {
     poseidon, F, eddsa, babyJub,
     hash, ecdh: ecdhFn, decrypt: duplexDecrypt, encrypt: duplexEncrypt,
@@ -344,6 +361,7 @@ export async function initCrypto(): Promise<CryptoKit> {
     hashBallot: hashBallotFn,
     hashCommand: hashCommandFn,
     unpackCommand: unpackCommandFn,
+    quinaryTreeRoot,
   };
 }
 
@@ -766,8 +784,8 @@ async function tallyAndPublish(
   let currentTally = new Array(TALLY_NUM_OPTIONS).fill(0n) as bigint[];
   let currentTotalSpent = 0n;
   let currentPerOptionSpent = new Array(TALLY_NUM_OPTIONS).fill(0n) as bigint[];
-  let currentTallyResultsRoot = crypto.hash(...currentTally);
-  let currentPerOptionSpentRoot = crypto.hash(...currentPerOptionSpent);
+  let currentTallyResultsRoot = crypto.quinaryTreeRoot(currentTally);
+  let currentPerOptionSpentRoot = crypto.quinaryTreeRoot(currentPerOptionSpent);
   let prevTallyCommitment = 0n; // First batch has no previous
 
   const blank: StateLeaf = { pubKeyX: 0n, pubKeyY: 0n, voiceCreditBalance: 2n ** 32n, timestamp: 0n };
@@ -824,8 +842,8 @@ async function tallyAndPublish(
       }
     }
 
-    const newTallyResultsRoot = crypto.hash(...newTally);
-    const newPerOptionSpentRoot = crypto.hash(...newPerOptionSpent);
+    const newTallyResultsRoot = crypto.quinaryTreeRoot(newTally);
+    const newPerOptionSpentRoot = crypto.quinaryTreeRoot(newPerOptionSpent);
     const newTallyCommitment = crypto.hash(newTallyResultsRoot, newTotalSpent, newPerOptionSpentRoot);
 
     // SHA256: 3 values matching Tally.sol contract
