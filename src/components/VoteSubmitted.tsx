@@ -18,7 +18,7 @@ interface VoteSubmittedProps {
   onBackToList: () => void
 }
 
-export function VoteSubmitted({
+export default function VoteSubmitted({
   pollId,
   pollTitle,
   choice,

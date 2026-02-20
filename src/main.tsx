@@ -6,9 +6,8 @@ import { config } from './wagmi'
 import './index.css'
 import App from './App.tsx'
 
-// Preload heavy crypto modules immediately (3MB circomlibjs)
-// This runs in background while user sees the landing page
-import('./crypto/preload').then(m => m.preloadCrypto()).catch(() => {})
+// Crypto modules (3MB circomlibjs) are lazy-loaded when user navigates to voting pages
+// No preload on landing page — keeps initial load fast
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -41,14 +41,12 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                 >
                   {t.landing.enterApp}
                 </button>
-                <a
-                  href="https://maci.pse.dev"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
                   className="border-2 border-border-light dark:border-border-dark font-display text-lg font-extrabold px-8 py-4 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors uppercase"
+                  onClick={() => setCurrentPage('technology')}
                 >
                   {t.landing.documentation}
-                </a>
+                </button>
               </div>
             </div>
 
@@ -234,7 +232,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                 {([
                   {
                     feature: t.landing.comparison.permanentPrivacy,
-                    values: [t.landing.comparison.yes, t.landing.comparison.postRevealDev, t.landing.comparison.yes, t.landing.comparison.no, t.landing.comparison.partial],
+                    values: [t.landing.comparison.yes, t.landing.comparison.postReveal, t.landing.comparison.yes, t.landing.comparison.no, t.landing.comparison.partial],
                     icons: ['check_circle', 'error', 'check_circle', 'cancel', 'error'],
                     colors: ['text-emerald-500', 'text-amber-500', 'text-emerald-500', 'text-red-500', 'text-amber-500'],
                   },
@@ -367,8 +365,8 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                   {'});'}
                 </div>
                 <div className="mt-4">
-                  <span className="text-blue-400">await</span> sigil.<span className="text-yellow-400">connect</span>();<br />
-                  <span className="text-blue-400">const</span> receipt = <span className="text-blue-400">await</span> sigil.<span className="text-yellow-400">cast</span>(proposalId, vote);
+                  <span className="text-blue-400">await</span> sigil.<span className="text-yellow-400">signUp</span>();<br />
+                  <span className="text-blue-400">await</span> sigil.<span className="text-yellow-400">vote</span>(pollId, <span className="text-orange-400">'for'</span>, 3);
                 </div>
               </div>
             </div>

@@ -1,9 +1,14 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { Header, Footer, ToastContainer, LandingPage, MACIVotingDemo, ProposalsList, VoteSubmitted, TechnologyPage } from './components'
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
+import { Header, Footer, ToastContainer, LandingPage, TechnologyPage } from './components'
 import type { ToastItem } from './components'
-import { CreatePollForm } from './components/CreatePollForm'
 import { LanguageProvider } from './i18n'
 import type { Page } from './types'
+
+// Lazy-load heavy pages (only loaded when navigated to)
+const MACIVotingDemo = lazy(() => import('./components/MACIVotingDemo'))
+const ProposalsList = lazy(() => import('./components/ProposalsList'))
+const CreatePollForm = lazy(() => import('./components/CreatePollForm'))
+const VoteSubmitted = lazy(() => import('./components/VoteSubmitted'))
 
 interface VoteSubmittedData {
   pollId: number
@@ -70,37 +75,39 @@ function App() {
             <LandingPage setCurrentPage={setCurrentPage} />
           )}
 
-          {currentPage === 'proposals' && (
-            <ProposalsList onSelectPoll={handleSelectPoll} />
-          )}
-
-          {currentPage === 'proposal-detail' && selectedPollId !== null && (
-            <MACIVotingDemo
-              pollId={selectedPollId}
-              onBack={handleBackToList}
-              onVoteSubmitted={handleVoteSubmitted}
-            />
-          )}
-
-          {currentPage === 'create-proposal' && (
-            <CreatePollForm onPollCreated={handlePollCreated} onSelectPoll={handleSelectPoll} />
-          )}
-
           {currentPage === 'technology' && (
             <TechnologyPage setCurrentPage={setCurrentPage} />
           )}
 
-          {currentPage === 'vote-submitted' && voteSubmittedData && (
-            <VoteSubmitted
-              pollId={voteSubmittedData.pollId}
-              pollTitle={voteSubmittedData.pollTitle}
-              choice={voteSubmittedData.choice}
-              weight={voteSubmittedData.weight}
-              cost={voteSubmittedData.cost}
-              txHash={voteSubmittedData.txHash}
-              onBackToList={handleBackToList}
-            />
-          )}
+          <Suspense fallback={<div className="flex items-center justify-center min-h-[60vh]"><span className="material-symbols-outlined text-4xl animate-spin text-primary">progress_activity</span></div>}>
+            {currentPage === 'proposals' && (
+              <ProposalsList onSelectPoll={handleSelectPoll} />
+            )}
+
+            {currentPage === 'proposal-detail' && selectedPollId !== null && (
+              <MACIVotingDemo
+                pollId={selectedPollId}
+                onBack={handleBackToList}
+                onVoteSubmitted={handleVoteSubmitted}
+              />
+            )}
+
+            {currentPage === 'create-proposal' && (
+              <CreatePollForm onPollCreated={handlePollCreated} onSelectPoll={handleSelectPoll} />
+            )}
+
+            {currentPage === 'vote-submitted' && voteSubmittedData && (
+              <VoteSubmitted
+                pollId={voteSubmittedData.pollId}
+                pollTitle={voteSubmittedData.pollTitle}
+                choice={voteSubmittedData.choice}
+                weight={voteSubmittedData.weight}
+                cost={voteSubmittedData.cost}
+                txHash={voteSubmittedData.txHash}
+                onBackToList={handleBackToList}
+              />
+            )}
+          </Suspense>
         </main>
 
         <Footer />

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithProviders } from '../helpers/render'
-import { VoteSubmitted } from '../../src/components/VoteSubmitted'
+import VoteSubmitted from '../../src/components/VoteSubmitted'
 
 const defaultProps = {
   pollId: 0,

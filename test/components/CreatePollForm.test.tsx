@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen } from '@testing-library/react'
 import { renderWithProviders } from '../helpers/render'
-import { CreatePollForm } from '../../src/components/CreatePollForm'
+import CreatePollForm from '../../src/components/CreatePollForm'
 
 let mockAccountState = {
   address: undefined as `0x${string}` | undefined,

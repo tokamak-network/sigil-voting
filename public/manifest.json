@@ -1,0 +1,16 @@
+{
+  "name": "SIGIL — Private DAO Voting",
+  "short_name": "SIGIL",
+  "description": "Private, bribe-proof, quadratic voting for DAOs on Ethereum",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/assets/symbol.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

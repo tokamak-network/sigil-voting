@@ -28,6 +28,6 @@ vi.mock('../../src/components/CreatePollForm', () => ({
 describe('ProposalsList', () => {
   it('module loads without error', async () => {
     const mod = await import('../../src/components/ProposalsList')
-    expect(mod.ProposalsList).toBeDefined()
+    expect(mod.default).toBeDefined()
   })
 })
