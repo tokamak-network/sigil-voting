@@ -459,7 +459,7 @@ export function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: 
                 }
               }
             } catch (e) {
-              if (process.env.NODE_ENV === 'development') console.warn('[checkPhase] getLogs failed:', e)
+              if (import.meta.env.DEV) console.warn('[checkPhase] getLogs failed:', e)
             }
           }
         }

@@ -43,7 +43,7 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
   const voiceCredits = voiceCreditsRaw !== undefined ? Number(voiceCreditsRaw) : 0
 
   // Gate check: hide "New Proposal" if user doesn't meet token threshold
-  const { data: gateCount } = useReadContract({
+  const { data: _gateCount } = useReadContract({
     address: MACI_V2_ADDRESS as `0x${string}`,
     abi: MACI_ABI,
     functionName: 'proposalGateCount',
