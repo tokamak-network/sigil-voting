@@ -25,12 +25,12 @@ describe('LandingPage', () => {
     expect(screen.getByText('SIGIL')).toBeInTheDocument()
   })
 
-  it('renders 6 FAQ items', () => {
+  it('renders 8 FAQ items', () => {
     renderWithProviders(<LandingPage setCurrentPage={setCurrentPage} />)
     const faqButtons = screen.getAllByRole('button', { expanded: false })
-    // There should be at least 6 FAQ accordion items
+    // There should be 8 FAQ accordion items (6 original + server + ERC20)
     const faqItems = faqButtons.filter(btn => btn.getAttribute('aria-expanded') !== null)
-    expect(faqItems.length).toBe(6)
+    expect(faqItems.length).toBe(8)
   })
 
   it('toggles FAQ accordion on click', async () => {
