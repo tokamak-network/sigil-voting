@@ -78,19 +78,21 @@ async function main() {
 
   const maci = new ethers.Contract(config.maciAddress, E2E_MACI_ABI, signer);
 
-  // ── 3. Transfer TON tokens to voter (self) for voice credits ──
-  const tonAddress = configJson.v2?.tonToken;
-  if (tonAddress) {
+  // ── 3. Check token balance for voice credits ──
+  const tokenAddress = configJson.v2?.token || configJson.v2?.tonToken;
+  if (tokenAddress) {
     const erc20Abi = [
       'function balanceOf(address) view returns (uint256)',
       'function decimals() view returns (uint8)',
+      'function symbol() view returns (string)',
     ];
-    const ton = new ethers.Contract(tonAddress, erc20Abi, provider);
-    const tonBalance = await ton.balanceOf(signer.address);
-    const decimals = await ton.decimals();
-    log(`TON balance: ${ethers.formatUnits(tonBalance, decimals)} TON`);
-    if (tonBalance === 0n) {
-      log('⚠ WARNING: No TON tokens — voice credits will be 0, vote will be ignored!');
+    const tokenContract = new ethers.Contract(tokenAddress, erc20Abi, provider);
+    const tokenBalance = await tokenContract.balanceOf(signer.address);
+    const decimals = await tokenContract.decimals();
+    const symbol = await tokenContract.symbol();
+    log(`${symbol} balance: ${ethers.formatUnits(tokenBalance, decimals)} ${symbol}`);
+    if (tokenBalance === 0n) {
+      log(`⚠ WARNING: No ${symbol} tokens — voice credits will be 0, vote will be ignored!`);
     }
   }
 
@@ -117,7 +119,7 @@ async function main() {
   log(`Voter stateIndex: ${stateIndex}, voiceCredits: ${voiceCredits}`);
 
   if (voiceCredits === 0) {
-    log('✗ FATAL: voiceCredits = 0 — vote will be invalid. Need TON tokens!');
+    log('✗ FATAL: voiceCredits = 0 — vote will be invalid. Need tokens!');
     process.exit(1);
   }
 
