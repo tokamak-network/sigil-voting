@@ -8,8 +8,6 @@ import { LanguageSwitcher } from './LanguageSwitcher'
 import {
   MACI_V2_ADDRESS,
   MACI_ABI,
-  VOICE_CREDIT_PROXY_ADDRESS,
-  VOICE_CREDIT_PROXY_ABI,
 } from '../contractV2'
 
 const shortenAddress = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-4)
@@ -32,15 +30,6 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
 
   const isCorrectChain = chainId === sepolia.id
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
-
-  const { data: voiceCreditsRaw } = useReadContract({
-    address: VOICE_CREDIT_PROXY_ADDRESS,
-    abi: VOICE_CREDIT_PROXY_ABI,
-    functionName: 'getVoiceCredits',
-    args: address ? [address, '0x'] : undefined,
-    query: { enabled: isConfigured && VOICE_CREDIT_PROXY_ADDRESS !== ZERO_ADDRESS && !!address, refetchInterval: 30000 },
-  })
-  const voiceCredits = voiceCreditsRaw !== undefined ? Number(voiceCreditsRaw) : 0
 
   // Gate check: hide "New Proposal" if user doesn't meet token threshold
   const { data: _gateCount } = useReadContract({
@@ -134,33 +123,15 @@ export function Header({ currentPage, setCurrentPage }: HeaderProps) {
         <div className="flex items-center gap-2 md:gap-4">
           <LanguageSwitcher />
 
-          {/* Mobile balance (connected) */}
-          {isConnected && isCorrectChain && (
-            <span className="lg:hidden text-xs font-display font-bold text-slate-600">
-              {voiceCredits.toLocaleString()} {t.voteForm.credits}
-            </span>
-          )}
-
-          {/* Balance + New Proposal (connected, desktop) */}
-          {isConnected && isCorrectChain && (
-            <div className="hidden lg:flex items-center border-2 border-border-light dark:border-border-dark bg-white p-2 gap-4">
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-slate-500 uppercase leading-none">{t.header.balance}</span>
-                <span className="text-sm font-display font-bold">{voiceCredits.toLocaleString()} {t.voteForm.credits}</span>
-              </div>
-              {showNewProposal && (
-                <>
-                  <div className="h-8 w-[1px] bg-slate-200"></div>
-                  <button
-                    onClick={() => setCurrentPage('create-proposal')}
-                    className="bg-black text-white px-4 py-2 text-xs font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-sm">add</span>
-                    {t.header.newProposal}
-                  </button>
-                </>
-              )}
-            </div>
+          {/* New Proposal button (connected, desktop) */}
+          {isConnected && isCorrectChain && showNewProposal && (
+            <button
+              onClick={() => setCurrentPage('create-proposal')}
+              className="hidden lg:flex bg-black text-white px-4 py-2 text-xs font-bold items-center gap-2 hover:bg-slate-800 transition-colors border-2 border-black"
+            >
+              <span className="material-symbols-outlined text-sm">add</span>
+              {t.header.newProposal}
+            </button>
           )}
 
           {/* Wrong chain warning */}
