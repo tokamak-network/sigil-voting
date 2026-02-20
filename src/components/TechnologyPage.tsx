@@ -516,13 +516,13 @@ export function TechnologyPage({ setCurrentPage }: TechnologyPageProps) {
               GitHub
             </a>
             <a
-              href="https://www.npmjs.com/package/@sigil/sdk"
+              href="https://www.npmjs.com/package/sigil-sdk"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-primary transition-colors"
             >
               <span className="material-symbols-outlined text-base">package_2</span>
-              NPM — @sigil/sdk
+              NPM — sigil-sdk
             </a>
           </div>
         </div>
