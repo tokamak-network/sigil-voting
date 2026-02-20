@@ -166,7 +166,9 @@ export function TallyingStatus({
             </p>
             <div className="mt-6 flex items-center gap-4">
               <div className="h-[2px] flex-1 bg-primary/30"></div>
-              <span className="material-symbols-outlined text-primary text-sm">verified_user</span>
+              <span className="text-xs font-mono font-bold text-primary uppercase tracking-widest">
+                {t.tallying.zkEnvironment}
+              </span>
             </div>
           </div>
         </div>
@@ -234,7 +236,7 @@ export function TallyingStatus({
               </div>
             </div>
 
-            {/* Estimated Completion */}
+            {/* Estimated Remaining */}
             <div className="bg-slate-50 p-8 border-2 border-black" style={{ boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)' }}>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
                 {t.tallying.estimatedRemaining}
@@ -243,9 +245,9 @@ export function TallyingStatus({
                 <span className={`text-5xl font-mono font-bold leading-none ${isOverdue ? 'text-amber-500' : 'text-primary'}`}>
                   {isOverdue
                     ? t.tallying.processing
-                    : `~${new Date(Date.now() + remainingSec_raw * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })}`}
+                    : `~${Math.floor(remainingSec_raw / 60)}:${String(Math.floor(remainingSec_raw % 60)).padStart(2, '0')}`}
                 </span>
-                <span className="text-xs font-bold text-slate-400">UTC</span>
+                {!isOverdue && <span className="text-xs font-bold text-slate-400">{t.tallying.remaining}</span>}
               </div>
             </div>
 

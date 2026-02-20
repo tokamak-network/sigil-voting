@@ -56,12 +56,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             <div className="lg:col-span-5 relative">
               <div className="border-2 border-border-light dark:border-border-dark p-8 bg-white dark:bg-black/40 backdrop-blur-sm relative z-10">
                 <div className="flex justify-between items-center mb-6">
-                  <span className="font-display text-xs font-bold opacity-50 uppercase">Verification Engine</span>
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-red-500"></div>
-                    <div className="w-2 h-2 bg-yellow-500"></div>
-                    <div className="w-2 h-2 bg-green-500"></div>
-                  </div>
+                  <span className="font-display text-xs font-bold opacity-50 uppercase">{t.landing.heroVersion}</span>
                 </div>
                 <div className="space-y-4">
                   <div className="p-4 border-2 border-primary bg-primary/5 flex items-center justify-between">
@@ -69,23 +64,21 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                       <span className="material-symbols-outlined text-primary">verified_user</span>
                       <span className="font-display text-sm font-bold">{t.landing.zeroExposure.title}</span>
                     </div>
-                    <span className="font-display text-xs text-primary">ACTIVE</span>
+                    <span className="material-symbols-outlined text-primary text-sm">check_circle</span>
                   </div>
                   <div className="p-4 border-2 border-border-light dark:border-border-dark flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <span className="material-symbols-outlined">hub</span>
                       <span className="font-display text-sm font-bold">{t.landing.maciSecured.title}</span>
                     </div>
-                    <span className="font-display text-xs opacity-50">SYNCED</span>
+                    <span className="material-symbols-outlined text-primary text-sm">check_circle</span>
                   </div>
-                  <div className="p-4 border-2 border-border-light dark:border-border-dark">
-                    <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 mb-2 overflow-hidden">
-                      <div className="bg-primary h-full w-full animate-pulse"></div>
+                  <div className="p-4 border-2 border-border-light dark:border-border-dark flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined">token</span>
+                      <span className="font-display text-sm font-bold">Ethereum Sepolia</span>
                     </div>
-                    <div className="flex justify-between font-display text-xs">
-                      <span>PROVING STATE</span>
-                      <span className="text-primary">READY</span>
-                    </div>
+                    <span className="material-symbols-outlined text-primary text-sm">check_circle</span>
                   </div>
                 </div>
               </div>
@@ -150,9 +143,9 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             {[
-              { num: '01', title: t.landing.lifecycle.step1.title, desc: t.landing.lifecycle.step1.desc, icon: 'lock', code: 'sharedKey = ECDH(myKey, coordPub)\ncipher = Poseidon.encrypt(vote, sharedKey)', color: 'text-primary' },
-              { num: '02', title: t.landing.lifecycle.step2.title, desc: t.landing.lifecycle.step2.desc, icon: 'shield', code: 'keyChange(newKey)  // looks identical\nrevote(newKey, trueChoice)', color: 'text-emerald-500' },
-              { num: '03', title: t.landing.lifecycle.step3.title, desc: t.landing.lifecycle.step3.desc, icon: 'verified', code: 'proof = Groth16.prove(tally, msgs)\ncontract.verify(proof) // on-chain', color: 'text-amber-500' },
+              { num: '01', title: t.landing.lifecycle.step1.title, desc: t.landing.lifecycle.step1.desc, icon: 'lock', color: 'text-primary' },
+              { num: '02', title: t.landing.lifecycle.step2.title, desc: t.landing.lifecycle.step2.desc, icon: 'shield', color: 'text-emerald-500' },
+              { num: '03', title: t.landing.lifecycle.step3.title, desc: t.landing.lifecycle.step3.desc, icon: 'verified', color: 'text-amber-500' },
             ].map((step, i) => (
               <div key={i} className="relative">
                 <div className="font-display text-8xl font-black text-slate-200 dark:text-slate-800 absolute -top-12 -left-4 -z-0">{step.num}</div>
@@ -162,9 +155,6 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                     <h4 className="font-display text-xl font-bold uppercase">{step.title}</h4>
                   </div>
                   <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{step.desc}</p>
-                  <div className="mt-6 p-4 border-2 border-border-light dark:border-border-dark bg-white dark:bg-black font-mono text-xs overflow-hidden whitespace-pre-wrap">
-                    <code className={step.color}>{step.code}</code>
-                  </div>
                 </div>
               </div>
             ))}
