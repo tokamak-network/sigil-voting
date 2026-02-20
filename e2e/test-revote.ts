@@ -51,7 +51,7 @@ function loadConfig() {
     vkRegistry: v2.vkRegistry,
     coordPubKeyX: BigInt(v2.coordinatorPubKeyX),
     coordPubKeyY: BigInt(v2.coordinatorPubKeyY),
-    tonToken: v2.tonToken,
+    token: v2.token || v2.tonToken,
   };
 }
 
@@ -229,14 +229,14 @@ async function main() {
     log('  Funded with 0.03 ETH');
   }
 
-  // TON tokens
+  // Voice credit tokens
   const ERC20_ABI = ['function transfer(address to, uint256 amount) returns (bool)', 'function balanceOf(address) view returns (uint256)'];
-  const tonContract = new ethers.Contract(config.tonToken, ERC20_ABI, deployer);
-  const voterTonBal = await tonContract.balanceOf(voter.address);
-  if (voterTonBal < ethers.parseEther('10')) {
-    const tokenTx = await tonContract.transfer(voter.address, ethers.parseEther('100'));
+  const tokenContract = new ethers.Contract(config.token, ERC20_ABI, deployer);
+  const voterTokenBal = await tokenContract.balanceOf(voter.address);
+  if (voterTokenBal < ethers.parseEther('10')) {
+    const tokenTx = await tokenContract.transfer(voter.address, ethers.parseEther('100'));
     await tokenTx.wait();
-    log('  Funded with 100 TON');
+    log('  Funded with 100 tokens');
   }
 
   // EdDSA keypair

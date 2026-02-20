@@ -63,7 +63,7 @@ interface Config {
   mpVerifier: string;
   tallyVerifier: string;
   vkRegistry: string;
-  tonToken: string;
+  token: string;
   coordPubKeyX: bigint;
   coordPubKeyY: bigint;
 }
@@ -99,7 +99,7 @@ function loadE2EConfig(): Config {
     mpVerifier: v2.msgProcessorVerifier,
     tallyVerifier: v2.tallyVerifier,
     vkRegistry: v2.vkRegistry,
-    tonToken: v2.tonToken,
+    token: v2.token || v2.tonToken,
     coordPubKeyX: BigInt(v2.coordinatorPubKeyX),
     coordPubKeyY: BigInt(v2.coordinatorPubKeyY),
   };
@@ -188,12 +188,12 @@ async function main() {
   log(`  ETH balance: ${ethBalNum.toFixed(4)} ETH`);
   if (ethBalNum < 0.3) fail('Phase 0', `Insufficient ETH: ${ethBalNum} (need >= 0.3)`);
 
-  // Check TON balance
-  const ton = new ethers.Contract(config.tonToken, ERC20_ABI, deployer);
-  const tonBal = await ton.balanceOf(deployer.address);
-  const tonBalNum = parseFloat(ethers.formatEther(tonBal));
-  log(`  TON balance: ${tonBalNum.toFixed(2)} TON`);
-  if (tonBalNum < 300) fail('Phase 0', `Insufficient TON: ${tonBalNum} (need >= 300)`);
+  // Check token balance
+  const tokenContract = new ethers.Contract(config.token, ERC20_ABI, deployer);
+  const tokenBal = await tokenContract.balanceOf(deployer.address);
+  const tokenBalNum = parseFloat(ethers.formatEther(tokenBal));
+  log(`  Token balance: ${tokenBalNum.toFixed(2)}`);
+  if (tokenBalNum < 300) fail('Phase 0', `Insufficient tokens: ${tokenBalNum} (need >= 300)`);
 
   pass('Phase 0: Pre-checks');
 
@@ -313,12 +313,12 @@ async function main() {
       log(`  ${walletNames[i]}: already has ${ethers.formatEther(bal)} ETH`);
     }
 
-    const tonBalance = await ton.balanceOf(wallets[i].address);
-    if (tonBalance < ethers.parseEther('50')) {
-      const tx = await ton.transfer(wallets[i].address, ethers.parseEther('100'));
-      await waitForTx(tx, `Fund ${walletNames[i]} TON`);
+    const tokenBalance = await tokenContract.balanceOf(wallets[i].address);
+    if (tokenBalance < ethers.parseEther('50')) {
+      const tx = await tokenContract.transfer(wallets[i].address, ethers.parseEther('100'));
+      await waitForTx(tx, `Fund ${walletNames[i]} tokens`);
     } else {
-      log(`  ${walletNames[i]}: already has ${ethers.formatEther(tonBalance)} TON`);
+      log(`  ${walletNames[i]}: already has ${ethers.formatEther(tokenBalance)} tokens`);
     }
   }
 
