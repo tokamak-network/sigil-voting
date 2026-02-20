@@ -80,7 +80,8 @@ export class SigilClient {
   private signer?: ethers.Signer;
   private maci: ethers.Contract;
   private maciAddress: string;
-  private coordinatorPubKey?: [bigint, bigint];
+  private coordinatorPubKeyOverride?: [bigint, bigint];
+  private coordinatorPubKeyCache = new Map<number, [bigint, bigint]>();
   private keyManager: KeyManager;
   private storageKeys: StorageKeys;
   private storage: SigilStorage;
@@ -89,7 +90,7 @@ export class SigilClient {
     this.provider = config.provider;
     this.signer = config.signer;
     this.maciAddress = config.maciAddress;
-    this.coordinatorPubKey = config.coordinatorPubKey;
+    this.coordinatorPubKeyOverride = config.coordinatorPubKey;
     this.maci = new ethers.Contract(config.maciAddress, MACI_ABI, config.signer ?? config.provider);
     this.storage = config.storage ?? createDefaultStorage();
     this.storageKeys = createStorageKeys(config.maciAddress);
@@ -435,7 +436,10 @@ export class SigilClient {
    * Get coordinator public key, fetching from chain if not cached.
    */
   private async getCoordinatorPubKey(pollId: number): Promise<[bigint, bigint]> {
-    if (this.coordinatorPubKey) return this.coordinatorPubKey;
+    if (this.coordinatorPubKeyOverride) return this.coordinatorPubKeyOverride;
+
+    const cached = this.coordinatorPubKeyCache.get(pollId);
+    if (cached) return cached;
 
     const pollAddr = await this.maci.polls(pollId);
     const poll = new ethers.Contract(pollAddr, POLL_ABI, this.provider);
@@ -444,8 +448,9 @@ export class SigilClient {
       poll.coordinatorPubKeyY(),
     ]);
 
-    this.coordinatorPubKey = [BigInt(x), BigInt(y)];
-    return this.coordinatorPubKey;
+    const key: [bigint, bigint] = [BigInt(x), BigInt(y)];
+    this.coordinatorPubKeyCache.set(pollId, key);
+    return key;
   }
 
   /** Access the internal key manager (for advanced use) */

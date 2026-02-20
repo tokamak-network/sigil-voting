@@ -20,6 +20,8 @@ export const SNARK_SCALAR_FIELD =
 /**
  * Pack vote command fields into a single bigint using bit-packing.
  */
+const MAX_50BIT = (1n << 50n) - 1n;
+
 export function packCommand(
   stateIndex: bigint,
   voteOptionIndex: bigint,
@@ -27,6 +29,14 @@ export function packCommand(
   nonce: bigint,
   pollId: bigint,
 ): bigint {
+  if (stateIndex > MAX_50BIT || voteOptionIndex > MAX_50BIT ||
+      newVoteWeight > MAX_50BIT || nonce > MAX_50BIT || pollId > MAX_50BIT) {
+    throw new Error('packCommand: field value exceeds 50-bit maximum');
+  }
+  if (stateIndex < 0n || voteOptionIndex < 0n ||
+      newVoteWeight < 0n || nonce < 0n || pollId < 0n) {
+    throw new Error('packCommand: field value must be non-negative');
+  }
   return (
     stateIndex |
     (voteOptionIndex << 50n) |

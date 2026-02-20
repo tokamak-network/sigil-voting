@@ -1,12 +1,12 @@
 /**
- * @sigil/sdk/widget — Embeddable voting widget (framework-agnostic)
+ * sigil-sdk/widget — Embeddable voting widget (framework-agnostic)
  *
  * Renders a complete voting UI using pure DOM manipulation.
  * No React or other framework dependency required.
  *
  * Usage (HTML embed):
  *   <script type="module">
- *     import { mountSigilWidget } from '@sigil/sdk/widget';
+ *     import { mountSigilWidget } from 'sigil-sdk/widget';
  *     mountSigilWidget({
  *       maciAddress: '0x26428484F192D1dA677111A47615378Bc889d441',
  *       pollId: 0,
@@ -293,7 +293,14 @@ export function mountSigilWidget(config: WidgetConfig): WidgetHandle {
       marginTop: '16px', paddingTop: '12px', borderTop: `1px solid ${s.border}`,
       fontSize: '11px', color: s.textMuted, textAlign: 'center',
     });
-    footer.innerHTML = `<span>${t('privacyNote')}</span> &middot; <span>${t('antiCollusionNote')}</span>`;
+    const privSpan = document.createElement('span');
+    privSpan.textContent = t('privacyNote');
+    const dot = document.createTextNode(' \u00B7 ');
+    const antiSpan = document.createElement('span');
+    antiSpan.textContent = t('antiCollusionNote');
+    footer.appendChild(privSpan);
+    footer.appendChild(dot);
+    footer.appendChild(antiSpan);
     root.appendChild(footer);
   }
 
@@ -606,7 +613,7 @@ export function mountSigilWidget(config: WidgetConfig): WidgetHandle {
  * Usage:
  *   <div data-sigil-maci="0x..." data-sigil-poll="0" data-sigil-theme="dark"></div>
  *   <script type="module">
- *     import { autoMount } from '@sigil/sdk/widget';
+ *     import { autoMount } from 'sigil-sdk/widget';
  *     autoMount();
  *   </script>
  */

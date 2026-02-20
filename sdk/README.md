@@ -1,4 +1,4 @@
-# @sigil/sdk
+# sigil-sdk
 
 Private, fair, collusion-resistant governance SDK for DAOs.
 
@@ -7,7 +7,7 @@ Built on Ethereum with ZK-SNARKs (Groth16), MACI anti-collusion, and quadratic v
 ## Quick Start
 
 ```ts
-import { SigilClient } from '@sigil/sdk';
+import { SigilClient } from 'sigil-sdk';
 import { ethers } from 'ethers';
 
 const provider = new ethers.JsonRpcProvider('https://sepolia.infura.io/v3/YOUR_KEY');
@@ -102,7 +102,7 @@ import {
   buildEncryptedVoteMessage, buildEncryptedKeyChangeMessage,
   // Storage
   MemoryStorage, KeyManager, createStorageKeys,
-} from '@sigil/sdk';
+} from 'sigil-sdk';
 ```
 
 ## Error Handling
@@ -122,7 +122,7 @@ try {
 ## Custom Storage (Node.js)
 
 ```ts
-import { SigilClient, MemoryStorage } from '@sigil/sdk';
+import { SigilClient, MemoryStorage } from 'sigil-sdk';
 
 const sigil = new SigilClient({
   maciAddress: '0x...',

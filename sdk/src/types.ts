@@ -1,5 +1,5 @@
 /**
- * Core types for @sigil/sdk
+ * Core types for sigil-sdk
  */
 
 export type VoteChoice = 'for' | 'against' | 'abstain';

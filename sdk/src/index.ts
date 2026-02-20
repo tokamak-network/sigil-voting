@@ -1,9 +1,9 @@
 /**
- * @sigil/sdk — Private, Fair, Collusion-Resistant Governance
+ * sigil-sdk — Private, Fair, Collusion-Resistant Governance
  *
  * Integrate SIGIL voting into any DAO in 3 lines:
  *
- *   import { SigilClient } from '@sigil/sdk';
+ *   import { SigilClient } from 'sigil-sdk';
  *   const sigil = new SigilClient({ maciAddress, provider, signer });
  *   await sigil.vote(pollId, 'for', 3); // 3 votes = 9 credits (quadratic)
  *
