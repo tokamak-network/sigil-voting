@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Page } from '../types'
+import config from '../config.json'
 import { useTranslation } from '../i18n'
 
 interface LandingPageProps {
@@ -21,6 +22,19 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
   const advantageTotal = advantageItems.length
   const mdCols = 2
   const lgCols = 3
+  const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+  const network = (config as any).network || 'sepolia'
+  const chainConfig = (network === 'sepolia' ? (config as any).v2 : (config as any).prod) || (config as any).v2 || {}
+  const explorerMap: Record<string, string> = {
+    sepolia: 'https://sepolia.etherscan.io/address/',
+    mainnet: 'https://etherscan.io/address/',
+  }
+  const explorerBase = explorerMap[network as keyof typeof explorerMap] || null
+  const contractItems = [
+    { label: t.landing.contracts.maci, addr: chainConfig.maci },
+    { label: t.landing.contracts.accQueue, addr: chainConfig.accQueue },
+    { label: t.landing.contracts.token, addr: chainConfig.token },
+  ].filter(c => typeof c.addr === 'string' && c.addr !== ZERO_ADDRESS)
   const titleLines = t.landing.title.split('\n')
   const [openFaq, setOpenFaq] = useState<number | null>(null)
 
@@ -404,23 +418,21 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             <p className="text-sm text-slate-600 dark:text-slate-400">{t.landing.contracts.subtitle}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-2 border-border-light dark:border-border-dark max-w-4xl mx-auto">
-            {([
-              { label: t.landing.contracts.maci, addr: '0x26428484F192D1dA677111A47615378Bc889d441' },
-              { label: t.landing.contracts.accQueue, addr: '0x5321607ABc8171397Fac7c77FbB567847AF4d2ff' },
-              { label: t.landing.contracts.token, addr: '0xa30fe40285B8f5c0457DbC3B7C8A280373c40044' },
-            ]).map((c, i) => (
+            {contractItems.map((c, i) => (
               <div key={i} className={`p-6 ${i < 2 ? 'md:border-r-2 border-b-2 md:border-b-0' : ''} border-border-light dark:border-border-dark`}>
                 <p className="font-display text-xs font-bold uppercase tracking-widest text-primary mb-2">{c.label}</p>
                 <p className="font-mono text-xs break-all opacity-60 mb-3">{c.addr}</p>
-                <a
-                  href={`https://sepolia.etherscan.io/address/${c.addr}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs font-display font-bold text-primary hover:underline uppercase"
-                >
-                  {t.landing.contracts.viewOn}
-                  <span className="material-symbols-outlined text-sm">open_in_new</span>
-                </a>
+                {explorerBase && (
+                  <a
+                    href={`${explorerBase}${c.addr}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-display font-bold text-primary hover:underline uppercase"
+                  >
+                    {t.landing.contracts.viewOn}
+                    <span className="material-symbols-outlined text-sm">open_in_new</span>
+                  </a>
+                )}
               </div>
             ))}
           </div>
