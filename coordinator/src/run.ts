@@ -90,7 +90,8 @@ export function loadConfig(): Config {
   if (!coordKey) throw new Error('COORDINATOR_PRIVATE_KEY not set in .env');
 
   const configJson = JSON.parse(readFileSync(resolve(PROJECT_ROOT, 'src/config.json'), 'utf8'));
-  const maciAddress = IS_PROD ? configJson.prod?.maci : configJson.v2?.maci;
+  // MACI_ADDRESS env overrides config.json (allows prod circuits with v2 contract)
+  const maciAddress = get('MACI_ADDRESS') || (IS_PROD ? configJson.prod?.maci : configJson.v2?.maci);
   if (!maciAddress) throw new Error(`MACI address not found in config.json (mode=${CIRCUIT_MODE})`);
 
   return {
