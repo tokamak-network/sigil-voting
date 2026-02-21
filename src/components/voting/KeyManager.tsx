@@ -88,7 +88,7 @@ export function KeyManager({
       } else {
         // Derive from wallet signature (same as signUp flow)
         const MACI_KEY_MESSAGE = 'SIGIL Voting Key v1';
-        const provider = (window as any).ethereum;
+        const provider = (window as unknown as { ethereum?: { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum;
         if (!provider) throw new Error('No wallet provider');
         const sig: string = await provider.request({
           method: 'personal_sign',
@@ -203,7 +203,7 @@ export function KeyManager({
     } finally {
       setIsChanging(false);
     }
-  }, [address, pollId, coordinatorPubKeyX, coordinatorPubKeyY, pollAddress]);
+  }, [address, pollId, coordinatorPubKeyX, coordinatorPubKeyY, pollAddress, publicClient, t.keyManager.error]);
 
   return (
     <div className="border-t-2 border-slate-200 pt-6">

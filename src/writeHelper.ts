@@ -6,6 +6,10 @@
 import { createWalletClient, custom, type Abi } from 'viem'
 import { sepolia } from 'viem/chains'
 
+type EthereumProvider = {
+  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>
+}
+
 export async function writeContract<TAbi extends Abi>(params: {
   address: `0x${string}`
   abi: TAbi
@@ -14,11 +18,11 @@ export async function writeContract<TAbi extends Abi>(params: {
   gas?: bigint
   account: `0x${string}`
 }): Promise<`0x${string}`> {
-  const provider = (window as any).ethereum
+  const provider = (window as unknown as { ethereum?: EthereumProvider }).ethereum
   if (!provider) throw new Error('No wallet provider found. Please install MetaMask or another wallet.')
 
   // Verify user is on Sepolia before sending transaction
-  const chainId = await provider.request({ method: 'eth_chainId' })
+  const chainId = (await provider.request({ method: 'eth_chainId' })) as string
   if (parseInt(chainId, 16) !== sepolia.id) {
     try {
       await provider.request({
@@ -42,7 +46,7 @@ export async function writeContract<TAbi extends Abi>(params: {
     functionName: params.functionName,
     args: params.args,
     gas: params.gas,
-  } as any)
+  } as Parameters<typeof client.writeContract>[0])
 
   return hash
 }

@@ -12,7 +12,8 @@ export default function CreatePollPage() {
   const router = useRouter()
 
   const handlePollCreated = useCallback(
-    (pollId: number, _pollAddress: `0x${string}`) => {
+    (pollId: number, pollAddress: `0x${string}`) => {
+      void pollAddress
       router.push(`/vote/${pollId}`)
     },
     [router]

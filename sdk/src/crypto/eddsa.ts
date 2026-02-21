@@ -8,9 +8,7 @@
 // @ts-expect-error - circomlibjs doesn't have types
 import { buildEddsa, buildBabyjub } from 'circomlibjs'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let eddsaInstance: any = null
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let babyjubInstance: any = null
 let initPromise: Promise<void> | null = null
 

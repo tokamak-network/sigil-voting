@@ -29,7 +29,7 @@ export function Header() {
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
 
   // Gate check: hide "New Proposal" if user doesn't meet token threshold
-  const { data: _gateCount } = useReadContract({
+  useReadContract({
     address: MACI_V2_ADDRESS as `0x${string}`,
     abi: MACI_ABI,
     functionName: 'proposalGateCount',
@@ -67,7 +67,8 @@ export function Header() {
             params: [{ chainId: '0xaa36a7' }],
           })
         } catch (switchError: unknown) {
-          if (switchError && typeof switchError === 'object' && 'code' in switchError && (switchError as any).code === 4902) {
+          const err = switchError as { code?: number } | null
+          if (err && typeof err === 'object' && err.code === 4902) {
             await window.ethereum.request({
               method: 'wallet_addEthereumChain',
               params: [{

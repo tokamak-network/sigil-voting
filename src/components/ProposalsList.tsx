@@ -240,7 +240,7 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     }
 
     loadPolls()
-  }, [nextPollId, publicClient, address, refreshKey])
+  }, [nextPollId, publicClient, address, refreshKey, polls.length])
 
   const FAIL_THRESHOLD_S = 2 * 60 * 60 // 2 hours after voting ends (matches MACIVotingDemo)
 

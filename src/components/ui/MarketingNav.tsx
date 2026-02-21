@@ -61,7 +61,8 @@ export function MarketingNav() {
             params: [{ chainId: '0xaa36a7' }],
           })
         } catch (switchError: unknown) {
-          if (switchError && typeof switchError === 'object' && 'code' in switchError && (switchError as any).code === 4902) {
+          const err = switchError as { code?: number } | null
+          if (err && typeof err === 'object' && err.code === 4902) {
             await window.ethereum.request({
               method: 'wallet_addEthereumChain',
               params: [{

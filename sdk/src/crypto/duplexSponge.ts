@@ -15,7 +15,6 @@
 // @ts-expect-error - circomlibjs doesn't have types
 import { buildPoseidon } from 'circomlibjs'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let poseidonInstance: any = null
 let initPromise: Promise<void> | null = null
 
@@ -33,7 +32,6 @@ const SNARK_FIELD_SIZE =
 
 const TWO128 = 2n ** 128n
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function poseidonPerm(poseidon: any, state: bigint[]): bigint[] {
   const F = poseidon.F
   const t = state.length

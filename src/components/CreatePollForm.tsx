@@ -38,7 +38,7 @@ export default function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePo
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
   const { t } = useTranslation()
-  const DURATION_PRESETS = getDurationPresets(t)
+  const DURATION_PRESETS = useMemo(() => getDurationPresets(t), [t])
 
   // Token gate eligibility check
   const { data: canCreate, isLoading: checkingEligibility } = useReadContract({
@@ -126,7 +126,12 @@ export default function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePo
             const { parseEventLogs } = await import('viem')
             const events = parseEventLogs({ abi: [deployPollEvent], logs: [log] })
             if (events.length > 0) {
-              const { pollId: newPollIdBig, pollAddr, messageProcessorAddr, tallyAddr } = events[0].args as any
+              const { pollId: newPollIdBig, pollAddr, messageProcessorAddr, tallyAddr } = events[0].args as {
+                pollId: bigint
+                pollAddr: `0x${string}`
+                messageProcessorAddr: `0x${string}`
+                tallyAddr: `0x${string}`
+              }
               const newPollId = Number(newPollIdBig)
 
               localStorage.setItem('maci-last-poll-id', newPollId.toString())
@@ -209,7 +214,7 @@ export default function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePo
     if (found && found.minutes > 0) {
       setDurationMinutes(found.minutes)
     }
-  }, [])
+  }, [DURATION_PRESETS])
 
   const formattedDuration = useMemo(() => {
     if (durationMinutes < 60) return `${durationMinutes}min`

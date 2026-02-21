@@ -10,7 +10,6 @@
 // @ts-expect-error - circomlibjs doesn't have types
 import { buildBabyjub } from 'circomlibjs'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let babyjubInstance: any = null
 let initPromise: Promise<void> | null = null
 

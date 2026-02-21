@@ -18,6 +18,8 @@ export default defineConfig([
     'out',
     'playwright-report',
     'test-results',
+    'sdk/dist',
+    'next-env.d.ts',
   ]),
   {
     files: ['**/*.{ts,tsx}'],
@@ -48,6 +50,32 @@ export default defineConfig([
     files: ['src/i18n/context.tsx'],
     rules: {
       'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    files: ['app/**/*.{ts,tsx}', '.next/types/**/*.ts'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    files: ['coordinator/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+    },
+  },
+  {
+    files: ['sdk/**/*.ts', 'sdk/**/*.tsx'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+    },
+  },
+  {
+    files: ['next-env.d.ts'],
+    rules: {
+      '@typescript-eslint/triple-slash-reference': 'off',
     },
   },
 ])

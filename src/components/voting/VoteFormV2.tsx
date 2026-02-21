@@ -758,7 +758,7 @@ async function getOrCreateMaciKeypair(
 
   // Fallback: derive from wallet signature (deterministic, recoverable)
   const MACI_KEY_MESSAGE = 'SIGIL Voting Key v1';
-  const provider = (window as any).ethereum;
+  const provider = (window as unknown as { ethereum?: { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum;
   if (!provider) throw new Error('No wallet provider');
   const sig: string = await provider.request({
     method: 'personal_sign',

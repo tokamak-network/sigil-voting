@@ -5,15 +5,15 @@
  * No reveal functions. Encrypted messages only.
  */
 
-import config from './config.json';
+import { config } from './config';
 
 // V2 Contract addresses (loaded from config.json)
-const v2 = (config as any).v2 || {};
-export const MACI_DEPLOY_BLOCK = BigInt((config as any).deployBlock || 0);
+const v2 = config.v2 || {};
+export const MACI_DEPLOY_BLOCK = BigInt(config.deployBlock || 0);
 export const MACI_V2_ADDRESS = (v2.maci || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 /** @deprecated Use useVoiceCreditToken() hook instead — reads token address from voiceCreditProxy on-chain */
 export const TOKEN_ADDRESS = (v2.token || v2.tonToken || '0x0000000000000000000000000000000000000000') as `0x${string}`;
-export const DEPLOYER_ADDRESS = ((config as any).deployer || '0x0000000000000000000000000000000000000000') as `0x${string}`;
+export const DEPLOYER_ADDRESS = (config.deployer || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 export const VOICE_CREDIT_PROXY_ADDRESS = (v2.voiceCreditProxy || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 export const MSG_PROCESSOR_VERIFIER_ADDRESS = (v2.msgProcessorVerifier || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 export const TALLY_VERIFIER_ADDRESS = (v2.tallyVerifier || '0x0000000000000000000000000000000000000000') as `0x${string}`;

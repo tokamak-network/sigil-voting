@@ -100,10 +100,22 @@ export function ExecutionPanel({ pollId }: ExecutionPanelProps) {
     })
   }
 
+  type ExecutionData = readonly [
+    `0x${string}`,
+    `0x${string}`,
+    `0x${string}`,
+    `0x${string}`,
+    bigint,
+    bigint,
+    bigint,
+    number
+  ]
+
   // Parse execution data
-  const scheduledAt = executionData ? Number((executionData as any)[6]) : 0
-  const timelockDelay = executionData ? Number((executionData as any)[4]) : 0
-  const target = executionData ? (executionData as any)[2] as string : ''
+  const data = executionData as ExecutionData | undefined
+  const scheduledAt = data ? Number(data[6]) : 0
+  const timelockDelay = data ? Number(data[4]) : 0
+  const target = data ? data[2] : ''
 
   const stateLabel = {
     registered: t.governance.execution.registered,

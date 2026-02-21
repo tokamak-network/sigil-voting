@@ -14,7 +14,7 @@ import { ethers } from 'ethers';
 import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-// @ts-expect-error
+// @ts-expect-error circomlibjs is ESM-only in this environment
 import { buildBabyjub, buildEddsa, buildPoseidon } from 'circomlibjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -287,8 +287,8 @@ async function main() {
   log('Step 5: Waiting for voting period to end...');
   const [deployTime, duration] = await poll.getDeployTimeAndDuration();
   const endTime = Number(deployTime) + Number(duration);
-  let now = Math.floor(Date.now() / 1000);
-  let remaining = endTime - now;
+  const now = Math.floor(Date.now() / 1000);
+  const remaining = endTime - now;
 
   if (remaining > 0) {
     log(`  ${remaining}s remaining... waiting`);

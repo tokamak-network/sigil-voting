@@ -51,7 +51,7 @@ async function deriveKeyFromWallet(address: string, cm: CryptoModules): Promise<
   if (cached) return BigInt(cached)
 
   // Request wallet signature (MetaMask popup)
-  const provider = (window as any).ethereum
+  const provider = (window as unknown as { ethereum?: { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum
   if (!provider) throw new Error('No wallet provider')
   const sig: string = await provider.request({
     method: 'personal_sign',
@@ -97,7 +97,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
   const [messageProcessorAddress, setMessageProcessorAddress] = useState<`0x${string}` | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
-  const [_isSigningUp, setIsSigningUp] = useState(false)
+  const [, setIsSigningUp] = useState(false)
   const [isLoadingPoll, setIsLoadingPoll] = useState(true)
   const [pollTitle, setPollTitle] = useState<string | null>(null)
   const [pollDescription, setPollDescription] = useState<string | null>(null)
@@ -184,7 +184,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
             },
             MACI_DEPLOY_BLOCK,
             'latest',
-          ).catch(() => [] as any[]),
+          ).catch(() => []),
         ])
 
         const pollAddr = addr as `0x${string}`
@@ -242,7 +242,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
     }
 
     loadPoll()
-  }, [propPollId, publicClient, isConfigured])
+  }, [propPollId, publicClient, isConfigured, tallyAddress, messageProcessorAddress])
 
   // Read coordinator keys from Poll contract (on-chain, not hardcoded)
   const { data: coordPubKeyXRaw } = useReadContract({
@@ -258,11 +258,11 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
     query: { enabled: hasPoll },
   })
 
-  const coordPubKeyX = coordPubKeyXRaw ? BigInt(coordPubKeyXRaw as any) : DEFAULT_COORD_PUB_KEY_X
-  const coordPubKeyY = coordPubKeyYRaw ? BigInt(coordPubKeyYRaw as any) : DEFAULT_COORD_PUB_KEY_Y
+  const coordPubKeyX = coordPubKeyXRaw !== undefined ? BigInt(coordPubKeyXRaw as bigint) : DEFAULT_COORD_PUB_KEY_X
+  const coordPubKeyY = coordPubKeyYRaw !== undefined ? BigInt(coordPubKeyYRaw as bigint) : DEFAULT_COORD_PUB_KEY_Y
 
   // Read voice credits from VoiceCreditProxy (user's token balance = credits)
-  const { data: voiceCreditsRaw, isLoading: _isLoadingCredits } = useReadContract({
+  const { data: voiceCreditsRaw } = useReadContract({
     address: VOICE_CREDIT_PROXY_ADDRESS,
     abi: VOICE_CREDIT_PROXY_ABI,
     functionName: 'getVoiceCredits',
@@ -533,7 +533,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
     const ms = phase === V2Phase.Voting ? 5000 : 8000
     const interval = setInterval(checkPhase, ms)
     return () => clearInterval(interval)
-  }, [pollAddress, publicClient, tallyAddress, phase, propPollId, phaseCheckTrigger])
+  }, [pollAddress, publicClient, tallyAddress, messageProcessorAddress, phase, propPollId, phaseCheckTrigger, isPollExpired])
 
   // === SignUp (called by VoteFormV2 via callback) ===
   const handleSignUp = useCallback(async () => {

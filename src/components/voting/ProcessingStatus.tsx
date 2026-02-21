@@ -73,7 +73,9 @@ function StepItem({
   );
 }
 
-function TimerBlock({ elapsed, estimateMs, t }: { elapsed: number; estimateMs: number; t: any }) {
+type I18nT = ReturnType<typeof useTranslation>['t'];
+
+function TimerBlock({ elapsed, estimateMs, t }: { elapsed: number; estimateMs: number; t: I18nT }) {
   const remaining = Math.max(0, estimateMs - elapsed);
   const overdue = elapsed > estimateMs;
   const progress = Math.min(100, (elapsed / estimateMs) * 100);

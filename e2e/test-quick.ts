@@ -10,7 +10,7 @@ import { ethers } from 'ethers';
 import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-// @ts-expect-error
+// @ts-expect-error circomlibjs is ESM-only in this environment
 import { buildBabyjub, buildEddsa, buildPoseidon } from 'circomlibjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
