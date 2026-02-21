@@ -18,11 +18,9 @@ describe('LandingPage', () => {
     expect(screen.getByText(/Core Features|핵심 기능/i)).toBeInTheDocument()
   })
 
-  it('renders the comparison table', () => {
+  it('renders the testnet notice', () => {
     renderWithProviders(<LandingPage setCurrentPage={setCurrentPage} />)
-    expect(screen.getByRole('table')).toBeInTheDocument()
-    // SIGIL should appear in the table header
-    expect(screen.getByText('SIGIL')).toBeInTheDocument()
+    expect(screen.getByText(/Testnet only · Wallet \+ Sepolia ETH required/i)).toBeInTheDocument()
   })
 
   it('renders 8 FAQ items', () => {
