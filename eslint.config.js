@@ -8,6 +8,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   globalIgnores([
     'dist',
+    '.next',
     'react-component-with-scroll',
     'scripts',
     'node_modules',
@@ -15,6 +16,8 @@ export default defineConfig([
     'cache',
     'cache_hardhat',
     'out',
+    'playwright-report',
+    'test-results',
   ]),
   {
     files: ['**/*.{ts,tsx}'],
@@ -31,6 +34,20 @@ export default defineConfig([
     rules: {
       // Allow setState in useEffect for data loading patterns
       'react-hooks/set-state-in-effect': 'off',
+    },
+  },
+  {
+    files: ['test/**/*.{ts,tsx}', 'e2e/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    files: ['src/i18n/context.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
     },
   },
 ])

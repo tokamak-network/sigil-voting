@@ -17,7 +17,7 @@ interface PollTimerProps {
 
 export function PollTimer({ pollAddress, onExpired }: PollTimerProps) {
   const { t } = useTranslation();
-  const [now, setNow] = useState(Math.floor(Date.now() / 1000));
+  const [now, setNow] = useState(0);
   const expiredFiredRef = useRef(false);
 
   const { data: timeData } = useReadContract({
@@ -34,11 +34,14 @@ export function PollTimer({ pollAddress, onExpired }: PollTimerProps) {
 
   // Update clock every second
   useEffect(() => {
+    if (now === 0) {
+      setNow(Math.floor(Date.now() / 1000));
+    }
     const interval = setInterval(() => {
       setNow(Math.floor(Date.now() / 1000));
     }, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [now]);
 
   // Notify parent when timer reaches zero (fire only once)
   useEffect(() => {

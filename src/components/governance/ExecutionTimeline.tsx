@@ -13,13 +13,16 @@ const STEPS = ['registered', 'scheduled', 'executed'] as const
 
 export function ExecutionTimeline({ state, scheduledAt, timelockDelay }: ExecutionTimelineProps) {
   const { t } = useTranslation()
-  const [now, setNow] = useState(Math.floor(Date.now() / 1000))
+  const [now, setNow] = useState(0)
 
   useEffect(() => {
+    if (now === 0) {
+      setNow(Math.floor(Date.now() / 1000))
+    }
     if (state !== 'scheduled') return
     const interval = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
     return () => clearInterval(interval)
-  }, [state])
+  }, [state, now])
 
   if (state === 'cancelled') {
     return (
