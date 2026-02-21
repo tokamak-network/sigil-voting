@@ -19,10 +19,10 @@ export function DelegationPage() {
   const isConfigured = DELEGATION_REGISTRY_ADDRESS !== ZERO_ADDRESS
 
   // Read current delegate
-  const { data: effectiveVoter, refetch: refetchEffective } = useReadContract({
+  const { data: currentDelegate, refetch: refetchDelegate } = useReadContract({
     address: DELEGATION_REGISTRY_ADDRESS as `0x${string}`,
     abi: DELEGATION_REGISTRY_ABI,
-    functionName: 'getEffectiveVoter',
+    functionName: 'getDelegate',
     args: address ? [address] : undefined,
     query: { enabled: isConfigured && !!address },
   })
@@ -84,7 +84,7 @@ export function DelegationPage() {
 
   // Refetch on success
   if (isDelegateSuccess || isUndelegateSuccess) {
-    refetchEffective()
+    refetchDelegate()
     refetchIsDelegating()
   }
 
@@ -121,7 +121,7 @@ export function DelegationPage() {
         {isDelegating ? (
           <div className="flex items-center justify-between">
             <span className="font-mono text-sm font-bold">
-              {effectiveVoter ? shortenAddress(effectiveVoter as string) : '...'}
+              {currentDelegate ? shortenAddress(currentDelegate as string) : '...'}
             </span>
             <button
               onClick={handleUndelegate}
