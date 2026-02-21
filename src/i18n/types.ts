@@ -150,6 +150,8 @@ export interface Translations {
       tokenGate: { title: string; desc: string }
       widget: { title: string; desc: string }
       autoTally: { title: string; desc: string }
+      delegation: { title: string; desc: string }
+      execution: { title: string; desc: string }
     }
     contracts: {
       title: string
@@ -403,6 +405,9 @@ export interface Translations {
     privacyDesc: string
     systemOperational: string
     zkProofActive: string
+    overdueTitle: string
+    overdueDesc: string
+    overdueHint: string
     copyright: string
   }
   failed: {
@@ -710,6 +715,8 @@ export interface Translations {
       tokenGate: { title: string; desc: string }
       autoTally: { title: string; desc: string }
       customServer: { title: string; desc: string }
+      delegation: { title: string; desc: string }
+      execution: { title: string; desc: string }
     }
     cta: {
       title: string

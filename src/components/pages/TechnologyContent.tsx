@@ -5,6 +5,19 @@ import { useTranslation } from '../../i18n'
 
 export function TechnologyContent() {
   const { t } = useTranslation()
+  const infrastructureItems = [
+    { ...t.technology.infrastructure.serverless, icon: 'cloud_off', num: '01' },
+    { ...t.technology.infrastructure.erc20, icon: 'token', num: '02' },
+    { ...t.technology.infrastructure.l2, icon: 'speed', num: '03' },
+    { ...t.technology.infrastructure.tokenGate, icon: 'groups', num: '04' },
+    { ...t.technology.infrastructure.autoTally, icon: 'smart_toy', num: '05' },
+    { ...t.technology.infrastructure.customServer, icon: 'dns', num: '06' },
+    { ...t.technology.infrastructure.delegation, icon: 'handshake', num: '07' },
+    { ...t.technology.infrastructure.execution, icon: 'schedule', num: '08' },
+  ]
+  const infraTotal = infrastructureItems.length
+  const mdCols = 2
+  const lgCols = 3
 
   return (
     <div className="min-h-screen">
@@ -239,13 +252,29 @@ export function TechnologyContent() {
         <div className="p-12">
           <p className="text-lg text-slate-600 max-w-3xl mx-auto text-center mb-12">{t.technology.infrastructure.subtitle}</p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 border-2 border-black">
-            {[{ ...t.technology.infrastructure.serverless, icon: 'cloud_off', num: '01' }, { ...t.technology.infrastructure.erc20, icon: 'token', num: '02' }, { ...t.technology.infrastructure.l2, icon: 'speed', num: '03' }, { ...t.technology.infrastructure.tokenGate, icon: 'groups', num: '04' }, { ...t.technology.infrastructure.autoTally, icon: 'smart_toy', num: '05' }, { ...t.technology.infrastructure.customServer, icon: 'dns', num: '06' }].map((item, i) => (
-              <div key={i} className={`p-8 ${i < 3 ? 'border-b-2' : ''} ${(i + 1) % 3 !== 0 ? 'lg:border-r-2' : ''} ${i % 2 === 0 && i < 4 ? 'md:border-r-2 lg:border-r-0' : ''} border-black`}>
+            {infrastructureItems.map((item, i) => {
+              const isLast = i === infraTotal - 1
+              const mdLastRowStart = infraTotal - (infraTotal % mdCols || mdCols)
+              const lgLastRowStart = infraTotal - (infraTotal % lgCols || lgCols)
+              const mdIsLastRow = i >= mdLastRowStart
+              const lgIsLastRow = i >= lgLastRowStart
+              const mdIsLastCol = (i + 1) % mdCols === 0
+              const lgIsLastCol = (i + 1) % lgCols === 0
+
+              const baseBorder = !isLast ? 'border-b-2' : ''
+              const mdBorder = mdIsLastRow ? 'md:border-b-0' : 'md:border-b-2'
+              const lgBorder = lgIsLastRow ? 'lg:border-b-0' : 'lg:border-b-2'
+              const mdRight = mdIsLastCol ? 'md:border-r-0' : 'md:border-r-2'
+              const lgRight = lgIsLastCol ? 'lg:border-r-0' : 'lg:border-r-2'
+
+              return (
+                <div key={i} className={`p-8 ${baseBorder} ${mdBorder} ${lgBorder} ${mdRight} ${lgRight} border-black`}>
                 <div className="flex items-center gap-3 mb-4"><div className="w-8 h-8 bg-primary text-white flex items-center justify-center font-mono text-xs font-bold">{item.num}</div><span className="material-symbols-outlined text-primary">{item.icon}</span></div>
                 <h4 className="font-mono font-bold text-sm uppercase tracking-wider mb-3">{item.title}</h4>
                 <p className="text-sm text-slate-600 leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
+                </div>
+              )
+            })}
           </div>
         </div>
       </section>
@@ -272,7 +301,6 @@ export function TechnologyContent() {
           </Link>
           <div className="flex justify-center gap-8 pt-4">
             <a href="https://github.com/tokamak-network/sigil-voting" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-primary transition-colors"><span className="material-symbols-outlined text-base">code</span>GitHub</a>
-            <a href="https://www.npmjs.com/package/sigil-sdk" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-primary transition-colors"><span className="material-symbols-outlined text-base">package_2</span>NPM — sigil-sdk</a>
           </div>
         </div>
       </section>

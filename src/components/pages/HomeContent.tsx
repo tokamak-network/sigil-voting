@@ -7,6 +7,19 @@ import { FaqAccordion } from '../ui/FaqAccordion'
 export function HomeContent() {
   const { t } = useTranslation()
   const titleLines = t.landing.title.split('\n')
+  const advantageItems = [
+    { icon: 'token', ...t.landing.advantages.erc20 },
+    { icon: 'cloud_off', ...t.landing.advantages.serverless },
+    { icon: 'speed', ...t.landing.advantages.l2 },
+    { icon: 'groups', ...t.landing.advantages.tokenGate },
+    { icon: 'code', ...t.landing.advantages.widget },
+    { icon: 'smart_toy', ...t.landing.advantages.autoTally },
+    { icon: 'handshake', ...t.landing.advantages.delegation },
+    { icon: 'schedule', ...t.landing.advantages.execution },
+  ]
+  const advantageTotal = advantageItems.length
+  const mdCols = 2
+  const lgCols = 3
 
   const faqItems = [
     { q: t.landing.faq.q1, a: t.landing.faq.a1 },
@@ -216,65 +229,32 @@ export function HomeContent() {
             <div className="w-24 h-2 bg-primary mt-4"></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 border-2 border-border-light dark:border-border-dark">
-            {[
-              { icon: 'token', ...t.landing.advantages.erc20 },
-              { icon: 'cloud_off', ...t.landing.advantages.serverless },
-              { icon: 'speed', ...t.landing.advantages.l2 },
-              { icon: 'groups', ...t.landing.advantages.tokenGate },
-              { icon: 'code', ...t.landing.advantages.widget },
-              { icon: 'smart_toy', ...t.landing.advantages.autoTally },
-            ].map((item, i) => (
-              <div key={i} className={`p-8 border-border-light dark:border-border-dark hover:bg-primary hover:text-white transition-colors group ${i < 3 ? 'border-b-2' : ''} ${(i + 1) % 3 !== 0 ? 'lg:border-r-2' : ''} ${i % 2 === 0 && i < 4 ? 'md:border-r-2 lg:border-r-0' : ''}`}>
+            {advantageItems.map((item, i) => {
+              const isLast = i === advantageTotal - 1
+              const mdLastRowStart = advantageTotal - (advantageTotal % mdCols || mdCols)
+              const lgLastRowStart = advantageTotal - (advantageTotal % lgCols || lgCols)
+              const mdIsLastRow = i >= mdLastRowStart
+              const lgIsLastRow = i >= lgLastRowStart
+              const mdIsLastCol = (i + 1) % mdCols === 0
+              const lgIsLastCol = (i + 1) % lgCols === 0
+
+              const baseBorder = !isLast ? 'border-b-2' : ''
+              const mdBorder = mdIsLastRow ? 'md:border-b-0' : 'md:border-b-2'
+              const lgBorder = lgIsLastRow ? 'lg:border-b-0' : 'lg:border-b-2'
+              const mdRight = mdIsLastCol ? 'md:border-r-0' : 'md:border-r-2'
+              const lgRight = lgIsLastCol ? 'lg:border-r-0' : 'lg:border-r-2'
+
+              return (
+                <div
+                  key={i}
+                  className={`p-8 border-border-light dark:border-border-dark hover:bg-primary hover:text-white transition-colors group ${baseBorder} ${mdBorder} ${lgBorder} ${mdRight} ${lgRight}`}
+                >
                 <span className="material-symbols-outlined text-3xl mb-4 text-primary group-hover:text-white">{item.icon}</span>
                 <h3 className="font-display text-lg font-bold mb-2 uppercase">{item.title}</h3>
                 <p className="text-sm leading-relaxed opacity-80 group-hover:opacity-100">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 5. Ecosystem Comparison */}
-      <section className="py-24" id="comparison">
-        <div className="container mx-auto px-6">
-          <div className="mb-12">
-            <h2 className="font-display text-4xl font-extrabold uppercase">{t.landing.comparison.title}</h2>
-            <p className="font-display text-base opacity-70 mt-2">{t.landing.comparison.subtitle}</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse border-2 border-border-light dark:border-border-dark font-display text-sm">
-              <thead>
-                <tr className="bg-slate-100 dark:bg-zinc-900 border-b-2 border-border-light dark:border-border-dark">
-                  <th className="p-6 text-left">{t.landing.comparison.feature}</th>
-                  <th className="p-6 text-center border-l-2 border-border-light dark:border-border-dark bg-primary text-white">SIGIL</th>
-                  <th className="p-6 text-center border-l-2 border-border-light dark:border-border-dark">Snapshot</th>
-                  <th className="p-6 text-center border-l-2 border-border-light dark:border-border-dark">Aragon</th>
-                  <th className="p-6 text-center border-l-2 border-border-light dark:border-border-dark">Tally</th>
-                  <th className="p-6 text-center border-l-2 border-border-light dark:border-border-dark">Vocdoni</th>
-                </tr>
-              </thead>
-              <tbody>
-                {([
-                  { feature: t.landing.comparison.permanentPrivacy, values: [t.landing.comparison.yes, t.landing.comparison.postReveal, t.landing.comparison.yes, t.landing.comparison.no, t.landing.comparison.partial], icons: ['check_circle', 'error', 'check_circle', 'cancel', 'error'], colors: ['text-emerald-500', 'text-amber-500', 'text-emerald-500', 'text-red-500', 'text-amber-500'] },
-                  { feature: t.landing.comparison.antiBribery, values: [t.landing.comparison.yes, t.landing.comparison.no, t.landing.comparison.demoStage, t.landing.comparison.no, t.landing.comparison.no], icons: ['check_circle', 'cancel', 'error', 'cancel', 'cancel'], colors: ['text-emerald-500', 'text-red-500', 'text-amber-500', 'text-red-500', 'text-red-500'] },
-                  { feature: t.landing.comparison.quadraticVoting, values: [t.landing.comparison.yes, t.landing.comparison.plugin, t.landing.comparison.no, t.landing.comparison.no, t.landing.comparison.no], icons: ['check_circle', 'error', 'cancel', 'cancel', 'cancel'], colors: ['text-emerald-500', 'text-amber-500', 'text-red-500', 'text-red-500', 'text-red-500'] },
-                  { feature: t.landing.comparison.onChainVerify, values: [t.landing.comparison.yes, t.landing.comparison.offchain, t.landing.comparison.yes, t.landing.comparison.yes, t.landing.comparison.ownChain], icons: ['check_circle', 'error', 'check_circle', 'check_circle', 'error'], colors: ['text-emerald-500', 'text-amber-500', 'text-emerald-500', 'text-emerald-500', 'text-amber-500'] },
-                  { feature: t.landing.comparison.automation, values: [t.landing.comparison.yes, t.landing.comparison.yes, t.landing.comparison.demoStage, t.landing.comparison.yes, t.landing.comparison.yes], icons: ['check_circle', 'check_circle', 'error', 'check_circle', 'check_circle'], colors: ['text-emerald-500', 'text-emerald-500', 'text-amber-500', 'text-emerald-500', 'text-emerald-500'] },
-                  { feature: t.landing.comparison.erc20Support, values: [t.landing.comparison.native, t.landing.comparison.offchain, t.landing.comparison.yes, t.landing.comparison.yes, t.landing.comparison.offchain], icons: ['check_circle', 'error', 'check_circle', 'check_circle', 'error'], colors: ['text-emerald-500', 'text-amber-500', 'text-emerald-500', 'text-emerald-500', 'text-amber-500'] },
-                  { feature: t.landing.comparison.serverlessTally, values: [t.landing.comparison.free, t.landing.comparison.selfHosted, t.landing.comparison.selfHosted, t.landing.comparison.selfHosted, t.landing.comparison.selfHosted], icons: ['check_circle', 'error', 'error', 'error', 'error'], colors: ['text-emerald-500', 'text-amber-500', 'text-amber-500', 'text-amber-500', 'text-amber-500'] },
-                ] as const).map((row, i) => (
-                  <tr key={i} className="border-b-2 border-border-light dark:border-border-dark last:border-b-0">
-                    <td className="p-4 font-bold">{row.feature}</td>
-                    {row.values.map((val, j) => (
-                      <td key={j} className={`p-4 text-center border-l-2 border-border-light dark:border-border-dark ${j === 0 ? 'bg-primary/5 dark:bg-primary/10' : ''}`}>
-                        <span className={`material-symbols-outlined text-2xl ${row.colors[j]}`}>{row.icons[j]}</span>
-                        <div className="text-xs mt-1 opacity-60">{val}</div>
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </div>
+              )
+            })}
           </div>
         </div>
       </section>
