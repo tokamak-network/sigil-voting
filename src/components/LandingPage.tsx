@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Page } from '../types'
-import config from '../config.json'
+import { getChainConfig, getNetwork } from '../config'
 import { useTranslation } from '../i18n'
 
 interface LandingPageProps {
@@ -23,8 +23,8 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
   const mdCols = 2
   const lgCols = 3
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
-  const network = (config as any).network || 'sepolia'
-  const chainConfig = (network === 'sepolia' ? (config as any).v2 : (config as any).prod) || (config as any).v2 || {}
+  const network = getNetwork()
+  const chainConfig = getChainConfig(network)
   const explorerMap: Record<string, string> = {
     sepolia: 'https://sepolia.etherscan.io/address/',
     mainnet: 'https://etherscan.io/address/',
