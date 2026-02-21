@@ -5,8 +5,6 @@
  * Falls back to main thread if worker fails.
  */
 
-import ZkProofWorker from './zkProofWorker?worker'
-
 export interface ProofResult {
   proof: {
     pi_a: string[]
@@ -19,76 +17,6 @@ export interface ProofResult {
 
 export interface ProofProgressCallback {
   (progress: number, message: string): void
-}
-
-let workerInstance: Worker | null = null
-
-function getWorker(): Worker {
-  if (!workerInstance) {
-    workerInstance = new ZkProofWorker()
-  }
-  return workerInstance
-}
-
-/**
- * Generate ZK proof using Web Worker
- */
-export async function generateProofInWorker(
-  circuitInputs: Record<string, string | string[]>,
-  wasmUrl: string,
-  zkeyUrl: string,
-  onProgress?: ProofProgressCallback
-): Promise<ProofResult> {
-  return new Promise((resolve, reject) => {
-    try {
-      const worker = getWorker()
-
-      const timeout = setTimeout(() => {
-        reject(new Error('Proof generation timeout (120s)'))
-      }, 120000)
-
-      worker.onmessage = (event) => {
-        const data = event.data
-
-        switch (data.type) {
-          case 'progress':
-            onProgress?.(data.progress, data.message)
-            break
-
-          case 'proofComplete':
-            clearTimeout(timeout)
-            resolve({
-              proof: data.proof,
-              publicSignals: data.publicSignals,
-              duration: data.duration
-            })
-            break
-
-          case 'error':
-            clearTimeout(timeout)
-            reject(new Error(data.error))
-            break
-        }
-      }
-
-      worker.onerror = (error) => {
-        clearTimeout(timeout)
-        console.error('[Worker] Error:', error)
-        reject(new Error('Worker error: ' + error.message))
-      }
-
-      // Send proof request to worker
-      worker.postMessage({
-        type: 'generateProof',
-        circuitInputs,
-        wasmUrl,
-        zkeyUrl
-      })
-
-    } catch (error) {
-      reject(error)
-    }
-  })
 }
 
 // Cached snarkjs instance

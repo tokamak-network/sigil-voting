@@ -3,7 +3,7 @@ import { sepolia } from 'wagmi/chains'
 import { injected } from 'wagmi/connectors'
 
 // Sepolia RPC: use Vercel env var if available, otherwise public fallbacks
-const sepoliaRpcUrl = import.meta.env.VITE_SEPOLIA_RPC_URL || undefined
+const sepoliaRpcUrl = process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || undefined
 
 export const config = createConfig({
   chains: [sepolia],

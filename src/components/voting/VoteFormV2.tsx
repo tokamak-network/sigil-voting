@@ -367,7 +367,7 @@ export function VoteFormV2({
       setTxStage('done');
     } catch (err) {
       // Only log error type in production — never raw error objects with keys/signatures
-      if (import.meta.env.DEV) {
+      if (process.env.NODE_ENV === 'development') {
         console.error('Vote error:', err);
       }
       setTxStage('error');

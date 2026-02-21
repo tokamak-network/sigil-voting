@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "next dev --turbo false",
+    "build": "next build",
+    "start": "next start",
     "lint": "eslint .",
-    "preview": "vite preview",
     "deploy": "npx hardhat run scripts/deploy_final.cjs --network sepolia",
     "deploy:local": "npx hardhat run scripts/deploy_final.cjs --network localhost",
     "test": "vitest run --config vitest.config.ts",
@@ -15,7 +15,7 @@
     "test:components": "vitest run --config vitest.config.ts test/components",
     "test:e2e": "npx tsx e2e/test-full-flow.ts",
     "test:e2e:browser": "playwright test",
-    "dev:full": "npx tsx coordinator/src/run.ts & vite",
+    "dev:full": "npx tsx coordinator/src/run.ts & next dev --turbo false",
     "coordinator": "npx tsx coordinator/src/run.ts"
   },
   "dependencies": {
@@ -27,13 +27,14 @@
     "@tanstack/react-query": "^5.90.20",
     "buffer": "^6.0.3",
     "circomlibjs": "^0.1.7",
+    "next": "^15.5.12",
     "poseidon-solidity": "^0.0.5",
+    "process": "^0.11.10",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "recharts": "^3.7.0",
     "snarkjs": "^0.7.6",
     "viem": "^2.45.1",
-    "vite-plugin-node-polyfills": "^0.25.0",
     "wagmi": "^3.4.2"
   },
   "devDependencies": {

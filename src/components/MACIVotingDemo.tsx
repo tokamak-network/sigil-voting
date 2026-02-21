@@ -468,7 +468,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
                 }
               }
             } catch (e) {
-              if (import.meta.env.DEV) console.warn('[checkPhase] getLogs failed:', e)
+              if (process.env.NODE_ENV === 'development') console.warn('[checkPhase] getLogs failed:', e)
             }
           }
         }

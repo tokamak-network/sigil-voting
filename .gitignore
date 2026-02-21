@@ -56,5 +56,9 @@ marketing/
 # Claude Code personal settings
 .claude/settings.local.json
 
+# Next.js
+.next/
+next-env.d.ts
+
 # External directories
 stitch_sigil_privacy_first_dao_voting_landing_page/

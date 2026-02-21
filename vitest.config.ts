@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL': JSON.stringify(''),
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./test/setup.ts'],
