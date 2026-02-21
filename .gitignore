@@ -38,6 +38,7 @@ cache_hardhat/
 
 # Circuit build artifacts (large binary files)
 circuits/build_maci/
+circuits/build_prod/
 circuits/build_test/
 circuits/build/
 *.ptau
@@ -59,6 +60,7 @@ marketing/
 # Next.js
 .next/
 next-env.d.ts
+tsconfig.tsbuildinfo
 
 # External directories
 stitch_sigil_privacy_first_dao_voting_landing_page/
