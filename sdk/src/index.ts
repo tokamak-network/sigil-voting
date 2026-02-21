@@ -22,6 +22,7 @@ export {
   type Poll, type PollStatus, type PollResults, type VoteChoice,
   type VoteReceipt, type KeyPair, type SigilEvent,
   type SignUpResult, type VoteOptions, type KeyChangeResult,
+  type ExecutionState, type ExecutionInfo, type DelegationInfo,
 } from './types.js';
 
 // Storage

@@ -15,6 +15,8 @@ vi.mock('../../src/contractV2', () => ({
   MACI_ABI: [],
   POLL_ABI: [],
   TALLY_ABI: [],
+  TIMELOCK_EXECUTOR_ADDRESS: '0x0000000000000000000000000000000000000000',
+  TIMELOCK_EXECUTOR_ABI: [],
 }))
 
 vi.mock('../../src/storageKeys', () => ({

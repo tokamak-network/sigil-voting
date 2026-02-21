@@ -15,6 +15,8 @@ import {
   MACI_ABI,
   POLL_ABI,
   TALLY_ABI,
+  TIMELOCK_EXECUTOR_ADDRESS,
+  TIMELOCK_EXECUTOR_ABI,
 } from '../contractV2'
 import { useTranslation } from '../i18n'
 import { storageKey } from '../storageKeys'
@@ -51,6 +53,25 @@ function loadCachedPolls(): PollInfo[] {
 
 function saveCachedPolls(polls: PollInfo[]): void {
   try { localStorage.setItem(storageKey.pollsCache, JSON.stringify(polls)) } catch { /* quota */ }
+}
+
+function ExecutableBadge({ pollId }: { pollId: number }) {
+  const { t } = useTranslation()
+  const { data: stateRaw } = useReadContract({
+    address: TIMELOCK_EXECUTOR_ADDRESS as `0x${string}`,
+    abi: TIMELOCK_EXECUTOR_ABI,
+    functionName: 'getState',
+    args: [BigInt(pollId)],
+    query: { enabled: TIMELOCK_EXECUTOR_ADDRESS !== '0x0000000000000000000000000000000000000000' },
+  })
+  const state = Number(stateRaw ?? 0)
+  // Show badge only for registered(1) or scheduled(2)
+  if (state !== 1 && state !== 2) return null
+  return (
+    <span className="text-[10px] font-bold px-2 py-0.5 uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-300 rounded-sm">
+      {t.governance.execution.executable}
+    </span>
+  )
 }
 
 export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
@@ -475,12 +496,17 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
                     <span className={`text-xs font-bold px-3 py-1.5 uppercase tracking-widest ${badge.className}`}>
                       {badge.label}
                     </span>
-                    {poll.hasVoted && (
-                      <div className="flex items-center gap-1.5 text-primary">
-                        <span className="material-symbols-outlined text-sm font-bold">check</span>
-                        <span className="text-xs font-bold uppercase tracking-widest">{t.proposals.voted}</span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {poll.hasVoted && (
+                        <div className="flex items-center gap-1.5 text-primary">
+                          <span className="material-symbols-outlined text-sm font-bold">check</span>
+                          <span className="text-xs font-bold uppercase tracking-widest">{t.proposals.voted}</span>
+                        </div>
+                      )}
+                      {TIMELOCK_EXECUTOR_ADDRESS !== '0x0000000000000000000000000000000000000000' && poll.isFinalized && (
+                        <ExecutableBadge pollId={poll.id} />
+                      )}
+                    </div>
                   </div>
 
                   {/* ── Title ── */}

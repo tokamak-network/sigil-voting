@@ -10,6 +10,7 @@ import {
   MACI_ABI,
   DEFAULT_COORD_PUB_KEY_X,
   DEFAULT_COORD_PUB_KEY_Y,
+  TIMELOCK_EXECUTOR_ADDRESS,
 } from '../contractV2'
 import { storageKey } from '../storageKeys'
 import { useTranslation } from '../i18n'
@@ -459,6 +460,22 @@ export default function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePo
             </span>
           </div>
         </div>
+
+        {/* On-Chain Execution Section (collapsible) */}
+        {TIMELOCK_EXECUTOR_ADDRESS !== '0x0000000000000000000000000000000000000000' && (
+          <details className="border-2 border-border-light dark:border-border-dark">
+            <summary className="px-4 py-3 cursor-pointer flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-slate-500 hover:text-black transition-colors">
+              <span className="material-symbols-outlined text-sm">schedule</span>
+              {t.governance.execution.executionSection}
+            </summary>
+            <div className="px-4 pb-4 pt-2 border-t border-slate-100">
+              <p className="text-xs text-slate-400 mb-3">{t.governance.execution.executionSectionDesc}</p>
+              <p className="text-[10px] text-slate-400 italic">
+                {t.governance.execution.targetAddress}, {t.governance.execution.calldata}, {t.governance.execution.delay}, {t.governance.execution.quorumLabel}
+              </p>
+            </div>
+          </details>
+        )}
 
         {/* Submit Button */}
         <button

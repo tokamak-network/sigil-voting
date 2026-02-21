@@ -38,6 +38,7 @@ vi.mock('../../src/contractV2', () => ({
   DEFAULT_COORD_PUB_KEY_Y: '0',
   ERC20_VOICE_CREDIT_PROXY_ABI: [],
   ERC20_ABI: [],
+  TIMELOCK_EXECUTOR_ADDRESS: '0x0000000000000000000000000000000000000000',
 }))
 
 vi.mock('../../src/writeHelper', () => ({

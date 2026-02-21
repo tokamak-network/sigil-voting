@@ -716,4 +716,52 @@ export interface Translations {
       button: string
     }
   }
+  governance: {
+    delegation: {
+      title: string
+      delegateTo: string
+      addressPlaceholder: string
+      delegate: string
+      delegating: string
+      undelegate: string
+      undelegating: string
+      currentDelegate: string
+      notDelegating: string
+      delegateSuccess: string
+      undelegateSuccess: string
+      error: string
+      selfDelegateError: string
+      description: string
+      nav: string
+    }
+    execution: {
+      title: string
+      register: string
+      registering: string
+      schedule: string
+      scheduling: string
+      execute: string
+      executing: string
+      cancel: string
+      cancelling: string
+      registered: string
+      scheduled: string
+      executed: string
+      cancelled: string
+      none: string
+      timelockRemaining: string
+      readyToExecute: string
+      targetAddress: string
+      calldata: string
+      delay: string
+      quorum: string
+      delayOptions: { hour1: string; hour24: string; hour48: string; day7: string }
+      executionSection: string
+      executionSectionDesc: string
+      quorumLabel: string
+      success: string
+      error: string
+      executable: string
+    }
+  }
 }

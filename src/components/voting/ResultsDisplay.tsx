@@ -8,13 +8,15 @@
 import { useReadContract } from 'wagmi';
 import { TALLY_ABI } from '../../contractV2';
 import { useTranslation } from '../../i18n';
+import { ExecutionPanel } from '../governance/ExecutionPanel';
 
 interface ResultsDisplayProps {
   tallyAddress: `0x${string}`;
   pollAddress?: `0x${string}`;
+  pollId?: number;
 }
 
-export function ResultsDisplay({ tallyAddress, pollAddress }: ResultsDisplayProps) {
+export function ResultsDisplay({ tallyAddress, pollAddress, pollId }: ResultsDisplayProps) {
   const { t } = useTranslation();
 
   const { data: forVotes, isLoading: loadingFor, isError: errorFor } = useReadContract({
@@ -180,6 +182,9 @@ export function ResultsDisplay({ tallyAddress, pollAddress }: ResultsDisplayProp
           <span className="material-symbols-outlined text-sm">open_in_new</span>
         </a>
       </div>
+
+      {/* Execution Panel */}
+      {pollId !== undefined && <ExecutionPanel pollId={pollId} />}
     </div>
   );
 }

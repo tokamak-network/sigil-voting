@@ -86,7 +86,8 @@ export function Header() {
 
   const handleConnect = () => connect({ connector: injected() })
 
-  const isVotePage = pathname.startsWith('/vote')
+  const isVotePage = pathname.startsWith('/vote') && !pathname.startsWith('/vote/delegate')
+  const isDelegatePage = pathname.startsWith('/vote/delegate')
   const isTechPage = pathname === '/technology'
 
   return (
@@ -110,6 +111,12 @@ export function Header() {
             className={`font-display font-bold text-sm uppercase tracking-wide transition-colors ${isVotePage ? 'text-primary' : 'text-slate-500 hover:text-black dark:hover:text-white'}`}
           >
             {t.header.vote}
+          </Link>
+          <Link
+            href="/vote/delegate"
+            className={`font-display font-bold text-sm uppercase tracking-wide transition-colors ${isDelegatePage ? 'text-primary' : 'text-slate-500 hover:text-black dark:hover:text-white'}`}
+          >
+            {t.governance.delegation.nav}
           </Link>
           <Link
             href="/technology"
@@ -212,6 +219,13 @@ export function Header() {
               className={`px-6 py-4 text-left font-display font-bold text-sm uppercase tracking-wide border-b border-slate-100 ${isVotePage ? 'text-primary bg-blue-50' : 'text-slate-700 hover:bg-slate-50'}`}
             >
               {t.header.vote}
+            </Link>
+            <Link
+              href="/vote/delegate"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`px-6 py-4 text-left font-display font-bold text-sm uppercase tracking-wide border-b border-slate-100 ${isDelegatePage ? 'text-primary bg-blue-50' : 'text-slate-700 hover:bg-slate-50'}`}
+            >
+              {t.governance.delegation.nav}
             </Link>
             <Link
               href="/technology"

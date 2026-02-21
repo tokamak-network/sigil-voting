@@ -20,6 +20,12 @@ vi.mock('wagmi', () => ({
 vi.mock('../../src/contractV2', () => ({
   MACI_V2_ADDRESS: '0xABCDEF1234567890abcdef1234567890abcdef12',
   TALLY_ABI: [],
+  TIMELOCK_EXECUTOR_ADDRESS: '0x0000000000000000000000000000000000000000',
+  TIMELOCK_EXECUTOR_ABI: [],
+}))
+
+vi.mock('../../src/components/governance/ExecutionPanel', () => ({
+  ExecutionPanel: () => null,
 }))
 
 import { ResultsDisplay } from '../../src/components/voting/ResultsDisplay'

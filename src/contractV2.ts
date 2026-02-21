@@ -357,6 +357,134 @@ export const ERC20_ABI = [
   },
 ] as const;
 
+// Governance: Delegation Registry
+export const DELEGATION_REGISTRY_ADDRESS = (v2.delegationRegistry || '0x0000000000000000000000000000000000000000') as `0x${string}`;
+
+export const DELEGATION_REGISTRY_ABI = [
+  {
+    type: 'function',
+    name: 'delegate',
+    inputs: [{ name: '_to', type: 'address' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'undelegate',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getEffectiveVoter',
+    inputs: [{ name: '_voter', type: 'address' }],
+    outputs: [{ name: '', type: 'address' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'isDelegating',
+    inputs: [{ name: '_voter', type: 'address' }],
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'event',
+    name: 'Delegated',
+    inputs: [
+      { name: 'delegator', type: 'address', indexed: true },
+      { name: 'delegate', type: 'address', indexed: true },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'Undelegated',
+    inputs: [
+      { name: 'delegator', type: 'address', indexed: true },
+      { name: 'delegate', type: 'address', indexed: true },
+    ],
+  },
+] as const;
+
+// Governance: Timelock Executor
+export const TIMELOCK_EXECUTOR_ADDRESS = (v2.timelockExecutor || '0x0000000000000000000000000000000000000000') as `0x${string}`;
+
+export const TIMELOCK_EXECUTOR_ABI = [
+  {
+    type: 'function',
+    name: 'registerExecution',
+    inputs: [
+      { name: '_pollId', type: 'uint256' },
+      { name: '_tallyAddr', type: 'address' },
+      { name: '_target', type: 'address' },
+      { name: '_callData', type: 'bytes' },
+      { name: '_timelockDelay', type: 'uint256' },
+      { name: '_quorum', type: 'uint256' },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'schedule',
+    inputs: [{ name: '_pollId', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'execute',
+    inputs: [{ name: '_pollId', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'cancel',
+    inputs: [{ name: '_pollId', type: 'uint256' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'getExecution',
+    inputs: [{ name: '_pollId', type: 'uint256' }],
+    outputs: [
+      { name: 'creator', type: 'address' },
+      { name: 'tallyAddr', type: 'address' },
+      { name: 'target', type: 'address' },
+      { name: 'callData', type: 'bytes' },
+      { name: 'timelockDelay', type: 'uint256' },
+      { name: 'quorum', type: 'uint256' },
+      { name: 'scheduledAt', type: 'uint256' },
+      { name: 'state', type: 'uint8' },
+    ],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'canSchedule',
+    inputs: [{ name: '_pollId', type: 'uint256' }],
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'canExecute',
+    inputs: [{ name: '_pollId', type: 'uint256' }],
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'getState',
+    inputs: [{ name: '_pollId', type: 'uint256' }],
+    outputs: [{ name: '', type: 'uint8' }],
+    stateMutability: 'view',
+  },
+] as const;
+
 export const TALLY_ABI = [
   {
     type: 'function',

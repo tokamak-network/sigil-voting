@@ -22,6 +22,7 @@ import { ethers } from 'ethers';
 import type {
   Poll, PollStatus, PollResults, VoteChoice, VoteReceipt,
   SignUpResult, VoteOptions, KeyChangeResult,
+  ExecutionState,
 } from './types.js';
 import type { SigilStorage } from './storage.js';
 import { createDefaultStorage } from './storage.js';
@@ -42,6 +43,10 @@ export interface SigilConfig {
   coordinatorPubKey?: [bigint, bigint];
   /** Custom storage backend (defaults to localStorage or MemoryStorage) */
   storage?: SigilStorage;
+  /** TimelockExecutor contract address */
+  timelockExecutorAddress?: string;
+  /** DelegationRegistry contract address */
+  delegationRegistryAddress?: string;
 }
 
 // Minimal ABIs for SDK operations
@@ -73,6 +78,24 @@ const TALLY_ABI = [
   'function totalVoters() view returns (uint256)',
 ];
 
+const TIMELOCK_EXECUTOR_ABI = [
+  'function registerExecution(uint256 pollId, address tallyAddr, address target, bytes callData, uint256 delay, uint256 quorum)',
+  'function schedule(uint256 pollId)',
+  'function execute(uint256 pollId)',
+  'function cancel(uint256 pollId)',
+  'function getExecution(uint256 pollId) view returns (address creator, address tallyAddr, address target, bytes callData, uint256 timelockDelay, uint256 quorum, uint256 scheduledAt, uint8 state)',
+  'function getState(uint256 pollId) view returns (uint8)',
+  'function canSchedule(uint256 pollId) view returns (bool)',
+  'function canExecute(uint256 pollId) view returns (bool)',
+];
+
+const DELEGATION_REGISTRY_ABI = [
+  'function delegate(address _to)',
+  'function undelegate()',
+  'function getEffectiveVoter(address _user) view returns (address)',
+  'function isDelegating(address _user) view returns (bool)',
+];
+
 const MACI_KEY_MESSAGE = 'SIGIL Voting Key v1';
 
 export class SigilClient {
@@ -85,6 +108,8 @@ export class SigilClient {
   private keyManager: KeyManager;
   private storageKeys: StorageKeys;
   private storage: SigilStorage;
+  private timelockExecutorAddress?: string;
+  private delegationRegistryAddress?: string;
 
   constructor(config: SigilConfig) {
     this.provider = config.provider;
@@ -95,6 +120,8 @@ export class SigilClient {
     this.storage = config.storage ?? createDefaultStorage();
     this.storageKeys = createStorageKeys(config.maciAddress);
     this.keyManager = new KeyManager(this.storage, this.storageKeys);
+    this.timelockExecutorAddress = config.timelockExecutorAddress;
+    this.delegationRegistryAddress = config.delegationRegistryAddress;
   }
 
   /** Get total number of deployed polls */
@@ -451,6 +478,104 @@ export class SigilClient {
     const key: [bigint, bigint] = [BigInt(x), BigInt(y)];
     this.coordinatorPubKeyCache.set(pollId, key);
     return key;
+  }
+
+  // ============ Governance: Timelock Execution ============
+
+  /** Register an on-chain execution target for a poll */
+  async registerExecution(
+    pollId: number,
+    tallyAddr: string,
+    target: string,
+    callData: string,
+    delay: number,
+    quorum: number,
+  ): Promise<string> {
+    if (!this.timelockExecutorAddress) throw new Error('timelockExecutorAddress not configured');
+    if (!this.signer) throw new Error('Signer required');
+    const executor = new ethers.Contract(this.timelockExecutorAddress, TIMELOCK_EXECUTOR_ABI, this.signer);
+    const tx = await executor.registerExecution(pollId, tallyAddr, target, callData, BigInt(delay), BigInt(quorum));
+    const receipt = await tx.wait();
+    return receipt.hash;
+  }
+
+  /** Schedule execution after tally verification */
+  async schedule(pollId: number): Promise<string> {
+    if (!this.timelockExecutorAddress) throw new Error('timelockExecutorAddress not configured');
+    if (!this.signer) throw new Error('Signer required');
+    const executor = new ethers.Contract(this.timelockExecutorAddress, TIMELOCK_EXECUTOR_ABI, this.signer);
+    const tx = await executor.schedule(pollId);
+    const receipt = await tx.wait();
+    return receipt.hash;
+  }
+
+  /** Execute after timelock expires */
+  async execute(pollId: number): Promise<string> {
+    if (!this.timelockExecutorAddress) throw new Error('timelockExecutorAddress not configured');
+    if (!this.signer) throw new Error('Signer required');
+    const executor = new ethers.Contract(this.timelockExecutorAddress, TIMELOCK_EXECUTOR_ABI, this.signer);
+    const tx = await executor.execute(pollId);
+    const receipt = await tx.wait();
+    return receipt.hash;
+  }
+
+  /** Cancel a registered/scheduled execution */
+  async cancelExecution(pollId: number): Promise<string> {
+    if (!this.timelockExecutorAddress) throw new Error('timelockExecutorAddress not configured');
+    if (!this.signer) throw new Error('Signer required');
+    const executor = new ethers.Contract(this.timelockExecutorAddress, TIMELOCK_EXECUTOR_ABI, this.signer);
+    const tx = await executor.cancel(pollId);
+    const receipt = await tx.wait();
+    return receipt.hash;
+  }
+
+  /** Get execution state for a poll */
+  async getExecutionState(pollId: number): Promise<ExecutionState> {
+    if (!this.timelockExecutorAddress) throw new Error('timelockExecutorAddress not configured');
+    const executor = new ethers.Contract(this.timelockExecutorAddress, TIMELOCK_EXECUTOR_ABI, this.provider);
+    const stateNum = Number(await executor.getState(pollId));
+    const stateMap: ExecutionState[] = ['none', 'registered', 'scheduled', 'executed', 'cancelled'];
+    return stateMap[stateNum] ?? 'none';
+  }
+
+  // ============ Governance: Delegation ============
+
+  /** Delegate voting power to another address */
+  async delegate(to: string): Promise<string> {
+    if (!this.delegationRegistryAddress) throw new Error('delegationRegistryAddress not configured');
+    if (!this.signer) throw new Error('Signer required');
+    const registry = new ethers.Contract(this.delegationRegistryAddress, DELEGATION_REGISTRY_ABI, this.signer);
+    const tx = await registry.delegate(to);
+    const receipt = await tx.wait();
+    return receipt.hash;
+  }
+
+  /** Remove delegation */
+  async undelegate(): Promise<string> {
+    if (!this.delegationRegistryAddress) throw new Error('delegationRegistryAddress not configured');
+    if (!this.signer) throw new Error('Signer required');
+    const registry = new ethers.Contract(this.delegationRegistryAddress, DELEGATION_REGISTRY_ABI, this.signer);
+    const tx = await registry.undelegate();
+    const receipt = await tx.wait();
+    return receipt.hash;
+  }
+
+  /** Get delegate for an address (defaults to signer if voter not specified) */
+  async getDelegate(voter?: string): Promise<string> {
+    if (!this.delegationRegistryAddress) throw new Error('delegationRegistryAddress not configured');
+    const registry = new ethers.Contract(this.delegationRegistryAddress, DELEGATION_REGISTRY_ABI, this.provider);
+    const addr = voter ?? (this.signer ? await this.signer.getAddress() : undefined);
+    if (!addr) throw new Error('No address provided');
+    return await registry.getEffectiveVoter(addr);
+  }
+
+  /** Check if an address is delegating */
+  async isDelegating(voter?: string): Promise<boolean> {
+    if (!this.delegationRegistryAddress) throw new Error('delegationRegistryAddress not configured');
+    const registry = new ethers.Contract(this.delegationRegistryAddress, DELEGATION_REGISTRY_ABI, this.provider);
+    const addr = voter ?? (this.signer ? await this.signer.getAddress() : undefined);
+    if (!addr) throw new Error('No address provided');
+    return await registry.isDelegating(addr);
   }
 
   /** Access the internal key manager (for advanced use) */

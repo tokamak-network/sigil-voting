@@ -65,3 +65,22 @@ export interface KeyChangeResult {
   txHash: string;
   newPubKey: [bigint, bigint];
 }
+
+export type ExecutionState = 'none' | 'registered' | 'scheduled' | 'executed' | 'cancelled';
+
+export interface ExecutionInfo {
+  pollId: number;
+  creator: string;
+  target: string;
+  callData: string;
+  timelockDelay: number;
+  quorum: number;
+  scheduledAt: number;
+  state: ExecutionState;
+}
+
+export interface DelegationInfo {
+  delegator: string;
+  delegate: string;
+  isDelegating: boolean;
+}
