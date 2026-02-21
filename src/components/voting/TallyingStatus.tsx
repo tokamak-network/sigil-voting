@@ -152,6 +152,20 @@ export function TallyingStatus({
                 </span>
               </div>
 
+              {isOverdue && (
+                <div className="mt-6 border-2 border-amber-300 bg-amber-50 p-4">
+                  <p className="text-xs font-bold text-amber-700 uppercase tracking-widest mb-2">
+                    {t.tallying.overdueTitle}
+                  </p>
+                  <p className="text-xs text-amber-700 leading-relaxed">
+                    {t.tallying.overdueDesc}
+                  </p>
+                  <div className="mt-3 text-[10px] font-mono text-amber-800">
+                    {t.tallying.overdueHint}
+                  </div>
+                </div>
+              )}
+
               {/* Title */}
               <h1 className="text-5xl lg:text-7xl font-display font-black uppercase italic leading-[0.9] tracking-tighter max-w-4xl mb-8">
                 {pollTitle}

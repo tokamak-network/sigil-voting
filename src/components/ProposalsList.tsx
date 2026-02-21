@@ -20,6 +20,7 @@ import {
 } from '../contractV2'
 import { useTranslation } from '../i18n'
 import { storageKey } from '../storageKeys'
+import { getLogsChunked } from '../utils/viemLogs'
 import CreatePollForm from './CreatePollForm'
 
 interface PollInfo {
@@ -139,21 +140,24 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
       // Pre-fetch DeployPoll events to get tally addresses
       const tallyMap = new Map<number, `0x${string}`>()
       try {
-        const logs = await publicClient.getLogs({
-          address: MACI_V2_ADDRESS,
-          event: {
-            type: 'event',
-            name: 'DeployPoll',
-            inputs: [
-              { name: 'pollId', type: 'uint256', indexed: true },
-              { name: 'pollAddr', type: 'address', indexed: false },
-              { name: 'messageProcessorAddr', type: 'address', indexed: false },
-              { name: 'tallyAddr', type: 'address', indexed: false },
-            ],
+        const logs = await getLogsChunked(
+          publicClient,
+          {
+            address: MACI_V2_ADDRESS,
+            event: {
+              type: 'event',
+              name: 'DeployPoll',
+              inputs: [
+                { name: 'pollId', type: 'uint256', indexed: true },
+                { name: 'pollAddr', type: 'address', indexed: false },
+                { name: 'messageProcessorAddr', type: 'address', indexed: false },
+                { name: 'tallyAddr', type: 'address', indexed: false },
+              ],
+            },
           },
-          fromBlock: MACI_DEPLOY_BLOCK,
-          toBlock: 'latest',
-        })
+          MACI_DEPLOY_BLOCK,
+          'latest',
+        )
         for (const log of logs) {
           const args = log.args as { pollId?: bigint; tallyAddr?: `0x${string}` }
           if (args.pollId !== undefined && args.tallyAddr) {

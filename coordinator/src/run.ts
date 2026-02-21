@@ -44,8 +44,8 @@ const IS_PROD = CIRCUIT_MODE === 'prod';
 const STATE_TREE_DEPTH = IS_PROD ? 4 : 2;
 const BATCH_SIZE = IS_PROD ? 5 : 2;
 const TALLY_BATCH_SIZE = IS_PROD ? 5 : 2;
-const MAX_VOTE_OPTIONS = IS_PROD ? 25 : 25; // 5^voteOptionTreeDepth (depth=2 for both)
-const TALLY_NUM_OPTIONS = 25; // 5^voteOptionTreeDepth = 5^2 = 25 (same for dev and prod)
+const MAX_VOTE_OPTIONS = IS_PROD ? 25 : 5; // voteOptionTreeDepth: prod=2 (25), dev=1 (5)
+const TALLY_NUM_OPTIONS = IS_PROD ? 25 : 5; // match circuit compile params (TallyVotes)
 
 const MP_WASM = IS_PROD
   ? resolve(PROJECT_ROOT, 'circuits/build_prod/MessageProcessor_prod_js/MessageProcessor_prod.wasm')

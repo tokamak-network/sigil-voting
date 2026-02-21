@@ -21,7 +21,7 @@ Individual votes are never revealed — not during voting, not after. Results ar
 | [`circuits/`](./circuits) | Circom — MessageProcessor, TallyVotes, DuplexSponge, SHA256Hasher |
 | [`coordinator/`](./coordinator) | TypeScript — Auto-runner that processes votes and generates proofs |
 | [`sdk/`](./sdk) | `@sigil/sdk` — Client library for integrating SIGIL into other apps |
-| [`src/`](./src) | React 19 + Vite 7 + Wagmi 3 — Voting frontend with i18n (KO/EN) |
+| [`src/`](./src) | React 19 + Next 15 + Wagmi 3 — Voting frontend with i18n (KO/EN) |
 
 ## Quick Start
 
@@ -30,7 +30,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173
+Open http://localhost:3000
 
 ## Testing
 
@@ -40,6 +40,11 @@ forge test                  # 50 tests
 
 # Crypto, circuits, property tests
 npx vitest run              # 66 tests
+```
+
+E2E (Sepolia, requires funded keys + .env):
+```bash
+npm run test:e2e
 ```
 
 116 tests total, 0 failures. Includes 20 MACI property tests covering 7 security attributes (collusion resistance, receipt-freeness, privacy, uncensorability, unforgeability, non-repudiation, correct execution).

@@ -2,231 +2,94 @@
 
 ## Overview
 
-zkDEX D1 Private Voting은 [D1 스펙](https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d1-private-voting.md)을 구현한 영지식 증명 기반 비밀 투표 시스템입니다.
+SIGIL은 D1(비공개 투표) + D2(이차 투표) + MACI(담합 방지)를 **하나의 투표 시스템**으로 제공한다. 사용자 입장에서는 **찬성/반대 + 투표 강도(비용=강도^2)** 만 보이며, 개별 투표는 영구히 공개되지 않는다. 결과는 **집계 합산치만 온체인 공개**된다.
 
 ## System Design
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              D1 PRIVATE VOTING                               │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌──────────────────────────────────────────────────────────────────────┐  │
-│  │                           USER INTERFACE                              │  │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐              │  │
-│  │  │  Proposals  │───▶│  Commit     │───▶│   Reveal    │              │  │
-│  │  │    List     │    │   Phase     │    │   Phase     │              │  │
-│  │  └─────────────┘    └──────┬──────┘    └──────┬──────┘              │  │
-│  └───────────────────────────┼───────────────────┼──────────────────────┘  │
-│                              │                   │                          │
-│  ┌───────────────────────────▼───────────────────▼──────────────────────┐  │
-│  │                         ZK PROOF MODULE                               │  │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐              │  │
-│  │  │  Key Mgmt   │    │   Merkle    │    │   Proof     │              │  │
-│  │  │  (BabyJub)  │    │    Tree     │    │  Generation │              │  │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘              │  │
-│  └─────────────────────────────────────────────────────────────────────┘  │
-│                                    │                                        │
-│  ┌─────────────────────────────────▼────────────────────────────────────┐  │
-│  │                         SMART CONTRACT                                │  │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐              │  │
-│  │  │  Verifier   │    │  Proposal   │    │  Nullifier  │              │  │
-│  │  │  (Groth16)  │    │   Storage   │    │   Tracking  │              │  │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘              │  │
-│  └─────────────────────────────────────────────────────────────────────┘  │
-│                                    │                                        │
-│  ┌─────────────────────────────────▼────────────────────────────────────┐  │
-│  │                           BLOCKCHAIN                                  │  │
-│  │                      Ethereum Sepolia Testnet                         │  │
-│  └─────────────────────────────────────────────────────────────────────┘  │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
+User → Encrypt vote (ECDH + DuplexSponge) → Poll.publishMessage()
+                                            ↓
+                                      AccQueue (on-chain)
+                                            ↓
+                         Coordinator auto-runner (off-chain)
+                         - merge state & message trees
+                         - process messages (reverse order)
+                         - generate Groth16 proofs
+                                            ↓
+                        MessageProcessor.verify() → Tally.verify()
+                                            ↓
+                            Results published on-chain (aggregates only)
 ```
 
-## ZK Circuit Architecture
-
-D1 스펙에 따른 6단계 검증 회로:
+## MACI Phase Flow
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      PrivateVoting.circom (~150K constraints)                │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  PUBLIC INPUTS (4)                    PRIVATE INPUTS                        │
-│  ┌─────────────────┐                  ┌─────────────────────────────────┐  │
-│  │ voteCommitment  │                  │ sk, pkX, pkY                    │  │
-│  │ proposalId      │                  │ noteHash, noteValue, noteSalt   │  │
-│  │ votingPower     │                  │ tokenType, choice, voteSalt     │  │
-│  │ merkleRoot      │                  │ merklePath[20], merkleIndex     │  │
-│  └────────┬────────┘                  └───────────────┬─────────────────┘  │
-│           │                                           │                      │
-│           └────────────────────┬──────────────────────┘                      │
-│                                │                                             │
-│  ┌─────────────────────────────▼─────────────────────────────────────────┐  │
-│  │ Stage 1: Token Note Verification                                       │  │
-│  │ noteHash === Poseidon(pkX, pkY, noteValue, tokenType, noteSalt)       │  │
-│  └─────────────────────────────┬─────────────────────────────────────────┘  │
-│                                │                                             │
-│  ┌─────────────────────────────▼─────────────────────────────────────────┐  │
-│  │ Stage 2: Snapshot Inclusion (20-level Merkle Proof)                    │  │
-│  │ MerkleProof(noteHash, merklePath, merkleIndex) === merkleRoot         │  │
-│  └─────────────────────────────┬─────────────────────────────────────────┘  │
-│                                │                                             │
-│  ┌─────────────────────────────▼─────────────────────────────────────────┐  │
-│  │ Stage 3: Ownership Proof (Baby Jubjub)                                 │  │
-│  │ BabyPbk(sk) === (pkX, pkY)                                            │  │
-│  └─────────────────────────────┬─────────────────────────────────────────┘  │
-│                                │                                             │
-│  ┌─────────────────────────────▼─────────────────────────────────────────┐  │
-│  │ Stage 4: Power Matching                                                │  │
-│  │ votingPower === noteValue                                             │  │
-│  └─────────────────────────────┬─────────────────────────────────────────┘  │
-│                                │                                             │
-│  ┌─────────────────────────────▼─────────────────────────────────────────┐  │
-│  │ Stage 5: Choice Validation                                             │  │
-│  │ choice ∈ {0, 1, 2}  (against, for, abstain)                           │  │
-│  └─────────────────────────────┬─────────────────────────────────────────┘  │
-│                                │                                             │
-│  ┌─────────────────────────────▼─────────────────────────────────────────┐  │
-│  │ Stage 6: Commitment Binding                                            │  │
-│  │ voteCommitment === Poseidon(choice, votingPower, proposalId, voteSalt)│  │
-│  └─────────────────────────────┬─────────────────────────────────────────┘  │
-│                                │                                             │
-│  ┌─────────────────────────────▼─────────────────────────────────────────┐  │
-│  │ Nullifier Computation (passed separately)                              │  │
-│  │ nullifier = Poseidon(sk, proposalId)                                  │  │
-│  └───────────────────────────────────────────────────────────────────────┘  │
-│                                                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
+Registration → Voting → AccQueue Merge → Processing → Finalized
 ```
 
-## Commit-Reveal Flow
-
-```
-┌────────────┐         ┌────────────┐         ┌────────────┐         ┌────────────┐
-│  PROPOSAL  │         │   COMMIT   │         │   REVEAL   │         │   TALLY    │
-│  CREATED   │────────▶│   PHASE    │────────▶│   PHASE    │────────▶│  RESULTS   │
-└────────────┘         └────────────┘         └────────────┘         └────────────┘
-                             │                      │
-                             ▼                      ▼
-                       ┌──────────┐           ┌──────────┐
-                       │ Generate │           │  Reveal  │
-                       │ ZK Proof │           │ choice + │
-                       │ + Submit │           │   salt   │
-                       │commitment│           └──────────┘
-                       └──────────┘
-```
-
-### Commit Phase
-
-1. 사용자가 투표 선택 (For/Against/Abstain)
-2. ZK 증명 생성:
-   - 토큰 소유권 증명
-   - 머클 트리 포함 증명
-   - 투표권 일치 증명
-3. commitment + nullifier + proof 제출
-4. 컨트랙트가 증명 검증 및 저장
-
-### Reveal Phase
-
-1. Commit phase 종료 후
-2. 사용자가 choice + voteSalt 공개
-3. 컨트랙트가 commitment 재계산하여 검증
-4. 투표 집계
+- **Registration**: signUp (자동, 별도 UI 필요 없음)
+- **Voting**: 암호화 메시지 제출 (publishMessage)
+- **Merging**: AccQueue 병합
+- **Processing**: 메시지 처리 + 증명 생성
+- **Finalized**: tallyVerified=true, 결과 온체인 확정
 
 ## Component Structure
 
 ```
+app/                         # Next App Router
 src/
-├── App.tsx                 # Main UI Component
-│   ├── Header              # Navigation + Wallet
-│   ├── ProposalList        # Proposal cards
-│   ├── ProposalDetail      # Voting interface
-│   │   ├── CommitPhase     # ZK proof generation
-│   │   └── RevealPhase     # Vote reveal
-│   └── MyVotes             # Vote history
-│
-├── zkproof.ts              # ZK Proof Module
-│   ├── getOrCreateKeyPair  # Baby Jubjub key management
-│   ├── createTokenNote     # Note hash computation
-│   ├── buildMerkleTree     # 20-level tree construction
-│   ├── generateMerkleProof # Merkle proof generation
-│   ├── prepareVote         # Commitment + nullifier
-│   └── generateVoteProof   # Groth16 proof (simulated)
-│
-├── contract.ts             # Contract ABI + Address
-└── wagmi.ts                # Wallet Configuration
+├── components/              # UI (투표/결과/제안 등)
+├── crypto/                  # ECDH/EdDSA/DuplexSponge, 키 저장
+├── workers/                 # 암호/증명 보조 워커
+├── contractV2.ts            # MACI/Poll/Tally ABIs + 주소
+└── wagmi.ts                 # 지갑/체인 설정
+
+contracts/                   # MACI/Poll/MessageProcessor/Tally
+circuits/                    # D1/D2/MACI 회로
+coordinator/                 # 오프체인 집계/증명 자동화
 ```
 
-## Data Flow
+## Data Flow (Runtime)
 
-### State Management
-
-| State | Type | Description |
-|-------|------|-------------|
-| `keyPair` | KeyPair | 사용자의 ZK 키페어 (sk, pkX, pkY) |
-| `tokenNote` | TokenNote | 토큰 노트 (noteHash, noteValue, etc.) |
-| `voteData` | VoteData | 투표 데이터 (commitment, nullifier) |
-| `phase` | string | commit / reveal / ended |
-| `proposals` | Proposal[] | 제안 목록 |
-
-### Voting Data Structure
-
-```typescript
-interface VoteData {
-  choice: 0n | 1n | 2n       // against / for / abstain
-  votingPower: bigint        // Token balance
-  voteSalt: bigint           // Random salt
-  proposalId: bigint
-  commitment: bigint         // hash(choice, votingPower, proposalId, voteSalt)
-  nullifier: bigint          // hash(sk, proposalId)
-}
-```
+1. 프론트엔드에서 투표 선택 + 강도 입력
+2. 클라이언트에서 메시지 암호화 후 `Poll.publishMessage()` 호출
+3. `AccQueue`에 메시지 누적
+4. 코디네이터가 병합/처리/증명 생성
+5. `MessageProcessor.verify()` + `Tally.verify()` 통과
+6. `Tally` 컨트랙트에 합산 결과 저장 (For/Against)
 
 ## Smart Contract Architecture
 
-```solidity
-contract PrivateVoting {
-    // Verifier interface (4 public inputs)
-    IVerifier public verifier;
+```
+MACI.sol
+ ├── signUp
+ └── deployPoll
 
-    // Proposal storage
-    mapping(uint256 => Proposal) public proposals;
+Poll.sol
+ ├── publishMessage
+ ├── mergeMaciStateAq
+ └── mergeMessageAq
 
-    // Vote commitments: proposalId => nullifier => VoteCommitment
-    mapping(uint256 => mapping(uint256 => VoteCommitment)) public commitments;
+MessageProcessor.sol
+ └── verify (state transition)
 
-    // Nullifier tracking: proposalId => nullifier => used
-    mapping(uint256 => mapping(uint256 => bool)) public nullifierUsed;
-
-    // Merkle root registry
-    mapping(uint256 => bool) public validMerkleRoots;
-
-    // Core functions
-    function commitVote(proposalId, commitment, votingPower, nullifier, proof)
-    function revealVote(proposalId, nullifier, choice, voteSalt)
-    function getProposal(proposalId) returns (...)
-}
+Tally.sol
+ └── verify (tally proof) + results
 ```
 
-## Security Properties
+Supporting:
+- `AccQueue.sol` (Quinary accumulator)
+- `VkRegistry.sol` (VK registry)
+- Gatekeeper / VoiceCreditProxy
 
-| Property | Implementation |
-|----------|----------------|
-| Privacy | 투표 선택이 reveal phase까지 숨겨짐 |
-| Anti-Coercion | Commit-reveal로 투표 증명 불가 |
-| Double-Spend | nullifier = hash(sk, proposalId)로 방지 |
-| Integrity | ZK proof로 토큰 소유권 검증 |
+## Results UX (Default)
+
+- **투표 종료 후** 기본 화면은 결과(집계) 페이지이다.
+- 지갑 연결 없이도 종료된 제안의 결과를 볼 수 있다.
+- 개별 투표는 공개되지 않으며 합산 결과만 노출된다.
 
 ## Network Configuration
 
-| Network | Chain ID | Contract |
-|---------|----------|----------|
-| Sepolia | 11155111 | `0x583e8926F8701a196F182c449dF7BAc4782EF784` |
-
-## Future Enhancements
-
-1. **Real Groth16 Proofs**: snarkjs 연동하여 실제 증명 생성
-2. **Merkle Tree Service**: 토큰 스냅샷 자동화
-3. **IPFS**: 제안 내용 분산 저장
-4. **Multi-chain**: L2 네트워크 지원
+| Network | Chain ID | Note |
+|---------|----------|------|
+| Sepolia | 11155111 | 테스트넷 배포 |

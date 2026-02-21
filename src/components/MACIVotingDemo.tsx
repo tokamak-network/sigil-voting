@@ -34,6 +34,7 @@ import { useTranslation } from '../i18n'
 import { storageKey } from '../storageKeys'
 import { preloadCrypto } from '../crypto/preload'
 import type { CryptoModules } from '../crypto/preload'
+import { getLogsChunked } from '../utils/viemLogs'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
 
@@ -166,21 +167,24 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
             functionName: 'polls',
             args: [BigInt(propPollId)],
           }),
-          publicClient.getLogs({
-            address: MACI_V2_ADDRESS,
-            event: {
-              type: 'event',
-              name: 'DeployPoll',
-              inputs: [
-                { name: 'pollId', type: 'uint256', indexed: true },
-                { name: 'pollAddr', type: 'address', indexed: false },
-                { name: 'messageProcessorAddr', type: 'address', indexed: false },
-                { name: 'tallyAddr', type: 'address', indexed: false },
-              ],
+          getLogsChunked(
+            publicClient,
+            {
+              address: MACI_V2_ADDRESS,
+              event: {
+                type: 'event',
+                name: 'DeployPoll',
+                inputs: [
+                  { name: 'pollId', type: 'uint256', indexed: true },
+                  { name: 'pollAddr', type: 'address', indexed: false },
+                  { name: 'messageProcessorAddr', type: 'address', indexed: false },
+                  { name: 'tallyAddr', type: 'address', indexed: false },
+                ],
+              },
             },
-            fromBlock: MACI_DEPLOY_BLOCK,
-            toBlock: 'latest',
-          }).catch(() => [] as any[]),
+            MACI_DEPLOY_BLOCK,
+            'latest',
+          ).catch(() => [] as any[]),
         ])
 
         const pollAddr = addr as `0x${string}`
@@ -315,22 +319,25 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
     if (!publicClient || !isConfigured) return
     const checkOnChainSignUp = async () => {
       try {
-        const logs = await publicClient.getLogs({
-          address: MACI_V2_ADDRESS,
-          event: {
-            type: 'event',
-            name: 'SignUp',
-            inputs: [
-              { name: 'stateIndex', type: 'uint256', indexed: true },
-              { name: 'pubKeyX', type: 'uint256', indexed: true },
-              { name: 'pubKeyY', type: 'uint256', indexed: false },
-              { name: 'voiceCreditBalance', type: 'uint256', indexed: false },
-              { name: 'timestamp', type: 'uint256', indexed: false },
-            ],
+        const logs = await getLogsChunked(
+          publicClient,
+          {
+            address: MACI_V2_ADDRESS,
+            event: {
+              type: 'event',
+              name: 'SignUp',
+              inputs: [
+                { name: 'stateIndex', type: 'uint256', indexed: true },
+                { name: 'pubKeyX', type: 'uint256', indexed: true },
+                { name: 'pubKeyY', type: 'uint256', indexed: false },
+                { name: 'voiceCreditBalance', type: 'uint256', indexed: false },
+                { name: 'timestamp', type: 'uint256', indexed: false },
+              ],
+            },
           },
-          fromBlock: MACI_DEPLOY_BLOCK,
-          toBlock: 'latest',
-        })
+          MACI_DEPLOY_BLOCK,
+          'latest',
+        )
 
         // Find the LAST (most recent) signUp from this address
         let lastMatch: { stateIndex: number; pubKeyX: string; pubKeyY: string } | null = null
@@ -437,21 +444,24 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
           } else {
             // Fallback: query events from RPC
             try {
-              const deployLogs = await publicClient.getLogs({
-                address: MACI_V2_ADDRESS,
-                event: {
-                  type: 'event',
-                  name: 'DeployPoll',
-                  inputs: [
-                    { name: 'pollId', type: 'uint256', indexed: true },
-                    { name: 'pollAddr', type: 'address', indexed: false },
-                    { name: 'messageProcessorAddr', type: 'address', indexed: false },
-                    { name: 'tallyAddr', type: 'address', indexed: false },
-                  ],
+              const deployLogs = await getLogsChunked(
+                publicClient,
+                {
+                  address: MACI_V2_ADDRESS,
+                  event: {
+                    type: 'event',
+                    name: 'DeployPoll',
+                    inputs: [
+                      { name: 'pollId', type: 'uint256', indexed: true },
+                      { name: 'pollAddr', type: 'address', indexed: false },
+                      { name: 'messageProcessorAddr', type: 'address', indexed: false },
+                      { name: 'tallyAddr', type: 'address', indexed: false },
+                    ],
+                  },
                 },
-                fromBlock: MACI_DEPLOY_BLOCK,
-                toBlock: 'latest',
-              })
+                MACI_DEPLOY_BLOCK,
+                'latest',
+              )
               for (const dl of deployLogs) {
                 const dArgs = dl.args as { pollId?: bigint; tallyAddr?: `0x${string}`; messageProcessorAddr?: `0x${string}` }
                 if (dArgs.pollId !== undefined && Number(dArgs.pollId) === propPollId) {

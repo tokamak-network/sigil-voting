@@ -126,12 +126,18 @@ export default function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePo
             const { parseEventLogs } = await import('viem')
             const events = parseEventLogs({ abi: [deployPollEvent], logs: [log] })
             if (events.length > 0) {
-              const { pollId: newPollIdBig, pollAddr } = events[0].args as any
+              const { pollId: newPollIdBig, pollAddr, messageProcessorAddr, tallyAddr } = events[0].args as any
               const newPollId = Number(newPollIdBig)
 
               localStorage.setItem('maci-last-poll-id', newPollId.toString())
               localStorage.setItem('maci-last-poll-addr', pollAddr)
               localStorage.setItem(storageKey.pollTitle(newPollId), title.trim())
+              if (messageProcessorAddr) {
+                localStorage.setItem(storageKey.pollTitle(newPollId) + ':mp', messageProcessorAddr)
+              }
+              if (tallyAddr) {
+                localStorage.setItem(storageKey.pollTitle(newPollId) + ':tally', tallyAddr)
+              }
               if (description.trim()) {
                 localStorage.setItem(storageKey.pollDesc(newPollId), description.trim())
               }
@@ -150,11 +156,15 @@ export default function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePo
           for (const log of receipt.logs) {
             if (log.topics.length >= 2) {
               const newPollId = parseInt(log.topics[1] as string, 16)
-              if (log.data && log.data.length >= 130) {
+              if (log.data && log.data.length >= 194) {
                 const pollAddr = ('0x' + log.data.slice(26, 66)) as `0x${string}`
+                const messageProcessorAddr = ('0x' + log.data.slice(90, 130)) as `0x${string}`
+                const tallyAddr = ('0x' + log.data.slice(154, 194)) as `0x${string}`
                 localStorage.setItem('maci-last-poll-id', newPollId.toString())
                 localStorage.setItem('maci-last-poll-addr', pollAddr)
                 localStorage.setItem(storageKey.pollTitle(newPollId), title.trim())
+                localStorage.setItem(storageKey.pollTitle(newPollId) + ':mp', messageProcessorAddr)
+                localStorage.setItem(storageKey.pollTitle(newPollId) + ':tally', tallyAddr)
                 if (description.trim()) {
                   localStorage.setItem(storageKey.pollDesc(newPollId), description.trim())
                 }

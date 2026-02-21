@@ -12,26 +12,19 @@ zkDEX D1 Private Voting에서 사용된 기술 스택입니다.
 | snarkjs | - | Groth16 증명 생성/검증 |
 | circomlib | - | Poseidon, Baby Jubjub 등 라이브러리 |
 
-### Circom Circuit
+### Circom Circuit (MACI)
 
 ```circom
-// circuits/PrivateVoting.circom
+// circuits/MessageProcessor.circom
 pragma circom 2.1.6;
 
 include "circomlib/circuits/poseidon.circom";
 include "circomlib/circuits/babyjub.circom";
 
-template PrivateVoting(merkleTreeDepth) {
-    // 4 public inputs (D1 spec)
-    signal input voteCommitment;
-    signal input proposalId;
-    signal input votingPower;
-    signal input merkleRoot;
-    // ... private inputs
+template MessageProcessor() {
+    // MACI state transition verification
+    // (encrypted votes, key change, reverse processing)
 }
-
-component main {public [voteCommitment, proposalId, votingPower, merkleRoot]}
-    = PrivateVoting(20);
 ```
 
 ### Cryptographic Primitives
@@ -47,53 +40,26 @@ component main {public [voteCommitment, proposalId, votingPower, merkleRoot]}
 
 | Technology | Version | Purpose |
 |------------|---------|---------|
-| React | 18.x | UI 컴포넌트 라이브러리 |
+| React | 19.x | UI 컴포넌트 라이브러리 |
+| Next.js | 15.x | App Router + 빌드/서빙 |
 | TypeScript | 5.x | 타입 안정성 |
-| Vite | 5.x | 빌드 도구 |
 
-### React Hooks
-
-```typescript
-// ZK 상태 관리
-const [keyPair, setKeyPair] = useState<KeyPair | null>(null)
-const [tokenNote, setTokenNote] = useState<TokenNote | null>(null)
-const [voteData, setVoteData] = useState<VoteData | null>(null)
-```
-
-### TypeScript Interfaces
+### Frontend State (MACI)
 
 ```typescript
-// src/zkproof.ts
-interface KeyPair {
-  sk: bigint        // Secret key
-  pkX: bigint       // Public key X
-  pkY: bigint       // Public key Y
-}
-
-interface TokenNote {
-  noteHash: bigint
-  noteValue: bigint
-  noteSalt: bigint
-  tokenType: bigint
-  pkX: bigint
-  pkY: bigint
-}
-
-interface VoteData {
-  choice: VoteChoice
-  votingPower: bigint
-  voteSalt: bigint
-  proposalId: bigint
-  commitment: bigint
-  nullifier: bigint
-}
+// Example state for encrypted voting flow (MACI)
+const [isRegistered, setIsRegistered] = useState(false)
+const [voiceCredits, setVoiceCredits] = useState(0)
+const [phase, setPhase] = useState<'voting' | 'merging' | 'processing' | 'finalized' | 'failed' | 'noVotes'>('voting')
 ```
+
+Key material is stored client-side using encrypted localStorage (`src/crypto/keyStore.ts`).
 
 ## Web3 Integration
 
 | Technology | Version | Purpose |
 |------------|---------|---------|
-| wagmi | 2.x | React Hooks for Ethereum |
+| wagmi | 3.x | React Hooks for Ethereum |
 | viem | 2.x | Ethereum interaction |
 | @tanstack/react-query | 5.x | Async state management |
 
@@ -127,36 +93,32 @@ export const config = createConfig({
 | Solidity | 0.8.24 | 스마트 컨트랙트 언어 |
 | Hardhat | - | 개발/배포 도구 |
 
-### Contract Interface
+### Contract Interface (MACI)
 
 ```solidity
-// contracts/PrivateVoting.sol
-interface IVerifier {
-    function verifyProof(
-        uint256[2] calldata _pA,
-        uint256[2][2] calldata _pB,
-        uint256[2] calldata _pC,
-        uint256[4] calldata _pubSignals  // 4 public inputs
-    ) external view returns (bool);
+interface IMACI {
+    function signUp(uint256 _pubKeyX, uint256 _pubKeyY, bytes calldata _gatekeeperData, bytes calldata _creditData) external;
+    function deployPoll(
+        string calldata _title,
+        uint256 _duration,
+        uint256 _coordinatorPubKeyX,
+        uint256 _coordinatorPubKeyY,
+        address _mpVerifier,
+        address _tallyVerifier,
+        address _vkRegistry,
+        uint8 _messageTreeDepth
+    ) external;
 }
 
-contract PrivateVoting {
-    function commitVote(
-        uint256 _proposalId,
-        uint256 _commitment,
-        uint256 _votingPower,
-        uint256 _nullifier,
-        uint256[2] calldata _pA,
-        uint256[2][2] calldata _pB,
-        uint256[2] calldata _pC
-    ) external;
+interface IPoll {
+    function publishMessage(uint256[10] calldata _encMessage, uint256 _encPubKeyX, uint256 _encPubKeyY) external;
+}
 
-    function revealVote(
-        uint256 _proposalId,
-        uint256 _nullifier,
-        uint256 _choice,
-        uint256 _voteSalt
-    ) external;
+interface ITally {
+    function tallyVerified() external view returns (bool);
+    function forVotes() external view returns (uint256);
+    function againstVotes() external view returns (uint256);
+    function totalVoters() external view returns (uint256);
 }
 ```
 
@@ -204,17 +166,17 @@ contract PrivateVoting {
 ```json
 {
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "wagmi": "^2.x",
+    "react": "^19.x",
+    "react-dom": "^19.x",
+    "next": "^15.x",
+    "wagmi": "^3.x",
     "viem": "^2.x",
     "@tanstack/react-query": "^5.x"
   },
   "devDependencies": {
-    "@types/react": "^18.2.0",
-    "@vitejs/plugin-react": "^4.x",
+    "@types/react": "^19.x",
+    "@types/react-dom": "^19.x",
     "typescript": "^5.x",
-    "vite": "^5.x",
     "hardhat": "^2.x"
   }
 }
@@ -226,15 +188,18 @@ contract PrivateVoting {
 # Install circom
 curl -Ls https://scrypt.io/scripts/circom.sh | sh
 
-# Compile circuit
+# Compile circuits
 cd circuits
-circom PrivateVoting.circom --r1cs --wasm --sym -o build/
+circom MessageProcessor.circom --r1cs --wasm --sym -o build_maci/
+circom TallyVotes.circom --r1cs --wasm --sym -o build_maci/
 
 # Generate proving key (Powers of Tau required)
-snarkjs groth16 setup build/PrivateVoting.r1cs pot_final.ptau build/PrivateVoting.zkey
+snarkjs groth16 setup build_maci/MessageProcessor.r1cs pot_final.ptau build_maci/MessageProcessor.zkey
+snarkjs groth16 setup build_maci/TallyVotes.r1cs pot_final.ptau build_maci/TallyVotes.zkey
 
 # Export verifier
-snarkjs zkey export verifier build/PrivateVoting.zkey build/Verifier.sol
+snarkjs zkey export verifier build_maci/MessageProcessor.zkey build_maci/MessageProcessorVerifier.sol
+snarkjs zkey export verifier build_maci/TallyVotes.zkey build_maci/TallyVerifier.sol
 ```
 
 ## Browser Support
@@ -251,18 +216,17 @@ snarkjs zkey export verifier build/PrivateVoting.zkey build/Verifier.sol
 ## File Structure
 
 ```
-zk-dex-d1-private-voting/
-├── circuits/                 # ZK Circuits
-│   ├── PrivateVoting.circom  # D1 spec circuit
-│   └── compile.sh            # Compilation script
-├── contracts/                # Smart Contracts
-│   └── PrivateVoting.sol     # Commit-reveal contract
-├── src/                      # Frontend
-│   ├── App.tsx               # Main component
-│   ├── zkproof.ts            # ZK proof module
-│   ├── contract.ts           # ABI + address
+sigil/
+├── app/                      # Next App Router
+├── src/                      # Frontend modules
+│   ├── components/           # UI + voting flows
+│   ├── crypto/               # ECDH/EdDSA/DuplexSponge utilities
+│   ├── workers/              # ZK worker helpers
+│   ├── contractV2.ts         # MACI ABIs + addresses
 │   └── wagmi.ts              # Wallet config
-├── test/                     # Tests
-│   └── PrivateVoting.test.ts
+├── circuits/                 # ZK circuits (D1/D2/MACI)
+├── contracts/                # MACI/Poll/MessageProcessor/Tally
+├── coordinator/              # Off-chain coordinator (prove + tally)
+├── test/                     # Unit tests
 └── docs/                     # Documentation
 ```

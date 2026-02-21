@@ -114,6 +114,7 @@ const MACI_ABI = [
   'function numSignUps() view returns (uint256)',
   'function polls(uint256) view returns (address)',
   'function owner() view returns (address)',
+  'function resetStateAqMerge()',
   'event SignUp(uint256 indexed stateIndex, uint256 indexed pubKeyX, uint256 pubKeyY, uint256 voiceCreditBalance, uint256 timestamp)',
   'event DeployPoll(uint256 indexed pollId, address pollAddr, address messageProcessorAddr, address tallyAddr)',
 ];
@@ -226,23 +227,46 @@ async function main() {
     fail('Phase 0.5', `forge script failed: ${err.stderr?.slice(0, 300) || err.message}`);
   }
 
-  // Parse addresses from forge output
-  const mpVerifierMatch = forgeOutput.match(/E2E_MP_VERIFIER=(0x[0-9a-fA-F]{40})/);
-  const tallyVerifierMatch = forgeOutput.match(/E2E_TALLY_VERIFIER=(0x[0-9a-fA-F]{40})/);
-  const accQueueMatch = forgeOutput.match(/E2E_ACCQUEUE=(0x[0-9a-fA-F]{40})/);
-  const maciMatch = forgeOutput.match(/E2E_MACI=(0x[0-9a-fA-F]{40})/);
-  const vkRegistryMatch = forgeOutput.match(/E2E_VK_REGISTRY=(0x[0-9a-fA-F]{40})/);
+  // Parse addresses from forge output (fallback to broadcast JSON)
+  let freshMpVerifier: string | null = null;
+  let freshTallyVerifier: string | null = null;
+  let freshMaciAddress: string | null = null;
+  let freshAccQueueAddress: string | null = null;
+  let freshVkRegistry: string | null = null;
 
-  if (!accQueueMatch || !maciMatch || !mpVerifierMatch || !tallyVerifierMatch) {
+  const mpVerifierMatch = forgeOutput.match(/MsgProcessorVerifier:\\s*(0x[0-9a-fA-F]{40})/);
+  const tallyVerifierMatch = forgeOutput.match(/TallyVerifier:\\s*(0x[0-9a-fA-F]{40})/);
+  const accQueueMatch = forgeOutput.match(/AccQueue:\\s*(0x[0-9a-fA-F]{40})/);
+  const maciMatch = forgeOutput.match(/MACI:\\s*(0x[0-9a-fA-F]{40})/);
+  const vkRegistryMatch = forgeOutput.match(/VkRegistry:\\s*(0x[0-9a-fA-F]{40})/);
+
+  if (mpVerifierMatch) freshMpVerifier = mpVerifierMatch[1];
+  if (tallyVerifierMatch) freshTallyVerifier = tallyVerifierMatch[1];
+  if (accQueueMatch) freshAccQueueAddress = accQueueMatch[1];
+  if (maciMatch) freshMaciAddress = maciMatch[1];
+  if (vkRegistryMatch) freshVkRegistry = vkRegistryMatch[1];
+
+  if (!freshMpVerifier || !freshTallyVerifier || !freshAccQueueAddress || !freshMaciAddress) {
+    const latestBroadcast = resolve(PROJECT_ROOT, 'broadcast/DeployE2E.s.sol/11155111/run-latest.json');
+    if (existsSync(latestBroadcast)) {
+      const data = JSON.parse(readFileSync(latestBroadcast, 'utf8'));
+      const txs = (data.transactions || []).filter((t: any) => t.contractName && t.contractAddress);
+      const byName = (name: string) =>
+        txs.find((t: any) => t.contractName === name)?.contractAddress as string | undefined;
+      freshMpVerifier = freshMpVerifier || byName('Groth16VerifierMsgProcessor') || null;
+      freshTallyVerifier = freshTallyVerifier || byName('Groth16VerifierTally') || null;
+      freshVkRegistry = freshVkRegistry || byName('VkRegistry') || null;
+      freshAccQueueAddress = freshAccQueueAddress || byName('AccQueue') || null;
+      freshMaciAddress = freshMaciAddress || byName('MACI') || null;
+    }
+  }
+
+  if (!freshAccQueueAddress || !freshMaciAddress || !freshMpVerifier || !freshTallyVerifier) {
     log(forgeOutput.slice(-500));
     fail('Phase 0.5', 'Could not parse deployed addresses from forge output');
   }
 
-  const freshMpVerifier = mpVerifierMatch[1];
-  const freshTallyVerifier = tallyVerifierMatch[1];
-  const freshMaciAddress = maciMatch[1];
-  const freshAccQueueAddress = accQueueMatch[1];
-  const freshVkRegistry = vkRegistryMatch ? vkRegistryMatch[1] : config.vkRegistry;
+  if (!freshVkRegistry) freshVkRegistry = config.vkRegistry;
   log(`  Fresh MpVerifier: ${freshMpVerifier}`);
   log(`  Fresh TallyVerifier: ${freshTallyVerifier}`);
   log(`  Fresh AccQueue: ${freshAccQueueAddress}`);
