@@ -2,11 +2,10 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, Suspense, lazy } from 'react'
-import { PageShell } from '../../page-shell'
-import { LoadingSpinner } from '../../components/LoadingSpinner'
+import { LoadingSpinner } from '../../../components/LoadingSpinner'
 
 const CreatePollForm = lazy(
-  () => import('../../../src/components/CreatePollForm')
+  () => import('../../../../src/components/CreatePollForm')
 )
 
 export default function CreatePollPage() {
@@ -27,13 +26,11 @@ export default function CreatePollPage() {
   )
 
   return (
-    <PageShell>
-      <Suspense fallback={<LoadingSpinner />}>
-        <CreatePollForm
-          onPollCreated={handlePollCreated}
-          onSelectPoll={handleSelectPoll}
-        />
-      </Suspense>
-    </PageShell>
+    <Suspense fallback={<LoadingSpinner />}>
+      <CreatePollForm
+        onPollCreated={handlePollCreated}
+        onSelectPoll={handleSelectPoll}
+      />
+    </Suspense>
   )
 }

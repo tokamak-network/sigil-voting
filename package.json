@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "next dev --turbo false",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -15,7 +15,7 @@
     "test:components": "vitest run --config vitest.config.ts test/components",
     "test:e2e": "npx tsx e2e/test-full-flow.ts",
     "test:e2e:browser": "playwright test",
-    "dev:full": "npx tsx coordinator/src/run.ts & next dev --turbo false",
+    "dev:full": "npx tsx coordinator/src/run.ts & next dev",
     "coordinator": "npx tsx coordinator/src/run.ts"
   },
   "dependencies": {

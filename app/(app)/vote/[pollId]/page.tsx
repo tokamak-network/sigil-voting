@@ -2,11 +2,10 @@
 
 import { use, Suspense, lazy, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { PageShell } from '../../page-shell'
-import { LoadingSpinner } from '../../components/LoadingSpinner'
+import { LoadingSpinner } from '../../../components/LoadingSpinner'
 
 const MACIVotingDemo = lazy(
-  () => import('../../../src/components/MACIVotingDemo')
+  () => import('../../../../src/components/MACIVotingDemo')
 )
 
 interface PollPageProps {
@@ -46,23 +45,19 @@ export default function PollDetailPage({ params }: PollPageProps) {
 
   if (isNaN(pollIdNum)) {
     return (
-      <PageShell>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <p className="text-lg font-display font-bold">Invalid poll ID</p>
-        </div>
-      </PageShell>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <p className="text-lg font-display font-bold">Invalid poll ID</p>
+      </div>
     )
   }
 
   return (
-    <PageShell>
-      <Suspense fallback={<LoadingSpinner />}>
-        <MACIVotingDemo
-          pollId={pollIdNum}
-          onBack={handleBack}
-          onVoteSubmitted={handleVoteSubmitted}
-        />
-      </Suspense>
-    </PageShell>
+    <Suspense fallback={<LoadingSpinner />}>
+      <MACIVotingDemo
+        pollId={pollIdNum}
+        onBack={handleBack}
+        onVoteSubmitted={handleVoteSubmitted}
+      />
+    </Suspense>
   )
 }

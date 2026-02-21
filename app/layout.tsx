@@ -4,7 +4,10 @@ import '../src/index.css'
 import '../src/App.css'
 
 export const metadata: Metadata = {
-  title: 'Sigil | Your Vote. Your Secret.',
+  title: {
+    default: 'SIGIL — Your Vote. Your Secret.',
+    template: '%s | SIGIL',
+  },
   description:
     'DAO votes are public. Whales dominate. Bribes go unchecked. SIGIL is the governance protocol that fixes all three — with permanent privacy, anti-bribery, and quadratic voting on Ethereum.',
   keywords:

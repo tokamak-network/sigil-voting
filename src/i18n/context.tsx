@@ -21,7 +21,7 @@ function getInitialLang(): Language {
   } catch {
     // localStorage not available
   }
-  return 'ko'
+  return 'en'
 }
 
 const LanguageContext = createContext<LanguageContextValue | null>(null)

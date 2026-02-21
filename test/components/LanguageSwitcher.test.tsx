@@ -17,10 +17,10 @@ describe('LanguageSwitcher', () => {
     expect(screen.getByLabelText('한국어로 전환')).toBeInTheDocument()
   })
 
-  it('defaults to Korean (KO pressed)', () => {
+  it('defaults to English (EN pressed)', () => {
     renderWithProviders(<LanguageSwitcher />)
-    expect(screen.getByText('KO')).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByText('EN')).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByText('EN')).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('KO')).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('switches to English when EN is clicked', async () => {

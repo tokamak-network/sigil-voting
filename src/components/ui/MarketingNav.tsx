@@ -1,20 +1,22 @@
+'use client'
+
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useState, useEffect, useRef } from 'react'
 import { useAccount, useConnect, useDisconnect, useSwitchChain, useReadContract } from 'wagmi'
 import { injected } from 'wagmi/connectors'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { sepolia } from '../wagmi'
-import { useTranslation } from '../i18n'
-import { LanguageSwitcher } from './LanguageSwitcher'
+import { sepolia } from '../../wagmi'
+import { useTranslation } from '../../i18n'
+import { LanguageSwitcher } from '../LanguageSwitcher'
 import {
   MACI_V2_ADDRESS,
   MACI_ABI,
-} from '../contractV2'
+} from '../../contractV2'
 
 const shortenAddress = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-4)
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
 
-export function Header() {
+export function MarketingNav() {
   const pathname = usePathname()
   const { address, isConnected, chainId } = useAccount()
   const { connect, isPending: isConnecting } = useConnect()
@@ -28,13 +30,6 @@ export function Header() {
   const isCorrectChain = chainId === sepolia.id
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
 
-  // Gate check: hide "New Proposal" if user doesn't meet token threshold
-  const { data: _gateCount } = useReadContract({
-    address: MACI_V2_ADDRESS as `0x${string}`,
-    abi: MACI_ABI,
-    functionName: 'proposalGateCount',
-    query: { enabled: isConfigured && !!address },
-  })
   const { data: canCreatePoll } = useReadContract({
     address: MACI_V2_ADDRESS as `0x${string}`,
     abi: MACI_ABI,
@@ -44,7 +39,6 @@ export function Header() {
   })
   const showNewProposal = canCreatePoll === true
 
-  // Close disconnect confirm on outside click
   useEffect(() => {
     if (!showDisconnectConfirm) return
     const handleClick = (e: MouseEvent) => {
@@ -92,7 +86,6 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b-2 border-border-light dark:border-border-dark">
       <div className="container mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
-        {/* Left: Brand + Testnet badge */}
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2">
             <img src="/assets/symbol.svg" alt="SIGIL" className="w-8 h-8" />
@@ -103,7 +96,6 @@ export function Header() {
           </span>
         </div>
 
-        {/* Center: Nav (desktop) */}
         <nav className="hidden md:flex items-center gap-6">
           <Link
             href="/vote"
@@ -119,11 +111,8 @@ export function Header() {
           </Link>
         </nav>
 
-        {/* Right: Controls */}
         <div className="flex items-center gap-2 md:gap-4">
           <LanguageSwitcher />
-
-          {/* New Proposal button (connected, desktop) */}
           {isConnected && isCorrectChain && showNewProposal && (
             <Link
               href="/vote/create"
@@ -133,8 +122,6 @@ export function Header() {
               {t.header.newProposal}
             </Link>
           )}
-
-          {/* Wrong chain warning */}
           {isConnected && !isCorrectChain && (
             <button
               onClick={handleSwitchNetwork}
@@ -144,8 +131,6 @@ export function Header() {
               {isSwitching ? t.header.switching : t.header.wrongNetwork}
             </button>
           )}
-
-          {/* Wallet address with disconnect confirm (connected) */}
           {isConnected && isCorrectChain && (
             <div className="relative" ref={disconnectRef}>
               <button
@@ -176,8 +161,6 @@ export function Header() {
               )}
             </div>
           )}
-
-          {/* Connect wallet (not connected) */}
           {!isConnected && (
             <button
               onClick={handleConnect}
@@ -187,8 +170,6 @@ export function Header() {
               {isConnecting ? t.header.connecting : t.header.connect.toUpperCase()}
             </button>
           )}
-
-          {/* Mobile hamburger menu */}
           <button
             className="md:hidden flex flex-col justify-center items-center w-8 h-8 gap-1.5"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -200,8 +181,6 @@ export function Header() {
           </button>
         </div>
       </div>
-
-      {/* Mobile dropdown menu */}
       {mobileMenuOpen && (
         <>
           <div className="fixed inset-0 top-16 bg-black/30 z-40 md:hidden" onClick={() => setMobileMenuOpen(false)} />
