@@ -13,14 +13,14 @@ let mockAccountState = {
   chainId: 11155111 as number | undefined,
 }
 
-let mockEffectiveVoter: unknown = undefined
+let mockCurrentDelegate: unknown = undefined
 let mockIsDelegating: unknown = false
 
 vi.mock('wagmi', () => ({
   useAccount: () => mockAccountState,
   useReadContract: (config: any) => {
-    if (config?.functionName === 'getEffectiveVoter')
-      return { data: mockEffectiveVoter, isLoading: false, refetch: vi.fn() }
+    if (config?.functionName === 'getDelegate')
+      return { data: mockCurrentDelegate, isLoading: false, refetch: vi.fn() }
     if (config?.functionName === 'isDelegating')
       return { data: mockIsDelegating, isLoading: false, refetch: vi.fn() }
     return { data: undefined, isLoading: false, refetch: vi.fn() }
@@ -49,7 +49,7 @@ describe('DelegationPage', () => {
       isConnected: false,
       chainId: 11155111,
     }
-    mockEffectiveVoter = undefined
+    mockCurrentDelegate = undefined
     mockIsDelegating = false
   })
 
@@ -77,7 +77,7 @@ describe('DelegationPage', () => {
       chainId: 11155111,
     }
     mockIsDelegating = true
-    mockEffectiveVoter = '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd'
+    mockCurrentDelegate = '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd'
     renderWithProviders(<DelegationPage />)
     expect(screen.getByText('0xabcd...abcd')).toBeInTheDocument()
     expect(screen.getByText(/Remove Delegation|위임 해제/i)).toBeInTheDocument()

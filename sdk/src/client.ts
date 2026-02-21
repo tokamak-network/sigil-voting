@@ -92,7 +92,8 @@ const TIMELOCK_EXECUTOR_ABI = [
 const DELEGATION_REGISTRY_ABI = [
   'function delegate(address _to)',
   'function undelegate()',
-  'function getEffectiveVoter(address _user) view returns (address)',
+  'function getDelegate(address _user) view returns (address)',
+  'function getDelegators(address _delegate) view returns (address[])',
   'function isDelegating(address _user) view returns (bool)',
 ];
 
@@ -566,7 +567,7 @@ export class SigilClient {
     const registry = new ethers.Contract(this.delegationRegistryAddress, DELEGATION_REGISTRY_ABI, this.provider);
     const addr = voter ?? (this.signer ? await this.signer.getAddress() : undefined);
     if (!addr) throw new Error('No address provided');
-    return await registry.getEffectiveVoter(addr);
+    return await registry.getDelegate(addr);
   }
 
   /** Check if an address is delegating */
