@@ -1,6 +1,6 @@
 {
   "name": "sigil-sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "SIGIL — Private, fair, collusion-resistant governance SDK for DAOs",
   "type": "module",
   "sideEffects": false,
