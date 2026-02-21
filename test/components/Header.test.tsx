@@ -47,11 +47,22 @@ vi.mock('../../src/contractV2', () => ({
   VOICE_CREDIT_PROXY_ABI: [],
 }))
 
-describe('Header', () => {
-  const setCurrentPage = vi.fn()
+let mockPathname = '/'
 
+vi.mock('next/navigation', () => ({
+  usePathname: () => mockPathname,
+}))
+
+vi.mock('next/link', () => ({
+  default: ({ href, children, ...props }: any) => (
+    <a href={href} {...props}>{children}</a>
+  ),
+}))
+
+describe('Header', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockPathname = '/'
     mockAccountState = {
       address: undefined,
       isConnected: false,
@@ -63,19 +74,19 @@ describe('Header', () => {
   })
 
   it('renders the SIGIL brand name', () => {
-    renderWithProviders(<Header currentPage="landing" setCurrentPage={setCurrentPage} />)
+    renderWithProviders(<Header />)
     expect(screen.getByText('SIGIL')).toBeInTheDocument()
   })
 
   it('shows connect button when not connected', () => {
-    renderWithProviders(<Header currentPage="landing" setCurrentPage={setCurrentPage} />)
+    renderWithProviders(<Header />)
     const connectButton = screen.getByRole('button', { name: /connect|연결/i })
     expect(connectButton).toBeInTheDocument()
   })
 
   it('calls connect when connect button is clicked', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<Header currentPage="landing" setCurrentPage={setCurrentPage} />)
+    renderWithProviders(<Header />)
     const connectButton = screen.getByRole('button', { name: /connect|연결/i })
     await user.click(connectButton)
     expect(mockConnect).toHaveBeenCalled()
@@ -87,7 +98,7 @@ describe('Header', () => {
       isConnected: true,
       chainId: 11155111,
     }
-    renderWithProviders(<Header currentPage="landing" setCurrentPage={setCurrentPage} />)
+    renderWithProviders(<Header />)
     expect(screen.getByText('0x1234...5678')).toBeInTheDocument()
   })
 
@@ -97,21 +108,19 @@ describe('Header', () => {
       isConnected: true,
       chainId: 1, // mainnet, not sepolia
     }
-    renderWithProviders(<Header currentPage="landing" setCurrentPage={setCurrentPage} />)
+    renderWithProviders(<Header />)
     expect(screen.getByText(/Wrong Network|네트워크 변경/i)).toBeInTheDocument()
   })
 
-  it('navigates to proposals page when Vote nav is clicked', async () => {
-    const user = userEvent.setup()
-    renderWithProviders(<Header currentPage="landing" setCurrentPage={setCurrentPage} />)
-    // Desktop nav has Vote button (ko: "투표하기", en: "Vote")
-    const voteButtons = screen.getAllByText(/Vote|투표하기/i)
-    await user.click(voteButtons[0])
-    expect(setCurrentPage).toHaveBeenCalledWith('proposals')
+  it('renders Vote nav as a link to /vote', () => {
+    renderWithProviders(<Header />)
+    const voteLinks = screen.getAllByText(/Vote|투표하기/i)
+    const voteLink = voteLinks[0].closest('a')
+    expect(voteLink).toHaveAttribute('href', '/vote')
   })
 
   it('shows testnet badge', () => {
-    renderWithProviders(<Header currentPage="landing" setCurrentPage={setCurrentPage} />)
+    renderWithProviders(<Header />)
     expect(screen.getByText(/Testnet|테스트넷/i)).toBeInTheDocument()
   })
 })

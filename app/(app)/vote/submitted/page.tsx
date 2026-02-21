@@ -2,11 +2,10 @@
 
 import { Suspense, lazy, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { PageShell } from '../../page-shell'
-import { LoadingSpinner } from '../../components/LoadingSpinner'
+import { LoadingSpinner } from '../../../components/LoadingSpinner'
 
 const VoteSubmitted = lazy(
-  () => import('../../../src/components/VoteSubmitted')
+  () => import('../../../../src/components/VoteSubmitted')
 )
 
 function VoteSubmittedContent() {
@@ -39,10 +38,8 @@ function VoteSubmittedContent() {
 
 export default function VoteSubmittedPage() {
   return (
-    <PageShell>
-      <Suspense fallback={<LoadingSpinner />}>
-        <VoteSubmittedContent />
-      </Suspense>
-    </PageShell>
+    <Suspense fallback={<LoadingSpinner />}>
+      <VoteSubmittedContent />
+    </Suspense>
   )
 }
