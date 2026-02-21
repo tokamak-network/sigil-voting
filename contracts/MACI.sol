@@ -9,6 +9,7 @@ import {Tally} from "./Tally.sol";
 import {ISignUpGatekeeper} from "./gatekeepers/ISignUpGatekeeper.sol";
 import {IVoiceCreditProxy} from "./voiceCreditProxy/IVoiceCreditProxy.sol";
 import {PoseidonT5} from "./PoseidonT5.sol";
+import {DelegationRegistry} from "./governance/DelegationRegistry.sol";
 
 /// @title MACI - Minimal Anti-Collusion Infrastructure
 /// @notice Registration contract: signUp with EdDSA pubkey, deployPoll for voting
@@ -34,6 +35,9 @@ contract MACI is DomainObjs {
     }
 
     TokenGate[] public proposalGates;
+
+    // ============ Delegation (Optional) ============
+    DelegationRegistry public delegationRegistry;
 
     // ============ Access Control ============
     error NotOwner();
@@ -149,6 +153,12 @@ contract MACI is DomainObjs {
         return proposalGates.length;
     }
 
+    /// @notice Set delegation registry (optional, owner only)
+    /// @param _registry DelegationRegistry address (address(0) to disable)
+    function setDelegationRegistry(address _registry) external onlyOwner {
+        delegationRegistry = DelegationRegistry(_registry);
+    }
+
     /// @notice Transfer ownership to a new address
     /// @param _newOwner The address of the new owner
     function transferOwnership(address _newOwner) external onlyOwner {
@@ -159,21 +169,39 @@ contract MACI is DomainObjs {
 
     /// @notice Check if an address can create a poll
     /// @dev No gates = owner only. With gates = must meet at least one threshold.
+    ///      If delegationRegistry is set, includes delegated token balances.
     function canCreatePoll(address _user) public view returns (bool) {
         uint256 len = proposalGates.length;
         if (len == 0) return _user == owner;
         for (uint256 i = 0; i < len;) {
-            (bool ok, bytes memory data) =
-                proposalGates[i].token.staticcall(abi.encodeWithSignature("balanceOf(address)", _user));
-            if (ok && data.length >= 32) {
-                uint256 balance = abi.decode(data, (uint256));
-                if (balance >= proposalGates[i].threshold) return true;
-            }
+            uint256 balance = _getEffectiveBalance(proposalGates[i].token, _user);
+            if (balance >= proposalGates[i].threshold) return true;
             unchecked {
                 ++i;
             }
         }
         return false;
+    }
+
+    /// @dev Get user's own balance + delegated balances for a token
+    function _getEffectiveBalance(address _token, address _user) internal view returns (uint256) {
+        uint256 total = _tokenBalance(_token, _user);
+        if (address(delegationRegistry) != address(0)) {
+            address[] memory delegators = delegationRegistry.getDelegators(_user);
+            for (uint256 i = 0; i < delegators.length;) {
+                total += _tokenBalance(_token, delegators[i]);
+                unchecked {
+                    ++i;
+                }
+            }
+        }
+        return total;
+    }
+
+    function _tokenBalance(address _token, address _user) internal view returns (uint256) {
+        (bool ok, bytes memory data) = _token.staticcall(abi.encodeWithSignature("balanceOf(address)", _user));
+        if (ok && data.length >= 32) return abi.decode(data, (uint256));
+        return 0;
     }
 
     /// @notice Deploy a new Poll with associated MessageProcessor and Tally
