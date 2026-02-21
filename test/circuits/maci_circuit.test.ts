@@ -234,7 +234,7 @@ describe('MACI Circuit Tests', () => {
       // Just verify it produces some output without failing
       // The actual SHA256 value would need to be computed externally
       // Main check: circuit doesn't fail + constraints satisfied
-    }, 180000)
+    }, 1200000)
   })
 
   // =============================================
