@@ -292,9 +292,9 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                   },
                   {
                     feature: t.landing.comparison.erc20Support,
-                    values: [t.landing.comparison.native, t.landing.comparison.no, t.landing.comparison.yes, t.landing.comparison.yes, t.landing.comparison.no],
-                    icons: ['check_circle', 'cancel', 'check_circle', 'check_circle', 'cancel'],
-                    colors: ['text-emerald-500', 'text-red-500', 'text-emerald-500', 'text-emerald-500', 'text-red-500'],
+                    values: [t.landing.comparison.native, t.landing.comparison.offchain, t.landing.comparison.yes, t.landing.comparison.yes, t.landing.comparison.offchain],
+                    icons: ['check_circle', 'error', 'check_circle', 'check_circle', 'error'],
+                    colors: ['text-emerald-500', 'text-amber-500', 'text-emerald-500', 'text-emerald-500', 'text-amber-500'],
                   },
                   {
                     feature: t.landing.comparison.serverlessTally,
@@ -305,9 +305,10 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                 ] as const).map((row, i) => (
                   <tr key={i} className="border-b-2 border-border-light dark:border-border-dark last:border-b-0">
                     <td className="p-4 font-bold">{row.feature}</td>
-                    {row.values.map((_val, j) => (
+                    {row.values.map((val, j) => (
                       <td key={j} className={`p-4 text-center border-l-2 border-border-light dark:border-border-dark ${j === 0 ? 'bg-primary/5 dark:bg-primary/10' : ''}`}>
                         <span className={`material-symbols-outlined text-2xl ${row.colors[j]}`}>{row.icons[j]}</span>
+                        <div className="text-xs mt-1 opacity-60">{val}</div>
                       </td>
                     ))}
                   </tr>
