@@ -81,6 +81,9 @@ export function HomeContent() {
                   {t.landing.documentation}
                 </Link>
               </div>
+              <p className="mt-4 text-xs font-display uppercase tracking-widest text-slate-500">
+                {t.landing.testnetNote}
+              </p>
             </div>
             <div className="lg:col-span-5 relative">
               <div className="border-2 border-border-light dark:border-border-dark p-8 bg-white dark:bg-black/40 backdrop-blur-sm relative z-10">
@@ -359,19 +362,23 @@ export function HomeContent() {
             <h2 className="font-display text-3xl font-extrabold uppercase mb-2">{t.landing.contracts.title}</h2>
             <p className="text-sm text-slate-600 dark:text-slate-400">{t.landing.contracts.subtitle}</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-2 border-border-light dark:border-border-dark max-w-4xl mx-auto">
-            {contractItems.map((c, i) => (
-              <div key={i} className={`p-6 ${i < 2 ? 'md:border-r-2 border-b-2 md:border-b-0' : ''} border-border-light dark:border-border-dark`}>
-                <p className="font-display text-xs font-bold uppercase tracking-widest text-primary mb-2">{c.label}</p>
-                <p className="font-mono text-xs break-all opacity-60 mb-3">{c.addr}</p>
-                {explorerBase && (
-                  <a href={`${explorerBase}${c.addr}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-display font-bold text-primary hover:underline uppercase">
-                    {t.landing.contracts.viewOn}<span className="material-symbols-outlined text-sm">open_in_new</span>
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
+          {contractItems.length === 0 ? (
+            <p className="text-center text-sm text-slate-500">{t.landing.contracts.empty}</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-2 border-border-light dark:border-border-dark max-w-4xl mx-auto">
+              {contractItems.map((c, i) => (
+                <div key={i} className={`p-6 ${i < 2 ? 'md:border-r-2 border-b-2 md:border-b-0' : ''} border-border-light dark:border-border-dark`}>
+                  <p className="font-display text-xs font-bold uppercase tracking-widest text-primary mb-2">{c.label}</p>
+                  <p className="font-mono text-xs break-all opacity-60 mb-3">{c.addr}</p>
+                  {explorerBase && (
+                    <a href={`${explorerBase}${c.addr}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-display font-bold text-primary hover:underline uppercase">
+                      {t.landing.contracts.viewOn}<span className="material-symbols-outlined text-sm">open_in_new</span>
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

@@ -28,6 +28,7 @@ export interface Translations {
     enterApp: string
     heroStatus: string
     heroVersion: string
+    testnetNote: string
     heroLabel1: string
     heroLabel2: string
     zeroExposure: { title: string; desc: string }
@@ -131,6 +132,7 @@ export interface Translations {
     contracts: {
       title: string
       subtitle: string
+      empty: string
       maci: string
       accQueue: string
       token: string

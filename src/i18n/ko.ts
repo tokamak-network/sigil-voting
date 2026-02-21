@@ -28,6 +28,7 @@ export const ko: Translations = {
     enterApp: '앱 시작',
     heroStatus: '프로토콜 상태: 테스트넷',
     heroVersion: 'By Tokamak Network',
+    testnetNote: '테스트넷 전용 · 지갑 + Sepolia ETH 필요',
     heroLabel1: '01 / 영지식 증명',
     heroLabel2: '02 / 담합 방지',
     zeroExposure: { title: 'ZK 검증', desc: '모든 투표는 영지식 증명으로 봉인되고 온체인에서 검증됩니다.' },
@@ -131,6 +132,7 @@ export const ko: Translations = {
     contracts: {
       title: '온체인 배포',
       subtitle: '컨트랙트는 이더리움 Sepolia에 배포되어 있습니다. 검증 링크는 컨트랙트별로 제공합니다.',
+      empty: '이 네트워크에서 컨트랙트 주소가 설정되지 않았습니다.',
       maci: 'MACI 레지스트리',
       accQueue: 'AccQueue (상태)',
       token: 'TON 토큰 (투표 크레딧)',

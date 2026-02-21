@@ -28,6 +28,7 @@ export const en: Translations = {
     enterApp: 'Launch App',
     heroStatus: 'Protocol Status: Testnet',
     heroVersion: 'By Tokamak Network',
+    testnetNote: 'Testnet only · Wallet + Sepolia ETH required',
     heroLabel1: '01 / ZK-PROOFS',
     heroLabel2: '02 / ANTI-COLLUSION',
     zeroExposure: { title: 'ZK Verified', desc: 'Each vote is sealed with zero-knowledge proofs and verified on-chain.' },
@@ -131,6 +132,7 @@ export const en: Translations = {
     contracts: {
       title: 'On-Chain Deployments',
       subtitle: 'Contracts are deployed on Ethereum Sepolia. Verification links are provided per contract.',
+      empty: 'Contract addresses are not configured for this network.',
       maci: 'MACI Registry',
       accQueue: 'AccQueue (State)',
       token: 'TON Token (Voice Credits)',
