@@ -88,7 +88,7 @@ export function TallyingStatus({
     : 180                // full pipeline
 
   // Track when each step was first detected to anchor the countdown
-  const [stepAnchor, setStepAnchor] = useState<{ step: number; time: number }>({ step: 0, time: votingEndTime ? votingEndTime * 1000 : Date.now() })
+  const [stepAnchor, setStepAnchor] = useState<{ step: number; time: number }>({ step: 0, time: 0 })
   const currentStep = isFinalized ? 3 : isProcessed ? 2 : allMerged ? 1 : 0
   useEffect(() => {
     if (currentStep > stepAnchor.step) {
@@ -96,11 +96,16 @@ export function TallyingStatus({
     }
   }, [currentStep, stepAnchor.step])
 
-  const [now, setNow] = useState(Date.now())
+  const [now, setNow] = useState(0)
   useEffect(() => {
+    if (now === 0) {
+      const initial = votingEndTime ? votingEndTime * 1000 : Date.now()
+      setNow(initial)
+      setStepAnchor((prev) => (prev.time === 0 ? { step: prev.step, time: initial } : prev))
+    }
     const iv = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(iv)
-  }, [])
+  }, [now, votingEndTime])
 
   const elapsedSinceAnchor = (now - stepAnchor.time) / 1000
   const remainingSec_raw = Math.max(0, remainingFromStep - elapsedSinceAnchor)
