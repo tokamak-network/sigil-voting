@@ -103,31 +103,6 @@ export interface Translations {
     }
     established: string
     sdkIntegration: string
-    comparison: {
-      title: string
-      subtitle: string
-      feature: string
-      permanentPrivacy: string
-      antiBribery: string
-      quadraticVoting: string
-      onChainVerify: string
-      automation: string
-      erc20Support: string
-      serverlessTally: string
-      yes: string
-      no: string
-      partial: string
-      plugin: string
-      offchain: string
-      demoStage: string
-      ownChain: string
-      postReveal: string
-      postRevealDev: string
-      native: string
-      free: string
-      selfHosted: string
-      onlyStack: string
-    }
     transparency: {
       title: string
       visibleTitle: string
