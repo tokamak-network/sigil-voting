@@ -25,7 +25,7 @@ export const ko: Translations = {
   landing: {
     badge: '비밀투표 프로토콜',
     title: '당신의 투표.\n당신의 비밀.',
-    subtitle: '개별 투표가 드러나지 않는 토큰 투표. 매수 증명은 어렵고, 이차투표로 공정성이 높아집니다.',
+    subtitle: '개별 선택을 드러내지 않는 토큰 투표. 매수 증명은 어렵고, 이차투표로 공정성이 높아집니다.',
     enterApp: '앱 시작',
     heroStatus: '프로토콜 상태: 테스트넷',
     heroVersion: 'By Tokamak Network',
@@ -44,10 +44,10 @@ export const ko: Translations = {
     maciSecured: { title: 'PSE MACI', desc: '이더리움 재단의 Privacy & Scaling Explorations 연구 기반.' },
     coreFeatures: '핵심 기능',
     features: {
-      privacy: { title: '비공개 투표', sub: '', desc: '투표는 암호화되며 개별 선택은 공개되지 않습니다. 총합만 공개됩니다.' },
+      privacy: { title: '비공개 투표', sub: '', desc: '개별 투표는 비공개, 결과 총합만 공개됩니다.' },
       coercion: { title: '매수 저항', sub: '', desc: '키를 바꾸고 재투표할 수 있습니다. 매수자는 이를 증명할 수 없습니다.' },
       fairness: { title: '더 공정하게', sub: '', desc: '이차투표로 추가 영향력 비용이 증가합니다.' },
-      verified: { title: 'ZK 검증', sub: '', desc: 'ZK 증명이 온체인에 공개되어 누구나 집계를 확인할 수 있습니다.' },
+      verified: { title: 'ZK 검증', sub: '', desc: '온체인 ZK 증명이 집계를 검증합니다.' },
     },
     operationalFlow: '어떻게 비밀이 보장되는가',
     lifecycle: {
