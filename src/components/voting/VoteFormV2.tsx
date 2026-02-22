@@ -15,15 +15,16 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useAccount, usePublicClient, useBalance, useReadContract } from 'wagmi';
-import { formatEther } from 'viem';
+import { formatEther, type PublicClient } from 'viem';
 import { writeContract } from '../../writeHelper';
-import { POLL_ABI, VOICE_CREDIT_PROXY_ADDRESS, ERC20_VOICE_CREDIT_PROXY_ABI } from '../../contractV2';
+import { POLL_ABI, VOICE_CREDIT_PROXY_ADDRESS, ERC20_VOICE_CREDIT_PROXY_ABI, MACI_V2_ADDRESS, MACI_DEPLOY_BLOCK } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 import { VoteConfirmModal } from './VoteConfirmModal';
 import { TransactionModal } from './TransactionModal';
 import { preloadCrypto } from '../../crypto/preload';
 import { getLastVote, getMaciNonce, incrementMaciNonce } from './voteUtils';
 import { storageKey } from '../../storageKeys';
+import { getLogsChunked } from '../../utils/viemLogs';
 
 interface VoteFormV2Props {
   pollId: number;
@@ -179,6 +180,11 @@ export function VoteFormV2({
         }
       }
 
+      const resolvedStateIndex = await resolveStateIndexFromLogs(publicClient ?? null, address, currentPubKey);
+      if (!resolvedStateIndex) {
+        throw new Error('State index not found for registered key');
+      }
+
       // Determine the keypair that will sign the vote message
       let voteSk = currentSk;
       let votePubKey = currentPubKey;
@@ -206,7 +212,7 @@ export function VoteFormV2({
         }
 
         const kcNonce = BigInt(getMaciNonce(address, pollId));
-        const stateIndex = BigInt(getStateIndex(address, pollId));
+        const stateIndex = BigInt(resolvedStateIndex);
         // Key change command: voteOption=0, weight=0
         const kcPackedCommand = stateIndex | (0n << 50n) | (0n << 100n) | (kcNonce << 150n) | (BigInt(pollId) << 200n);
 
@@ -291,7 +297,7 @@ export function VoteFormV2({
       }
 
       const nonce = BigInt(getMaciNonce(address, pollId));
-      const stateIndex = BigInt(getStateIndex(address, pollId));
+      const stateIndex = BigInt(resolvedStateIndex);
       const packedCommand = packCommand(
         stateIndex,
         BigInt(choice),
@@ -702,12 +708,59 @@ function setCreditsSpent(address: string, pollId: number, cost: number): void {
   localStorage.setItem(key, String(cost));
 }
 
-function getStateIndex(address: string, _pollId: number): number {
-  const globalVal = localStorage.getItem(storageKey.stateIndex(address));
-  if (globalVal) return parseInt(globalVal, 10);
-  const pollVal = localStorage.getItem(storageKey.stateIndexPoll(address, _pollId));
-  if (pollVal) return parseInt(pollVal, 10);
-  return 1;
+async function resolveStateIndexFromLogs(
+  publicClient: PublicClient | null,
+  address: string,
+  pubKey: [bigint, bigint],
+): Promise<number | null> {
+  const cached = localStorage.getItem(storageKey.stateIndex(address));
+  if (cached) return parseInt(cached, 10);
+  if (!publicClient) return null;
+
+  try {
+    const logs = await getLogsChunked(
+      publicClient,
+      {
+        address: MACI_V2_ADDRESS,
+        event: {
+          type: 'event',
+          name: 'SignUp',
+          inputs: [
+            { name: 'stateIndex', type: 'uint256', indexed: true },
+            { name: 'pubKeyX', type: 'uint256', indexed: true },
+            { name: 'pubKeyY', type: 'uint256', indexed: false },
+            { name: 'voiceCreditBalance', type: 'uint256', indexed: false },
+            { name: 'timestamp', type: 'uint256', indexed: false },
+          ],
+        },
+        args: { pubKeyX: pubKey[0] },
+      },
+      MACI_DEPLOY_BLOCK,
+      'latest',
+    );
+
+    let lastMatch: number | null = null;
+    for (const log of logs) {
+      const args = log.args as { stateIndex?: bigint; pubKeyY?: bigint } | undefined;
+      const pubKeyY = args?.pubKeyY?.toString() ?? '0';
+      if (pubKeyY !== pubKey[1].toString()) continue;
+      const stateIndex = args?.stateIndex ? Number(args.stateIndex) : (
+        log.topics?.[1] ? parseInt(log.topics[1] as string, 16) : NaN
+      );
+      if (!Number.isNaN(stateIndex) && stateIndex > 0) {
+        lastMatch = stateIndex;
+      }
+    }
+
+    if (lastMatch) {
+      localStorage.setItem(storageKey.stateIndex(address), String(lastMatch));
+      localStorage.setItem(storageKey.pk(address), JSON.stringify([pubKey[0].toString(), pubKey[1].toString()]));
+      return lastMatch;
+    }
+  } catch {
+    // ignore and fall through
+  }
+  return null;
 }
 
 async function getOrCreateMaciKeypair(
