@@ -50,7 +50,15 @@ describe('ResultsDisplay', () => {
   })
 
   it('shows "no votes" message when totalVotes is 0', () => {
-    mockUseReadContract.mockReturnValue({ data: 0n, isLoading: false, isError: false, isPending: false })
+    let callCount = 0
+    mockUseReadContract.mockImplementation(() => {
+      callCount++
+      if (callCount % 5 === 1) return { data: 0n, isLoading: false, isError: false, isPending: false } // forVotes
+      if (callCount % 5 === 2) return { data: 0n, isLoading: false, isError: false, isPending: false } // againstVotes
+      if (callCount % 5 === 3) return { data: 0n, isLoading: false, isError: false, isPending: false } // totalVoters
+      if (callCount % 5 === 4) return { data: 0n, isLoading: false, isError: false, isPending: false } // abstainVotes
+      return { data: true, isLoading: false, isError: false, isPending: false } // tallyVerified
+    })
     renderWithProviders(<ResultsDisplay tallyAddress={TALLY_ADDR} />)
     // Should show "how_to_vote" icon (no votes state)
     const icon = document.querySelector('.material-symbols-outlined')
@@ -61,23 +69,27 @@ describe('ResultsDisplay', () => {
     let callCount = 0
     mockUseReadContract.mockImplementation(() => {
       callCount++
-      if (callCount % 3 === 1) return { data: 75n, isLoading: false, isError: false, isPending: false } // forVotes
-      if (callCount % 3 === 2) return { data: 25n, isLoading: false, isError: false, isPending: false } // againstVotes
-      return { data: 5n, isLoading: false, isError: false, isPending: false } // totalVoters
+      if (callCount % 5 === 1) return { data: 75n, isLoading: false, isError: false, isPending: false } // forVotes
+      if (callCount % 5 === 2) return { data: 25n, isLoading: false, isError: false, isPending: false } // againstVotes
+      if (callCount % 5 === 3) return { data: 5n, isLoading: false, isError: false, isPending: false } // totalVoters
+      if (callCount % 5 === 4) return { data: 0n, isLoading: false, isError: false, isPending: false } // abstainVotes
+      return { data: true, isLoading: false, isError: false, isPending: false } // tallyVerified
     })
     renderWithProviders(<ResultsDisplay tallyAddress={TALLY_ADDR} />)
     // Should render progress bars
     const progressBars = screen.getAllByRole('progressbar')
-    expect(progressBars.length).toBe(2) // for + against bars
+    expect(progressBars.length).toBe(3) // for + against + abstain bars
   })
 
   it('shows correct percentages', () => {
     let callCount = 0
     mockUseReadContract.mockImplementation(() => {
       callCount++
-      if (callCount % 3 === 1) return { data: 75n, isLoading: false, isError: false, isPending: false }
-      if (callCount % 3 === 2) return { data: 25n, isLoading: false, isError: false, isPending: false }
-      return { data: 5n, isLoading: false, isError: false, isPending: false }
+      if (callCount % 5 === 1) return { data: 75n, isLoading: false, isError: false, isPending: false }
+      if (callCount % 5 === 2) return { data: 25n, isLoading: false, isError: false, isPending: false }
+      if (callCount % 5 === 3) return { data: 5n, isLoading: false, isError: false, isPending: false }
+      if (callCount % 5 === 4) return { data: 0n, isLoading: false, isError: false, isPending: false }
+      return { data: true, isLoading: false, isError: false, isPending: false }
     })
     renderWithProviders(<ResultsDisplay tallyAddress={TALLY_ADDR} />)
     expect(screen.getByText('75%')).toBeInTheDocument()
@@ -88,9 +100,11 @@ describe('ResultsDisplay', () => {
     let callCount = 0
     mockUseReadContract.mockImplementation(() => {
       callCount++
-      if (callCount % 3 === 1) return { data: 10n, isLoading: false, isError: false, isPending: false }
-      if (callCount % 3 === 2) return { data: 5n, isLoading: false, isError: false, isPending: false }
-      return { data: 42n, isLoading: false, isError: false, isPending: false }
+      if (callCount % 5 === 1) return { data: 10n, isLoading: false, isError: false, isPending: false }
+      if (callCount % 5 === 2) return { data: 5n, isLoading: false, isError: false, isPending: false }
+      if (callCount % 5 === 3) return { data: 42n, isLoading: false, isError: false, isPending: false }
+      if (callCount % 5 === 4) return { data: 0n, isLoading: false, isError: false, isPending: false }
+      return { data: true, isLoading: false, isError: false, isPending: false }
     })
     renderWithProviders(<ResultsDisplay tallyAddress={TALLY_ADDR} />)
     expect(screen.getByText('42')).toBeInTheDocument()
@@ -100,9 +114,11 @@ describe('ResultsDisplay', () => {
     let callCount = 0
     mockUseReadContract.mockImplementation(() => {
       callCount++
-      if (callCount % 3 === 1) return { data: 1n, isLoading: false, isError: false, isPending: false }
-      if (callCount % 3 === 2) return { data: 1n, isLoading: false, isError: false, isPending: false }
-      return { data: 1n, isLoading: false, isError: false, isPending: false }
+      if (callCount % 5 === 1) return { data: 1n, isLoading: false, isError: false, isPending: false }
+      if (callCount % 5 === 2) return { data: 1n, isLoading: false, isError: false, isPending: false }
+      if (callCount % 5 === 3) return { data: 1n, isLoading: false, isError: false, isPending: false }
+      if (callCount % 5 === 4) return { data: 0n, isLoading: false, isError: false, isPending: false }
+      return { data: true, isLoading: false, isError: false, isPending: false }
     })
     renderWithProviders(<ResultsDisplay tallyAddress={TALLY_ADDR} />)
     const link = document.querySelector('a[href*="etherscan"]')
@@ -113,9 +129,11 @@ describe('ResultsDisplay', () => {
     let callCount = 0
     mockUseReadContract.mockImplementation(() => {
       callCount++
-      if (callCount % 3 === 1) return { data: 1n, isLoading: false, isError: false, isPending: false }
-      if (callCount % 3 === 2) return { data: 1n, isLoading: false, isError: false, isPending: false }
-      return { data: 1n, isLoading: false, isError: false, isPending: false }
+      if (callCount % 5 === 1) return { data: 1n, isLoading: false, isError: false, isPending: false }
+      if (callCount % 5 === 2) return { data: 1n, isLoading: false, isError: false, isPending: false }
+      if (callCount % 5 === 3) return { data: 1n, isLoading: false, isError: false, isPending: false }
+      if (callCount % 5 === 4) return { data: 0n, isLoading: false, isError: false, isPending: false }
+      return { data: true, isLoading: false, isError: false, isPending: false }
     })
     renderWithProviders(<ResultsDisplay tallyAddress={TALLY_ADDR} />)
     expect(screen.getByRole('region')).toBeInTheDocument()

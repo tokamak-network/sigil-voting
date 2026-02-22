@@ -41,6 +41,10 @@ export interface SigilConfig {
   signer?: ethers.Signer;
   /** Coordinator public key [X, Y] — defaults to on-chain value */
   coordinatorPubKey?: [bigint, bigint];
+  /** Deploy block for MACI (used for efficient log scans) */
+  deployBlock?: number | bigint;
+  /** Log chunk size for event scanning (default: 2000 blocks) */
+  logChunkSize?: number;
   /** Custom storage backend (defaults to localStorage or MemoryStorage) */
   storage?: SigilStorage;
   /** TimelockExecutor contract address */
@@ -99,6 +103,13 @@ const DELEGATION_REGISTRY_ABI = [
 
 const MACI_KEY_MESSAGE = 'SIGIL Voting Key v1';
 
+type DeployPollEvent = {
+  pollId: number;
+  pollAddr: string;
+  messageProcessorAddr: string;
+  tallyAddr: string;
+};
+
 export class SigilClient {
   private provider: ethers.Provider;
   private signer?: ethers.Signer;
@@ -111,6 +122,10 @@ export class SigilClient {
   private storage: SigilStorage;
   private timelockExecutorAddress?: string;
   private delegationRegistryAddress?: string;
+  private deployBlock?: number;
+  private logChunkSize: number;
+  private deployPollCache?: { block: number; events: DeployPollEvent[] };
+  private maciInterface = new ethers.Interface(MACI_ABI);
 
   constructor(config: SigilConfig) {
     this.provider = config.provider;
@@ -123,6 +138,8 @@ export class SigilClient {
     this.keyManager = new KeyManager(this.storage, this.storageKeys);
     this.timelockExecutorAddress = config.timelockExecutorAddress;
     this.delegationRegistryAddress = config.delegationRegistryAddress;
+    this.deployBlock = typeof config.deployBlock === 'bigint' ? Number(config.deployBlock) : config.deployBlock;
+    this.logChunkSize = config.logChunkSize && config.logChunkSize > 0 ? config.logChunkSize : 2000;
   }
 
   /** Get total number of deployed polls */
@@ -130,19 +147,61 @@ export class SigilClient {
     return Number(await this.maci.nextPollId());
   }
 
+  private async getDeployPollEvents(): Promise<DeployPollEvent[]> {
+    const latest = await this.provider.getBlockNumber();
+    if (this.deployPollCache && this.deployPollCache.block === latest) {
+      return this.deployPollCache.events;
+    }
+
+    const fromBlock = Math.max(0, this.deployBlock ?? 0);
+    const events: DeployPollEvent[] = [];
+    const deployEvent = this.maciInterface.getEvent('DeployPoll');
+    const topic = this.maciInterface.getEventTopic(deployEvent);
+
+    for (let start = fromBlock; start <= latest; start += this.logChunkSize) {
+      const end = Math.min(start + this.logChunkSize - 1, latest);
+      const logs = await this.provider.getLogs({
+        address: this.maciAddress,
+        fromBlock: start,
+        toBlock: end,
+        topics: [topic],
+      });
+      for (const log of logs) {
+        try {
+          const parsed = this.maciInterface.parseLog(log);
+          const pollId = Number(parsed.args.pollId);
+          events.push({
+            pollId,
+            pollAddr: parsed.args.pollAddr,
+            messageProcessorAddr: parsed.args.messageProcessorAddr,
+            tallyAddr: parsed.args.tallyAddr,
+          });
+        } catch {
+          // Skip unparseable log
+        }
+      }
+    }
+
+    this.deployPollCache = { block: latest, events };
+    return events;
+  }
+
+  /** Get tally address for a poll from DeployPoll logs */
+  async getTallyAddress(pollId: number): Promise<string | null> {
+    const events = await this.getDeployPollEvents();
+    const match = events.find((ev) => ev.pollId === pollId);
+    return match?.tallyAddr ?? null;
+  }
+
   /** Get all polls with their status */
   async getPolls(): Promise<Poll[]> {
     const count = await this.getPollCount();
     if (count === 0) return [];
 
-    const filter = this.maci.filters.DeployPoll();
-    const events = await this.maci.queryFilter(filter);
+    const events = await this.getDeployPollEvents();
     const tallyMap = new Map<number, string>();
     for (const ev of events) {
-      if ('args' in ev) {
-        const a = ev.args as any;
-        tallyMap.set(Number(a.pollId), a.tallyAddr);
-      }
+      tallyMap.set(ev.pollId, ev.tallyAddr);
     }
 
     const polls: Poll[] = [];
@@ -197,26 +256,25 @@ export class SigilClient {
 
   /** Get finalized results for a poll */
   async getResults(pollId: number): Promise<PollResults | null> {
-    const filter = this.maci.filters.DeployPoll();
-    const events = await this.maci.queryFilter(filter);
+    const status = await this.getResultsStatus(pollId);
+    if (status.status !== 'finalized' || !status.results) return null;
+    return status.results;
+  }
 
-    let tallyAddr: string | undefined;
-    for (const ev of events) {
-      if ('args' in ev) {
-        const a = ev.args as any;
-        if (Number(a.pollId) === pollId) {
-          tallyAddr = a.tallyAddr;
-          break;
-        }
-      }
-    }
-
-    if (!tallyAddr || tallyAddr === ethers.ZeroAddress) return null;
+  /** Get results + status for a poll (pending/finalized) */
+  async getResultsStatus(pollId: number): Promise<{ status: 'missing' | 'pending' | 'finalized'; tallyAddress?: string; results?: PollResults }> {
+    const tallyAddr = await this.getTallyAddress(pollId);
+    if (!tallyAddr || tallyAddr === ethers.ZeroAddress) return { status: 'missing' };
 
     const tally = new ethers.Contract(tallyAddr, TALLY_ABI, this.provider);
-    const isFinalized = await tally.tallyVerified();
+    let isFinalized = false;
+    try {
+      isFinalized = await tally.tallyVerified();
+    } catch {
+      return { status: 'pending', tallyAddress: tallyAddr };
+    }
 
-    if (!isFinalized) return null;
+    if (!isFinalized) return { status: 'pending', tallyAddress: tallyAddr };
 
     const [forVotes, againstVotes, abstainVotes, totalVoters] = await Promise.all([
       tally.forVotes(),
@@ -226,11 +284,15 @@ export class SigilClient {
     ]);
 
     return {
-      forVotes: BigInt(forVotes),
-      againstVotes: BigInt(againstVotes),
-      abstainVotes: BigInt(abstainVotes),
-      totalVoters: BigInt(totalVoters),
-      isFinalized: true,
+      status: 'finalized',
+      tallyAddress: tallyAddr,
+      results: {
+        forVotes: BigInt(forVotes),
+        againstVotes: BigInt(againstVotes),
+        abstainVotes: BigInt(abstainVotes),
+        totalVoters: BigInt(totalVoters),
+        isFinalized: true,
+      },
     };
   }
 

@@ -25,6 +25,14 @@ export interface PollResults {
   isFinalized: boolean;
 }
 
+export type TallyStatus = 'missing' | 'pending' | 'finalized';
+
+export interface ResultsStatus {
+  status: TallyStatus;
+  tallyAddress?: string;
+  results?: PollResults;
+}
+
 export interface VoteReceipt {
   txHash: string;
   pollId: number;

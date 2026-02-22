@@ -23,6 +23,7 @@ export {
   type VoteReceipt, type KeyPair, type SigilEvent,
   type SignUpResult, type VoteOptions, type KeyChangeResult,
   type ExecutionState, type ExecutionInfo, type DelegationInfo,
+  type TallyStatus, type ResultsStatus,
 } from './types.js';
 
 // Storage

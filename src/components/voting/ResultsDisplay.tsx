@@ -37,8 +37,20 @@ export function ResultsDisplay({ tallyAddress, pollAddress, pollId }: ResultsDis
     functionName: 'totalVoters',
   });
 
-  const isLoading = loadingFor || loadingAgainst || loadingVoters;
-  const hasError = errorFor || errorAgainst;
+  const { data: abstainVotes, isLoading: loadingAbstain, isError: errorAbstain } = useReadContract({
+    address: tallyAddress,
+    abi: TALLY_ABI,
+    functionName: 'abstainVotes',
+  });
+
+  const { data: tallyVerified, isLoading: loadingVerified } = useReadContract({
+    address: tallyAddress,
+    abi: TALLY_ABI,
+    functionName: 'tallyVerified',
+  });
+
+  const isLoading = loadingFor || loadingAgainst || loadingAbstain || loadingVoters || loadingVerified;
+  const hasError = errorFor || errorAgainst || errorAbstain;
 
   if (isLoading) {
     return (
@@ -65,14 +77,26 @@ export function ResultsDisplay({ tallyAddress, pollAddress, pollId }: ResultsDis
     );
   }
 
+  if (tallyVerified !== true) {
+    return (
+      <div className="border-2 border-black bg-white p-12 flex flex-col items-center justify-center gap-4">
+        <span className="material-symbols-outlined text-5xl text-slate-300">hourglass_top</span>
+        <p className="text-lg font-display font-bold uppercase text-slate-500">{t.processing.processing}</p>
+        <p className="text-sm text-slate-400">{t.processing.desc}</p>
+      </div>
+    );
+  }
+
   const forNum = Number(forVotes || 0n);
   const againstNum = Number(againstVotes || 0n);
-  const totalNum = forNum + againstNum;
+  const abstainNum = Number(abstainVotes || 0n);
+  const totalNum = forNum + againstNum + abstainNum;
   const votersNum = Number(totalVoters || 0n);
 
   const forPct = totalNum > 0 ? Math.round((forNum / totalNum) * 100) : 0;
-  const againstPct = totalNum > 0 ? 100 - forPct : 0;
-  void (totalNum > 0);
+  const againstPct = totalNum > 0 ? Math.round((againstNum / totalNum) * 100) : 0;
+  let abstainPct = totalNum > 0 ? 100 - forPct - againstPct : 0;
+  if (abstainPct < 0) abstainPct = 0;
 
   const explorerAddr = pollAddress || tallyAddress;
 
@@ -153,6 +177,30 @@ export function ResultsDisplay({ tallyAddress, pollAddress, pollId }: ResultsDis
             </div>
             <div className="mt-2 text-[10px] font-mono font-bold text-slate-500 text-right uppercase">
               {againstNum.toLocaleString()} {t.completedResults.quadraticCredits}
+            </div>
+          </div>
+
+          {/* ABSTAIN bar */}
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <div className="flex items-center gap-2 text-slate-400">
+                <span className="material-symbols-outlined">remove_circle_outline</span>
+                <span className="font-bold uppercase tracking-widest text-sm">{t.results.abstainLabel}</span>
+              </div>
+              <span className="text-3xl font-mono font-bold">{abstainPct}%</span>
+            </div>
+            <div className="w-full h-12 bg-slate-100 border-2 border-black">
+              <div
+                className="h-full bg-slate-400 transition-all duration-700"
+                style={{ width: `${abstainPct}%` }}
+                role="progressbar"
+                aria-valuenow={abstainPct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              />
+            </div>
+            <div className="mt-2 text-[10px] font-mono font-bold text-slate-500 text-right uppercase">
+              {abstainNum.toLocaleString()} {t.completedResults.quadraticCredits}
             </div>
           </div>
         </div>

@@ -433,6 +433,7 @@ export const ko: Translations = {
     allInvalid: '유효한 투표가 없습니다. 투표 키가 일치하지 않아 모든 투표가 무효 처리되었습니다.',
     forLabel: '찬성',
     againstLabel: '반대',
+    abstainLabel: '기권',
     creditsUnit: '크레딧',
     retry: '다시 시도',
   },

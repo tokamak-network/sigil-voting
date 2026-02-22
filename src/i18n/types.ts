@@ -413,6 +413,7 @@ export interface Translations {
     allInvalid: string
     forLabel: string
     againstLabel: string
+    abstainLabel: string
     creditsUnit: string
     retry: string
   }

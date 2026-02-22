@@ -53,6 +53,7 @@ interface SigilConfig {
   provider: ethers.Provider;    // Ethers provider
   signer?: ethers.Signer;      // Ethers signer (for write ops)
   coordinatorPubKey?: [bigint, bigint]; // Override on-chain value
+  deployBlock?: number;         // Optional: MACI deploy block for fast log scans
   storage?: SigilStorage;       // Custom storage (default: localStorage)
 }
 ```
@@ -81,6 +82,19 @@ List all proposals with status.
 #### `getResults(pollId): Promise<PollResults | null>`
 
 Get finalized voting results.
+
+#### `getResultsStatus(pollId): Promise<ResultsStatus>`
+
+Get results with status (`missing | pending | finalized`) and tally address.
+
+```ts
+const status = await sigil.getResultsStatus(0);
+if (status.status === 'finalized') {
+  console.log('Final:', status.results);
+} else {
+  console.log('Pending. Tally at:', status.tallyAddress);
+}
+```
 
 ### Crypto Primitives
 

@@ -433,6 +433,7 @@ export const en: Translations = {
     allInvalid: 'No valid votes. All votes were invalidated due to key mismatch.',
     forLabel: 'For',
     againstLabel: 'Against',
+    abstainLabel: 'Abstain',
     creditsUnit: 'credits',
     retry: 'Try Again',
   },
