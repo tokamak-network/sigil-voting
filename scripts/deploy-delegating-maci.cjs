@@ -36,6 +36,24 @@ async function main() {
   console.log('stateTreeDepth:', stateTreeDepth)
   console.log('accQueueSubDepth:', accQueueSubDepth)
 
+  const PoseidonT4 = await ethers.getContractFactory('PoseidonT4')
+  const poseidonT4 = await PoseidonT4.deploy()
+  await poseidonT4.waitForDeployment()
+  const poseidonT4Address = await poseidonT4.getAddress()
+  console.log('PoseidonT4:', poseidonT4Address)
+
+  const PoseidonT5 = await ethers.getContractFactory('PoseidonT5')
+  const poseidonT5 = await PoseidonT5.deploy()
+  await poseidonT5.waitForDeployment()
+  const poseidonT5Address = await poseidonT5.getAddress()
+  console.log('PoseidonT5:', poseidonT5Address)
+
+  const PoseidonT6 = await ethers.getContractFactory('PoseidonT6')
+  const poseidonT6 = await PoseidonT6.deploy()
+  await poseidonT6.waitForDeployment()
+  const poseidonT6Address = await poseidonT6.getAddress()
+  console.log('PoseidonT6:', poseidonT6Address)
+
   const DelegationRegistry = await ethers.getContractFactory('DelegationRegistry')
   const delegationRegistry = await DelegationRegistry.deploy()
   await delegationRegistry.waitForDeployment()
@@ -48,13 +66,23 @@ async function main() {
   const voiceCreditProxyAddress = await voiceCreditProxy.getAddress()
   console.log('DelegatingVoiceCreditProxy:', voiceCreditProxyAddress)
 
-  const AccQueue = await ethers.getContractFactory('AccQueue')
+  const AccQueue = await ethers.getContractFactory('AccQueue', {
+    libraries: {
+      'poseidon-solidity/PoseidonT6.sol:PoseidonT6': poseidonT6Address,
+    },
+  })
   const stateAq = await AccQueue.deploy(5, accQueueSubDepth)
   await stateAq.waitForDeployment()
   const accQueueAddress = await stateAq.getAddress()
   console.log('AccQueue:', accQueueAddress)
 
-  const MACI = await ethers.getContractFactory('MACI')
+  const MACI = await ethers.getContractFactory('MACI', {
+    libraries: {
+      'contracts/PoseidonT5.sol:PoseidonT5': poseidonT5Address,
+      'poseidon-solidity/PoseidonT4.sol:PoseidonT4': poseidonT4Address,
+      'poseidon-solidity/PoseidonT6.sol:PoseidonT6': poseidonT6Address,
+    },
+  })
   const maci = await MACI.deploy(gatekeeper, voiceCreditProxyAddress, stateTreeDepth, accQueueAddress)
   await maci.waitForDeployment()
   const maciAddress = await maci.getAddress()
