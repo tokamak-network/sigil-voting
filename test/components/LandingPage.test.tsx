@@ -58,6 +58,6 @@ describe('LandingPage', () => {
 
   it('renders deployed contract addresses', () => {
     renderWithProviders(<LandingPage setCurrentPage={setCurrentPage} />)
-    expect(screen.getByText(/0x26428484/)).toBeInTheDocument()
+    expect(screen.getByText(/0x12DaA8f6/)).toBeInTheDocument()
   })
 })
