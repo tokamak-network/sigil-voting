@@ -2,6 +2,17 @@ cff-version: 1.2.0
 title: SIGIL
 message: If you use this software, please cite it.
 type: software
+version: 0.0.0
+abstract: Private, bribe-resistant, quadratic voting for DAOs on Ethereum using MACI and zero-knowledge tally verification.
+keywords:
+  - private voting
+  - quadratic voting
+  - MACI
+  - anti-collusion
+  - zero-knowledge
+  - Groth16
+  - DAO governance
+  - Ethereum
 authors:
   - name: Tokamak Network
 repository-code: https://github.com/tokamak-network/zk-dex-d1-private-voting
