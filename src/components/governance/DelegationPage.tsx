@@ -27,7 +27,8 @@ export function DelegationPage() {
   const isWrongNetwork = chainId !== undefined && chainId !== 11155111
 
   const estimateGasWithBuffer = async (functionName: 'delegate' | 'undelegate', args?: readonly unknown[]) => {
-    if (!publicClient || !address) return undefined
+    const fallbackGas = 200_000n
+    if (!publicClient || !address) return fallbackGas
     try {
       const gas = await publicClient.estimateContractGas({
         address: DELEGATION_REGISTRY_ADDRESS as `0x${string}`,
@@ -38,7 +39,7 @@ export function DelegationPage() {
       })
       return (gas * 120n) / 100n + 25_000n
     } catch {
-      return undefined
+      return fallbackGas
     }
   }
 
