@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { useTranslation } from '../../i18n'
 import {
@@ -24,7 +24,7 @@ export function DelegationPage() {
     abi: DELEGATION_REGISTRY_ABI,
     functionName: 'getDelegate',
     args: address ? [address] : undefined,
-    query: { enabled: isConfigured && !!address },
+    query: { enabled: isConfigured && !!address, refetchInterval: 4000 },
   })
 
   const { data: isDelegating, refetch: refetchIsDelegating } = useReadContract({
@@ -32,7 +32,7 @@ export function DelegationPage() {
     abi: DELEGATION_REGISTRY_ABI,
     functionName: 'isDelegating',
     args: address ? [address] : undefined,
-    query: { enabled: isConfigured && !!address },
+    query: { enabled: isConfigured && !!address, refetchInterval: 4000 },
   })
 
   // Write: delegate
@@ -83,10 +83,12 @@ export function DelegationPage() {
   }
 
   // Refetch on success
-  if (isDelegateSuccess || isUndelegateSuccess) {
-    refetchDelegate()
-    refetchIsDelegating()
-  }
+  useEffect(() => {
+    if (isDelegateSuccess || isUndelegateSuccess) {
+      refetchDelegate()
+      refetchIsDelegating()
+    }
+  }, [isDelegateSuccess, isUndelegateSuccess, refetchDelegate, refetchIsDelegating])
 
   const shortenAddress = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-4)
 
