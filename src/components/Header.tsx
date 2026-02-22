@@ -71,6 +71,7 @@ export function Header() {
   const handleConnect = () => connect({ connector: injected() })
 
   const isDelegatePage = pathname.startsWith('/vote/delegate')
+  const isVotePage = pathname.startsWith('/vote') && !isDelegatePage
   const isTechPage = pathname === '/technology'
   const isLandingPage = pathname === '/'
   const isMarketingPage = isLandingPage || isTechPage
@@ -119,6 +120,12 @@ export function Header() {
           </nav>
         ) : (
           <nav className="hidden md:flex items-center gap-6">
+            <Link
+              href="/vote"
+              className={`font-display font-bold text-sm uppercase tracking-wide transition-colors ${isVotePage ? 'text-primary' : 'text-slate-500 hover:text-black dark:hover:text-white'}`}
+            >
+              {t.header.vote}
+            </Link>
             <Link
               href="/vote/delegate"
               className={`font-display font-bold text-sm uppercase tracking-wide transition-colors ${isDelegatePage ? 'text-primary' : 'text-slate-500 hover:text-black dark:hover:text-white'}`}
@@ -239,6 +246,13 @@ export function Header() {
               </>
             ) : (
               <>
+                <Link
+                  href="/vote"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`px-6 py-4 text-left font-display font-bold text-sm uppercase tracking-wide border-b border-slate-100 ${isVotePage ? 'text-primary bg-blue-50' : 'text-slate-700 hover:bg-slate-50'}`}
+                >
+                  {t.header.vote}
+                </Link>
                 <Link
                   href="/vote/delegate"
                   onClick={() => setMobileMenuOpen(false)}

@@ -733,6 +733,7 @@ export interface Translations {
       error: string
       selfDelegateError: string
       description: string
+      goToProposals: string
       nav: string
     }
     execution: {

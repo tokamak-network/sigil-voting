@@ -753,6 +753,7 @@ export const en: Translations = {
       error: 'Delegation failed. Please try again.',
       selfDelegateError: 'Cannot delegate to yourself',
       description: 'Delegate your voting power to a trusted address. While delegating, you cannot vote directly.',
+      goToProposals: 'Go to Proposals',
       nav: 'Delegate',
     },
     execution: {

@@ -753,6 +753,7 @@ export const ko: Translations = {
       error: '위임에 실패했습니다. 다시 시도해주세요.',
       selfDelegateError: '본인에게는 위임할 수 없습니다',
       description: '투표권을 신뢰하는 주소에 위임하세요. 위임 중에는 본인이 직접 투표할 수 없습니다.',
+      goToProposals: '제안으로 이동',
       nav: '위임',
     },
     execution: {

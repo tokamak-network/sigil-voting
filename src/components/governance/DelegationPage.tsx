@@ -230,6 +230,14 @@ export function DelegationPage() {
     <div className="max-w-lg mx-auto p-6">
       <h1 className="text-2xl font-display font-extrabold mb-2">{t.governance.delegation.title}</h1>
       <p className="text-sm text-slate-500 mb-6">{t.governance.delegation.description}</p>
+      <div className="flex items-center gap-3 mb-6">
+        <a
+          href="/vote"
+          className="inline-flex items-center justify-center bg-black text-white text-xs font-bold px-4 py-2 border-2 border-black hover:bg-slate-800 transition-colors"
+        >
+          {t.governance.delegation.goToProposals}
+        </a>
+      </div>
 
       {isWrongNetwork && (
         <div className="bg-amber-50 border-2 border-amber-500 text-amber-700 p-3 mb-4 text-sm font-bold">
