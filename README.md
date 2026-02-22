@@ -11,7 +11,17 @@
 
 SIGIL is an on-chain voting protocol with permanent vote privacy, quadratic voting, and anti-collusion (MACI Key Change). Built on [PSE MACI](https://maci.pse.dev) with Groth16 on-chain verification.
 
-Individual votes are never revealed — not during voting, not after. Results are published as aggregates only, verified by zero-knowledge proofs on Ethereum.
+Individual votes are never revealed. Results are published as aggregates only, verified by zero-knowledge proofs on Ethereum.
+
+## Repository Overview
+
+- Purpose: private, bribe-resistant, quadratic voting for DAOs.
+- Core stack: Solidity contracts, Circom circuits, coordinator auto-runner, SDK, and a Next.js frontend.
+- Source of truth for networks and addresses: [`src/config.json`](./src/config.json).
+
+## Search Keywords
+
+private voting, quadratic voting, MACI, anti-collusion, zero-knowledge, Groth16, Ethereum governance, DAO voting, zk voting, privacy-preserving governance, Tokamak Network, SIGIL
 
 ## Packages
 
@@ -36,10 +46,10 @@ Open http://localhost:3000
 
 ```bash
 # Smart contracts
-forge test                  # 50 tests
+forge test
 
 # Crypto, circuits, property tests
-npx vitest run              # 66 tests
+npx vitest run
 ```
 
 E2E (Sepolia, requires funded keys + .env):
@@ -47,7 +57,7 @@ E2E (Sepolia, requires funded keys + .env):
 npm run test:e2e
 ```
 
-116 tests total, 0 failures. Includes 20 MACI property tests covering 7 security attributes (collusion resistance, receipt-freeness, privacy, uncensorability, unforgeability, non-repudiation, correct execution).
+Includes MACI property tests covering core security attributes (collusion resistance, receipt-freeness, privacy, uncensorability, unforgeability, non-repudiation, correct execution).
 
 ## Architecture
 
@@ -69,16 +79,20 @@ User → encrypt (ECDH + DuplexSponge) → Poll.publishMessage()
 
 Key Change: voters can change their MACI key and re-vote at any time. Only the last key's vote counts. The coercer cannot distinguish key-change messages from vote messages on-chain.
 
-## Deployed Contracts (Sepolia)
+## Deployed Contracts (Sepolia, v2)
 
 | Contract | Address |
 |----------|---------|
-| MACI | [`0xAd4D82bF06d612CC5Ec3C6C9536c0AEc6A61f746`](https://sepolia.etherscan.io/address/0xAd4D82bF06d612CC5Ec3C6C9536c0AEc6A61f746) |
-| AccQueue | [`0x51C1835C96bfae2aff5D675Ef59b5BF23534396F`](https://sepolia.etherscan.io/address/0x51C1835C96bfae2aff5D675Ef59b5BF23534396F) |
-| MsgProcessor Verifier | [`0x47221B605bF18E92296850191A0c899fe03A27dB`](https://sepolia.etherscan.io/address/0x47221B605bF18E92296850191A0c899fe03A27dB) |
-| Tally Verifier | [`0xa48c2bD789EAd236fFEE36dEad220DFFE3feccF1`](https://sepolia.etherscan.io/address/0xa48c2bD789EAd236fFEE36dEad220DFFE3feccF1) |
-| VkRegistry | [`0xC8f6e6AB628CC73aDa2c01054C4772ACA222852C`](https://sepolia.etherscan.io/address/0xC8f6e6AB628CC73aDa2c01054C4772ACA222852C) |
+| MACI | [`0x26428484F192D1dA677111A47615378Bc889d441`](https://sepolia.etherscan.io/address/0x26428484F192D1dA677111A47615378Bc889d441) |
+| AccQueue | [`0x5321607ABc8171397Fac7c77FbB567847AF4d2ff`](https://sepolia.etherscan.io/address/0x5321607ABc8171397Fac7c77FbB567847AF4d2ff) |
+| MsgProcessor Verifier | [`0x352522b121Ac377f39AaD59De6D5C07C43Af5D59`](https://sepolia.etherscan.io/address/0x352522b121Ac377f39AaD59De6D5C07C43Af5D59) |
+| Tally Verifier | [`0xF1ecb18a649cf7060f746Cc155638992E83f1DD7`](https://sepolia.etherscan.io/address/0xF1ecb18a649cf7060f746Cc155638992E83f1DD7) |
+| VkRegistry | [`0xCCcE4703D53fc112057C8fF4F1bC397C7F68732b`](https://sepolia.etherscan.io/address/0xCCcE4703D53fc112057C8fF4F1bC397C7F68732b) |
+| Gatekeeper | [`0x4c18984A78910Dd1976d6DFd820f6d18e7edD672`](https://sepolia.etherscan.io/address/0x4c18984A78910Dd1976d6DFd820f6d18e7edD672) |
 | VoiceCreditProxy | [`0x03669FF296a2B2CCF851bE98dbEa4BB2633ecF00`](https://sepolia.etherscan.io/address/0x03669FF296a2B2CCF851bE98dbEa4BB2633ecF00) |
+| Token | [`0xa30fe40285B8f5c0457DbC3B7C8A280373c40044`](https://sepolia.etherscan.io/address/0xa30fe40285B8f5c0457DbC3B7C8A280373c40044) |
+| Delegation Registry | [`0x138EAa2FFd36E8634b0Eb4449028ac3fB79B367c`](https://sepolia.etherscan.io/address/0x138EAa2FFd36E8634b0Eb4449028ac3fB79B367c) |
+| Timelock Executor | [`0x474EA4Cf563eADF9ee42a82c1Ee32E13019035c4`](https://sepolia.etherscan.io/address/0x474EA4Cf563eADF9ee42a82c1Ee32E13019035c4) |
 
 ## References
 

@@ -2,6 +2,26 @@
   "name": "zk-voting-demo",
   "private": true,
   "version": "0.0.0",
+  "description": "SIGIL private voting protocol with MACI anti-collusion, quadratic voting, and zero-knowledge tally verification.",
+  "keywords": [
+    "sigil",
+    "private voting",
+    "quadratic voting",
+    "maci",
+    "zero knowledge",
+    "groth16",
+    "dao governance",
+    "ethereum"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tokamak-network/zk-dex-d1-private-voting.git"
+  },
+  "homepage": "https://github.com/tokamak-network/zk-dex-d1-private-voting",
+  "bugs": {
+    "url": "https://github.com/tokamak-network/zk-dex-d1-private-voting/issues"
+  },
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "next dev",

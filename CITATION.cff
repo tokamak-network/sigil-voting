@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+title: SIGIL
+message: If you use this software, please cite it.
+type: software
+authors:
+  - name: Tokamak Network
+repository-code: https://github.com/tokamak-network/zk-dex-d1-private-voting
+url: https://github.com/tokamak-network/zk-dex-d1-private-voting
+license: MIT

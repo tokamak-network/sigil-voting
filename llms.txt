@@ -1,0 +1,20 @@
+SIGIL repository summary
+Purpose: private, bribe-resistant, quadratic voting for DAOs on Ethereum.
+Components: contracts, circuits, coordinator, SDK, and frontend app.
+Source of truth for networks and addresses: src/config.json.
+
+Quick start
+1. npm install
+2. npm run dev
+
+Tests
+1. forge test
+2. npm test
+3. npm run test:e2e (requires funded Sepolia keys and .env)
+
+Key features
+- Permanent vote privacy with zero-knowledge verification.
+- Quadratic voting with voice credits.
+- MACI key change for anti-collusion.
+
+License: MIT
