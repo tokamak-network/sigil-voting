@@ -47,6 +47,14 @@ const TALLY_BATCH_SIZE = IS_PROD ? 5 : 2;
 const MAX_VOTE_OPTIONS = IS_PROD ? 25 : 5; // voteOptionTreeDepth: prod=2 (25), dev=1 (5)
 const TALLY_NUM_OPTIONS = IS_PROD ? 25 : 5; // match circuit compile params (TallyVotes)
 
+const BABYJUB_SUBORDER =
+  2736030358979909402780800718157159386076813972158567259200215660948447373041n;
+
+function normalizeCoordinatorSk(sk: bigint): bigint {
+  const normalized = sk % BABYJUB_SUBORDER;
+  return normalized === 0n ? 1n : normalized;
+}
+
 const MP_WASM = IS_PROD
   ? resolve(PROJECT_ROOT, 'circuits/build_prod/MessageProcessor_prod_js/MessageProcessor_prod.wasm')
   : resolve(PROJECT_ROOT, 'circuits/build_maci/MessageProcessor_js/MessageProcessor.wasm');
@@ -94,9 +102,15 @@ export function loadConfig(): Config {
   const maciAddress = get('MACI_ADDRESS') || (IS_PROD ? configJson.prod?.maci : configJson.v2?.maci);
   if (!maciAddress) throw new Error(`MACI address not found in config.json (mode=${CIRCUIT_MODE})`);
 
+  const rawCoordinatorSk = BigInt(`0x${coordKey.replace(/^0x/, '')}`);
+  const coordinatorSk = normalizeCoordinatorSk(rawCoordinatorSk);
+  if (coordinatorSk !== rawCoordinatorSk) {
+    console.warn('[WARN] COORDINATOR_PRIVATE_KEY reduced to BabyJubjub suborder for circuit compatibility');
+  }
+
   return {
     privateKey: privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`,
-    coordinatorSk: BigInt(`0x${coordKey.replace(/^0x/, '')}`),
+    coordinatorSk,
     rpcUrl,
     maciAddress,
     deployBlock: configJson.deployBlock || 0,

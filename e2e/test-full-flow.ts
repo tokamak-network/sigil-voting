@@ -45,6 +45,14 @@ function fail(phase: string, reason: string): never {
   process.exit(1);
 }
 
+const BABYJUB_SUBORDER =
+  2736030358979909402780800718157159386076813972158567259200215660948447373041n;
+
+function normalizeCoordinatorSk(sk: bigint): bigint {
+  const normalized = sk % BABYJUB_SUBORDER;
+  return normalized === 0n ? 1n : normalized;
+}
+
 async function waitForTx(tx: ethers.TransactionResponse, label: string): Promise<ethers.TransactionReceipt> {
   log(`  Waiting for tx: ${label} (${tx.hash.slice(0, 10)}...)`);
   const receipt = await tx.wait();
@@ -90,9 +98,15 @@ function loadE2EConfig(): Config {
   const v2 = configJson.v2;
   if (!v2?.maci) fail('Phase 0', 'MACI address not found in config.json');
 
+  const rawCoordinatorSk = BigInt(`0x${coordKey.replace(/^0x/, '')}`);
+  const coordinatorSk = normalizeCoordinatorSk(rawCoordinatorSk);
+  if (coordinatorSk !== rawCoordinatorSk) {
+    log('  WARNING: COORDINATOR_PRIVATE_KEY reduced to BabyJubjub suborder for circuit compatibility');
+  }
+
   return {
     privateKey: privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`,
-    coordinatorSk: BigInt(`0x${coordKey.replace(/^0x/, '')}`),
+    coordinatorSk,
     rpcUrl,
     maciAddress: v2.maci,
     deployBlock: configJson.deployBlock || 0,
