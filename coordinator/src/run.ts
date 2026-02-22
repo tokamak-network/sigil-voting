@@ -1037,6 +1037,13 @@ async function sendTxWithRetry(
   }
 }
 
+function deriveCoordinatorPubKey(crypto: CryptoKit, coordinatorSk: bigint): [bigint, bigint] {
+  const pk = crypto.babyJub.mulPointEscalar(crypto.babyJub.Base8, coordinatorSk);
+  const x = BigInt(crypto.F.toObject(pk[0]));
+  const y = BigInt(crypto.F.toObject(pk[1]));
+  return [x, y];
+}
+
 export async function processPoll(
   pollId: number,
   addrs: PollAddresses,
@@ -1048,6 +1055,26 @@ export async function processPoll(
   deployBlock: number,
 ): Promise<void> {
   log(`\n  ★ Processing Poll ${pollId}`);
+
+  // Guard: coordinator key must match poll's stored pubkey
+  try {
+    const pollRead = new ethers.Contract(addrs.poll, POLL_ABI, provider);
+    const [onChainX, onChainY] = await Promise.all([
+      pollRead.coordinatorPubKeyX(),
+      pollRead.coordinatorPubKeyY(),
+    ]);
+    const [localX, localY] = deriveCoordinatorPubKey(crypto, coordinatorSk);
+    if (onChainX.toString() !== localX.toString() || onChainY.toString() !== localY.toString()) {
+      log('  ✖ Coordinator key mismatch — cannot decrypt votes for this poll.');
+      log(`  on-chain pubkey: [${onChainX}, ${onChainY}]`);
+      log(`  local pubkey:    [${localX}, ${localY}]`);
+      log('  Skipping poll to avoid stuck tally.');
+      return;
+    }
+  } catch (err) {
+    const errMsg = (err as Error).message?.slice(0, 80) ?? 'unknown';
+    log(`  ⚠ Unable to verify coordinator key: ${errMsg}`);
+  }
 
   // Step 1: Merge
   log('  [1/7] AccQueue merge...');
