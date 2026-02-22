@@ -10,6 +10,7 @@ export interface Translations {
     wrongNetwork: string
     switching: string
     balance: string
+    proposals: string
     newProposal: string
     appStart: string
     resetData: string

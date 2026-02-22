@@ -10,6 +10,7 @@ export const ko: Translations = {
     wrongNetwork: '네트워크 변경',
     switching: '변경 중...',
     balance: '투표력 (제안당)',
+    proposals: '제안',
     newProposal: '새 제안',
     appStart: '앱 시작',
     resetData: '테스트 초기화',

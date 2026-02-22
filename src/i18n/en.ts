@@ -10,6 +10,7 @@ export const en: Translations = {
     wrongNetwork: 'Wrong Network',
     switching: 'Switching...',
     balance: 'Voting Power (per proposal)',
+    proposals: 'Proposals',
     newProposal: 'New Proposal',
     appStart: 'Launch App',
     resetData: 'Reset Test Data',
