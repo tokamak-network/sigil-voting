@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAccount, useConnect, useDisconnect, useSwitchChain, useReadContract } from 'wagmi'
-import { injected } from 'wagmi/connectors'
+import { injected } from '@wagmi/core'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { sepolia } from '../wagmi'
