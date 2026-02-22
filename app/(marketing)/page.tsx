@@ -10,13 +10,13 @@ export const metadata: Metadata = {
     title: 'SIGIL — Your Vote. Your Secret.',
     description: 'Private voting for DAOs. Bribe-proof. Whale-resistant. Built on Ethereum by Tokamak Network.',
     url: '/',
-    images: [{ url: '/assets/og-image.png', width: 1200, height: 630 }],
+    images: [{ url: '/assets/og-image-v2.png', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'SIGIL — Your Vote. Your Secret.',
     description: 'Private voting for DAOs. Bribe-proof. Whale-resistant. Built on Ethereum.',
-    images: ['/assets/og-image.png'],
+    images: ['/assets/og-image-v2.png'],
   },
 }
 
