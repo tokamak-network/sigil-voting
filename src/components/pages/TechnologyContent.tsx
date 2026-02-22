@@ -2,9 +2,23 @@
 
 import Link from 'next/link'
 import { useTranslation } from '../../i18n'
+import { getChainConfig, getNetwork } from '../../config'
 
 export function TechnologyContent() {
   const { t } = useTranslation()
+  const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+  const network = getNetwork()
+  const chainConfig = getChainConfig(network)
+  const explorerMap: Record<string, string> = {
+    sepolia: 'https://sepolia.etherscan.io/address/',
+    mainnet: 'https://etherscan.io/address/',
+  }
+  const explorerBase = explorerMap[network as keyof typeof explorerMap] || null
+  const contractItems = [
+    { label: t.landing.contracts.maci, addr: chainConfig.maci },
+    { label: t.landing.contracts.accQueue, addr: chainConfig.accQueue },
+    { label: t.landing.contracts.token, addr: chainConfig.token },
+  ].filter(c => typeof c.addr === 'string' && c.addr !== ZERO_ADDRESS)
   const infrastructureItems = [
     { ...t.technology.infrastructure.serverless, icon: 'cloud_off', num: '01' },
     { ...t.technology.infrastructure.erc20, icon: 'token', num: '02' },
@@ -276,6 +290,33 @@ export function TechnologyContent() {
               )
             })}
           </div>
+        </div>
+      </section>
+
+      {/* On-Chain Deployments */}
+      <section className="border-b-2 border-black">
+        <div className="p-6 border-b-2 border-black bg-slate-100">
+          <h3 className="font-mono text-sm font-bold uppercase tracking-[0.3em]">{t.landing.contracts.title}</h3>
+        </div>
+        <div className="p-12">
+          <p className="text-sm text-slate-600 text-center mb-8">{t.landing.contracts.subtitle}</p>
+          {contractItems.length === 0 ? (
+            <p className="text-center text-sm text-slate-500">{t.landing.contracts.empty}</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-2 border-black max-w-4xl mx-auto">
+              {contractItems.map((c, i) => (
+                <div key={i} className={`p-6 ${i < 2 ? 'md:border-r-2 border-b-2 md:border-b-0' : ''} border-black`}>
+                  <p className="font-mono text-xs font-bold uppercase tracking-widest text-primary mb-2">{c.label}</p>
+                  <p className="font-mono text-xs break-all opacity-60 mb-3">{c.addr}</p>
+                  {explorerBase && (
+                    <a href={`${explorerBase}${c.addr}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-mono font-bold text-primary hover:underline uppercase">
+                      {t.landing.contracts.viewOn}<span className="material-symbols-outlined text-sm">open_in_new</span>
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

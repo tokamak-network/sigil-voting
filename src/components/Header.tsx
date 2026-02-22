@@ -73,14 +73,15 @@ export function Header() {
   const isDelegatePage = pathname.startsWith('/vote/delegate')
   const isTechPage = pathname === '/technology'
   const isLandingPage = pathname === '/'
+  const isMarketingPage = isLandingPage || isTechPage
+  const isAppPage = pathname.startsWith('/vote')
+  const showWalletControls = isAppPage
 
   const landingNavItems = [
     { id: 'features', label: t.landing.sectionNav.features },
     { id: 'flow', label: t.landing.sectionNav.flow },
-    { id: 'trust', label: t.landing.sectionNav.trust },
     { id: 'sdk', label: t.landing.sectionNav.sdk },
     { id: 'faq', label: t.landing.sectionNav.faq },
-    { id: 'roadmap', label: t.landing.sectionNav.roadmap },
   ]
 
   return (
@@ -98,12 +99,12 @@ export function Header() {
         </div>
 
         {/* Center: Nav (desktop) */}
-        {isLandingPage ? (
+        {isMarketingPage ? (
           <nav className="hidden md:flex items-center gap-4">
             {landingNavItems.map((item) => (
               <a
                 key={item.id}
-                href={`#${item.id}`}
+                href={isTechPage ? `/#${item.id}` : `#${item.id}`}
                 className="font-display font-bold text-xs uppercase tracking-wide text-slate-500 hover:text-black dark:hover:text-white transition-colors"
               >
                 {item.label}
@@ -124,12 +125,6 @@ export function Header() {
             >
               {t.governance.delegation.nav}
             </Link>
-            <Link
-              href="/technology"
-              className={`font-display font-bold text-sm uppercase tracking-wide transition-colors ${isTechPage ? 'text-primary' : 'text-slate-500 hover:text-black dark:hover:text-white'}`}
-            >
-              {t.header.technology}
-            </Link>
           </nav>
         )}
 
@@ -138,16 +133,20 @@ export function Header() {
           <LanguageSwitcher />
 
           {/* App Start */}
-          <Link
-            href="/vote"
-            className="bg-black text-white px-3 py-1.5 md:px-4 md:py-2 text-[10px] md:text-xs font-bold items-center gap-2 hover:bg-slate-800 transition-colors border-2 border-black flex"
-          >
-            <span className="material-symbols-outlined text-sm">open_in_new</span>
-            {t.header.appStart}
-          </Link>
+          {!isAppPage && (
+            <Link
+              href="/vote"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-black text-white px-3 py-1.5 md:px-4 md:py-2 text-[10px] md:text-xs font-bold items-center gap-2 hover:bg-slate-800 transition-colors border-2 border-black flex"
+            >
+              <span className="material-symbols-outlined text-sm">open_in_new</span>
+              {t.header.appStart}
+            </Link>
+          )}
 
           {/* Wrong chain warning */}
-          {mounted && isConnected && !isCorrectChain && (
+          {showWalletControls && mounted && isConnected && !isCorrectChain && (
             <button
               onClick={handleSwitchNetwork}
               disabled={isSwitching}
@@ -158,7 +157,7 @@ export function Header() {
           )}
 
           {/* Wallet address with disconnect confirm (connected) */}
-          {mounted && isConnected && isCorrectChain && (
+          {showWalletControls && mounted && isConnected && isCorrectChain && (
             <div className="relative" ref={disconnectRef}>
               <button
                 onClick={() => setShowDisconnectConfirm(!showDisconnectConfirm)}
@@ -190,7 +189,7 @@ export function Header() {
           )}
 
           {/* Connect wallet (not connected) */}
-          {mounted && !isConnected && (
+          {showWalletControls && mounted && !isConnected && (
             <button
               onClick={handleConnect}
               disabled={isConnecting}
@@ -218,12 +217,12 @@ export function Header() {
         <>
           <div className="fixed inset-0 top-16 bg-black/30 z-40 md:hidden" onClick={() => setMobileMenuOpen(false)} />
           <nav className="absolute left-0 right-0 top-16 bg-white border-b-2 border-black z-50 md:hidden flex flex-col">
-            {isLandingPage ? (
+            {isMarketingPage ? (
               <>
                 {landingNavItems.map((item) => (
                   <a
                     key={item.id}
-                    href={`#${item.id}`}
+                    href={isTechPage ? `/#${item.id}` : `#${item.id}`}
                     onClick={() => setMobileMenuOpen(false)}
                     className="px-6 py-4 text-left font-display font-bold text-sm uppercase tracking-wide border-b border-slate-100 text-slate-700 hover:bg-slate-50"
                   >
@@ -246,13 +245,6 @@ export function Header() {
                   className={`px-6 py-4 text-left font-display font-bold text-sm uppercase tracking-wide border-b border-slate-100 ${isDelegatePage ? 'text-primary bg-blue-50' : 'text-slate-700 hover:bg-slate-50'}`}
                 >
                   {t.governance.delegation.nav}
-                </Link>
-                <Link
-                  href="/technology"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`px-6 py-4 text-left font-display font-bold text-sm uppercase tracking-wide ${isTechPage ? 'text-primary bg-blue-50' : 'text-slate-700 hover:bg-slate-50'}`}
-                >
-                  {t.header.technology}
                 </Link>
               </>
             )}

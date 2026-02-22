@@ -1,21 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { getChainConfig, getNetwork } from '../../config'
 import { useTranslation } from '../../i18n'
 import { FaqAccordion } from '../ui/FaqAccordion'
 
 export function HomeContent() {
   const { t } = useTranslation()
   const titleLines = t.landing.title.split('\n')
-  const sectionNav = [
-    { id: 'features', label: t.landing.sectionNav.features },
-    { id: 'flow', label: t.landing.sectionNav.flow },
-    { id: 'trust', label: t.landing.sectionNav.trust },
-    { id: 'sdk', label: t.landing.sectionNav.sdk },
-    { id: 'faq', label: t.landing.sectionNav.faq },
-    { id: 'roadmap', label: t.landing.sectionNav.roadmap },
-  ]
   const advantageItems = [
     { icon: 'token', ...t.landing.advantages.erc20 },
     { icon: 'cloud_off', ...t.landing.advantages.serverless },
@@ -29,19 +20,6 @@ export function HomeContent() {
   const advantageTotal = advantageItems.length
   const mdCols = 2
   const lgCols = 3
-  const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
-  const network = getNetwork()
-  const chainConfig = getChainConfig(network)
-  const explorerMap: Record<string, string> = {
-    sepolia: 'https://sepolia.etherscan.io/address/',
-    mainnet: 'https://etherscan.io/address/',
-  }
-  const explorerBase = explorerMap[network as keyof typeof explorerMap] || null
-  const contractItems = [
-    { label: t.landing.contracts.maci, addr: chainConfig.maci },
-    { label: t.landing.contracts.accQueue, addr: chainConfig.accQueue },
-    { label: t.landing.contracts.token, addr: chainConfig.token },
-  ].filter(c => typeof c.addr === 'string' && c.addr !== ZERO_ADDRESS)
 
   const faqItems = [
     { q: t.landing.faq.q1, a: t.landing.faq.a1 },
@@ -78,6 +56,8 @@ export function HomeContent() {
               <div className="flex flex-wrap gap-4">
                 <Link
                   href="/vote"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="bg-primary text-white font-display text-lg font-extrabold px-8 py-4 border-2 border-black hover:translate-x-1 hover:-translate-y-1 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)] uppercase"
                 >
                   {t.landing.enterApp}
@@ -125,23 +105,6 @@ export function HomeContent() {
               <div className="absolute -top-10 -right-10 w-64 h-64 bg-primary/10 -z-0"></div>
               <div className="absolute -bottom-10 -left-10 w-32 h-32 border-2 border-primary/20 -z-0"></div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 1.5 Section Nav */}
-      <section className="border-b-2 border-border-light dark:border-border-dark bg-white/80 dark:bg-black/40 backdrop-blur-sm">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar">
-            {sectionNav.map((item) => (
-              <a
-                key={item.id}
-                href={`#${item.id}`}
-                className="shrink-0 px-3 py-1 border-2 border-border-light dark:border-border-dark font-display text-xs font-bold uppercase tracking-widest hover:bg-primary hover:text-white transition-colors"
-              >
-                {item.label}
-              </a>
-            ))}
           </div>
         </div>
       </section>
@@ -325,7 +288,12 @@ export function HomeContent() {
             ))}
           </div>
           <div className="max-w-4xl mx-auto mt-8 text-center">
-            <Link href="/vote" className="inline-block bg-primary text-white font-display text-lg font-extrabold px-12 py-5 border-2 border-white hover:bg-white hover:text-black transition-all uppercase">
+            <Link
+              href="/vote"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-primary text-white font-display text-lg font-extrabold px-12 py-5 border-2 border-white hover:bg-white hover:text-black transition-all uppercase"
+            >
               {t.landing.demo.comingSoon}
             </Link>
             <p className="font-display text-xs text-white/40 mt-4 uppercase tracking-widest">{t.landing.demo.network}</p>
@@ -380,33 +348,6 @@ export function HomeContent() {
         </div>
       </section>
 
-      {/* 9. Deployed Contracts */}
-      <section className="py-16 border-b-2 border-border-light dark:border-border-dark">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="font-display text-3xl font-extrabold uppercase mb-2">{t.landing.contracts.title}</h2>
-            <p className="text-sm text-slate-600 dark:text-slate-400">{t.landing.contracts.subtitle}</p>
-          </div>
-          {contractItems.length === 0 ? (
-            <p className="text-center text-sm text-slate-500">{t.landing.contracts.empty}</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-2 border-border-light dark:border-border-dark max-w-4xl mx-auto">
-              {contractItems.map((c, i) => (
-                <div key={i} className={`p-6 ${i < 2 ? 'md:border-r-2 border-b-2 md:border-b-0' : ''} border-border-light dark:border-border-dark`}>
-                  <p className="font-display text-xs font-bold uppercase tracking-widest text-primary mb-2">{c.label}</p>
-                  <p className="font-mono text-xs break-all opacity-60 mb-3">{c.addr}</p>
-                  {explorerBase && (
-                    <a href={`${explorerBase}${c.addr}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-display font-bold text-primary hover:underline uppercase">
-                      {t.landing.contracts.viewOn}<span className="material-symbols-outlined text-sm">open_in_new</span>
-                    </a>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
       {/* 10. Roadmap */}
       <section id="roadmap" className="py-24 grid-bg">
         <div className="container mx-auto px-6">
@@ -444,7 +385,14 @@ export function HomeContent() {
         <div className="container mx-auto px-6 text-center">
           <h2 className="font-display text-5xl md:text-7xl font-black mb-8 uppercase leading-tight">{t.landing.cta.title}</h2>
           <div className="flex flex-wrap justify-center gap-6">
-            <Link href="/vote" className="bg-black text-white font-display text-xl font-extrabold px-12 py-6 border-2 border-white hover:bg-white hover:text-black transition-all uppercase">{t.landing.cta.button}</Link>
+            <Link
+              href="/vote"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-black text-white font-display text-xl font-extrabold px-12 py-6 border-2 border-white hover:bg-white hover:text-black transition-all uppercase"
+            >
+              {t.landing.cta.button}
+            </Link>
             <a href="mailto:monica@tokamak.network" className="bg-transparent text-white font-display text-xl font-extrabold px-12 py-6 border-2 border-white hover:bg-white hover:text-black transition-all uppercase">{t.landing.contactSales}</a>
           </div>
         </div>
