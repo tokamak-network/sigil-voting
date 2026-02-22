@@ -21,6 +21,8 @@ import {
   TALLY_ABI,
   VOICE_CREDIT_PROXY_ADDRESS,
   VOICE_CREDIT_PROXY_ABI,
+  DELEGATION_REGISTRY_ADDRESS,
+  DELEGATION_REGISTRY_ABI,
   V2Phase,
   DEFAULT_COORD_PUB_KEY_X,
   DEFAULT_COORD_PUB_KEY_Y,
@@ -132,6 +134,32 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
 
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
   const hasPoll = pollAddress !== null
+
+  const isDelegationConfigured = DELEGATION_REGISTRY_ADDRESS !== ZERO_ADDRESS
+  const { data: currentDelegate } = useReadContract({
+    address: DELEGATION_REGISTRY_ADDRESS,
+    abi: DELEGATION_REGISTRY_ABI,
+    functionName: 'getDelegate',
+    args: address ? [address] : undefined,
+    query: { enabled: isDelegationConfigured && !!address },
+  })
+  const { data: isDelegating } = useReadContract({
+    address: DELEGATION_REGISTRY_ADDRESS,
+    abi: DELEGATION_REGISTRY_ABI,
+    functionName: 'isDelegating',
+    args: address ? [address] : undefined,
+    query: { enabled: isDelegationConfigured && !!address },
+  })
+  const { data: delegators } = useReadContract({
+    address: DELEGATION_REGISTRY_ADDRESS,
+    abi: DELEGATION_REGISTRY_ABI,
+    functionName: 'getDelegators',
+    args: address ? [address] : undefined,
+    query: { enabled: isDelegationConfigured && !!address },
+  })
+
+  const shorten = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-4)
+  const delegatorList = Array.isArray(delegators) ? delegators : []
 
   // Read tally results for dynamic PASSED/REJECTED badge
   const tallyReady = !!tallyAddress && tallyAddress !== ZERO_ADDRESS && phase === V2Phase.Finalized
@@ -624,6 +652,42 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
   // Receipt ID: use the actual tx hash stored in localStorage (real on-chain proof)
   const receiptId = txHash ? `${txHash.slice(0, 8)}...${txHash.slice(-6)}` : null
 
+  const delegationPanel = (isDelegationConfigured && address) ? (
+    <div className="border-2 border-black bg-white p-4 mb-6">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            {t.governance.delegation.title}
+          </p>
+          {isDelegating ? (
+            <p className="text-sm font-bold text-slate-700">
+              {t.governance.delegation.currentDelegate}: {currentDelegate ? shorten(currentDelegate as string) : '—'}
+            </p>
+          ) : (
+            <p className="text-sm text-slate-500">{t.governance.delegation.notDelegating}</p>
+          )}
+          {delegatorList.length > 0 && (
+            <p className="text-xs text-slate-500 mt-1">
+              {t.governance.delegation.received} {delegatorList.length}
+            </p>
+          )}
+        </div>
+        <a
+          href="/vote/delegate"
+          className="text-xs font-bold uppercase tracking-widest underline"
+        >
+          {t.governance.delegation.manage}
+        </a>
+      </div>
+      {delegatorList.length > 0 && (
+        <div className="mt-3 text-[10px] font-mono text-slate-500">
+          {delegatorList.slice(0, 4).map((d) => shorten(d as string)).join(', ')}
+          {delegatorList.length > 4 ? ` +${delegatorList.length - 4}` : ''}
+        </div>
+      )}
+    </div>
+  ) : null
+
   // === Not configured ===
   if (!isConfigured) {
     return (
@@ -741,6 +805,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
         )}
 
         <div className="container mx-auto px-6 py-8 lg:py-12">
+          {delegationPanel}
           {/* Back button */}
           <button
             onClick={onBack}
@@ -964,6 +1029,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
         />
       ) : (
       <div className="container mx-auto px-6 py-8 lg:py-12">
+        {delegationPanel}
         {/* Back button */}
         <button
           onClick={onBack}

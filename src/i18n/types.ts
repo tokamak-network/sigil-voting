@@ -712,6 +712,8 @@ export interface Translations {
       undelegating: string
       currentDelegate: string
       notDelegating: string
+      received: string
+      manage: string
       delegateSuccess: string
       undelegateSuccess: string
       error: string
