@@ -25,9 +25,12 @@ import "../contracts/MACI.sol";
 contract DeployProdScript is Script {
     // Reuse existing gatekeeper and voice credit proxy
     address constant GATEKEEPER = 0x4c18984A78910Dd1976d6DFd820f6d18e7edD672;
-    address constant VOICE_CREDIT_PROXY = 0x03669FF296a2B2CCF851bE98dbEa4BB2633ecF00;
+    address constant DEFAULT_VOICE_CREDIT_PROXY = 0x03669FF296a2B2CCF851bE98dbEa4BB2633ecF00;
 
     function run() external {
+        address voiceCreditProxy = vm.envOr("VOICE_CREDIT_PROXY", DEFAULT_VOICE_CREDIT_PROXY);
+        address delegationRegistry = vm.envOr("DELEGATION_REGISTRY", address(0));
+
         vm.startBroadcast();
 
         // 1. Deploy production verifiers (new VK constants from depth=4 circuits)
@@ -46,12 +49,15 @@ contract DeployProdScript is Script {
         console.log("AccQueue (depth=4):", address(stateAq));
 
         // 4. Deploy MACI with production stateTreeDepth=4
-        MACI maci = new MACI(GATEKEEPER, VOICE_CREDIT_PROXY, 4, address(stateAq));
+        MACI maci = new MACI(GATEKEEPER, voiceCreditProxy, 4, address(stateAq));
         console.log("MACI (prod):", address(maci));
 
         // 5. Transfer AccQueue ownership and initialize
         stateAq.transferOwnership(address(maci));
         maci.init();
+        if (delegationRegistry != address(0)) {
+            maci.setDelegationRegistry(delegationRegistry);
+        }
 
         vm.stopBroadcast();
 
@@ -59,6 +65,12 @@ contract DeployProdScript is Script {
         console.log("  Circuit params: stateTreeDepth=4, batch=5 (max 624 voters)");
         console.log("  maci:", address(maci));
         console.log("  stateAq:", address(stateAq));
+        console.log("  voiceCreditProxy:", voiceCreditProxy);
+        if (delegationRegistry != address(0)) {
+            console.log("  delegationRegistry:", delegationRegistry);
+        } else {
+            console.log("  delegationRegistry: (not set)");
+        }
         console.log("  mpVerifier:", address(mpVerifier));
         console.log("  tallyVerifier:", address(tallyVerifier));
         console.log("  vkRegistry:", address(vkRegistry));

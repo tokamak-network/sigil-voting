@@ -8,6 +8,14 @@ import { FaqAccordion } from '../ui/FaqAccordion'
 export function HomeContent() {
   const { t } = useTranslation()
   const titleLines = t.landing.title.split('\n')
+  const sectionNav = [
+    { id: 'features', label: t.landing.sectionNav.features },
+    { id: 'flow', label: t.landing.sectionNav.flow },
+    { id: 'trust', label: t.landing.sectionNav.trust },
+    { id: 'sdk', label: t.landing.sectionNav.sdk },
+    { id: 'faq', label: t.landing.sectionNav.faq },
+    { id: 'roadmap', label: t.landing.sectionNav.roadmap },
+  ]
   const advantageItems = [
     { icon: 'token', ...t.landing.advantages.erc20 },
     { icon: 'cloud_off', ...t.landing.advantages.serverless },
@@ -49,7 +57,7 @@ export function HomeContent() {
   return (
     <main>
       {/* 1. Hero Section */}
-      <section className="relative pt-20 pb-32 overflow-hidden border-b-2 border-border-light dark:border-border-dark">
+      <section id="overview" className="relative pt-20 pb-32 overflow-hidden border-b-2 border-border-light dark:border-border-dark">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="lg:col-span-7">
@@ -121,6 +129,23 @@ export function HomeContent() {
         </div>
       </section>
 
+      {/* 1.5 Section Nav */}
+      <section className="border-b-2 border-border-light dark:border-border-dark bg-white/80 dark:bg-black/40 backdrop-blur-sm">
+        <div className="container mx-auto px-6 py-4">
+          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar">
+            {sectionNav.map((item) => (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                className="shrink-0 px-3 py-1 border-2 border-border-light dark:border-border-dark font-display text-xs font-bold uppercase tracking-widest hover:bg-primary hover:text-white transition-colors"
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* 2. Stats Bar */}
       <section className="bg-black text-white py-8 border-b-2 border-border-light dark:border-border-dark">
         <div className="container mx-auto px-6">
@@ -165,7 +190,7 @@ export function HomeContent() {
       </section>
 
       {/* 4. How Privacy Is Guaranteed */}
-      <section className="py-24 bg-slate-50 dark:bg-zinc-950 border-y-2 border-border-light dark:border-border-dark">
+      <section id="flow" className="py-24 bg-slate-50 dark:bg-zinc-950 border-y-2 border-border-light dark:border-border-dark">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="font-display text-4xl font-extrabold uppercase">{t.landing.operationalFlow}</h2>
@@ -192,7 +217,7 @@ export function HomeContent() {
       </section>
 
       {/* 4.5. Transparency */}
-      <section className="py-16 border-b-2 border-border-light dark:border-border-dark">
+      <section id="trust" className="py-16 border-b-2 border-border-light dark:border-border-dark">
         <div className="container mx-auto px-6">
           <h3 className="font-display text-3xl font-extrabold uppercase text-center mb-12">{t.landing.transparency.title}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border-2 border-border-light dark:border-border-dark max-w-4xl mx-auto">
@@ -238,7 +263,7 @@ export function HomeContent() {
       </section>
 
       {/* 4.7. Operational Advantages */}
-      <section className="py-24 grid-bg">
+      <section id="advantages" className="py-24 grid-bg">
         <div className="container mx-auto px-6">
           <div className="mb-16">
             <h2 className="font-display text-4xl font-extrabold mb-4 uppercase">{t.landing.advantages.title}</h2>
@@ -277,7 +302,7 @@ export function HomeContent() {
       </section>
 
       {/* 6. Try It Now */}
-      <section className="py-24 bg-black text-white">
+      <section id="demo" className="py-24 bg-black text-white">
         <div className="container mx-auto px-6">
           <div className="max-w-4xl mx-auto text-center mb-16">
             <h2 className="font-display text-4xl font-extrabold uppercase mb-4">{t.landing.demo.title}</h2>
@@ -383,7 +408,7 @@ export function HomeContent() {
       </section>
 
       {/* 10. Roadmap */}
-      <section className="py-24 grid-bg">
+      <section id="roadmap" className="py-24 grid-bg">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="font-display text-4xl font-extrabold uppercase mb-4">{t.landing.roadmap.title}</h2>

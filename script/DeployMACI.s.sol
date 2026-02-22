@@ -13,12 +13,15 @@ import "../contracts/MACI.sol";
 contract DeployMACIScript is Script {
     // Already deployed on Sepolia (reuse across versions)
     address constant GATEKEEPER = 0x4c18984A78910Dd1976d6DFd820f6d18e7edD672;
-    address constant VOICE_CREDIT_PROXY = 0x03669FF296a2B2CCF851bE98dbEa4BB2633ecF00;
+    address constant DEFAULT_VOICE_CREDIT_PROXY = 0x03669FF296a2B2CCF851bE98dbEa4BB2633ecF00;
     address constant MSG_PROCESSOR_VERIFIER = 0x352522b121Ac377f39AaD59De6D5C07C43Af5D59;
     address constant TALLY_VERIFIER = 0xF1ecb18a649cf7060f746Cc155638992E83f1DD7;
     address constant VK_REGISTRY = 0xCCcE4703D53fc112057C8fF4F1bC397C7F68732b;
 
     function run() external {
+        address voiceCreditProxy = vm.envOr("VOICE_CREDIT_PROXY", DEFAULT_VOICE_CREDIT_PROXY);
+        address delegationRegistry = vm.envOr("DELEGATION_REGISTRY", address(0));
+
         vm.startBroadcast();
 
         // Fresh AccQueue (previous one is already-merged, can't be reused)
@@ -26,18 +29,27 @@ contract DeployMACIScript is Script {
         console.log("AccQueue:", address(stateAq));
 
         // Fresh MACI with security hardening
-        MACI maci = new MACI(GATEKEEPER, VOICE_CREDIT_PROXY, 2, address(stateAq));
+        MACI maci = new MACI(GATEKEEPER, voiceCreditProxy, 2, address(stateAq));
         console.log("MACI:", address(maci));
 
         // Transfer AccQueue ownership to MACI, then initialize
         stateAq.transferOwnership(address(maci));
         maci.init();
+        if (delegationRegistry != address(0)) {
+            maci.setDelegationRegistry(delegationRegistry);
+        }
 
         vm.stopBroadcast();
 
         console.log("\n=== MACI V10 Deployment (canCreatePoll owner-only fix) ===");
         console.log("  maci:", address(maci));
         console.log("  stateAq:", address(stateAq));
-        console.log("  Reused: gatekeeper, voiceCreditProxy, verifiers, vkRegistry");
+        console.log("  voiceCreditProxy:", voiceCreditProxy);
+        if (delegationRegistry != address(0)) {
+            console.log("  delegationRegistry:", delegationRegistry);
+        } else {
+            console.log("  delegationRegistry: (not set)");
+        }
+        console.log("  Reused: gatekeeper, verifiers, vkRegistry");
     }
 }

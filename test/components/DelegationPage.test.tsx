@@ -28,6 +28,8 @@ vi.mock('wagmi', () => ({
       return { data: mockCurrentDelegate, isLoading: false, refetch: vi.fn() }
     if (config?.functionName === 'isDelegating')
       return { data: mockIsDelegating, isLoading: false, refetch: vi.fn() }
+    if (config?.functionName === 'delegationRegistry')
+      return { data: '0x0000000000000000000000000000000000000001', isLoading: false, refetch: vi.fn() }
     return { data: undefined, isLoading: false, refetch: vi.fn() }
   },
   useWriteContract: () => ({
@@ -40,6 +42,8 @@ vi.mock('wagmi', () => ({
 vi.mock('../../src/contractV2', () => ({
   DELEGATION_REGISTRY_ADDRESS: '0x0000000000000000000000000000000000000001',
   DELEGATION_REGISTRY_ABI: [],
+  VOICE_CREDIT_PROXY_ADDRESS: '0x0000000000000000000000000000000000000002',
+  DELEGATING_VOICE_CREDIT_PROXY_ABI: [],
 }))
 
 describe('DelegationPage', () => {

@@ -15,6 +15,17 @@ export const MACI_V2_ADDRESS = (v2.maci || '0x0000000000000000000000000000000000
 export const TOKEN_ADDRESS = (v2.token || v2.tonToken || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 export const DEPLOYER_ADDRESS = (config.deployer || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 export const VOICE_CREDIT_PROXY_ADDRESS = (v2.voiceCreditProxy || '0x0000000000000000000000000000000000000000') as `0x${string}`;
+
+// DelegatingVoiceCreditProxy (optional)
+export const DELEGATING_VOICE_CREDIT_PROXY_ABI = [
+  {
+    type: 'function',
+    name: 'delegationRegistry',
+    inputs: [],
+    outputs: [{ name: '', type: 'address' }],
+    stateMutability: 'view',
+  },
+] as const;
 export const MSG_PROCESSOR_VERIFIER_ADDRESS = (v2.msgProcessorVerifier || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 export const TALLY_VERIFIER_ADDRESS = (v2.tallyVerifier || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 export const VK_REGISTRY_ADDRESS = (v2.vkRegistry || '0x0000000000000000000000000000000000000000') as `0x${string}`;

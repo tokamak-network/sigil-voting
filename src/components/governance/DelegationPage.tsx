@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useAccount, useReadContract, useWriteContract, usePublicClient } from 'wagmi'
 import { useTranslation } from '../../i18n'
 import {
+  VOICE_CREDIT_PROXY_ADDRESS,
+  DELEGATING_VOICE_CREDIT_PROXY_ABI,
   DELEGATION_REGISTRY_ADDRESS,
   DELEGATION_REGISTRY_ABI,
 } from '../../contractV2'
@@ -75,6 +77,20 @@ export function DelegationPage() {
   const delegateDisplay = typeof currentDelegate === 'string' && currentDelegate !== ZERO_ADDRESS
     ? currentDelegate
     : null
+  const { data: proxyDelegationRegistry, isError: proxyDelegationError } = useReadContract({
+    address: VOICE_CREDIT_PROXY_ADDRESS,
+    abi: DELEGATING_VOICE_CREDIT_PROXY_ABI,
+    functionName: 'delegationRegistry',
+    query: { enabled: VOICE_CREDIT_PROXY_ADDRESS !== ZERO_ADDRESS },
+  })
+  const delegationRegistryMatch =
+    typeof proxyDelegationRegistry === 'string' &&
+    proxyDelegationRegistry !== ZERO_ADDRESS &&
+    proxyDelegationRegistry.toLowerCase() === DELEGATION_REGISTRY_ADDRESS.toLowerCase()
+  const isDelegationEffective = isConfigured && !proxyDelegationError && delegationRegistryMatch
+  const delegationEffectNote = isDelegationEffective
+    ? t.governance.delegation.effectNote
+    : t.governance.delegation.effectNoteLimited
 
   // Write: delegate
   const { writeContractAsync: writeDelegateContract, isPending: isDelegatingTx } = useWriteContract()
@@ -260,7 +276,7 @@ export function DelegationPage() {
             </div>
           </>
         )}
-        <p className="text-xs text-slate-400 mt-3">{t.governance.delegation.effectNote}</p>
+        <p className="text-xs text-slate-400 mt-3">{delegationEffectNote}</p>
       </div>
 
       {/* Success messages */}

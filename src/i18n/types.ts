@@ -11,6 +11,7 @@ export interface Translations {
     switching: string
     balance: string
     newProposal: string
+    appStart: string
     resetData: string
     resetConfirm: string
     resetDone: string
@@ -31,6 +32,14 @@ export interface Translations {
     testnetNote: string
     heroLabel1: string
     heroLabel2: string
+    sectionNav: {
+      features: string
+      flow: string
+      trust: string
+      sdk: string
+      faq: string
+      roadmap: string
+    }
     zeroExposure: { title: string; desc: string }
     maciSecured: { title: string; desc: string }
     coreFeatures: string
@@ -717,6 +726,7 @@ export interface Translations {
       lockedDesc: string
       lockedCta: string
       effectNote: string
+      effectNoteLimited: string
       manage: string
       delegateSuccess: string
       undelegateSuccess: string

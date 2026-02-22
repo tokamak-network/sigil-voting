@@ -1,18 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
-import { useAccount, useConnect, useDisconnect, useSwitchChain, useReadContract } from 'wagmi'
+import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi'
 import { injected } from '@wagmi/core'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { sepolia } from '../wagmi'
 import { useTranslation } from '../i18n'
 import { LanguageSwitcher } from './LanguageSwitcher'
-import {
-  MACI_V2_ADDRESS,
-  MACI_ABI,
-} from '../contractV2'
 
 const shortenAddress = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-4)
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
 
 export function Header() {
   const pathname = usePathname()
@@ -31,23 +26,6 @@ export function Header() {
   }, [])
 
   const isCorrectChain = chainId === sepolia.id
-  const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
-
-  // Gate check: hide "New Proposal" if user doesn't meet token threshold
-  useReadContract({
-    address: MACI_V2_ADDRESS as `0x${string}`,
-    abi: MACI_ABI,
-    functionName: 'proposalGateCount',
-    query: { enabled: isConfigured && !!address },
-  })
-  const { data: canCreatePoll } = useReadContract({
-    address: MACI_V2_ADDRESS as `0x${string}`,
-    abi: MACI_ABI,
-    functionName: 'canCreatePoll',
-    args: address ? [address] : undefined,
-    query: { enabled: isConfigured && !!address },
-  })
-  const showNewProposal = canCreatePoll === true
 
   // Close disconnect confirm on outside click
   useEffect(() => {
@@ -92,9 +70,18 @@ export function Header() {
 
   const handleConnect = () => connect({ connector: injected() })
 
-  const isVotePage = pathname.startsWith('/vote') && !pathname.startsWith('/vote/delegate')
   const isDelegatePage = pathname.startsWith('/vote/delegate')
   const isTechPage = pathname === '/technology'
+  const isLandingPage = pathname === '/'
+
+  const landingNavItems = [
+    { id: 'features', label: t.landing.sectionNav.features },
+    { id: 'flow', label: t.landing.sectionNav.flow },
+    { id: 'trust', label: t.landing.sectionNav.trust },
+    { id: 'sdk', label: t.landing.sectionNav.sdk },
+    { id: 'faq', label: t.landing.sectionNav.faq },
+    { id: 'roadmap', label: t.landing.sectionNav.roadmap },
+  ]
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b-2 border-border-light dark:border-border-dark">
@@ -111,41 +98,53 @@ export function Header() {
         </div>
 
         {/* Center: Nav (desktop) */}
-        <nav className="hidden md:flex items-center gap-6">
-          <Link
-            href="/vote"
-            className={`font-display font-bold text-sm uppercase tracking-wide transition-colors ${isVotePage ? 'text-primary' : 'text-slate-500 hover:text-black dark:hover:text-white'}`}
-          >
-            {t.header.vote}
-          </Link>
-          <Link
-            href="/vote/delegate"
-            className={`font-display font-bold text-sm uppercase tracking-wide transition-colors ${isDelegatePage ? 'text-primary' : 'text-slate-500 hover:text-black dark:hover:text-white'}`}
-          >
-            {t.governance.delegation.nav}
-          </Link>
-          <Link
-            href="/technology"
-            className={`font-display font-bold text-sm uppercase tracking-wide transition-colors ${isTechPage ? 'text-primary' : 'text-slate-500 hover:text-black dark:hover:text-white'}`}
-          >
-            {t.header.technology}
-          </Link>
-        </nav>
+        {isLandingPage ? (
+          <nav className="hidden md:flex items-center gap-4">
+            {landingNavItems.map((item) => (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                className="font-display font-bold text-xs uppercase tracking-wide text-slate-500 hover:text-black dark:hover:text-white transition-colors"
+              >
+                {item.label}
+              </a>
+            ))}
+            <Link
+              href="/technology"
+              className={`font-display font-bold text-xs uppercase tracking-wide transition-colors ${isTechPage ? 'text-primary' : 'text-slate-500 hover:text-black dark:hover:text-white'}`}
+            >
+              {t.header.technology}
+            </Link>
+          </nav>
+        ) : (
+          <nav className="hidden md:flex items-center gap-6">
+            <Link
+              href="/vote/delegate"
+              className={`font-display font-bold text-sm uppercase tracking-wide transition-colors ${isDelegatePage ? 'text-primary' : 'text-slate-500 hover:text-black dark:hover:text-white'}`}
+            >
+              {t.governance.delegation.nav}
+            </Link>
+            <Link
+              href="/technology"
+              className={`font-display font-bold text-sm uppercase tracking-wide transition-colors ${isTechPage ? 'text-primary' : 'text-slate-500 hover:text-black dark:hover:text-white'}`}
+            >
+              {t.header.technology}
+            </Link>
+          </nav>
+        )}
 
         {/* Right: Controls */}
         <div className="flex items-center gap-2 md:gap-4">
           <LanguageSwitcher />
 
-          {/* New Proposal button (connected, desktop) */}
-          {mounted && isConnected && isCorrectChain && showNewProposal && (
-            <Link
-              href="/vote/create"
-              className="hidden lg:flex bg-black text-white px-4 py-2 text-xs font-bold items-center gap-2 hover:bg-slate-800 transition-colors border-2 border-black"
-            >
-              <span className="material-symbols-outlined text-sm">add</span>
-              {t.header.newProposal}
-            </Link>
-          )}
+          {/* App Start */}
+          <Link
+            href="/vote"
+            className="bg-black text-white px-3 py-1.5 md:px-4 md:py-2 text-[10px] md:text-xs font-bold items-center gap-2 hover:bg-slate-800 transition-colors border-2 border-black flex"
+          >
+            <span className="material-symbols-outlined text-sm">open_in_new</span>
+            {t.header.appStart}
+          </Link>
 
           {/* Wrong chain warning */}
           {mounted && isConnected && !isCorrectChain && (
@@ -219,27 +218,44 @@ export function Header() {
         <>
           <div className="fixed inset-0 top-16 bg-black/30 z-40 md:hidden" onClick={() => setMobileMenuOpen(false)} />
           <nav className="absolute left-0 right-0 top-16 bg-white border-b-2 border-black z-50 md:hidden flex flex-col">
-            <Link
-              href="/vote"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`px-6 py-4 text-left font-display font-bold text-sm uppercase tracking-wide border-b border-slate-100 ${isVotePage ? 'text-primary bg-blue-50' : 'text-slate-700 hover:bg-slate-50'}`}
-            >
-              {t.header.vote}
-            </Link>
-            <Link
-              href="/vote/delegate"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`px-6 py-4 text-left font-display font-bold text-sm uppercase tracking-wide border-b border-slate-100 ${isDelegatePage ? 'text-primary bg-blue-50' : 'text-slate-700 hover:bg-slate-50'}`}
-            >
-              {t.governance.delegation.nav}
-            </Link>
-            <Link
-              href="/technology"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`px-6 py-4 text-left font-display font-bold text-sm uppercase tracking-wide ${isTechPage ? 'text-primary bg-blue-50' : 'text-slate-700 hover:bg-slate-50'}`}
-            >
-              {t.header.technology}
-            </Link>
+            {isLandingPage ? (
+              <>
+                {landingNavItems.map((item) => (
+                  <a
+                    key={item.id}
+                    href={`#${item.id}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="px-6 py-4 text-left font-display font-bold text-sm uppercase tracking-wide border-b border-slate-100 text-slate-700 hover:bg-slate-50"
+                  >
+                    {item.label}
+                  </a>
+                ))}
+                <Link
+                  href="/technology"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`px-6 py-4 text-left font-display font-bold text-sm uppercase tracking-wide ${isTechPage ? 'text-primary bg-blue-50' : 'text-slate-700 hover:bg-slate-50'}`}
+                >
+                  {t.header.technology}
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/vote/delegate"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`px-6 py-4 text-left font-display font-bold text-sm uppercase tracking-wide border-b border-slate-100 ${isDelegatePage ? 'text-primary bg-blue-50' : 'text-slate-700 hover:bg-slate-50'}`}
+                >
+                  {t.governance.delegation.nav}
+                </Link>
+                <Link
+                  href="/technology"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`px-6 py-4 text-left font-display font-bold text-sm uppercase tracking-wide ${isTechPage ? 'text-primary bg-blue-50' : 'text-slate-700 hover:bg-slate-50'}`}
+                >
+                  {t.header.technology}
+                </Link>
+              </>
+            )}
           </nav>
         </>
       )}

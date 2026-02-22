@@ -369,6 +369,34 @@ The Coordinator is a semi-trusted role that:
 
 ---
 
+## Appendix A — Delegation Extension (Optional, Bible-Compatible)
+
+This appendix defines a **strictly additive extension**. It must **not** change MACI core invariants:
+privacy, anti-collusion, quadratic cost, and signUp snapshot semantics remain intact.
+
+### Scope
+- Delegation affects **voting credits** only when MACI is deployed with **`DelegatingVoiceCreditProxy`**.
+- If MACI uses a non-delegating proxy (e.g., `ERC20VoiceCreditProxy`), delegation **does not** change voting credits.
+  In that case, delegation applies **only** to proposal-gating if `delegationRegistry` is set.
+
+### Voice Credit Rules (DelegatingVoiceCreditProxy)
+- **Delegator** (address that delegates) receives **0** voting credits.
+- **Delegate** (address receiving delegation) receives **own balance + sum of delegators’ balances**.
+- Credits are computed **once at signUp** and stored in the state tree.  
+  Changes after signUp **do not retroactively update** credits for existing polls.
+
+### Security / UX Requirements
+- UI must disclose whether delegation is **effective** for voting in the current deployment.
+- If delegation is effective and the user is delegating, voting UI must be locked (no voting with zero credits).
+- Delegation must not introduce any reveal/receipt capability.
+
+### Deployment Requirements
+1. Deploy `DelegationRegistry` and `DelegatingVoiceCreditProxy`.
+2. Deploy MACI with `voiceCreditProxy = DelegatingVoiceCreditProxy`.
+3. (Optional) Call `MACI.setDelegationRegistry(registry)` to enable delegation-aware proposal gating.
+
+---
+
 ## Use Cases
 
 1. **DAO Treasury Votes** — Members vote on fund allocation; whales cannot buy favorable outcomes

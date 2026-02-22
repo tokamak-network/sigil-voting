@@ -114,9 +114,8 @@ describe('Header', () => {
 
   it('renders Vote nav as a link to /vote', () => {
     renderWithProviders(<Header />)
-    const voteLinks = screen.getAllByText(/Vote|투표하기/i)
-    const voteLink = voteLinks[0].closest('a')
-    expect(voteLink).toHaveAttribute('href', '/vote')
+    const voteLink = screen.getAllByRole('link').find((link) => link.getAttribute('href') === '/vote')
+    expect(voteLink).toBeTruthy()
   })
 
   it('shows testnet badge', () => {

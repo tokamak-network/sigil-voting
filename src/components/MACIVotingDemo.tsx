@@ -21,6 +21,7 @@ import {
   TALLY_ABI,
   VOICE_CREDIT_PROXY_ADDRESS,
   VOICE_CREDIT_PROXY_ABI,
+  DELEGATING_VOICE_CREDIT_PROXY_ABI,
   DELEGATION_REGISTRY_ADDRESS,
   DELEGATION_REGISTRY_ABI,
   V2Phase,
@@ -137,6 +138,12 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
   const hasPoll = pollAddress !== null
 
   const isDelegationConfigured = DELEGATION_REGISTRY_ADDRESS !== ZERO_ADDRESS
+  const { data: proxyDelegationRegistry, isError: proxyDelegationError } = useReadContract({
+    address: VOICE_CREDIT_PROXY_ADDRESS,
+    abi: DELEGATING_VOICE_CREDIT_PROXY_ABI,
+    functionName: 'delegationRegistry',
+    query: { enabled: VOICE_CREDIT_PROXY_ADDRESS !== ZERO_ADDRESS },
+  })
   const { data: currentDelegate, refetch: refetchDelegate } = useReadContract({
     address: DELEGATION_REGISTRY_ADDRESS,
     abi: DELEGATION_REGISTRY_ABI,
@@ -164,7 +171,15 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
   const delegateDisplay = typeof currentDelegate === 'string' && currentDelegate !== ZERO_ADDRESS
     ? currentDelegate
     : null
-  const isDelegationLocked = Boolean(isDelegationConfigured && isDelegating)
+  const delegationRegistryMatch =
+    typeof proxyDelegationRegistry === 'string' &&
+    proxyDelegationRegistry !== ZERO_ADDRESS &&
+    proxyDelegationRegistry.toLowerCase() === DELEGATION_REGISTRY_ADDRESS.toLowerCase()
+  const isDelegationEffective = isDelegationConfigured && !proxyDelegationError && delegationRegistryMatch
+  const isDelegationLocked = Boolean(isDelegationEffective && isDelegating)
+  const delegationEffectNote = isDelegationEffective
+    ? t.governance.delegation.effectNote
+    : t.governance.delegation.effectNoteLimited
 
   const [isUndelegating, setIsUndelegating] = useState(false)
   const [delegationError, setDelegationError] = useState<string | null>(null)
@@ -751,7 +766,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
         </div>
       )}
       <div className="mt-2 text-[10px] text-slate-400">
-        {t.governance.delegation.effectNote}
+        {delegationEffectNote}
       </div>
       {delegatorList.length > 0 && (
         <div className="mt-3 text-[10px] font-mono text-slate-500">
