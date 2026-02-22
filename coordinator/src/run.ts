@@ -724,8 +724,14 @@ async function processAndSubmitProofs(
       const pC: [bigint, bigint] = [BigInt(pi_c[0]), BigInt(pi_c[1])];
 
       log(`  Submitting processMessages proof (batch ${batchCount})...`);
-      const tx = await mpContract.processMessages(newStateCommitment, pA, pB, pC);
-      await tx.wait();
+      await sendTxWithRetry(
+        `processMessages batch ${batchCount}`,
+        async () => {
+          const gas = await estimateGasWithBuffer(() => mpContract.processMessages.estimateGas(newStateCommitment, pA, pB, pC));
+          const tx = await mpContract.processMessages(newStateCommitment, pA, pB, pC, gas ? { gasLimit: gas } : {});
+          await tx.wait();
+        },
+      );
       log(`  Batch ${batchCount} proof submitted`);
 
       // Update state commitment tracker (matches contract's currentStateCommitment)
@@ -890,8 +896,14 @@ async function tallyAndPublish(
       const pC: [bigint, bigint] = [BigInt(pi_c[0]), BigInt(pi_c[1])];
 
       const tallyContract = new ethers.Contract(addrs.tally, TALLY_ABI, signer);
-      const tx = await tallyContract.tallyVotes(newTallyCommitment, pA, pB, pC);
-      await tx.wait();
+      await sendTxWithRetry(
+        `tallyVotes batch ${batchNum + 1}`,
+        async () => {
+          const gas = await estimateGasWithBuffer(() => tallyContract.tallyVotes.estimateGas(newTallyCommitment, pA, pB, pC));
+          const tx = await tallyContract.tallyVotes(newTallyCommitment, pA, pB, pC, gas ? { gasLimit: gas } : {});
+          await tx.wait();
+        },
+      );
       log(`  Tally batch ${batchNum + 1} proof submitted`);
     } catch (err) {
       const errMsg = (err as Error).message?.slice(0, 80)?.replace(/0x[a-fA-F0-9]{40,}/g, '[REDACTED]') ?? 'unknown';
@@ -923,18 +935,34 @@ async function tallyAndPublish(
 
   // Publish results on-chain
   log('  [7/7] Publishing results on-chain...');
+  const tallyContract = new ethers.Contract(addrs.tally, TALLY_ABI, signer);
   try {
-    const tallyContract = new ethers.Contract(addrs.tally, TALLY_ABI, signer);
-    const tx = await tallyContract.publishResults(
-      forVotes,
-      againstVotes,
-      abstainVotes,
-      BigInt(totalVoters),
-      currentTallyResultsRoot,
-      currentTotalSpent,
-      currentPerOptionSpentRoot,
+    await sendTxWithRetry(
+      'publishResults',
+      async () => {
+        const gas = await estimateGasWithBuffer(() => tallyContract.publishResults.estimateGas(
+          forVotes,
+          againstVotes,
+          abstainVotes,
+          BigInt(totalVoters),
+          currentTallyResultsRoot,
+          currentTotalSpent,
+          currentPerOptionSpentRoot,
+        ));
+        const tx = await tallyContract.publishResults(
+          forVotes,
+          againstVotes,
+          abstainVotes,
+          BigInt(totalVoters),
+          currentTallyResultsRoot,
+          currentTotalSpent,
+          currentPerOptionSpentRoot,
+          gas ? { gasLimit: gas } : {},
+        );
+        await tx.wait();
+      },
+      5,
     );
-    await tx.wait();
     log(`  Results published! FOR=${forVotes} AGAINST=${againstVotes} ABSTAIN=${abstainVotes}`);
   } catch (err) {
     const errMsg = (err as Error).message?.slice(0, 80)?.replace(/0x[a-fA-F0-9]{40,}/g, '[REDACTED]') ?? 'unknown';
@@ -962,6 +990,37 @@ async function retryRpc<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
     }
   }
   throw new Error('retryRpc: unreachable');
+}
+
+async function estimateGasWithBuffer(fn: () => Promise<bigint>): Promise<bigint | null> {
+  try {
+    const gas = await retryRpc(fn, 2);
+    // 20% buffer + 25k cushion
+    return (gas * 120n) / 100n + 25_000n;
+  } catch {
+    return null;
+  }
+}
+
+async function sendTxWithRetry(
+  label: string,
+  send: () => Promise<void>,
+  maxRetries = 3,
+): Promise<void> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      await send();
+      return;
+    } catch (err) {
+      const errMsg = (err as Error).message?.slice(0, 80)?.replace(/0x[a-fA-F0-9]{40,}/g, '[REDACTED]') ?? 'unknown';
+      if (attempt === maxRetries) {
+        throw err;
+      }
+      const delay = 2000 * (attempt + 1);
+      log(`  ${label} failed: ${errMsg}. Retrying in ${delay}ms...`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
 }
 
 export async function processPoll(
