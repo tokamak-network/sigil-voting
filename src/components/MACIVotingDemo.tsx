@@ -156,11 +156,12 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
     abi: DELEGATION_REGISTRY_ABI,
     functionName: 'getDelegators',
     args: address ? [address] : undefined,
-    query: { enabled: isDelegationConfigured && !!address },
+    query: { enabled: isDelegationConfigured && !!address, refetchInterval: 4000 },
   })
 
   const shorten = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-4)
   const delegatorList = Array.isArray(delegators) ? delegators : []
+  const isDelegationLocked = Boolean(isDelegationConfigured && isDelegating)
 
   // Read tally results for dynamic PASSED/REJECTED badge
   const tallyReady = !!tallyAddress && tallyAddress !== ZERO_ADDRESS && phase === V2Phase.Finalized
@@ -689,6 +690,15 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
           {t.governance.delegation.manage}
         </a>
       </div>
+      {isDelegationLocked && (
+        <div className="mt-3 text-xs text-slate-600">
+          <span className="font-bold">{t.governance.delegation.lockedTitle}.</span>{' '}
+          {t.governance.delegation.lockedDesc}
+        </div>
+      )}
+      <div className="mt-2 text-[10px] text-slate-400">
+        {t.governance.delegation.effectNote}
+      </div>
       {delegatorList.length > 0 && (
         <div className="mt-3 text-[10px] font-mono text-slate-500">
           {delegatorList.slice(0, 4).map((d) => shorten(d as string)).join(', ')}
@@ -779,12 +789,21 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
                 <span className="material-symbols-outlined text-primary" aria-hidden="true">info</span>
                 <span className="text-sm font-bold uppercase tracking-wider">{t.proposalDetail.alreadyVotedBanner}</span>
               </div>
-              <button
-                onClick={() => setShowReVoteForm(true)}
-                className="bg-primary text-white px-6 py-2 text-[10px] font-bold uppercase tracking-widest border-2 border-black hover:bg-blue-600 transition-colors whitespace-nowrap"
-              >
-                {t.proposalDetail.reVote}
-              </button>
+              {isDelegationLocked ? (
+                <a
+                  href="/vote/delegate"
+                  className="bg-black text-white px-6 py-2 text-[10px] font-bold uppercase tracking-widest border-2 border-black hover:bg-slate-800 transition-colors whitespace-nowrap"
+                >
+                  {t.governance.delegation.lockedCta}
+                </a>
+              ) : (
+                <button
+                  onClick={() => setShowReVoteForm(true)}
+                  className="bg-primary text-white px-6 py-2 text-[10px] font-bold uppercase tracking-widest border-2 border-black hover:bg-blue-600 transition-colors whitespace-nowrap"
+                >
+                  {t.proposalDetail.reVote}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -898,32 +917,47 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
               <div>
                 {/* Show vote form if: no vote yet, OR user clicked re-vote */}
                 {(!hasVoted || showReVoteForm) ? (
-                  <VoteFormV2
-                    pollId={propPollId}
-                    pollAddress={pollAddress!}
-                    coordinatorPubKeyX={coordPubKeyX}
-                    coordinatorPubKeyY={coordPubKeyY}
-                    voiceCredits={voiceCredits}
-                    isExpired={isPollExpired}
-                    isRegistered={signedUp}
-                    onSignUp={handleSignUp}
-                    onVoteSubmitted={(voteTxHash) => {
-                      setTxHash(voteTxHash)
-                      setShowReVoteForm(false)
-                      // Notify parent to navigate to VoteSubmitted page
-                      const vote = address ? getLastVote(address, propPollId) : null
-                      if (onVoteSubmitted && address && vote) {
-                        onVoteSubmitted({
-                          pollId: propPollId,
-                          pollTitle: displayTitle,
-                          choice: vote.choice,
-                          weight: vote.weight,
-                          cost: vote.cost,
-                          txHash: voteTxHash,
-                        })
-                      }
-                    }}
-                  />
+                  isDelegationLocked ? (
+                    <div className="bg-white border-4 border-black p-8" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>
+                      <h3 className="text-xl font-display font-black text-slate-800 mb-2">
+                        {t.governance.delegation.lockedTitle}
+                      </h3>
+                      <p className="text-sm text-slate-600 mb-6">{t.governance.delegation.lockedDesc}</p>
+                      <a
+                        href="/vote/delegate"
+                        className="inline-block bg-black text-white text-xs font-bold uppercase tracking-widest px-4 py-3"
+                      >
+                        {t.governance.delegation.lockedCta}
+                      </a>
+                    </div>
+                  ) : (
+                    <VoteFormV2
+                      pollId={propPollId}
+                      pollAddress={pollAddress!}
+                      coordinatorPubKeyX={coordPubKeyX}
+                      coordinatorPubKeyY={coordPubKeyY}
+                      voiceCredits={voiceCredits}
+                      isExpired={isPollExpired}
+                      isRegistered={signedUp}
+                      onSignUp={handleSignUp}
+                      onVoteSubmitted={(voteTxHash) => {
+                        setTxHash(voteTxHash)
+                        setShowReVoteForm(false)
+                        // Notify parent to navigate to VoteSubmitted page
+                        const vote = address ? getLastVote(address, propPollId) : null
+                        if (onVoteSubmitted && address && vote) {
+                          onVoteSubmitted({
+                            pollId: propPollId,
+                            pollTitle: displayTitle,
+                            choice: vote.choice,
+                            weight: vote.weight,
+                            cost: vote.cost,
+                            txHash: voteTxHash,
+                          })
+                        }
+                      }}
+                    />
+                  )
                 ) : (
                   /* Voted Summary Card (Page 6) */
                   <div className="bg-white border-4 border-black static md:sticky md:top-32" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>

@@ -64,6 +64,14 @@ export function DelegationPage() {
     args: address ? [address] : undefined,
     query: { enabled: isConfigured && !!address, refetchInterval: 4000 },
   })
+  const { data: delegators } = useReadContract({
+    address: DELEGATION_REGISTRY_ADDRESS as `0x${string}`,
+    abi: DELEGATION_REGISTRY_ABI,
+    functionName: 'getDelegators',
+    args: address ? [address] : undefined,
+    query: { enabled: isConfigured && !!address, refetchInterval: 4000 },
+  })
+  const delegatorList = Array.isArray(delegators) ? delegators : []
 
   // Write: delegate
   const { writeContractAsync: writeDelegateContract, isPending: isDelegatingTx } = useWriteContract()
@@ -233,6 +241,12 @@ export function DelegationPage() {
         ) : (
           <p className="text-sm text-slate-500">{t.governance.delegation.notDelegating}</p>
         )}
+        {delegatorList.length > 0 && (
+          <p className="text-xs text-slate-500 mt-2">
+            {t.governance.delegation.received} {delegatorList.length}
+          </p>
+        )}
+        <p className="text-xs text-slate-400 mt-3">{t.governance.delegation.effectNote}</p>
       </div>
 
       {/* Success messages */}

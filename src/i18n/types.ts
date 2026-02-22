@@ -713,6 +713,10 @@ export interface Translations {
       currentDelegate: string
       notDelegating: string
       received: string
+      lockedTitle: string
+      lockedDesc: string
+      lockedCta: string
+      effectNote: string
       manage: string
       delegateSuccess: string
       undelegateSuccess: string
