@@ -2,6 +2,11 @@ require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
 
 /** @type import('hardhat/config').HardhatUserConfig */
+const viaIR =
+  process.env.HARDHAT_VIA_IR === undefined
+    ? true
+    : !(process.env.HARDHAT_VIA_IR === "0" || process.env.HARDHAT_VIA_IR === "false");
+
 module.exports = {
   solidity: {
     version: "0.8.24",
@@ -10,7 +15,7 @@ module.exports = {
         enabled: true,
         runs: 200
       },
-      viaIR: true
+      viaIR
     }
   },
   networks: {

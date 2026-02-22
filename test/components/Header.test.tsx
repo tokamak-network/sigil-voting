@@ -78,38 +78,42 @@ describe('Header', () => {
     expect(screen.getByText('SIGIL')).toBeInTheDocument()
   })
 
-  it('shows connect button when not connected', () => {
+  it('shows connect button when not connected', async () => {
+    mockPathname = '/vote'
     renderWithProviders(<Header />)
-    const connectButton = screen.getByRole('button', { name: /connect|연결/i })
+    const connectButton = await screen.findByRole('button', { name: /connect|연결/i })
     expect(connectButton).toBeInTheDocument()
   })
 
   it('calls connect when connect button is clicked', async () => {
     const user = userEvent.setup()
+    mockPathname = '/vote'
     renderWithProviders(<Header />)
-    const connectButton = screen.getByRole('button', { name: /connect|연결/i })
+    const connectButton = await screen.findByRole('button', { name: /connect|연결/i })
     await user.click(connectButton)
     expect(mockConnect).toHaveBeenCalled()
   })
 
-  it('shows shortened address when connected', () => {
+  it('shows shortened address when connected', async () => {
+    mockPathname = '/vote'
     mockAccountState = {
       address: '0x1234567890abcdef1234567890abcdef12345678',
       isConnected: true,
       chainId: 11155111,
     }
     renderWithProviders(<Header />)
-    expect(screen.getByText('0x1234...5678')).toBeInTheDocument()
+    expect(await screen.findByText('0x1234...5678')).toBeInTheDocument()
   })
 
-  it('shows wrong network button when on wrong chain', () => {
+  it('shows wrong network button when on wrong chain', async () => {
+    mockPathname = '/vote'
     mockAccountState = {
       address: '0x1234567890abcdef1234567890abcdef12345678',
       isConnected: true,
       chainId: 1, // mainnet, not sepolia
     }
     renderWithProviders(<Header />)
-    expect(screen.getByText(/Wrong Network|네트워크 변경/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Wrong Network|네트워크 변경/i)).toBeInTheDocument()
   })
 
   it('renders Vote nav as a link to /vote', () => {
