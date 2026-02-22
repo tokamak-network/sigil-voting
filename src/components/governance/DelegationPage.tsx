@@ -72,6 +72,9 @@ export function DelegationPage() {
     query: { enabled: isConfigured && !!address, refetchInterval: 4000 },
   })
   const delegatorList = Array.isArray(delegators) ? delegators : []
+  const delegateDisplay = typeof currentDelegate === 'string' && currentDelegate !== ZERO_ADDRESS
+    ? currentDelegate
+    : null
 
   // Write: delegate
   const { writeContractAsync: writeDelegateContract, isPending: isDelegatingTx } = useWriteContract()
@@ -226,7 +229,7 @@ export function DelegationPage() {
         {isDelegating ? (
           <div className="flex items-center justify-between">
             <span className="font-mono text-sm font-bold">
-              {currentDelegate ? shortenAddress(currentDelegate as string) : '...'}
+              {delegateDisplay ? shortenAddress(delegateDisplay) : '—'}
             </span>
             <button
               onClick={handleUndelegate}
@@ -241,10 +244,21 @@ export function DelegationPage() {
         ) : (
           <p className="text-sm text-slate-500">{t.governance.delegation.notDelegating}</p>
         )}
-        {delegatorList.length > 0 && (
-          <p className="text-xs text-slate-500 mt-2">
-            {t.governance.delegation.received} {delegatorList.length}
+        {delegateDisplay && (
+          <p className="text-[10px] text-slate-400 mt-1 break-all font-mono">
+            {delegateDisplay}
           </p>
+        )}
+        {delegatorList.length > 0 && (
+          <>
+            <p className="text-xs text-slate-500 mt-2">
+              {t.governance.delegation.received} {delegatorList.length}
+            </p>
+            <div className="mt-2 text-[10px] font-mono text-slate-500 break-all">
+              {delegatorList.slice(0, 4).map((d) => shortenAddress(d as string)).join(', ')}
+              {delegatorList.length > 4 ? ` +${delegatorList.length - 4}` : ''}
+            </div>
+          </>
         )}
         <p className="text-xs text-slate-400 mt-3">{t.governance.delegation.effectNote}</p>
       </div>

@@ -736,7 +736,7 @@ export const en: Translations = {
       lockedTitle: 'Delegation active',
       lockedDesc: 'You can’t vote directly while delegating.',
       lockedCta: 'Remove delegation to vote',
-      effectNote: 'Delegation affects voting power when credits are calculated. Existing polls may not update immediately.',
+      effectNote: 'Delegation is applied when voice credits are calculated at signUp. Polls that already started or have closed registration may not update immediately.',
       manage: 'Manage',
       delegateSuccess: 'Delegation successful!',
       undelegateSuccess: 'Delegation removed. Using your own voting power now.',

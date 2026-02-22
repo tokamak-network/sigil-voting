@@ -137,21 +137,21 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
   const hasPoll = pollAddress !== null
 
   const isDelegationConfigured = DELEGATION_REGISTRY_ADDRESS !== ZERO_ADDRESS
-  const { data: currentDelegate } = useReadContract({
+  const { data: currentDelegate, refetch: refetchDelegate } = useReadContract({
     address: DELEGATION_REGISTRY_ADDRESS,
     abi: DELEGATION_REGISTRY_ABI,
     functionName: 'getDelegate',
     args: address ? [address] : undefined,
     query: { enabled: isDelegationConfigured && !!address },
   })
-  const { data: isDelegating } = useReadContract({
+  const { data: isDelegating, refetch: refetchIsDelegating } = useReadContract({
     address: DELEGATION_REGISTRY_ADDRESS,
     abi: DELEGATION_REGISTRY_ABI,
     functionName: 'isDelegating',
     args: address ? [address] : undefined,
     query: { enabled: isDelegationConfigured && !!address },
   })
-  const { data: delegators } = useReadContract({
+  const { data: delegators, refetch: refetchDelegators } = useReadContract({
     address: DELEGATION_REGISTRY_ADDRESS,
     abi: DELEGATION_REGISTRY_ABI,
     functionName: 'getDelegators',
@@ -161,7 +161,56 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
 
   const shorten = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-4)
   const delegatorList = Array.isArray(delegators) ? delegators : []
+  const delegateDisplay = typeof currentDelegate === 'string' && currentDelegate !== ZERO_ADDRESS
+    ? currentDelegate
+    : null
   const isDelegationLocked = Boolean(isDelegationConfigured && isDelegating)
+
+  const [isUndelegating, setIsUndelegating] = useState(false)
+  const [delegationError, setDelegationError] = useState<string | null>(null)
+  const [delegationSuccess, setDelegationSuccess] = useState(false)
+  const [delegationTxHash, setDelegationTxHash] = useState<string | null>(null)
+
+  const handleUndelegate = useCallback(async () => {
+    if (!address) {
+      setDelegationError(t.maci.connectWallet)
+      return
+    }
+    setDelegationError(null)
+    setDelegationSuccess(false)
+    setDelegationTxHash(null)
+    try {
+      setIsUndelegating(true)
+      const gas = await estimateGasWithBuffer({
+        publicClient,
+        address: DELEGATION_REGISTRY_ADDRESS,
+        abi: DELEGATION_REGISTRY_ABI,
+        functionName: 'undelegate',
+        args: [],
+        account: address as `0x${string}`,
+        fallbackGas: 200_000n,
+      })
+      const hash = await writeContract({
+        address: DELEGATION_REGISTRY_ADDRESS,
+        abi: DELEGATION_REGISTRY_ABI,
+        functionName: 'undelegate',
+        args: [],
+        gas,
+        account: address as `0x${string}`,
+      })
+      setDelegationTxHash(hash)
+      if (publicClient) {
+        const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 120_000 })
+        if (receipt.status !== 'success') throw new Error('tx reverted')
+      }
+      await Promise.all([refetchDelegate(), refetchIsDelegating(), refetchDelegators()])
+      setDelegationSuccess(true)
+    } catch {
+      setDelegationError(t.governance.delegation.error)
+    } finally {
+      setIsUndelegating(false)
+    }
+  }, [address, publicClient, refetchDelegate, refetchIsDelegating, refetchDelegators, t])
 
   // Read tally results for dynamic PASSED/REJECTED badge
   const tallyReady = !!tallyAddress && tallyAddress !== ZERO_ADDRESS && phase === V2Phase.Finalized
@@ -672,10 +721,15 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
           </p>
           {isDelegating ? (
             <p className="text-sm font-bold text-slate-700">
-              {t.governance.delegation.currentDelegate}: {currentDelegate ? shorten(currentDelegate as string) : '—'}
+              {t.governance.delegation.currentDelegate}: {delegateDisplay ? shorten(delegateDisplay) : '—'}
             </p>
           ) : (
             <p className="text-sm text-slate-500">{t.governance.delegation.notDelegating}</p>
+          )}
+          {delegateDisplay && (
+            <p className="text-[10px] text-slate-400 mt-1 break-all font-mono">
+              {delegateDisplay}
+            </p>
           )}
           {delegatorList.length > 0 && (
             <p className="text-xs text-slate-500 mt-1">
@@ -703,6 +757,17 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
         <div className="mt-3 text-[10px] font-mono text-slate-500">
           {delegatorList.slice(0, 4).map((d) => shorten(d as string)).join(', ')}
           {delegatorList.length > 4 ? ` +${delegatorList.length - 4}` : ''}
+        </div>
+      )}
+      {delegationError && (
+        <p className="mt-3 text-xs text-red-600">{delegationError}</p>
+      )}
+      {delegationSuccess && (
+        <p className="mt-3 text-xs text-emerald-600">{t.governance.delegation.undelegateSuccess}</p>
+      )}
+      {delegationTxHash && (
+        <div className="mt-2 text-[10px] font-mono text-slate-500">
+          Pending: {delegationTxHash.slice(0, 10)}...{delegationTxHash.slice(-8)}
         </div>
       )}
     </div>
@@ -790,12 +855,21 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
                 <span className="text-sm font-bold uppercase tracking-wider">{t.proposalDetail.alreadyVotedBanner}</span>
               </div>
               {isDelegationLocked ? (
-                <a
-                  href="/vote/delegate"
-                  className="bg-black text-white px-6 py-2 text-[10px] font-bold uppercase tracking-widest border-2 border-black hover:bg-slate-800 transition-colors whitespace-nowrap"
-                >
-                  {t.governance.delegation.lockedCta}
-                </a>
+                <div className="flex flex-col sm:flex-row items-stretch gap-2">
+                  <button
+                    onClick={handleUndelegate}
+                    disabled={isUndelegating}
+                    className="bg-black text-white px-6 py-2 text-[10px] font-bold uppercase tracking-widest border-2 border-black hover:bg-slate-800 transition-colors whitespace-nowrap disabled:opacity-50"
+                  >
+                    {isUndelegating ? t.governance.delegation.undelegating : t.governance.delegation.lockedCta}
+                  </button>
+                  <a
+                    href="/vote/delegate"
+                    className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest border-2 border-black hover:bg-slate-100 transition-colors whitespace-nowrap text-center"
+                  >
+                    {t.governance.delegation.manage}
+                  </a>
+                </div>
               ) : (
                 <button
                   onClick={() => setShowReVoteForm(true)}
@@ -923,12 +997,21 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
                         {t.governance.delegation.lockedTitle}
                       </h3>
                       <p className="text-sm text-slate-600 mb-6">{t.governance.delegation.lockedDesc}</p>
-                      <a
-                        href="/vote/delegate"
-                        className="inline-block bg-black text-white text-xs font-bold uppercase tracking-widest px-4 py-3"
-                      >
-                        {t.governance.delegation.lockedCta}
-                      </a>
+                      <div className="flex flex-col sm:flex-row items-stretch gap-2">
+                        <button
+                          onClick={handleUndelegate}
+                          disabled={isUndelegating}
+                          className="bg-black text-white text-xs font-bold uppercase tracking-widest px-4 py-3 disabled:opacity-50"
+                        >
+                          {isUndelegating ? t.governance.delegation.undelegating : t.governance.delegation.lockedCta}
+                        </button>
+                        <a
+                          href="/vote/delegate"
+                          className="inline-block border-2 border-black text-xs font-bold uppercase tracking-widest px-4 py-3 text-center"
+                        >
+                          {t.governance.delegation.manage}
+                        </a>
+                      </div>
                     </div>
                   ) : (
                     <VoteFormV2
