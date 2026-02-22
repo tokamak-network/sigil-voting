@@ -21,6 +21,7 @@ vi.mock('wagmi', () => ({
   useAccount: () => mockAccountState,
   usePublicClient: () => ({
     waitForTransactionReceipt: mockWaitForReceipt,
+    estimateContractGas: vi.fn().mockResolvedValue(120000n),
   }),
   useReadContract: (config: any) => {
     if (config?.functionName === 'getDelegate')

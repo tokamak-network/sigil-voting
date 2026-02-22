@@ -12,7 +12,7 @@ const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 export function DelegationPage() {
   const { t } = useTranslation()
-  const { address, isConnected } = useAccount()
+  const { address, isConnected, chainId } = useAccount()
   const publicClient = usePublicClient()
   const [delegateAddress, setDelegateAddress] = useState('')
   const [error, setError] = useState('')
@@ -20,8 +20,27 @@ export function DelegationPage() {
   const [lastAction, setLastAction] = useState<'delegate' | 'undelegate' | null>(null)
   const [showDelegateSuccess, setShowDelegateSuccess] = useState(false)
   const [showUndelegateSuccess, setShowUndelegateSuccess] = useState(false)
+  const [txHash, setTxHash] = useState<`0x${string}` | null>(null)
+  const [txStatus, setTxStatus] = useState<'idle' | 'pending' | 'success' | 'failed'>('idle')
 
   const isConfigured = DELEGATION_REGISTRY_ADDRESS !== ZERO_ADDRESS
+  const isWrongNetwork = chainId !== undefined && chainId !== 11155111
+
+  const estimateGasWithBuffer = async (functionName: 'delegate' | 'undelegate', args?: readonly unknown[]) => {
+    if (!publicClient || !address) return undefined
+    try {
+      const gas = await publicClient.estimateContractGas({
+        address: DELEGATION_REGISTRY_ADDRESS as `0x${string}`,
+        abi: DELEGATION_REGISTRY_ABI,
+        functionName,
+        args,
+        account: address,
+      })
+      return (gas * 120n) / 100n + 25_000n
+    } catch {
+      return undefined
+    }
+  }
 
   // Read current delegate
   const { data: currentDelegate, refetch: refetchDelegate } = useReadContract({
@@ -50,7 +69,13 @@ export function DelegationPage() {
     setError('')
     setShowDelegateSuccess(false)
     setShowUndelegateSuccess(false)
+    setTxStatus('idle')
+    setTxHash(null)
     setLastAction('delegate')
+    if (isWrongNetwork) {
+      setError(t.maci?.switchNetwork || t.governance.delegation.error)
+      return
+    }
     if (!delegateAddress || !delegateAddress.startsWith('0x') || delegateAddress.length !== 42) {
       setError(t.governance.delegation.error)
       return
@@ -61,21 +86,30 @@ export function DelegationPage() {
     }
     try {
       setIsConfirming(true)
+      setTxStatus('pending')
+      const gas = await estimateGasWithBuffer('delegate', [delegateAddress as `0x${string}`])
       const hash = await writeDelegateContract({
         address: DELEGATION_REGISTRY_ADDRESS as `0x${string}`,
         abi: DELEGATION_REGISTRY_ABI,
         functionName: 'delegate',
         args: [delegateAddress as `0x${string}`],
+        ...(gas ? { gas: gas } : {}),
       })
+      if (hash) setTxHash(hash as `0x${string}`)
       if (publicClient && hash) {
         const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 120_000 })
-        if (receipt.status !== 'success') throw new Error('tx reverted')
+        if (receipt.status !== 'success') {
+          setTxStatus('failed')
+          throw new Error('tx reverted')
+        }
       }
       await refetchDelegate()
       await refetchIsDelegating()
       setShowDelegateSuccess(true)
+      setTxStatus('success')
     } catch {
       setError(t.governance.delegation.error)
+      setTxStatus('failed')
     } finally {
       setIsConfirming(false)
     }
@@ -85,23 +119,38 @@ export function DelegationPage() {
     setError('')
     setShowDelegateSuccess(false)
     setShowUndelegateSuccess(false)
+    setTxStatus('idle')
+    setTxHash(null)
     setLastAction('undelegate')
+    if (isWrongNetwork) {
+      setError(t.maci?.switchNetwork || t.governance.delegation.error)
+      return
+    }
     try {
       setIsConfirming(true)
+      setTxStatus('pending')
+      const gas = await estimateGasWithBuffer('undelegate')
       const hash = await writeUndelegateContract({
         address: DELEGATION_REGISTRY_ADDRESS as `0x${string}`,
         abi: DELEGATION_REGISTRY_ABI,
         functionName: 'undelegate',
+        ...(gas ? { gas: gas } : {}),
       })
+      if (hash) setTxHash(hash as `0x${string}`)
       if (publicClient && hash) {
         const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 120_000 })
-        if (receipt.status !== 'success') throw new Error('tx reverted')
+        if (receipt.status !== 'success') {
+          setTxStatus('failed')
+          throw new Error('tx reverted')
+        }
       }
       await refetchDelegate()
       await refetchIsDelegating()
       setShowUndelegateSuccess(true)
+      setTxStatus('success')
     } catch {
       setError(t.governance.delegation.error)
+      setTxStatus('failed')
     } finally {
       setIsConfirming(false)
     }
@@ -140,6 +189,12 @@ export function DelegationPage() {
       <h1 className="text-2xl font-display font-extrabold mb-2">{t.governance.delegation.title}</h1>
       <p className="text-sm text-slate-500 mb-6">{t.governance.delegation.description}</p>
 
+      {isWrongNetwork && (
+        <div className="bg-amber-50 border-2 border-amber-500 text-amber-700 p-3 mb-4 text-sm font-bold">
+          {t.maci?.wrongNetwork || t.governance.delegation.error}
+        </div>
+      )}
+
       {/* Current delegation status */}
       <div className="border-2 border-border-light dark:border-border-dark p-4 mb-6">
         <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
@@ -174,6 +229,11 @@ export function DelegationPage() {
       {showUndelegateSuccess && (
         <div className="bg-green-50 border-2 border-green-500 text-green-700 p-3 mb-4 text-sm font-bold">
           {t.governance.delegation.undelegateSuccess}
+        </div>
+      )}
+      {txStatus === 'pending' && txHash && (
+        <div className="bg-slate-50 border-2 border-slate-300 text-slate-700 p-3 mb-4 text-xs font-mono">
+          Pending: {txHash.slice(0, 10)}...{txHash.slice(-8)}
         </div>
       )}
 
