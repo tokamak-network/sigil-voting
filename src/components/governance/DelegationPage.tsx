@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useAccount, useReadContract, useWriteContract, usePublicClient } from 'wagmi'
 import { useTranslation } from '../../i18n'
 import {
   DELEGATION_REGISTRY_ADDRESS,
@@ -13,8 +13,13 @@ const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 export function DelegationPage() {
   const { t } = useTranslation()
   const { address, isConnected } = useAccount()
+  const publicClient = usePublicClient()
   const [delegateAddress, setDelegateAddress] = useState('')
   const [error, setError] = useState('')
+  const [isConfirming, setIsConfirming] = useState(false)
+  const [lastAction, setLastAction] = useState<'delegate' | 'undelegate' | null>(null)
+  const [showDelegateSuccess, setShowDelegateSuccess] = useState(false)
+  const [showUndelegateSuccess, setShowUndelegateSuccess] = useState(false)
 
   const isConfigured = DELEGATION_REGISTRY_ADDRESS !== ZERO_ADDRESS
 
@@ -36,19 +41,16 @@ export function DelegationPage() {
   })
 
   // Write: delegate
-  const { writeContract: writeDelegateContract, data: delegateTxHash, isPending: isDelegatingTx } = useWriteContract()
-  const { isLoading: isDelegateConfirming, isSuccess: isDelegateSuccess } = useWaitForTransactionReceipt({
-    hash: delegateTxHash,
-  })
+  const { writeContractAsync: writeDelegateContract, isPending: isDelegatingTx } = useWriteContract()
 
   // Write: undelegate
-  const { writeContract: writeUndelegateContract, data: undelegateTxHash, isPending: isUndelegatingTx } = useWriteContract()
-  const { isLoading: isUndelegateConfirming, isSuccess: isUndelegateSuccess } = useWaitForTransactionReceipt({
-    hash: undelegateTxHash,
-  })
+  const { writeContractAsync: writeUndelegateContract, isPending: isUndelegatingTx } = useWriteContract()
 
   const handleDelegate = async () => {
     setError('')
+    setShowDelegateSuccess(false)
+    setShowUndelegateSuccess(false)
+    setLastAction('delegate')
     if (!delegateAddress || !delegateAddress.startsWith('0x') || delegateAddress.length !== 42) {
       setError(t.governance.delegation.error)
       return
@@ -58,37 +60,60 @@ export function DelegationPage() {
       return
     }
     try {
-      writeDelegateContract({
+      setIsConfirming(true)
+      const hash = await writeDelegateContract({
         address: DELEGATION_REGISTRY_ADDRESS as `0x${string}`,
         abi: DELEGATION_REGISTRY_ABI,
         functionName: 'delegate',
         args: [delegateAddress as `0x${string}`],
       })
+      if (publicClient && hash) {
+        const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 120_000 })
+        if (receipt.status !== 'success') throw new Error('tx reverted')
+      }
+      await refetchDelegate()
+      await refetchIsDelegating()
+      setShowDelegateSuccess(true)
     } catch {
       setError(t.governance.delegation.error)
+    } finally {
+      setIsConfirming(false)
     }
   }
 
   const handleUndelegate = async () => {
     setError('')
+    setShowDelegateSuccess(false)
+    setShowUndelegateSuccess(false)
+    setLastAction('undelegate')
     try {
-      writeUndelegateContract({
+      setIsConfirming(true)
+      const hash = await writeUndelegateContract({
         address: DELEGATION_REGISTRY_ADDRESS as `0x${string}`,
         abi: DELEGATION_REGISTRY_ABI,
         functionName: 'undelegate',
       })
+      if (publicClient && hash) {
+        const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 120_000 })
+        if (receipt.status !== 'success') throw new Error('tx reverted')
+      }
+      await refetchDelegate()
+      await refetchIsDelegating()
+      setShowUndelegateSuccess(true)
     } catch {
       setError(t.governance.delegation.error)
+    } finally {
+      setIsConfirming(false)
     }
   }
 
-  // Refetch on success
+  // Safety refetch when address changes
   useEffect(() => {
-    if (isDelegateSuccess || isUndelegateSuccess) {
+    if (address) {
       refetchDelegate()
       refetchIsDelegating()
     }
-  }, [isDelegateSuccess, isUndelegateSuccess, refetchDelegate, refetchIsDelegating])
+  }, [address, refetchDelegate, refetchIsDelegating])
 
   const shortenAddress = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-4)
 
@@ -127,10 +152,10 @@ export function DelegationPage() {
             </span>
             <button
               onClick={handleUndelegate}
-              disabled={isUndelegatingTx || isUndelegateConfirming}
+              disabled={isUndelegatingTx || (isConfirming && lastAction === 'undelegate')}
               className="bg-red-500 text-white text-xs font-bold px-3 py-1.5 hover:bg-red-600 transition-colors"
             >
-              {isUndelegatingTx || isUndelegateConfirming
+              {isUndelegatingTx || (isConfirming && lastAction === 'undelegate')
                 ? t.governance.delegation.undelegating
                 : t.governance.delegation.undelegate}
             </button>
@@ -141,12 +166,12 @@ export function DelegationPage() {
       </div>
 
       {/* Success messages */}
-      {isDelegateSuccess && (
+      {showDelegateSuccess && (
         <div className="bg-green-50 border-2 border-green-500 text-green-700 p-3 mb-4 text-sm font-bold">
           {t.governance.delegation.delegateSuccess}
         </div>
       )}
-      {isUndelegateSuccess && (
+      {showUndelegateSuccess && (
         <div className="bg-green-50 border-2 border-green-500 text-green-700 p-3 mb-4 text-sm font-bold">
           {t.governance.delegation.undelegateSuccess}
         </div>
@@ -170,10 +195,10 @@ export function DelegationPage() {
           )}
           <button
             onClick={handleDelegate}
-            disabled={isDelegatingTx || isDelegateConfirming || !delegateAddress}
+            disabled={isDelegatingTx || (isConfirming && lastAction === 'delegate') || !delegateAddress}
             className="w-full bg-black text-white font-bold py-2 text-sm hover:bg-slate-800 transition-colors border-2 border-black disabled:opacity-50"
           >
-            {isDelegatingTx || isDelegateConfirming
+            {isDelegatingTx || (isConfirming && lastAction === 'delegate')
               ? t.governance.delegation.delegating
               : t.governance.delegation.delegate}
           </button>

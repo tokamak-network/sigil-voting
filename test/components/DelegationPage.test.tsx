@@ -6,6 +6,7 @@ import { DelegationPage } from '../../src/components/governance/DelegationPage'
 
 // Mock wagmi hooks
 const mockWriteContract = vi.fn()
+const mockWaitForReceipt = vi.fn()
 
 let mockAccountState = {
   address: undefined as `0x${string}` | undefined,
@@ -18,6 +19,9 @@ let mockIsDelegating: unknown = false
 
 vi.mock('wagmi', () => ({
   useAccount: () => mockAccountState,
+  usePublicClient: () => ({
+    waitForTransactionReceipt: mockWaitForReceipt,
+  }),
   useReadContract: (config: any) => {
     if (config?.functionName === 'getDelegate')
       return { data: mockCurrentDelegate, isLoading: false, refetch: vi.fn() }
@@ -26,13 +30,9 @@ vi.mock('wagmi', () => ({
     return { data: undefined, isLoading: false, refetch: vi.fn() }
   },
   useWriteContract: () => ({
-    writeContract: mockWriteContract,
+    writeContractAsync: mockWriteContract,
     data: undefined,
     isPending: false,
-  }),
-  useWaitForTransactionReceipt: () => ({
-    isLoading: false,
-    isSuccess: false,
   }),
 }))
 
@@ -51,6 +51,8 @@ describe('DelegationPage', () => {
     }
     mockCurrentDelegate = undefined
     mockIsDelegating = false
+    mockWaitForReceipt.mockResolvedValue({ status: 'success' })
+    mockWriteContract.mockResolvedValue('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
   })
 
   it('shows connect wallet message when not connected', () => {
