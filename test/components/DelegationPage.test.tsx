@@ -56,12 +56,12 @@ describe('DelegationPage', () => {
     mockWriteContract.mockResolvedValue('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
   })
 
-  it('shows connect wallet message when not connected', () => {
+  it('shows connect wallet message when not connected', async () => {
     renderWithProviders(<DelegationPage />)
-    expect(screen.getByText(/connect|연결|지갑/i)).toBeInTheDocument()
+    expect(await screen.findByText(/connect|연결|지갑/i)).toBeInTheDocument()
   })
 
-  it('shows delegation form when connected and not delegating', () => {
+  it('shows delegation form when connected and not delegating', async () => {
     mockAccountState = {
       address: '0x1234567890abcdef1234567890abcdef12345678',
       isConnected: true,
@@ -69,11 +69,11 @@ describe('DelegationPage', () => {
     }
     mockIsDelegating = false
     renderWithProviders(<DelegationPage />)
-    expect(screen.getByText(/Delegate Voting Power|투표권 위임/i)).toBeInTheDocument()
-    expect(screen.getByPlaceholderText(/0x/)).toBeInTheDocument()
+    expect(await screen.findByText(/Delegate Voting Power|투표권 위임/i)).toBeInTheDocument()
+    expect(await screen.findByPlaceholderText(/0x/)).toBeInTheDocument()
   })
 
-  it('shows current delegate when delegating', () => {
+  it('shows current delegate when delegating', async () => {
     mockAccountState = {
       address: '0x1234567890abcdef1234567890abcdef12345678',
       isConnected: true,
@@ -82,11 +82,11 @@ describe('DelegationPage', () => {
     mockIsDelegating = true
     mockCurrentDelegate = '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd'
     renderWithProviders(<DelegationPage />)
-    expect(screen.getByText('0xabcd...abcd')).toBeInTheDocument()
-    expect(screen.getByText(/Remove Delegation|위임 해제/i)).toBeInTheDocument()
+    expect(await screen.findByText('0xabcd...abcd')).toBeInTheDocument()
+    expect(await screen.findByText(/Remove Delegation|위임 해제/i)).toBeInTheDocument()
   })
 
-  it('shows not delegating message when no delegation', () => {
+  it('shows not delegating message when no delegation', async () => {
     mockAccountState = {
       address: '0x1234567890abcdef1234567890abcdef12345678',
       isConnected: true,
@@ -94,7 +94,7 @@ describe('DelegationPage', () => {
     }
     mockIsDelegating = false
     renderWithProviders(<DelegationPage />)
-    expect(screen.getByText(/Not delegating|위임 없음/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Not delegating|위임 없음/i)).toBeInTheDocument()
   })
 
   it('prevents self-delegation', async () => {
@@ -107,7 +107,7 @@ describe('DelegationPage', () => {
     }
     mockIsDelegating = false
     renderWithProviders(<DelegationPage />)
-    const input = screen.getByPlaceholderText(/0x/)
+    const input = await screen.findByPlaceholderText(/0x/)
     await user.type(input, addr)
     const delegateBtn = screen.getByRole('button', { name: /^Delegate$|^위임하기$/i })
     await user.click(delegateBtn)
@@ -124,7 +124,7 @@ describe('DelegationPage', () => {
     }
     mockIsDelegating = false
     renderWithProviders(<DelegationPage />)
-    const input = screen.getByPlaceholderText(/0x/)
+    const input = await screen.findByPlaceholderText(/0x/)
     await user.type(input, '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd')
     const delegateBtn = screen.getByRole('button', { name: /^Delegate$|^위임하기$/i })
     await user.click(delegateBtn)

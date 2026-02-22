@@ -14,6 +14,7 @@ export function DelegationPage() {
   const { t } = useTranslation()
   const { address, isConnected, chainId } = useAccount()
   const publicClient = usePublicClient()
+  const [mounted, setMounted] = useState(false)
   const [delegateAddress, setDelegateAddress] = useState('')
   const [error, setError] = useState('')
   const [isConfirming, setIsConfirming] = useState(false)
@@ -42,6 +43,10 @@ export function DelegationPage() {
       return fallbackGas
     }
   }
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Read current delegate
   const { data: currentDelegate, refetch: refetchDelegate } = useReadContract({
@@ -166,6 +171,15 @@ export function DelegationPage() {
   }, [address, refetchDelegate, refetchIsDelegating])
 
   const shortenAddress = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-4)
+
+  if (!mounted) {
+    return (
+      <div className="max-w-lg mx-auto p-6">
+        <h1 className="text-2xl font-display font-extrabold mb-4">{t.governance.delegation.title}</h1>
+        <p className="text-slate-500">{t.maci.waiting.processing}</p>
+      </div>
+    )
+  }
 
   if (!isConnected) {
     return (
