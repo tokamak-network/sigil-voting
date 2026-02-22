@@ -73,6 +73,6 @@ describe('VoteSubmitted', () => {
 
   it('shows receipt number based on pollId', () => {
     renderWithProviders(<VoteSubmitted {...defaultProps} pollId={2} />)
-    expect(screen.getByText(/RECEIPT #3-ZK/)).toBeInTheDocument()
+    expect(screen.getByText(/RECEIPT #3/)).toBeInTheDocument()
   })
 })

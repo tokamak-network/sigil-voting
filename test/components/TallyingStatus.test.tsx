@@ -94,10 +94,10 @@ describe('TallyingStatus', () => {
     expect(dashes.length).toBeGreaterThan(0)
   })
 
-  it('renders privacy assurance section', () => {
+  it('does not render privacy assurance section', () => {
     const { container } = renderWithProviders(<TallyingStatus {...defaultProps} />)
     const privacySection = container.querySelector('.bg-slate-900')
-    expect(privacySection).toBeInTheDocument()
+    expect(privacySection).toBeNull()
   })
 
   it('renders processing status steps', () => {

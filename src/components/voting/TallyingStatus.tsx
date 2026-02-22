@@ -165,9 +165,6 @@ export function TallyingStatus({
                   <p className="text-xs text-amber-700 leading-relaxed">
                     {t.tallying.overdueDesc}
                   </p>
-                  <div className="mt-3 text-[10px] font-mono text-amber-800">
-                    {t.tallying.overdueHint}
-                  </div>
                 </div>
               )}
 
@@ -189,24 +186,6 @@ export function TallyingStatus({
               )}
             </div>
 
-            {/* Privacy Assurance */}
-            <div className="p-10 border-4 border-black bg-slate-900 text-white relative overflow-hidden" style={{ boxShadow: '6px 6px 0px 0px rgba(0,0,0,1)' }}>
-              <div className="absolute top-0 right-0 p-4 opacity-20">
-                <span className="material-symbols-outlined text-8xl">verified_user</span>
-              </div>
-              <h3 className="text-primary font-bold text-xs uppercase tracking-[0.3em] mb-4">
-                {t.tallying.privacyAssurance}
-              </h3>
-              <p className="text-3xl font-display font-black uppercase italic leading-tight relative z-10">
-                {t.tallying.privacyDesc}
-              </p>
-              <div className="mt-6 flex items-center gap-4">
-                <div className="h-[2px] flex-1 bg-primary/30"></div>
-                <span className="text-[10px] font-mono font-bold text-primary uppercase tracking-widest">
-                  {t.tallying.zkEnvironment}
-                </span>
-              </div>
-            </div>
           </div>
 
           {/* Right Column */}
@@ -319,21 +298,6 @@ export function TallyingStatus({
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="mt-24 pt-8 border-t-2 border-black flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex flex-wrap items-center gap-6 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
-            <span className="text-black flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-500"></span>
-              {t.tallying.systemOperational}
-            </span>
-            <span className="w-1 h-1 bg-slate-300"></span>
-            <span className="text-primary flex items-center gap-2">
-              <span className="w-2 h-2 bg-primary" style={{ animation: 'pulse 2s cubic-bezier(0.4,0,0.6,1) infinite' }}></span>
-              {t.tallying.zkProofActive}
-            </span>
-          </div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t.tallying.copyright}</p>
-        </div>
       </main>
     </div>
   )
