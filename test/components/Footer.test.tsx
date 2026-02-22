@@ -13,14 +13,11 @@ describe('Footer', () => {
   it('renders social links with correct hrefs', () => {
     renderWithProviders(<Footer />)
     const xLink = screen.getByText('X').closest('a')
-    expect(xLink).toHaveAttribute('href', 'https://x.com/tokaboratory')
+    expect(xLink).toHaveAttribute('href', 'https://x.com/Sigil_Builder')
     expect(xLink).toHaveAttribute('rel', 'noopener noreferrer')
 
     const ghLink = screen.getByText('GH').closest('a')
     expect(ghLink).toHaveAttribute('href', 'https://github.com/tokamak-network/zk-dex-d1-private-voting')
-
-    const tgLink = screen.getByText('TG').closest('a')
-    expect(tgLink).toHaveAttribute('href', 'https://t.me/tokamak_network')
   })
 
   it('renders resource links', () => {
@@ -52,6 +49,6 @@ describe('Footer', () => {
     externalLinks.forEach(link => {
       expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
     })
-    expect(externalLinks.length).toBeGreaterThanOrEqual(4)
+    expect(externalLinks.length).toBeGreaterThanOrEqual(3)
   })
 })

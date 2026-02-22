@@ -25,6 +25,7 @@ import { preloadCrypto } from '../../crypto/preload';
 import { getLastVote, getMaciNonce, incrementMaciNonce } from './voteUtils';
 import { storageKey } from '../../storageKeys';
 import { getLogsChunked } from '../../utils/viemLogs';
+import { estimateGasWithBuffer } from '../../utils/gas';
 
 interface VoteFormV2Props {
   pollId: number;
@@ -252,7 +253,7 @@ export function VoteFormV2({
         setTxStage('confirming');
 
         // Submit key change message
-        const kcHash = await publishWithRetry(pollAddress, kcEncMessage, kcEphemeral.pubKey, address, setTxStage);
+        const kcHash = await publishWithRetry(pollAddress, kcEncMessage, kcEphemeral.pubKey, address, setTxStage, publicClient ?? undefined);
 
         setTxStage('waiting');
 
@@ -351,7 +352,7 @@ export function VoteFormV2({
         return;
       }
 
-      const hash = await publishWithRetry(pollAddress, encMessage, ephemeral.pubKey, address, setTxStage);
+      const hash = await publishWithRetry(pollAddress, encMessage, ephemeral.pubKey, address, setTxStage, publicClient ?? undefined);
 
       setTxStage('waiting');
       setTxHash(hash);
@@ -856,11 +857,25 @@ async function publishWithRetry(
   ephemeralPubKey: [bigint, bigint],
   account: `0x${string}`,
   setTxStage: (stage: TxStage) => void,
+  publicClient?: PublicClient,
   maxRetries = 5,
 ): Promise<`0x${string}`> {
   let retries = 0;
   while (true) {
     try {
+      const gas = await estimateGasWithBuffer({
+        publicClient,
+        address: pollAddress,
+        abi: POLL_ABI,
+        functionName: 'publishMessage',
+        args: [
+          encMessage as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint],
+          ephemeralPubKey[0],
+          ephemeralPubKey[1],
+        ],
+        account,
+        fallbackGas: 500_000n,
+      });
       const hash = await writeContract({
         address: pollAddress,
         abi: POLL_ABI,
@@ -870,7 +885,7 @@ async function publishWithRetry(
           ephemeralPubKey[0],
           ephemeralPubKey[1],
         ],
-        gas: 500_000n,
+        gas,
         account,
       });
       return hash;

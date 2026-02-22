@@ -15,6 +15,7 @@ import { writeContract } from '../../writeHelper';
 import { POLL_ABI } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 import { preloadCrypto } from '../../crypto/preload';
+import { estimateGasWithBuffer } from '../../utils/gas';
 import { getMaciNonce, incrementMaciNonce } from './voteUtils';
 import { storageKey } from '../../storageKeys';
 
@@ -162,6 +163,19 @@ export function KeyManager({
 
       // Submit key change message
       if (!address) throw new Error('Wallet not connected');
+      const gas = await estimateGasWithBuffer({
+        publicClient,
+        address: pollAddress!,
+        abi: POLL_ABI,
+        functionName: 'publishMessage',
+        args: [
+          encMessage as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint],
+          ephemeral.pubKey[0],
+          ephemeral.pubKey[1],
+        ],
+        account: address,
+        fallbackGas: 500_000n,
+      });
       const txHash = await writeContract({
         address: pollAddress!,
         abi: POLL_ABI,
@@ -171,7 +185,7 @@ export function KeyManager({
           ephemeral.pubKey[0],
           ephemeral.pubKey[1],
         ],
-        gas: 500_000n,
+        gas,
         account: address,
       });
 

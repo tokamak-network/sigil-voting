@@ -15,6 +15,7 @@ import { storageKey } from '../storageKeys'
 import { useTranslation } from '../i18n'
 import { TransactionModal } from './voting/TransactionModal'
 import { useVoiceCreditToken } from '../hooks/useVoiceCreditToken'
+import { estimateGasWithBuffer } from '../utils/gas'
 
 interface CreatePollFormProps {
   onPollCreated: (pollId: number, pollAddress: `0x${string}`, title?: string, durationSeconds?: number) => void
@@ -87,6 +88,24 @@ export default function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePo
       const durationSeconds = BigInt(durationMinutes * 60)
 
       setTxStage('confirming')
+      const gas = await estimateGasWithBuffer({
+        publicClient,
+        address: MACI_V2_ADDRESS as `0x${string}`,
+        abi: MACI_ABI,
+        functionName: 'deployPoll',
+        args: [
+          title.trim(),
+          durationSeconds,
+          DEFAULT_COORD_PUB_KEY_X,
+          DEFAULT_COORD_PUB_KEY_Y,
+          MSG_PROCESSOR_VERIFIER_ADDRESS as `0x${string}`,
+          TALLY_VERIFIER_ADDRESS as `0x${string}`,
+          VK_REGISTRY_ADDRESS as `0x${string}`,
+          2,
+        ],
+        account: address,
+        fallbackGas: 15_000_000n,
+      })
       const hash = await writeContract({
         address: MACI_V2_ADDRESS as `0x${string}`,
         abi: MACI_ABI,
@@ -101,7 +120,7 @@ export default function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePo
           VK_REGISTRY_ADDRESS as `0x${string}`,
           2,
         ],
-        gas: 15000000n,
+        gas,
         account: address,
       })
 

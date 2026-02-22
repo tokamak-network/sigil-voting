@@ -33,6 +33,7 @@ import { TallyingStatus } from './voting/TallyingStatus'
 import { ResultsDisplay } from './voting/ResultsDisplay'
 import { PollTimer } from './voting/PollTimer'
 import { useTranslation } from '../i18n'
+import { estimateGasWithBuffer } from '../utils/gas'
 import { storageKey } from '../storageKeys'
 import { preloadCrypto } from '../crypto/preload'
 import type { CryptoModules } from '../crypto/preload'
@@ -582,12 +583,21 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
       const maxSignUpRetries = 5;
       while (true) {
         try {
+          const gas = await estimateGasWithBuffer({
+            publicClient,
+            address: MACI_V2_ADDRESS,
+            abi: MACI_ABI,
+            functionName: 'signUp',
+            args: [pk[0], pk[1], '0x' as `0x${string}`, '0x' as `0x${string}`],
+            account: address,
+            fallbackGas: 500_000n,
+          })
           hash = await writeContract({
             address: MACI_V2_ADDRESS,
             abi: MACI_ABI,
             functionName: 'signUp',
             args: [pk[0], pk[1], '0x' as `0x${string}`, '0x' as `0x${string}`],
-            gas: 500_000n,
+            gas,
             account: address,
           })
           break
