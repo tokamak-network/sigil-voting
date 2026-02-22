@@ -20,10 +20,10 @@ test.describe('Landing Page', () => {
     await expect(features).toBeVisible()
   })
 
-  test('renders comparison table with SIGIL column', async ({ page }) => {
-    const table = page.locator('table')
-    await expect(table).toBeVisible()
-    await expect(page.locator('th').getByText('SIGIL')).toBeVisible()
+  test('renders the Developer SDK section', async ({ page }) => {
+    const sdk = page.locator('#sdk')
+    await sdk.scrollIntoViewIfNeeded()
+    await expect(sdk).toBeVisible()
   })
 
   test('FAQ accordion expands and collapses', async ({ page }) => {
@@ -38,10 +38,10 @@ test.describe('Landing Page', () => {
     await expect(faqItem).toHaveAttribute('aria-expanded', 'false')
   })
 
-  test('play button shows coming soon message', async ({ page }) => {
-    const playBtn = page.getByLabel('Play demo video')
-    await playBtn.click()
-    await expect(page.getByText(/coming soon|준비 중/i)).toBeVisible()
+  test('try-it-now CTA is visible', async ({ page }) => {
+    const cta = page.getByRole('link', { name: /Try on Sepolia Testnet|Sepolia 테스트넷에서 체험/i })
+    await cta.scrollIntoViewIfNeeded()
+    await expect(cta).toBeVisible()
   })
 
   test('has footer with social links', async ({ page }) => {

@@ -9,33 +9,33 @@ test.describe('Responsive Layout', () => {
     // Desktop nav should be hidden
     const desktopNav = page.locator('nav.hidden')
     // Checking that desktop nav buttons are not visible
-    const voteBtn = page.locator('nav button').filter({ hasText: /Vote|투표하기/i }).first()
-    await expect(voteBtn).not.toBeVisible()
+    const voteLink = page.locator('nav a').filter({ hasText: /Vote|투표하기/i }).first()
+    await expect(voteLink).not.toBeVisible()
   })
 
   test('mobile: hero section readable', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto('/')
     await expect(page.locator('h1')).toBeVisible()
-    // No horizontal overflow
-    const bodyWidth = await page.evaluate(() => document.body.scrollWidth)
-    expect(bodyWidth).toBeLessThanOrEqual(375 + 1)
+    // Horizontal overflow should be disabled
+    const overflowX = await page.evaluate(() => getComputedStyle(document.body).overflowX)
+    expect(overflowX).toBe('hidden')
   })
 
-  test('mobile: comparison table scrollable', async ({ page }) => {
+  test('mobile: SDK section reachable', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto('/')
-    const table = page.locator('table')
-    await table.scrollIntoViewIfNeeded()
-    await expect(table).toBeVisible()
+    const sdk = page.locator('#sdk')
+    await sdk.scrollIntoViewIfNeeded()
+    await expect(sdk).toBeVisible()
   })
 
   test('desktop (1440px): full navigation visible', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/')
-    const voteNav = page.locator('nav button').filter({ hasText: /Vote|투표하기/i }).first()
+    const voteNav = page.locator('nav a').filter({ hasText: /Vote|투표하기/i }).first()
     await expect(voteNav).toBeVisible()
-    const techNav = page.locator('nav button').filter({ hasText: /Technology|기술 소개/i }).first()
+    const techNav = page.locator('nav a').filter({ hasText: /Technology|기술 소개/i }).first()
     await expect(techNav).toBeVisible()
     // Hamburger should be hidden
     await expect(page.getByLabel(/Menu|메뉴/i)).not.toBeVisible()

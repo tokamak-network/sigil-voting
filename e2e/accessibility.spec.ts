@@ -42,9 +42,9 @@ test.describe('Accessibility', () => {
     await expect(koBtn).toHaveAttribute('aria-pressed')
   })
 
-  test('play button has aria-label', async ({ page }) => {
-    const playBtn = page.getByLabel('Play demo video')
-    await expect(playBtn).toBeVisible()
+  test('primary CTA link is discoverable by name', async ({ page }) => {
+    const cta = page.getByRole('link', { name: /Launch App|앱 시작/i })
+    await expect(cta).toBeVisible()
   })
 
   test('header has navigation landmark', async ({ page }) => {

@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 test.describe('Technology Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
-    const techNav = page.locator('nav button').filter({ hasText: /Technology|기술 소개/i }).first()
+    const techNav = page.locator('nav a').filter({ hasText: /Technology|기술 소개/i }).first()
     await techNav.click()
   })
 
