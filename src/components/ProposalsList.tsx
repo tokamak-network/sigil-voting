@@ -79,10 +79,10 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
   const { t } = useTranslation()
-  const [polls, setPolls] = useState<PollInfo[]>(() => loadCachedPolls())
+  const [polls, setPolls] = useState<PollInfo[]>([])
   const [loading, setLoading] = useState(false)
   const [showCreatePoll, setShowCreatePoll] = useState(false)
-  const [now, setNow] = useState(Math.floor(Date.now() / 1000))
+  const [now, setNow] = useState(0)
   const [refreshKey, setRefreshKey] = useState(0)
   const [filter, setFilter] = useState<FilterTab>('all')
 
@@ -111,8 +111,15 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     query: { enabled: isConfigured, refetchInterval: 15000 },
   })
 
+  // Load cached polls after mount (avoid SSR hydration mismatch)
+  useEffect(() => {
+    const cached = loadCachedPolls()
+    if (cached.length > 0) setPolls(cached)
+  }, [])
+
   // Clock tick for timers
   useEffect(() => {
+    setNow(Math.floor(Date.now() / 1000))
     const interval = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
     return () => clearInterval(interval)
   }, [])

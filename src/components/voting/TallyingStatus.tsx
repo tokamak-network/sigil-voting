@@ -86,6 +86,7 @@ export function TallyingStatus({
     : isProcessed ? 45   // tally + publish remaining
     : allMerged ? 95     // processing + tally + publish
     : 180                // full pipeline
+  const BUFFER_SEC = 5
 
   // Track when each step was first detected to anchor the countdown
   const [stepAnchor, setStepAnchor] = useState<{ step: number; time: number }>({ step: 0, time: 0 })
@@ -108,7 +109,7 @@ export function TallyingStatus({
   }, [now, votingEndTime])
 
   const elapsedSinceAnchor = (now - stepAnchor.time) / 1000
-  const remainingSec_raw = Math.max(0, remainingFromStep - elapsedSinceAnchor)
+  const remainingSec_raw = Math.max(0, remainingFromStep + BUFFER_SEC - elapsedSinceAnchor)
   const isOverdue = remainingSec_raw === 0 && !isFinalized
 
   const choiceLabel = myVote

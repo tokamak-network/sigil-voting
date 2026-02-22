@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 import type { Language, Translations } from './types'
 import { ko } from './ko'
 import { en } from './en'
@@ -14,20 +14,28 @@ interface LanguageContextValue {
 
 const STORAGE_KEY = 'zk-voting-lang'
 
-function getInitialLang(): Language {
+function readStoredLang(): Language | null {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored === 'ko' || stored === 'en') return stored
   } catch {
     // localStorage not available
   }
-  return 'en'
+  return null
 }
 
 const LanguageContext = createContext<LanguageContextValue | null>(null)
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Language>(getInitialLang)
+  // Keep initial render deterministic to avoid hydration mismatch.
+  const [lang, setLangState] = useState<Language>('en')
+
+  useEffect(() => {
+    const stored = readStoredLang()
+    if (stored && stored !== lang) {
+      setLangState(stored)
+    }
+  }, [lang])
 
   const setLang = useCallback((newLang: Language) => {
     setLangState(newLang)

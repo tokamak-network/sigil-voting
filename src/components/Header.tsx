@@ -23,7 +23,12 @@ export function Header() {
   const { t } = useTranslation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const disconnectRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const isCorrectChain = chainId === sepolia.id
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
@@ -132,7 +137,7 @@ export function Header() {
           <LanguageSwitcher />
 
           {/* New Proposal button (connected, desktop) */}
-          {isConnected && isCorrectChain && showNewProposal && (
+          {mounted && isConnected && isCorrectChain && showNewProposal && (
             <Link
               href="/vote/create"
               className="hidden lg:flex bg-black text-white px-4 py-2 text-xs font-bold items-center gap-2 hover:bg-slate-800 transition-colors border-2 border-black"
@@ -143,7 +148,7 @@ export function Header() {
           )}
 
           {/* Wrong chain warning */}
-          {isConnected && !isCorrectChain && (
+          {mounted && isConnected && !isCorrectChain && (
             <button
               onClick={handleSwitchNetwork}
               disabled={isSwitching}
@@ -154,7 +159,7 @@ export function Header() {
           )}
 
           {/* Wallet address with disconnect confirm (connected) */}
-          {isConnected && isCorrectChain && (
+          {mounted && isConnected && isCorrectChain && (
             <div className="relative" ref={disconnectRef}>
               <button
                 onClick={() => setShowDisconnectConfirm(!showDisconnectConfirm)}
@@ -186,7 +191,7 @@ export function Header() {
           )}
 
           {/* Connect wallet (not connected) */}
-          {!isConnected && (
+          {mounted && !isConnected && (
             <button
               onClick={handleConnect}
               disabled={isConnecting}
