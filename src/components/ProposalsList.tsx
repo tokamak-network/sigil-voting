@@ -475,7 +475,7 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
           <p className="text-xl font-display font-bold text-slate-400 uppercase">
             {filter === 'all' ? t.proposals.empty : t.proposals.noFiltered}
           </p>
-          {isConnected && filter === 'all' && (
+          {isConnected && filter === 'all' && showNewProposal && (
             <>
               <p className="mt-2 text-sm text-slate-400 font-sans">{t.proposals.emptyHint}</p>
               <button
@@ -486,6 +486,16 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
                 {t.proposals.emptyAction}
               </button>
             </>
+          )}
+          {isConnected && filter === 'all' && canCreatePoll === false && (
+            <p className="mt-4 text-sm text-slate-500 font-sans">
+              {Number(gateCount || 0) > 0 ? t.createPoll.tokenRequired : t.createPoll.ownerOnly}
+            </p>
+          )}
+          {isConnected && filter === 'all' && canCreatePoll === undefined && (
+            <p className="mt-4 text-sm text-slate-500 font-sans">
+              {t.createPoll.checkingEligibility}
+            </p>
           )}
         </div>
       ) : (
