@@ -86,7 +86,7 @@ Open http://localhost:3000. Connect a wallet with Sepolia ETH.
 ## Testing
 
 ```bash
-# Unit + component + security tests (292 tests)
+# Unit + component + security tests (293 tests)
 npm test
 
 # Smart contracts (requires Foundry)
