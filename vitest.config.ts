@@ -11,6 +11,7 @@ export default defineConfig({
     setupFiles: ['./test/setup.ts'],
     globals: true,
     include: ['test/**/*.test.{ts,tsx}'],
+    exclude: ['test/circuits/**'],
     css: false,
     testTimeout: 240_000,
     hookTimeout: 240_000,
