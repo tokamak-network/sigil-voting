@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAccount, useReadContract, useWriteContract, usePublicClient } from 'wagmi'
 import { useTranslation } from '../../i18n'
+import { storageKey } from '../../storageKeys'
 import {
   VOICE_CREDIT_PROXY_ADDRESS,
   DELEGATING_VOICE_CREDIT_PROXY_ABI,
@@ -138,6 +139,9 @@ export function DelegationPage() {
       }
       await refetchDelegate()
       await refetchIsDelegating()
+      if (address) {
+        localStorage.setItem(storageKey.delegationChangedAt(address), String(Date.now()))
+      }
       setShowDelegateSuccess(true)
       setTxStatus('success')
     } catch {
@@ -179,6 +183,9 @@ export function DelegationPage() {
       }
       await refetchDelegate()
       await refetchIsDelegating()
+      if (address) {
+        localStorage.setItem(storageKey.delegationChangedAt(address), String(Date.now()))
+      }
       setShowUndelegateSuccess(true)
       setTxStatus('success')
     } catch {

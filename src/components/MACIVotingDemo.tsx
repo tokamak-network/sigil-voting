@@ -10,7 +10,7 @@
  * Layout matches mockup pages 5 (voting) and 6 (voted).
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAccount, useReadContract, usePublicClient } from 'wagmi'
 import { writeContract } from '../writeHelper'
 import {
@@ -107,8 +107,10 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
   const [pollDescription, setPollDescription] = useState<string | null>(null)
   const [isPollExpired, setIsPollExpired] = useState(false)
   const [showReVoteForm, setShowReVoteForm] = useState(false)
+  const [pollDeployTime, setPollDeployTime] = useState<number | null>(null)
   const [votingEndTime, setVotingEndTime] = useState<number | null>(null)
   const [phaseCheckTrigger, setPhaseCheckTrigger] = useState(0)
+  const forceSignupRef = useRef(false)
 
   // Reset transient state when switching between proposals
   useEffect(() => {
@@ -123,8 +125,10 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
     setMessageProcessorAddress(null)
     setPollTitle(null)
     setPollDescription(null)
+    setPollDeployTime(null)
     setVotingEndTime(null)
     setIsLoadingPoll(true)
+    forceSignupRef.current = false
   }, [propPollId])
 
   // Reset vote form when account changes (e.g. MetaMask account switch)
@@ -219,6 +223,9 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
         if (receipt.status !== 'success') throw new Error('tx reverted')
       }
       await Promise.all([refetchDelegate(), refetchIsDelegating(), refetchDelegators()])
+      if (address) {
+        localStorage.setItem(storageKey.delegationChangedAt(address), String(Date.now()))
+      }
       setDelegationSuccess(true)
     } catch {
       setDelegationError(t.governance.delegation.error)
@@ -398,6 +405,20 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
   useEffect(() => {
     if (!address) return
 
+    const delegationChangedAtRaw = localStorage.getItem(storageKey.delegationChangedAt(address))
+    const delegationChangedAt = delegationChangedAtRaw ? Number(delegationChangedAtRaw) : 0
+    const shouldForceReSignup = Boolean(
+      delegationChangedAt && pollDeployTime && pollDeployTime * 1000 >= delegationChangedAt
+    )
+    if (shouldForceReSignup && !forceSignupRef.current) {
+      forceSignupRef.current = true
+      localStorage.removeItem(storageKey.signup(address))
+      localStorage.removeItem(storageKey.pk(address))
+      localStorage.removeItem(storageKey.stateIndex(address))
+      setSignedUp(false)
+      return
+    }
+
     // Fast path: check localStorage signals
     const hasSignupFlag = localStorage.getItem(storageKey.signup(address))
     const hasGlobalKey = localStorage.getItem(storageKey.pk(address))
@@ -464,7 +485,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
       }
     }
     checkOnChainSignUp()
-  }, [address, publicClient, isConfigured, propPollId])
+  }, [address, publicClient, isConfigured, propPollId, pollDeployTime])
 
   // Determine phase from poll state (with Finalized detection)
   useEffect(() => {
@@ -506,6 +527,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
         // Store votingEndTime for timer components
         if (deployTimeAndDuration) {
           const [deployTime, duration] = deployTimeAndDuration as [bigint, bigint]
+          setPollDeployTime(Number(deployTime))
           setVotingEndTime(Number(deployTime) + Number(duration))
         }
 
@@ -697,6 +719,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
       }
 
       localStorage.setItem(storageKey.signup(address), 'true')
+      localStorage.removeItem(storageKey.delegationChangedAt(address))
       await cm.storeEncrypted(storageKey.sk(address), sk.toString(), address)
       localStorage.setItem(storageKey.pk(address), JSON.stringify([pk[0].toString(), pk[1].toString()]))
 

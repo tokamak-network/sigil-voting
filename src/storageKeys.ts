@@ -17,6 +17,7 @@ export const storageKey = {
   creditsSpent: (addr: string, pollId: number) => `${PREFIX}-creditsSpent-${addr}-${pollId}`,
   stateIndex: (addr: string) => `${PREFIX}-stateIndex-${addr}`,
   stateIndexPoll: (addr: string, pollId: number) => `${PREFIX}-stateIndex-${addr}-${pollId}`,
+  delegationChangedAt: (addr: string) => `${PREFIX}-delegation-change-${addr}`,
   pollTitle: (pollId: number) => `${PREFIX}-poll-title-${pollId}`,
   pollDesc: (pollId: number) => `${PREFIX}-poll-desc-${pollId}`,
   pollsCache: `${PREFIX}-polls-cache`,
