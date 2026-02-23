@@ -36,7 +36,8 @@
     "test:e2e": "npx tsx e2e/test-full-flow.ts",
     "test:e2e:browser": "playwright test",
     "dev:full": "npx tsx coordinator/src/run.ts & next dev",
-    "coordinator": "npx tsx coordinator/src/run.ts"
+    "coordinator": "npx tsx coordinator/src/run.ts",
+    "audit": "npm audit --audit-level=moderate"
   },
   "dependencies": {
     "@noble/hashes": "^2.0.1",
@@ -55,7 +56,8 @@
     "recharts": "^3.7.0",
     "snarkjs": "^0.7.6",
     "viem": "^2.45.1",
-    "wagmi": "^3.4.2"
+    "wagmi": "^3.4.2",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

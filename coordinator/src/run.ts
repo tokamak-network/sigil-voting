@@ -28,6 +28,7 @@ import { fileURLToPath } from 'url';
 import { QuinaryMerkleTree } from './trees/quinaryTree.js';
 import { type EncryptedMessage, type StateLeaf, type Ballot } from './processing/processMessages.js';
 import { generateProcessProof, generateTallyProof, computePublicInputHash, type ProcessProofInput, type TallyProofInput } from './processing/batchProof.js';
+import { auditLog } from './auditLog.js';
 
 // ─── Constants ────────────────────────────────────────────────────────
 
@@ -1078,6 +1079,7 @@ export async function processPoll(
   deployBlock: number,
 ): Promise<'processed' | 'key_mismatch'> {
   log(`\n  ★ Processing Poll ${pollId}`);
+  auditLog({ action: 'processPoll:start', pollId, result: 'success' });
 
   // Guard: coordinator key must match poll's stored pubkey
   const pollRead = new ethers.Contract(addrs.poll, POLL_ABI, provider);
@@ -1090,6 +1092,7 @@ export async function processPoll(
     log('  ✖ Coordinator key mismatch — cannot decrypt votes for this poll.');
     log(`  on-chain pubkey: [${onChainX}, ${onChainY}]`);
     log(`  local pubkey:    [${localX}, ${localY}]`);
+    auditLog({ action: 'processPoll:keyMismatch', pollId, result: 'failure', error: 'coordinator key mismatch' });
     return 'key_mismatch';
   }
 
@@ -1187,6 +1190,7 @@ export async function processPoll(
   }
 
   log(`  ★ Poll ${pollId} processing complete!`);
+  auditLog({ action: 'processPoll:complete', pollId, result: 'success' });
   return 'processed';
 }
 
