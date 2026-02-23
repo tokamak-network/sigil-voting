@@ -1069,6 +1069,16 @@ export async function processPoll(
       log(`  on-chain pubkey: [${onChainX}, ${onChainY}]`);
       log(`  local pubkey:    [${localX}, ${localY}]`);
       log('  Skipping poll to avoid stuck tally.');
+      // Ensure future signups are not blocked by a stale merged state queue.
+      try {
+        const maciWithSigner = maci.connect(signer) as ethers.Contract;
+        const resetTx = await maciWithSigner.resetStateAqMerge();
+        await resetTx.wait();
+        log('  State AccQueue merge reset (key mismatch safeguard)');
+      } catch (resetErr) {
+        const errMsg = (resetErr as Error).message?.slice(0, 80) ?? 'unknown';
+        log(`  ⚠ resetStateAqMerge failed after key mismatch: ${errMsg}`);
+      }
       return;
     }
   } catch (err) {

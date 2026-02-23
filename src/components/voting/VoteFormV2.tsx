@@ -874,7 +874,7 @@ async function publishWithRetry(
           ephemeralPubKey[1],
         ],
         account,
-        fallbackGas: 500_000n,
+        fallbackGas: 1_200_000n,
       });
       const hash = await writeContract({
         address: pollAddress,

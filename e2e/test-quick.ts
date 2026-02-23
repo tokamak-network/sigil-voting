@@ -59,8 +59,17 @@ const MACI_ABI = [
   'function nextPollId() view returns (uint256)',
   'function numSignUps() view returns (uint256)',
   'function polls(uint256) view returns (address)',
+  'function resetStateAqMerge()',
   'event SignUp(uint256 indexed stateIndex, uint256 indexed pubKeyX, uint256 pubKeyY, uint256 voiceCreditBalance, uint256 timestamp)',
   'event DeployPoll(uint256 indexed pollId, address pollAddr, address messageProcessorAddr, address tallyAddr)',
+  'error NotInitialized()',
+  'error NotOwner()',
+  'error AlreadyInitialized()',
+  'error ZeroAddress()',
+  'error ZeroThreshold()',
+  'error InsufficientTokens()',
+  'error LeafTooLarge()',
+  'error AlreadyMerged()',
 ];
 
 const POLL_ABI = [
@@ -69,6 +78,8 @@ const POLL_ABI = [
   'function numMessages() view returns (uint256)',
   'function getDeployTimeAndDuration() view returns (uint256, uint256)',
   'event MessagePublished(uint256 indexed messageIndex, uint256[10] encMessage, uint256 encPubKeyX, uint256 encPubKeyY)',
+  'error VotingEnded()',
+  'error ZeroEncPubKey()',
 ];
 
 const TALLY_ABI = [
@@ -143,13 +154,13 @@ async function main() {
     return stateIdx | (voteOpt << 50n) | (weight << 100n) | (nonce << 150n) | (pollIdN << 200n);
   }
 
-  // ── Step 1: Deploy Poll (2 min duration) ───────────────
-  log('Step 1: Creating poll (2 min duration)...');
+  // ── Step 1: Deploy Poll (3 min duration) ───────────────
+  log('Step 1: Creating poll (3 min duration)...');
   const maci = new ethers.Contract(config.maciAddress, MACI_ABI, deployer);
 
   const deployTx = await maci.deployPoll(
     'Quick E2E Test',
-    90, // 1.5 minutes (minimum safe for signUp + vote)
+    180, // 3 minutes (safe for signUp + vote + confirmations)
     config.coordPubKeyX,
     config.coordPubKeyY,
     config.mpVerifier,
@@ -220,7 +231,34 @@ async function main() {
   ];
 
   const maciVoter = new ethers.Contract(config.maciAddress, MACI_ABI, voter);
-  const signUpTx = await maciVoter.signUp(pubKey[0], pubKey[1], '0x', '0x', { gasLimit: 500_000 });
+
+  // Pre-flight signUp (eth_call) to catch merged/initialized errors
+  const signUpData = maciVoter.interface.encodeFunctionData('signUp', [pubKey[0], pubKey[1], '0x', '0x']);
+  try {
+    await provider.call({ to: config.maciAddress, from: voter.address, data: signUpData });
+  } catch (err: any) {
+    const data = err?.data ?? err?.error?.data;
+    if (data) {
+      try {
+        const decoded = maciVoter.interface.parseError(data);
+        if (decoded?.name === 'AlreadyMerged') {
+          log('  StateAccQueue merged — resetting merge flags...');
+          const maciOwner = new ethers.Contract(config.maciAddress, MACI_ABI, deployer);
+          const resetTx = await maciOwner.resetStateAqMerge({ gasLimit: 500_000 });
+          await resetTx.wait();
+          log('  Reset done. Retrying signUp...');
+        } else {
+          throw new Error(`signUp eth_call revert: ${decoded?.name ?? 'UnknownError'}`);
+        }
+      } catch (parseErr) {
+        throw parseErr instanceof Error ? parseErr : new Error('signUp eth_call revert (undecodable)');
+      }
+    } else {
+      throw err;
+    }
+  }
+
+  const signUpTx = await maciVoter.signUp(pubKey[0], pubKey[1], '0x', '0x', { gasLimit: 800_000 });
   const signUpReceipt = await signUpTx.wait();
   if (!signUpReceipt || signUpReceipt.status === 0) throw new Error('signUp reverted');
 
@@ -239,17 +277,21 @@ async function main() {
   // ── Step 3: Cast vote (FOR) ────────────────────────────
   log('Step 3: Casting vote (FOR)...');
 
-  // Ephemeral keypair
+  // Ephemeral keypair (retry if zero)
   const ephSeedBytes = ethers.getBytes(
     ethers.solidityPackedKeccak256(['string', 'uint256', 'uint256'], ['quick-e2e-eph', pollId, Date.now()])
   );
-  let ephSk = 0n;
-  for (let j = 0; j < 31; j++) ephSk = (ephSk << 8n) | BigInt(ephSeedBytes[j]);
   const subOrder = 2736030358979909402780800718157159386076813972158567259200215660948447373041n;
-  ephSk = ephSk % subOrder;
-
-  const ephPubRaw = babyJub.mulPointEscalar(babyJub.Base8, ephSk);
-  const ephPubKey: [bigint, bigint] = [BigInt(F.toString(ephPubRaw[0])), BigInt(F.toString(ephPubRaw[1]))];
+  let ephSk = 0n;
+  let ephPubKey: [bigint, bigint] = [0n, 0n];
+  for (let attempt = 0; attempt < 5; attempt++) {
+    ephSk = 0n;
+    for (let j = 0; j < 31; j++) ephSk = (ephSk << 8n) | BigInt(ephSeedBytes[j]);
+    ephSk = (ephSk + BigInt(attempt + 1)) % subOrder;
+    const ephPubRaw = babyJub.mulPointEscalar(babyJub.Base8, ephSk);
+    ephPubKey = [BigInt(F.toString(ephPubRaw[0])), BigInt(F.toString(ephPubRaw[1]))];
+    if (!(ephPubKey[0] === 0n && ephPubKey[1] === 0n)) break;
+  }
 
   // ECDH
   const sharedPt = babyJub.mulPointEscalar([F.e(config.coordPubKeyX), F.e(config.coordPubKeyY)], ephSk);
@@ -280,7 +322,37 @@ async function main() {
 
   // Submit on-chain (use voter wallet, not deployer)
   const poll = new ethers.Contract(pollAddr, POLL_ABI, voter);
-  const voteTx = await poll.publishMessage(encMessage, ephPubKey[0], ephPubKey[1], { gasLimit: 500_000 });
+  const [deployTimeNow, durationNow] = await poll.getDeployTimeAndDuration();
+  const latestBlock = await provider.getBlock('latest');
+  const chainNow = Number(latestBlock?.timestamp || 0);
+  const votingEnd = Number(deployTimeNow) + Number(durationNow);
+  log(`  Voting window: deploy=${deployTimeNow} duration=${durationNow} end=${votingEnd} now=${chainNow}`);
+  const isOpenBefore = await poll.isVotingOpen();
+  if (!isOpenBefore || chainNow >= votingEnd) throw new Error('Voting already ended before publishMessage');
+
+  // Manually encode to avoid ABI/array encoding edge cases
+  const txData = poll.interface.encodeFunctionData('publishMessage', [encMessage, ephPubKey[0], ephPubKey[1]]);
+  log(`  publishMessage calldata bytes: ${(txData.length - 2) / 2}`);
+
+  // Pre-flight: eth_call to decode custom errors
+  try {
+    await provider.call({ to: pollAddr, from: voter.address, data: txData });
+  } catch (err: any) {
+    const data = err?.data ?? err?.error?.data;
+    if (data) {
+      try {
+        const decoded = poll.interface.parseError(data);
+        throw new Error(`publishMessage eth_call revert: ${decoded?.name ?? 'UnknownError'}`);
+      } catch {
+        throw new Error('publishMessage eth_call revert (undecodable)');
+      }
+    }
+    throw err;
+  }
+  const gasEstimate = await provider.estimateGas({ to: pollAddr, from: voter.address, data: txData });
+  const gasLimit = gasEstimate * 120n / 100n + 25_000n;
+  log(`  publishMessage gas: ${gasEstimate.toString()} (limit ${gasLimit.toString()})`);
+  const voteTx = await voter.sendTransaction({ to: pollAddr, data: txData, gasLimit });
   const voteReceipt = await voteTx.wait();
   if (!voteReceipt || voteReceipt.status === 0) throw new Error('publishMessage reverted');
 
