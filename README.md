@@ -109,6 +109,28 @@ e2e/           End-to-end tests against Sepolia
 scripts/       Hardhat deploy scripts
 ```
 
+## Security
+
+7 HTTP security headers (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, X-XSS-Protection) are set in `next.config.ts`.
+
+Next.js middleware (`src/middleware.ts`) handles:
+- Rate limiting (60 req/min per IP)
+- CORS (same-origin only)
+- CSRF (Origin header validation on POST/PUT/DELETE)
+- Path blocking (`.env`, `.git`, `/api/internal` return 404)
+
+Input validation with Zod schemas (`src/lib/validation.ts`) for vote inputs, poll creation, and Ethereum addresses.
+
+Runtime secret exposure check (`src/lib/envCheck.ts`) blocks `PRIVATE_KEY` or `SECRET` from leaking into `NEXT_PUBLIC_*` env vars.
+
+Error boundaries (`app/error.tsx`, `app/(app)/error.tsx`) hide stack traces in production.
+
+Coordinator writes structured JSON audit logs for every poll processing action.
+
+48 security-specific tests cover all 15 OWASP-aligned categories. Run `npm test` to verify.
+
+**What this does NOT cover**: CSP allows `unsafe-eval` (required by snarkjs WASM). Rate limiting is in-memory per serverless instance (resets on cold start). Zod validation is client-side only. See Known Limitations.
+
 ## Governance Features
 
 - **Proposal gating**: Only token holders above a threshold can create proposals
