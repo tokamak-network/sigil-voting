@@ -251,7 +251,7 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     loadPolls()
   }, [nextPollId, publicClient, address, refreshKey, polls.length])
 
-  const FAIL_THRESHOLD_S = 2 * 60 * 60 // 2 hours after voting ends (matches MACIVotingDemo)
+  const FAIL_THRESHOLD_S = 30 * 60 // 30 minutes after voting ends (matches MACIVotingDemo)
 
   const getStatus = (poll: PollInfo): 'active' | 'ended' | 'finalized' | 'failed' | 'noVotes' => {
     const votingEndTime = poll.deployTime + poll.duration

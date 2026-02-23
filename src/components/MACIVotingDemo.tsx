@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * MACIVotingDemo - Integrated MACI V2 Voting UI
  *
@@ -491,7 +493,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
   useEffect(() => {
     if (!pollAddress || !publicClient) return
 
-    const FAIL_THRESHOLD_S = 2 * 60 * 60 // 2 hours after voting ends
+    const FAIL_THRESHOLD_S = 30 * 60 // 30 minutes after voting ends
 
     const checkPhase = async () => {
       try {
