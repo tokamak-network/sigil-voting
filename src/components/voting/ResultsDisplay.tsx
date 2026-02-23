@@ -19,28 +19,34 @@ interface ResultsDisplayProps {
 export function ResultsDisplay({ tallyAddress, pollAddress, pollId }: ResultsDisplayProps) {
   const { t } = useTranslation();
 
+  const { data: tallyVerified, isLoading: loadingVerified } = useReadContract({
+    address: tallyAddress,
+    abi: TALLY_ABI,
+    functionName: 'tallyVerified',
+    query: { refetchInterval: 5000, staleTime: 0 },
+  });
+
+  const settled = tallyVerified === true;
+
   const { data: forVotes, isLoading: loadingFor, isError: errorFor } = useReadContract({
     address: tallyAddress,
     abi: TALLY_ABI,
     functionName: 'forVotes',
+    query: { refetchInterval: settled ? false : 5000, staleTime: 0 },
   });
 
   const { data: againstVotes, isLoading: loadingAgainst, isError: errorAgainst } = useReadContract({
     address: tallyAddress,
     abi: TALLY_ABI,
     functionName: 'againstVotes',
+    query: { refetchInterval: settled ? false : 5000, staleTime: 0 },
   });
 
   const { data: totalVoters, isLoading: loadingVoters } = useReadContract({
     address: tallyAddress,
     abi: TALLY_ABI,
     functionName: 'totalVoters',
-  });
-
-  const { data: tallyVerified, isLoading: loadingVerified } = useReadContract({
-    address: tallyAddress,
-    abi: TALLY_ABI,
-    functionName: 'tallyVerified',
+    query: { refetchInterval: settled ? false : 5000, staleTime: 0 },
   });
 
   const isLoading = loadingFor || loadingAgainst || loadingVoters || loadingVerified;
