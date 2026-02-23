@@ -3,35 +3,76 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/tokamak-network/zk-dex-d1-private-voting/actions/workflows/test.yml"><img alt="CI" src="https://github.com/tokamak-network/zk-dex-d1-private-voting/actions/workflows/test.yml/badge.svg" /></a>
-  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" /></a>
+  <a href="https://github.com/tokamak-network/sigil-voting/actions/workflows/test.yml"><img alt="CI" src="https://github.com/tokamak-network/sigil-voting/actions/workflows/test.yml/badge.svg" /></a>
+  <a href="https://sigil-voting.vercel.app"><img alt="Live Demo" src="https://img.shields.io/badge/demo-sigil--voting.vercel.app-black?style=flat-square" /></a>
   <img alt="Solidity" src="https://img.shields.io/badge/Solidity-0.8.24-363636?style=flat-square&logo=solidity" />
   <img alt="Circom" src="https://img.shields.io/badge/Circom-2.1.6-orange?style=flat-square" />
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" /></a>
 </p>
 
-SIGIL is an on-chain voting protocol with permanent vote privacy, quadratic voting, and anti-collusion (MACI Key Change). Built on [PSE MACI](https://maci.pse.dev) with Groth16 on-chain verification.
+On-chain private voting protocol built on [MACI](https://maci.pse.dev). Individual votes are encrypted and never revealed. Results are published as aggregates only, verified by Groth16 zero-knowledge proofs on Ethereum.
 
-Individual votes are never revealed. Results are published as aggregates only, verified by zero-knowledge proofs on Ethereum.
+**Live on Sepolia testnet**: [sigil-voting.vercel.app](https://sigil-voting.vercel.app)
 
-## Repository Overview
+## What It Does
 
-- Purpose: private, bribe-resistant, quadratic voting for DAOs.
-- Core stack: Solidity contracts, Circom circuits, coordinator auto-runner, SDK, and a Next.js frontend.
-- Source of truth for networks and addresses: [`src/config.json`](./src/config.json).
+- Voters encrypt their vote with the coordinator's public key (ECDH + Poseidon DuplexSponge)
+- Encrypted messages are stored on-chain in a Merkle tree
+- A coordinator processes messages off-chain, generates ZK proofs, and submits results
+- On-chain verifiers confirm proof validity before results are accepted
+- Voters can change their MACI key and re-vote at any time; only the last key's vote counts
 
-## Search Keywords
+The coercer cannot distinguish key-change messages from vote messages on-chain. This breaks bribery markets.
 
-private voting, quadratic voting, MACI, anti-collusion, zero-knowledge, Groth16, Ethereum governance, DAO voting, zk voting, privacy-preserving governance, Tokamak Network, SIGIL
+## Stack
 
-## Packages
+| Layer | Tech |
+|-------|------|
+| Contracts | Solidity 0.8.24 — MACI, Poll, MessageProcessor, Tally, AccQueue, Groth16 verifiers (14 contracts) |
+| Circuits | Circom 2.1.6 — MessageProcessor, TallyVotes, DuplexSponge, SHA256Hasher (14 circuits) |
+| Coordinator | TypeScript — Auto-runner via GitHub Actions cron (every 5 min), generates Groth16 proofs with snarkjs |
+| Frontend | Next.js 15 + React 19 + Wagmi 3 + Tailwind — i18n (KO/EN), deployed on Vercel |
+| SDK | `sdk/` — Client library (key management, message encryption, command packing) |
 
-| Package | Description |
-|---------|-------------|
-| [`contracts/`](./contracts) | Solidity 0.8.24 — MACI, Poll, MessageProcessor, Tally, AccQueue, Groth16 verifiers |
-| [`circuits/`](./circuits) | Circom — MessageProcessor, TallyVotes, DuplexSponge, SHA256Hasher |
-| [`coordinator/`](./coordinator) | TypeScript — Auto-runner that processes votes and generates proofs |
-| [`sdk/`](./sdk) | `@sigil/sdk` — Client library for integrating SIGIL into other apps |
-| [`src/`](./src) | React 19 + Next 15 + Wagmi 3 — Voting frontend with i18n (KO/EN) |
+## Architecture
+
+```
+User (browser)
+  │
+  ├─ Generate MACI keypair (BabyJubjub)
+  ├─ Encrypt vote (ECDH shared secret → Poseidon DuplexSponge)
+  └─ Submit encrypted message → Poll.publishMessage() on Sepolia
+                                        │
+                                  AccQueue (on-chain Merkle tree)
+                                        │
+                          Coordinator (GitHub Actions, every 5 min)
+                          ├─ Merge state & message trees
+                          ├─ Decrypt & process messages (last key wins)
+                          ├─ Generate Groth16 proofs (snarkjs + .zkey)
+                          └─ Submit proofs on-chain
+                                        │
+                          MessageProcessor.verify() → Tally.verify()
+                                        │
+                              Results published on-chain
+                              (aggregates only, no individual votes)
+```
+
+## Deployed Contracts (Sepolia)
+
+Two deployments exist: `v2` (dev, tree depth 2) and `prod` (tree depth 4, max 624 voters).
+
+Frontend uses the `v2` deployment. Contract addresses are in [`src/config.json`](./src/config.json).
+
+| Contract | Address (v2) |
+|----------|-------------|
+| MACI | [`0x12DaA8f...6341B`](https://sepolia.etherscan.io/address/0x12DaA8f679e7C798645750F91106b38b38C6341B) |
+| AccQueue | [`0xA0Af588...4622`](https://sepolia.etherscan.io/address/0xA0Af58848a15DFeC67486591f225464323D84622) |
+| MsgProcessor Verifier | [`0x352522b...D59`](https://sepolia.etherscan.io/address/0x352522b121Ac377f39AaD59De6D5C07C43Af5D59) |
+| Tally Verifier | [`0xF1ecb18...DD7`](https://sepolia.etherscan.io/address/0xF1ecb18a649cf7060f746Cc155638992E83f1DD7) |
+| VkRegistry | [`0xCCcE470...2b`](https://sepolia.etherscan.io/address/0xCCcE4703D53fc112057C8fF4F1bC397C7F68732b) |
+| Token | [`0xa30fe40...044`](https://sepolia.etherscan.io/address/0xa30fe40285B8f5c0457DbC3B7C8A280373c40044) |
+| Delegation Registry | [`0x422921...33C3`](https://sepolia.etherscan.io/address/0x422921691C4978CC5b6ccbEF11a9A6F2878C33C3) |
+| Timelock Executor | [`0x36e8AE...ca06`](https://sepolia.etherscan.io/address/0x36e8AE9241b8CD3eeE8a2b4Fc014eaCD7b8cca06) |
 
 ## Quick Start
 
@@ -40,67 +81,52 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000
+Open http://localhost:3000. Connect a wallet with Sepolia ETH.
 
 ## Testing
 
 ```bash
-# Smart contracts
+# Unit + component + security tests (292 tests)
+npm test
+
+# Smart contracts (requires Foundry)
 forge test
 
-# Crypto, circuits, property tests
-npx vitest run
-```
-
-E2E (Sepolia, requires funded keys + .env):
-```bash
+# E2E on Sepolia (requires funded keys in .env)
 npm run test:e2e
 ```
 
-Includes MACI property tests covering core security attributes (collusion resistance, receipt-freeness, privacy, uncensorability, unforgeability, non-repudiation, correct execution).
-
-## Architecture
+## Project Structure
 
 ```
-User → encrypt (ECDH + DuplexSponge) → Poll.publishMessage()
-                                              ↓
-                                        AccQueue (on-chain)
-                                              ↓
-                              Coordinator auto-runner (off-chain)
-                              - merge state & message trees
-                              - process messages in reverse order
-                              - generate Groth16 proofs (snarkjs)
-                                              ↓
-                              MessageProcessor.verify() → Tally.verify()
-                                              ↓
-                                   Results published on-chain
-                                   (aggregates only, no individual votes)
+contracts/     Solidity contracts (MACI, Poll, Tally, verifiers)
+circuits/      Circom circuits (MessageProcessor, TallyVotes, DuplexSponge)
+coordinator/   Auto-runner that processes votes and generates proofs
+sdk/           Client library (key management, encryption, command packing)
+src/           Next.js frontend (components, crypto, i18n, hooks)
+test/          Vitest tests (components, circuits, crypto, security)
+e2e/           End-to-end tests against Sepolia
+scripts/       Hardhat deploy scripts
 ```
 
-Key Change: voters can change their MACI key and re-vote at any time. Only the last key's vote counts. The coercer cannot distinguish key-change messages from vote messages on-chain.
+## Governance Features
 
-## Deployed Contracts (Sepolia, v2)
+- **Proposal gating**: Only token holders above a threshold can create proposals
+- **Vote delegation**: Delegate voting power to another address via DelegationRegistry
+- **Timelock execution**: Proposals go through a timelock before on-chain execution
 
-| Contract | Address |
-|----------|---------|
-| MACI | [`0x26428484F192D1dA677111A47615378Bc889d441`](https://sepolia.etherscan.io/address/0x26428484F192D1dA677111A47615378Bc889d441) |
-| AccQueue | [`0x5321607ABc8171397Fac7c77FbB567847AF4d2ff`](https://sepolia.etherscan.io/address/0x5321607ABc8171397Fac7c77FbB567847AF4d2ff) |
-| MsgProcessor Verifier | [`0x352522b121Ac377f39AaD59De6D5C07C43Af5D59`](https://sepolia.etherscan.io/address/0x352522b121Ac377f39AaD59De6D5C07C43Af5D59) |
-| Tally Verifier | [`0xF1ecb18a649cf7060f746Cc155638992E83f1DD7`](https://sepolia.etherscan.io/address/0xF1ecb18a649cf7060f746Cc155638992E83f1DD7) |
-| VkRegistry | [`0xCCcE4703D53fc112057C8fF4F1bC397C7F68732b`](https://sepolia.etherscan.io/address/0xCCcE4703D53fc112057C8fF4F1bC397C7F68732b) |
-| Gatekeeper | [`0x4c18984A78910Dd1976d6DFd820f6d18e7edD672`](https://sepolia.etherscan.io/address/0x4c18984A78910Dd1976d6DFd820f6d18e7edD672) |
-| VoiceCreditProxy | [`0x03669FF296a2B2CCF851bE98dbEa4BB2633ecF00`](https://sepolia.etherscan.io/address/0x03669FF296a2B2CCF851bE98dbEa4BB2633ecF00) |
-| Token | [`0xa30fe40285B8f5c0457DbC3B7C8A280373c40044`](https://sepolia.etherscan.io/address/0xa30fe40285B8f5c0457DbC3B7C8A280373c40044) |
-| Delegation Registry | [`0x138EAa2FFd36E8634b0Eb4449028ac3fB79B367c`](https://sepolia.etherscan.io/address/0x138EAa2FFd36E8634b0Eb4449028ac3fB79B367c) |
-| Timelock Executor | [`0x474EA4Cf563eADF9ee42a82c1Ee32E13019035c4`](https://sepolia.etherscan.io/address/0x474EA4Cf563eADF9ee42a82c1Ee32E13019035c4) |
+## Known Limitations
+
+- Testnet only (Sepolia). Not audited for mainnet use.
+- Coordinator is a single trusted party. It cannot see individual votes but can halt processing.
+- Circuit files (~130 MB) are downloaded at runtime from GitHub Releases, cached in GitHub Actions.
+- `circomlibjs` dependency bundles ethers v5 internally, which has known low-severity vulnerabilities in its `elliptic` transitive dependency. This does not affect SIGIL's use of circomlibjs (Poseidon hashing only).
 
 ## References
 
-- [D1 Private Voting Spec](https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d1-private-voting.md)
-- [D2 Quadratic Voting Spec](https://github.com/tokamak-network/zk-dex/blob/circom/docs/future/circuit-addons/d-governance/d2-quadratic.md)
 - [MACI Protocol (PSE)](https://maci.pse.dev)
 - [Tokamak Network](https://tokamak.network)
 
 ## License
 
-[MIT](LICENSE)
+MIT
