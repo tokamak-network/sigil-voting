@@ -151,7 +151,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             ].map((feat, i) => (
               <div
                 key={i}
-                className={`p-8 ${i < 3 ? 'md:border-r-2 border-b-2' : 'lg:border-b-2'} border-border-light dark:border-border-dark hover:bg-primary hover:text-white transition-colors group`}
+                className={`p-8 bg-white dark:bg-white ${i < 3 ? 'md:border-r-2 border-b-2' : 'lg:border-b-2'} border-border-light dark:border-border-dark hover:bg-primary hover:text-white transition-colors group`}
               >
                 <span className="material-symbols-outlined text-4xl mb-6 text-primary group-hover:text-white">{feat.icon}</span>
                 <h3 className="font-display text-xl font-bold mb-4 uppercase">{feat.title}</h3>
@@ -192,11 +192,11 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
       <section className="py-20 bg-blue-50/60 border-b-2 border-border-light dark:border-border-dark">
         <div className="container mx-auto px-6">
           <div className="text-center mb-12">
-            <h3 className="font-display text-3xl md:text-4xl font-extrabold uppercase tracking-wide">{t.landing.transparency.title}</h3>
+            <h3 className="font-display text-4xl md:text-5xl font-extrabold uppercase tracking-wide">{t.landing.transparency.title}</h3>
             <div className="mx-auto mt-3 h-1 w-16 bg-primary"></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            <div className="border-2 border-border-light dark:border-border-dark p-8">
+            <div className="border-2 border-border-light dark:border-border-dark p-8 bg-white dark:bg-white">
               <div className="flex items-center gap-2 mb-6">
                 <span className="material-symbols-outlined text-primary">visibility</span>
                 <h4 className="font-display text-xs font-bold uppercase tracking-widest">{t.landing.transparency.visibleTitle}</h4>
@@ -206,14 +206,14 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                   <div key={item.title} className="flex items-start gap-4">
                     <span className="text-primary font-mono text-xs font-bold">{String(i + 1).padStart(2, '0')}</span>
                     <div>
-                      <p className="text-sm font-bold uppercase tracking-widest text-slate-800 dark:text-slate-100">{item.title}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{item.desc}</p>
+                      <p className="text-sm font-bold uppercase tracking-widest text-slate-800">{item.title}</p>
+                      <p className="text-xs text-slate-500 mt-1">{item.desc}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="border-2 border-border-light dark:border-border-dark p-8">
+            <div className="border-2 border-border-light dark:border-border-dark p-8 bg-white dark:bg-white">
               <div className="flex items-center gap-2 mb-6">
                 <span className="material-symbols-outlined text-red-500">visibility_off</span>
                 <h4 className="font-display text-xs font-bold uppercase tracking-widest">{t.landing.transparency.hiddenTitle}</h4>
@@ -223,8 +223,8 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                   <div key={item.title} className="flex items-start gap-4">
                     <span className="text-red-500 font-mono text-xs font-bold">—</span>
                     <div>
-                      <p className="text-sm font-bold uppercase tracking-widest text-slate-800 dark:text-slate-100">{item.title}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{item.desc}</p>
+                      <p className="text-sm font-bold uppercase tracking-widest text-slate-800">{item.title}</p>
+                      <p className="text-xs text-slate-500 mt-1">{item.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -271,7 +271,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
               return (
                 <div
                   key={i}
-                  className={`p-8 border-border-light dark:border-border-dark hover:bg-primary hover:text-white transition-colors group ${baseBorder} ${mdBorder} ${lgBorder} ${mdRight} ${lgRight}`}
+                  className={`p-8 bg-white dark:bg-white border-border-light dark:border-border-dark hover:bg-primary hover:text-white transition-colors group ${baseBorder} ${mdBorder} ${lgBorder} ${mdRight} ${lgRight}`}
                 >
                 <span className="material-symbols-outlined text-3xl mb-4 text-primary group-hover:text-white">{item.icon}</span>
                 <h3 className="font-display text-lg font-bold mb-2 uppercase">{item.title}</h3>
@@ -279,43 +279,6 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                 </div>
               )
             })}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── 6. Demo Video ─── */}
-      <section className="py-24 bg-slate-50 dark:bg-zinc-950 border-y-2 border-border-light dark:border-border-dark">
-        <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            <div className="lg:col-span-5">
-              <h2 className="font-display text-4xl font-extrabold uppercase mb-4">{t.landing.demo.title}</h2>
-              <p className="text-slate-600 dark:text-slate-400 mb-8">{t.landing.demo.subtitle}</p>
-              <div className="space-y-4">
-                {[t.landing.demo.stepSubmit, t.landing.demo.stepProof, t.landing.demo.stepResult].map((item, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <span className="font-display text-xs font-bold text-primary">{String(i + 1).padStart(2, '0')}</span>
-                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{item}</p>
-                  </div>
-                ))}
-              </div>
-              <p className="font-display text-xs text-slate-400 mt-6 uppercase tracking-widest">{t.landing.demo.network}</p>
-            </div>
-            <div className="lg:col-span-7">
-              <div className="border-2 border-border-light dark:border-border-dark bg-black/95">
-                <div className="aspect-video w-full">
-                  <video
-                    className="w-full h-full"
-                    controls
-                    playsInline
-                    preload="metadata"
-                    poster="/assets/demo-poster.jpg"
-                  >
-                    <source src="/assets/demo.mp4" type="video/mp4" />
-                    {t.landing.demo.placeholder}
-                  </video>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -403,17 +366,17 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
             ]).map((item, i) => (
               <div
                 key={i}
-                className="border-2 border-border-light dark:border-border-dark p-6 hover:border-primary transition-colors cursor-pointer group"
+                className="border-2 border-border-light dark:border-border-dark p-6 bg-white dark:bg-white hover:border-primary transition-colors cursor-pointer group"
                 onClick={() => setOpenFaq(openFaq === i ? null : i)}
                 aria-expanded={openFaq === i}
                 role="button"
               >
                 <div className="flex justify-between items-center">
-                  <h4 className="font-display font-bold uppercase text-base pr-4">{item.q}</h4>
+                  <h4 className="font-display font-bold uppercase text-base pr-4 text-slate-900">{item.q}</h4>
                   <span className="material-symbols-outlined text-primary shrink-0 transition-transform duration-200" style={{ transform: openFaq === i ? 'rotate(45deg)' : 'none' }}>add</span>
                 </div>
                 <div className={`overflow-hidden transition-all duration-300 ${openFaq === i ? 'max-h-96 mt-2 opacity-100' : 'max-h-0 opacity-0'}`}>
-                  <p className="text-base opacity-70">{item.a}</p>
+                  <p className="text-base text-slate-700">{item.a}</p>
                 </div>
               </div>
             ))}
