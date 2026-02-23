@@ -20,7 +20,7 @@ describe('LandingPage', () => {
 
   it('renders the testnet notice', () => {
     renderWithProviders(<LandingPage setCurrentPage={setCurrentPage} />)
-    expect(screen.getByText(/Testnet only · Wallet \+ Sepolia ETH required/i)).toBeInTheDocument()
+    expect(screen.getByText(/SDK on NPM|NPM SDK/i)).toBeInTheDocument()
   })
 
   it('renders 8 FAQ items', () => {
