@@ -118,12 +118,8 @@ export interface Translations {
       title: string
       visibleTitle: string
       hiddenTitle: string
-      visible1: string
-      visible2: string
-      visible3: string
-      hidden1: string
-      hidden2: string
-      hidden3: string
+      visibleItems: { title: string; desc: string }[]
+      hiddenItems: { title: string; desc: string }[]
       coordinatorNote: string
       coordinatorTitle: string
     }

@@ -19,7 +19,7 @@ export function HomeContent() {
   ]
   const advantageTotal = advantageItems.length
   const mdCols = 2
-  const lgCols = 3
+  const lgCols = 4
 
   const faqItems = [
     { q: t.landing.faq.q1, a: t.landing.faq.a1 },
@@ -153,26 +153,25 @@ export function HomeContent() {
       </section>
 
       {/* 4. How Privacy Is Guaranteed */}
-      <section id="flow" className="py-24 bg-slate-50 dark:bg-zinc-950 border-y-2 border-border-light dark:border-border-dark">
+      <section id="flow" className="py-20 bg-white border-y-2 border-border-light dark:border-border-dark">
         <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="font-display text-4xl font-extrabold uppercase">{t.landing.operationalFlow}</h2>
+          <div className="text-center mb-12">
+            <h2 className="font-display text-3xl md:text-4xl font-extrabold uppercase tracking-wide">{t.landing.operationalFlow}</h2>
+            <div className="mx-auto mt-3 h-1 w-16 bg-primary"></div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-2 border-border-light dark:border-border-dark">
             {[
               { num: '01', title: t.landing.lifecycle.step1.title, desc: t.landing.lifecycle.step1.desc, icon: 'lock', color: 'text-primary' },
               { num: '02', title: t.landing.lifecycle.step2.title, desc: t.landing.lifecycle.step2.desc, icon: 'shield', color: 'text-emerald-500' },
               { num: '03', title: t.landing.lifecycle.step3.title, desc: t.landing.lifecycle.step3.desc, icon: 'verified', color: 'text-amber-500' },
             ].map((step, i) => (
-              <div key={i} className="relative">
-                <div className="font-display text-8xl font-black text-slate-200 dark:text-slate-800 absolute -top-12 -left-4 -z-0">{step.num}</div>
-                <div className="relative z-10">
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className={`material-symbols-outlined text-2xl ${step.color}`}>{step.icon}</span>
-                    <h4 className="font-display text-xl font-bold uppercase">{step.title}</h4>
-                  </div>
-                  <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{step.desc}</p>
+              <div key={i} className={`p-8 ${i < 2 ? 'md:border-r-2 border-b-2 md:border-b-0' : ''} border-border-light dark:border-border-dark`}>
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="font-display text-xs font-bold text-primary">{step.num}</span>
+                  <span className={`material-symbols-outlined text-xl ${step.color}`}>{step.icon}</span>
                 </div>
+                <h4 className="font-display text-lg font-bold uppercase mb-2">{step.title}</h4>
+                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{step.desc}</p>
               </div>
             ))}
           </div>
@@ -180,42 +179,51 @@ export function HomeContent() {
       </section>
 
       {/* 4.5. Transparency */}
-      <section id="trust" className="py-16 border-b-2 border-border-light dark:border-border-dark">
+      <section id="trust" className="py-20 bg-blue-50/60 border-b-2 border-border-light dark:border-border-dark">
         <div className="container mx-auto px-6">
-          <h3 className="font-display text-3xl font-extrabold uppercase text-center mb-12">{t.landing.transparency.title}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border-2 border-border-light dark:border-border-dark max-w-4xl mx-auto">
-            <div className="p-8 border-b-2 md:border-b-0 md:border-r-2 border-border-light dark:border-border-dark">
+          <div className="text-center mb-12">
+            <h3 className="font-display text-3xl md:text-4xl font-extrabold uppercase tracking-wide">{t.landing.transparency.title}</h3>
+            <div className="mx-auto mt-3 h-1 w-16 bg-primary"></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            <div className="border-2 border-border-light dark:border-border-dark p-8">
               <div className="flex items-center gap-2 mb-6">
-                <span className="material-symbols-outlined text-emerald-500">visibility</span>
-                <h4 className="font-display font-bold uppercase">{t.landing.transparency.visibleTitle}</h4>
+                <span className="material-symbols-outlined text-primary">visibility</span>
+                <h4 className="font-display text-xs font-bold uppercase tracking-widest">{t.landing.transparency.visibleTitle}</h4>
               </div>
-              <ul className="space-y-4">
-                {[t.landing.transparency.visible1, t.landing.transparency.visible2, t.landing.transparency.visible3].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <span className="material-symbols-outlined text-emerald-500 text-sm mt-1">check_circle</span>
-                    <span className="text-slate-600 dark:text-slate-400">{item}</span>
-                  </li>
+              <div className="space-y-6">
+                {t.landing.transparency.visibleItems.map((item, i) => (
+                  <div key={item.title} className="flex items-start gap-4">
+                    <span className="text-primary font-mono text-xs font-bold">{String(i + 1).padStart(2, '0')}</span>
+                    <div>
+                      <p className="text-sm font-bold uppercase tracking-widest text-slate-800 dark:text-slate-100">{item.title}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{item.desc}</p>
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
-            <div className="p-8">
+            <div className="border-2 border-border-light dark:border-border-dark p-8">
               <div className="flex items-center gap-2 mb-6">
                 <span className="material-symbols-outlined text-red-500">visibility_off</span>
-                <h4 className="font-display font-bold uppercase">{t.landing.transparency.hiddenTitle}</h4>
+                <h4 className="font-display text-xs font-bold uppercase tracking-widest">{t.landing.transparency.hiddenTitle}</h4>
               </div>
-              <ul className="space-y-4">
-                {[t.landing.transparency.hidden1, t.landing.transparency.hidden2, t.landing.transparency.hidden3].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <span className="material-symbols-outlined text-red-500 text-sm mt-1">cancel</span>
-                    <span className="text-slate-600 dark:text-slate-400">{item}</span>
-                  </li>
+              <div className="space-y-6">
+                {t.landing.transparency.hiddenItems.map((item) => (
+                  <div key={item.title} className="flex items-start gap-4">
+                    <span className="text-red-500 font-mono text-xs font-bold">—</span>
+                    <div>
+                      <p className="text-sm font-bold uppercase tracking-widest text-slate-800 dark:text-slate-100">{item.title}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{item.desc}</p>
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           </div>
-          <div className="max-w-4xl mx-auto mt-8 p-6 border-2 border-amber-400 bg-amber-50 dark:bg-amber-950/30">
+          <div className="max-w-5xl mx-auto mt-8 p-6 border-2 border-primary/60 bg-primary/5">
             <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-amber-500 mt-0.5">info</span>
+              <span className="material-symbols-outlined text-primary text-5xl">admin_panel_settings</span>
               <div>
                 <h4 className="font-display font-bold text-sm uppercase mb-2">{t.landing.transparency.coordinatorTitle}</h4>
                 <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{t.landing.transparency.coordinatorNote}</p>
@@ -233,7 +241,7 @@ export function HomeContent() {
             <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl">{t.landing.advantages.subtitle}</p>
             <div className="w-24 h-2 bg-primary mt-4"></div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 border-2 border-border-light dark:border-border-dark">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border-2 border-border-light dark:border-border-dark">
             {advantageItems.map((item, i) => {
               const isLast = i === advantageTotal - 1
               const mdLastRowStart = advantageTotal - (advantageTotal % mdCols || mdCols)
@@ -264,45 +272,45 @@ export function HomeContent() {
         </div>
       </section>
 
-      {/* 6. Try It Now */}
-      <section id="demo" className="py-24 bg-black text-white">
+      {/* 6. Demo Video */}
+      <section id="demo" className="py-24 bg-slate-50 dark:bg-zinc-950 border-y-2 border-border-light dark:border-border-dark">
         <div className="container mx-auto px-6">
-          <div className="max-w-4xl mx-auto text-center mb-16">
-            <h2 className="font-display text-4xl font-extrabold uppercase mb-4">{t.landing.demo.title}</h2>
-            <p className="opacity-60">{t.landing.demo.subtitle}</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-2 border-white/20 max-w-4xl mx-auto">
-            {[
-              { num: '01', icon: 'lock', title: t.landing.cta.step1, desc: t.landing.demo.stepSubmit },
-              { num: '02', icon: 'verified', title: t.landing.cta.step2, desc: t.landing.demo.stepProof },
-              { num: '03', icon: 'how_to_vote', title: t.landing.cta.step3, desc: t.landing.demo.stepResult },
-            ].map((step, i) => (
-              <div key={i} className={`p-8 ${i < 2 ? 'md:border-r-2 border-b-2 md:border-b-0' : ''} border-white/20`}>
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="font-display text-xs font-bold text-primary">{step.num}</span>
-                  <span className="material-symbols-outlined text-primary">{step.icon}</span>
-                </div>
-                <h4 className="font-display font-bold uppercase mb-2">{step.title}</h4>
-                <p className="text-sm text-white/60 leading-relaxed">{step.desc}</p>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-5">
+              <h2 className="font-display text-4xl font-extrabold uppercase mb-4">{t.landing.demo.title}</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-8">{t.landing.demo.subtitle}</p>
+              <div className="space-y-4">
+                {[t.landing.demo.stepSubmit, t.landing.demo.stepProof, t.landing.demo.stepResult].map((item, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <span className="font-display text-xs font-bold text-primary">{String(i + 1).padStart(2, '0')}</span>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{item}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="max-w-4xl mx-auto mt-8 text-center">
-            <Link
-              href="/vote"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block bg-primary text-white font-display text-lg font-extrabold px-12 py-5 border-2 border-white hover:bg-white hover:text-black transition-all uppercase"
-            >
-              {t.landing.demo.comingSoon}
-            </Link>
-            <p className="font-display text-xs text-white/40 mt-4 uppercase tracking-widest">{t.landing.demo.network}</p>
+              <p className="font-display text-xs text-slate-400 mt-6 uppercase tracking-widest">{t.landing.demo.network}</p>
+            </div>
+            <div className="lg:col-span-7">
+              <div className="border-2 border-border-light dark:border-border-dark bg-black/95">
+                <div className="aspect-video w-full">
+                  <video
+                    className="w-full h-full"
+                    controls
+                    playsInline
+                    preload="metadata"
+                    poster="/assets/demo-poster.jpg"
+                  >
+                    <source src="/assets/demo.mp4" type="video/mp4" />
+                    {t.landing.demo.placeholder}
+                  </video>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* 7. Developer SDK */}
-      <section className="py-24 grid-bg" id="sdk">
+      <section className="py-24 bg-white dark:bg-background-dark border-y-2 border-border-light dark:border-border-dark" id="sdk">
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
             <div>
@@ -341,42 +349,10 @@ export function HomeContent() {
       </section>
 
       {/* 8. FAQ */}
-      <section className="py-24 border-t-2 border-border-light dark:border-border-dark" id="faq">
+      <section className="py-24 grid-bg border-t-2 border-border-light dark:border-border-dark" id="faq">
         <div className="container mx-auto px-6">
           <h2 className="font-display text-4xl font-extrabold mb-12 uppercase text-center">{t.landing.faq.title}</h2>
           <FaqAccordion items={faqItems} />
-        </div>
-      </section>
-
-      {/* 10. Roadmap */}
-      <section id="roadmap" className="py-24 grid-bg">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="font-display text-4xl font-extrabold uppercase mb-4">{t.landing.roadmap.title}</h2>
-            <p className="text-slate-600 dark:text-slate-400">{t.landing.roadmap.subtitle}</p>
-            <div className="w-24 h-2 bg-primary mx-auto mt-4"></div>
-          </div>
-          <div className="max-w-3xl mx-auto space-y-0">
-            {([t.landing.roadmap.phase1, t.landing.roadmap.phase2, t.landing.roadmap.phase3, t.landing.roadmap.phase4, t.landing.roadmap.phase5, t.landing.roadmap.phase6]).map((phase, i) => {
-              const isComplete = phase.status === 'Complete' || phase.status === '완료'
-              const isActive = phase.status === 'In Progress' || phase.status === '진행 중'
-              return (
-                <div key={i} className="flex items-start gap-6">
-                  <div className="flex flex-col items-center">
-                    <div className={`w-6 h-6 border-2 flex items-center justify-center shrink-0 ${isComplete ? 'bg-primary border-primary' : isActive ? 'border-primary' : 'border-slate-300 dark:border-slate-600'}`}>
-                      {isComplete && <span className="material-symbols-outlined text-white text-sm">check</span>}
-                      {isActive && <span className="w-2 h-2 bg-primary animate-pulse"></span>}
-                    </div>
-                    {i < 5 && <div className={`w-0.5 h-12 ${isComplete ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`} />}
-                  </div>
-                  <div className="pb-6">
-                    <h4 className={`font-display font-bold uppercase text-sm ${isComplete ? 'text-primary' : isActive ? '' : 'opacity-50'}`}>{phase.title}</h4>
-                    <span className={`font-display text-xs uppercase tracking-widest ${isComplete ? 'text-primary' : isActive ? 'text-amber-500' : 'text-slate-400'}`}>{phase.status}</span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
         </div>
       </section>
 
