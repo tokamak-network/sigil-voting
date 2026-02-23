@@ -160,7 +160,7 @@ export const ko: Translations = {
     },
     advantages: {
       title: '왜 SIGIL인가?',
-      subtitle: '기존 토큰 거버넌스와 쉽게 연동됩니다.',
+      subtitle: '비공개 투표, 매수 방지, 이차투표를 모두 제공하는 도구를 찾지 못해 SIGIL을 만들었습니다.',
       erc20: { title: 'ERC20 크레딧', desc: 'ERC20 기반 투표 크레딧을 프록시로 지원합니다.' },
       serverless: { title: '최소 인프라', desc: '앱 백엔드 없음. 코디네이터는 GitHub Actions 또는 자체 서버에서 실행됩니다. 온체인 트랜잭션에는 ETH가 필요합니다.' },
       l2: { title: 'L2 바로 배포', desc: '표준 Solidity 컨트랙트라 어떤 EVM 체인에도 배포 가능합니다. L2(Base, Arbitrum, Polygon)에서는 L1 대비 비용과 지연이 보통 낮지만, 네트워크 상황에 따라 달라집니다.' },

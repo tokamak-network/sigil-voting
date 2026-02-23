@@ -123,8 +123,7 @@ export function KeyManager({
 
       // Compute command hash for EdDSA signature
       const saltBytes = crypto.getRandomValues(new Uint8Array(31));
-      const SNARK_SCALAR_FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
-      const salt = BigInt('0x' + Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('')) % SNARK_SCALAR_FIELD;
+      const salt = BigInt('0x' + Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('')) & ((1n << 253n) - 1n);
       const poseidon = await cm.buildPoseidon();
       const F = poseidon.F;
       // cmdHash must match circuit: Poseidon(stateIndex, newPubKeyX, newPubKeyY, newVoteWeight, salt)

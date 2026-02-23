@@ -31,7 +31,10 @@ const TALLY_ADDR = '0xcccccccccccccccccccccccccccccccccccccccc' as `0x${string}`
 
 describe('TallyingStatus', () => {
   beforeEach(() => {
-    mockUseReadContract.mockReturnValue({ data: false })
+    mockUseReadContract.mockImplementation((config: any) => {
+      if (config?.functionName === 'numSignUpsAtDeployment') return { data: undefined }
+      return { data: false }
+    })
   })
 
   const defaultProps = {
@@ -44,6 +47,7 @@ describe('TallyingStatus', () => {
     pollId: 0,
     myVote: { choice: 1, weight: 2, cost: 4 },
     numSignUps: 5,
+    onBack: vi.fn(),
   }
 
   it('renders proposal title', () => {
@@ -77,7 +81,7 @@ describe('TallyingStatus', () => {
 
   it('shows participant count', () => {
     renderWithProviders(<TallyingStatus {...defaultProps} />)
-    expect(screen.getByText('5')).toBeInTheDocument()
+    expect(screen.getByText(/: 5$/)).toBeInTheDocument()
   })
 
   it('renders AGAINST choice correctly', () => {

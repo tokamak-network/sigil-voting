@@ -1076,37 +1076,21 @@ export async function processPoll(
   coordinatorSk: bigint,
   crypto: CryptoKit,
   deployBlock: number,
-): Promise<void> {
+): Promise<'processed' | 'key_mismatch'> {
   log(`\n  ★ Processing Poll ${pollId}`);
 
   // Guard: coordinator key must match poll's stored pubkey
-  try {
-    const pollRead = new ethers.Contract(addrs.poll, POLL_ABI, provider);
-    const [onChainX, onChainY] = await Promise.all([
-      pollRead.coordinatorPubKeyX(),
-      pollRead.coordinatorPubKeyY(),
-    ]);
-    const [localX, localY] = deriveCoordinatorPubKey(crypto, coordinatorSk);
-    if (onChainX.toString() !== localX.toString() || onChainY.toString() !== localY.toString()) {
-      log('  ✖ Coordinator key mismatch — cannot decrypt votes for this poll.');
-      log(`  on-chain pubkey: [${onChainX}, ${onChainY}]`);
-      log(`  local pubkey:    [${localX}, ${localY}]`);
-      log('  Skipping poll to avoid stuck tally.');
-      // Ensure future signups are not blocked by a stale merged state queue.
-      try {
-        const maciWithSigner = maci.connect(signer) as ethers.Contract;
-        const resetTx = await maciWithSigner.resetStateAqMerge();
-        await resetTx.wait();
-        log('  State AccQueue merge reset (key mismatch safeguard)');
-      } catch (resetErr) {
-        const errMsg = (resetErr as Error).message?.slice(0, 80) ?? 'unknown';
-        log(`  ⚠ resetStateAqMerge failed after key mismatch: ${errMsg}`);
-      }
-      return;
-    }
-  } catch (err) {
-    const errMsg = (err as Error).message?.slice(0, 80) ?? 'unknown';
-    log(`  ⚠ Unable to verify coordinator key: ${errMsg}`);
+  const pollRead = new ethers.Contract(addrs.poll, POLL_ABI, provider);
+  const [onChainX, onChainY] = await Promise.all([
+    pollRead.coordinatorPubKeyX(),
+    pollRead.coordinatorPubKeyY(),
+  ]);
+  const [localX, localY] = deriveCoordinatorPubKey(crypto, coordinatorSk);
+  if (onChainX.toString() !== localX.toString() || onChainY.toString() !== localY.toString()) {
+    log('  ✖ Coordinator key mismatch — cannot decrypt votes for this poll.');
+    log(`  on-chain pubkey: [${onChainX}, ${onChainY}]`);
+    log(`  local pubkey:    [${localX}, ${localY}]`);
+    return 'key_mismatch';
   }
 
   // Step 1: Merge
@@ -1121,14 +1105,14 @@ export async function processPoll(
   // Skip if no real votes (only padding message exists)
   if (stateLeaves.length === 0) {
     log('  ⚠ No voters signed up — skipping processing (nothing to tally)');
-    return;
+    return 'processed';
   }
 
   // Check if all messages are padding (encPubKey = 0,0)
   const realMessages = messages.filter(m => m.encPubKeyX !== 0n || m.encPubKeyY !== 0n);
   if (realMessages.length === 0) {
     log('  ⚠ No real votes — only padding messages. Skipping processing.');
-    return;
+    return 'processed';
   }
 
   // Initialize trees (needed for both message processing and tally)
@@ -1166,7 +1150,7 @@ export async function processPoll(
     log('  No messages to process. Skipping to tally with zero results...');
     const { stateTree, ballotTree, stateMap, ballotMap } = await initTrees();
     await tallyAndPublish(pollId, addrs, numSignUps, stateMap, ballotMap, stateTree, stateTree.root, ballotTree.root, signer, crypto);
-    return;
+    return 'processed';
   }
 
   // Steps 3-5: Process + prove
@@ -1203,6 +1187,7 @@ export async function processPoll(
   }
 
   log(`  ★ Poll ${pollId} processing complete!`);
+  return 'processed';
 }
 
 async function main() {

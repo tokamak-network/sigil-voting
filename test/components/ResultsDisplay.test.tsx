@@ -32,64 +32,70 @@ import { ResultsDisplay } from '../../src/components/voting/ResultsDisplay'
 
 const TALLY_ADDR = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' as `0x${string}`
 
+function mockReadContract(values: Record<string, { data: unknown; isLoading?: boolean; isError?: boolean; isPending?: boolean }>) {
+  mockUseReadContract.mockImplementation((config: any) => {
+    const fn = config?.functionName as string
+    const v = values[fn]
+    if (v) return { data: v.data, isLoading: v.isLoading ?? false, isError: v.isError ?? false, isPending: v.isPending ?? false }
+    return { data: undefined, isLoading: false, isError: false, isPending: false }
+  })
+}
+
 describe('ResultsDisplay', () => {
   it('shows loading state when data is pending', () => {
-    mockUseReadContract.mockReturnValue({ data: undefined, isLoading: true, isError: false, isPending: true })
+    mockReadContract({
+      forVotes: { data: undefined, isLoading: true, isPending: true },
+      againstVotes: { data: undefined, isLoading: true, isPending: true },
+      totalVoters: { data: undefined, isLoading: true },
+      tallyVerified: { data: undefined, isLoading: true },
+    })
     renderWithProviders(<ResultsDisplay tallyAddress={TALLY_ADDR} />)
-    // Should show spinner
     const spinner = document.querySelector('.spinner')
     expect(spinner).toBeInTheDocument()
   })
 
   it('shows error state with retry button', () => {
-    mockUseReadContract.mockReturnValue({ data: undefined, isLoading: false, isError: true, isPending: false })
+    mockReadContract({
+      forVotes: { data: undefined, isError: true },
+      againstVotes: { data: undefined, isError: true },
+      totalVoters: { data: undefined },
+      tallyVerified: { data: undefined },
+    })
     renderWithProviders(<ResultsDisplay tallyAddress={TALLY_ADDR} />)
-    // Should have a retry button
     const retryBtn = screen.getByRole('button')
     expect(retryBtn).toBeInTheDocument()
   })
 
   it('shows "no votes" message when totalVotes is 0', () => {
-    let callCount = 0
-    mockUseReadContract.mockImplementation(() => {
-      callCount++
-      if (callCount % 5 === 1) return { data: 0n, isLoading: false, isError: false, isPending: false } // forVotes
-      if (callCount % 5 === 2) return { data: 0n, isLoading: false, isError: false, isPending: false } // againstVotes
-      if (callCount % 5 === 3) return { data: 0n, isLoading: false, isError: false, isPending: false } // totalVoters
-      if (callCount % 5 === 4) return { data: 0n, isLoading: false, isError: false, isPending: false } // abstainVotes
-      return { data: true, isLoading: false, isError: false, isPending: false } // tallyVerified
+    mockReadContract({
+      forVotes: { data: 0n },
+      againstVotes: { data: 0n },
+      totalVoters: { data: 0n },
+      tallyVerified: { data: true },
     })
     renderWithProviders(<ResultsDisplay tallyAddress={TALLY_ADDR} />)
-    // Should show "how_to_vote" icon (no votes state)
     const icon = document.querySelector('.material-symbols-outlined')
     expect(icon).toBeInTheDocument()
   })
 
   it('renders vote bars when data is available', () => {
-    let callCount = 0
-    mockUseReadContract.mockImplementation(() => {
-      callCount++
-      if (callCount % 5 === 1) return { data: 75n, isLoading: false, isError: false, isPending: false } // forVotes
-      if (callCount % 5 === 2) return { data: 25n, isLoading: false, isError: false, isPending: false } // againstVotes
-      if (callCount % 5 === 3) return { data: 5n, isLoading: false, isError: false, isPending: false } // totalVoters
-      if (callCount % 5 === 4) return { data: 0n, isLoading: false, isError: false, isPending: false } // abstainVotes
-      return { data: true, isLoading: false, isError: false, isPending: false } // tallyVerified
+    mockReadContract({
+      forVotes: { data: 75n },
+      againstVotes: { data: 25n },
+      totalVoters: { data: 5n },
+      tallyVerified: { data: true },
     })
     renderWithProviders(<ResultsDisplay tallyAddress={TALLY_ADDR} />)
-    // Should render progress bars
     const progressBars = screen.getAllByRole('progressbar')
-    expect(progressBars.length).toBe(3) // for + against + abstain bars
+    expect(progressBars.length).toBe(2) // for + against bars
   })
 
   it('shows correct percentages', () => {
-    let callCount = 0
-    mockUseReadContract.mockImplementation(() => {
-      callCount++
-      if (callCount % 5 === 1) return { data: 75n, isLoading: false, isError: false, isPending: false }
-      if (callCount % 5 === 2) return { data: 25n, isLoading: false, isError: false, isPending: false }
-      if (callCount % 5 === 3) return { data: 5n, isLoading: false, isError: false, isPending: false }
-      if (callCount % 5 === 4) return { data: 0n, isLoading: false, isError: false, isPending: false }
-      return { data: true, isLoading: false, isError: false, isPending: false }
+    mockReadContract({
+      forVotes: { data: 75n },
+      againstVotes: { data: 25n },
+      totalVoters: { data: 5n },
+      tallyVerified: { data: true },
     })
     renderWithProviders(<ResultsDisplay tallyAddress={TALLY_ADDR} />)
     expect(screen.getByText('75%')).toBeInTheDocument()
@@ -97,28 +103,22 @@ describe('ResultsDisplay', () => {
   })
 
   it('shows voter count', () => {
-    let callCount = 0
-    mockUseReadContract.mockImplementation(() => {
-      callCount++
-      if (callCount % 5 === 1) return { data: 10n, isLoading: false, isError: false, isPending: false }
-      if (callCount % 5 === 2) return { data: 5n, isLoading: false, isError: false, isPending: false }
-      if (callCount % 5 === 3) return { data: 42n, isLoading: false, isError: false, isPending: false }
-      if (callCount % 5 === 4) return { data: 0n, isLoading: false, isError: false, isPending: false }
-      return { data: true, isLoading: false, isError: false, isPending: false }
+    mockReadContract({
+      forVotes: { data: 10n },
+      againstVotes: { data: 5n },
+      totalVoters: { data: 42n },
+      tallyVerified: { data: true },
     })
     renderWithProviders(<ResultsDisplay tallyAddress={TALLY_ADDR} />)
     expect(screen.getByText('42')).toBeInTheDocument()
   })
 
   it('shows ZK verification section with Etherscan link', () => {
-    let callCount = 0
-    mockUseReadContract.mockImplementation(() => {
-      callCount++
-      if (callCount % 5 === 1) return { data: 1n, isLoading: false, isError: false, isPending: false }
-      if (callCount % 5 === 2) return { data: 1n, isLoading: false, isError: false, isPending: false }
-      if (callCount % 5 === 3) return { data: 1n, isLoading: false, isError: false, isPending: false }
-      if (callCount % 5 === 4) return { data: 0n, isLoading: false, isError: false, isPending: false }
-      return { data: true, isLoading: false, isError: false, isPending: false }
+    mockReadContract({
+      forVotes: { data: 1n },
+      againstVotes: { data: 1n },
+      totalVoters: { data: 1n },
+      tallyVerified: { data: true },
     })
     renderWithProviders(<ResultsDisplay tallyAddress={TALLY_ADDR} />)
     const link = document.querySelector('a[href*="etherscan"]')
@@ -126,14 +126,11 @@ describe('ResultsDisplay', () => {
   })
 
   it('has aria-label for results region', () => {
-    let callCount = 0
-    mockUseReadContract.mockImplementation(() => {
-      callCount++
-      if (callCount % 5 === 1) return { data: 1n, isLoading: false, isError: false, isPending: false }
-      if (callCount % 5 === 2) return { data: 1n, isLoading: false, isError: false, isPending: false }
-      if (callCount % 5 === 3) return { data: 1n, isLoading: false, isError: false, isPending: false }
-      if (callCount % 5 === 4) return { data: 0n, isLoading: false, isError: false, isPending: false }
-      return { data: true, isLoading: false, isError: false, isPending: false }
+    mockReadContract({
+      forVotes: { data: 1n },
+      againstVotes: { data: 1n },
+      totalVoters: { data: 1n },
+      tallyVerified: { data: true },
     })
     renderWithProviders(<ResultsDisplay tallyAddress={TALLY_ADDR} />)
     expect(screen.getByRole('region')).toBeInTheDocument()

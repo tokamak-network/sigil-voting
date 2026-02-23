@@ -113,6 +113,8 @@ async function main() {
   log(`Found ${nextPollId} poll(s). Checking...`);
   let processed = 0;
   let skipped = 0;
+  let keyMismatch = 0;
+  let failed = 0;
 
   for (let i = 0; i < nextPollId; i++) {
     const addrs = pollMap.get(i);
@@ -151,16 +153,26 @@ async function main() {
     // Process this poll
     log(`  Poll ${i}: needs processing — starting...`);
     try {
-      await processPoll(i, addrs, maci, provider, signer, config.coordinatorSk, crypto, config.deployBlock);
-      log(`  Poll ${i}: DONE`);
-      processed++;
+      const result = await processPoll(i, addrs, maci, provider, signer, config.coordinatorSk, crypto, config.deployBlock);
+      if (result === 'key_mismatch') {
+        log(`  Poll ${i}: SKIPPED (coordinator key mismatch)`);
+        keyMismatch++;
+      } else {
+        log(`  Poll ${i}: DONE`);
+        processed++;
+      }
     } catch (err) {
       const errMsg = (err as Error).message?.slice(0, 150)?.replace(/0x[a-fA-F0-9]{40,}/g, '[ADDR]') ?? 'unknown';
       log(`  Poll ${i}: FAILED — ${errMsg}`);
+      failed++;
     }
   }
 
-  log(`\nSummary: ${processed} processed, ${skipped} skipped, ${nextPollId} total`);
+  if (keyMismatch > 0) {
+    log(`\n⚠ ${keyMismatch} poll(s) skipped due to coordinator key mismatch.`);
+    log('  Update COORDINATOR_PRIVATE_KEY in GitHub Actions secrets to match the key used at poll deployment.');
+  }
+  log(`\nSummary: ${processed} processed, ${skipped} skipped, ${keyMismatch} key mismatch, ${failed} failed, ${nextPollId} total`);
 }
 
 main()

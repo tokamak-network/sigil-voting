@@ -217,9 +217,8 @@ export function VoteFormV2({
         // Key change command: voteOption=0, weight=0
         const kcPackedCommand = stateIndex | (0n << 50n) | (0n << 100n) | (kcNonce << 150n) | (BigInt(pollId) << 200n);
 
-        const SNARK_SCALAR_FIELD_KC = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
-        const kcSaltBytes = globalThis.crypto.getRandomValues(new Uint8Array(31));
-        const kcSalt = BigInt('0x' + Array.from(kcSaltBytes).map(b => b.toString(16).padStart(2, '0')).join('')) % SNARK_SCALAR_FIELD_KC;
+        const kcSaltBytes = globalThis.crypto.getRandomValues(new Uint8Array(32));
+        const kcSalt = BigInt('0x' + Array.from(kcSaltBytes).map(b => b.toString(16).padStart(2, '0')).join('')) & ((1n << 253n) - 1n);
 
         // cmdHash: Poseidon(stateIndex, newPubKeyX, newPubKeyY, weight=0, salt)
         const kcCmdHashF = poseidon([
@@ -309,9 +308,8 @@ export function VoteFormV2({
 
       setTxStage('signing');
 
-      const SNARK_SCALAR_FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
-      const saltBytes = globalThis.crypto.getRandomValues(new Uint8Array(31));
-      const salt = BigInt('0x' + Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('')) % SNARK_SCALAR_FIELD;
+      const saltBytes = globalThis.crypto.getRandomValues(new Uint8Array(32));
+      const salt = BigInt('0x' + Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('')) & ((1n << 253n) - 1n);
 
       // cmdHash must match circuit: Poseidon(stateIndex, newPubKeyX, newPubKeyY, newVoteWeight, salt)
       const cmdHashF = poseidon([

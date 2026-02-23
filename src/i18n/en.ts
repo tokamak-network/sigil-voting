@@ -160,7 +160,7 @@ export const en: Translations = {
     },
     advantages: {
       title: 'Why SIGIL?',
-      subtitle: 'Designed to fit existing token governance without heavy infrastructure.',
+      subtitle: 'We built SIGIL because we couldn’t find a tool that delivers all three: private votes, bribe‑resistance, and quadratic fairness.',
       erc20: { title: 'ERC20 Credits', desc: 'Supports ERC20-based voting credits via proxy.' },
       serverless: { title: 'Minimal Infra', desc: 'No app backend. Coordinator can run on GitHub Actions or your own server. On-chain transactions still require ETH.' },
       l2: { title: 'L2 Ready', desc: 'Standard Solidity contracts deploy on any EVM chain. On L2 networks (Base, Arbitrum, Polygon), costs and latency are typically lower than L1, depending on network conditions.' },
