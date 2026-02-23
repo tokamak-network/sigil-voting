@@ -150,6 +150,21 @@ async function main() {
       // not yet processed
     }
 
+    // Skip stuck polls: messages processed but tally can never succeed
+    // (e.g., messages were processed with wrong coordinator key)
+    const MP_COMPLETE_ABI = ['function processingComplete() view returns (bool)'] as const;
+    const mp = new ethers.Contract(addrs.mp, MP_COMPLETE_ABI, provider);
+    try {
+      const isComplete = await mp.processingComplete();
+      if (isComplete) {
+        log(`  Poll ${i}: STUCK (processingComplete=true but tallyVerified=false) — skipping`);
+        skipped++;
+        continue;
+      }
+    } catch {
+      // processingComplete not available or not yet set
+    }
+
     // Process this poll
     log(`  Poll ${i}: needs processing — starting...`);
     try {

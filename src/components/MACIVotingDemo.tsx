@@ -1408,7 +1408,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
             {/* Left Column: Voting Breakdown + ZK Verification */}
             <div className="lg:col-span-2">
               {tallyAddress && tallyAddress !== ZERO_ADDRESS ? (
-                <ResultsDisplay tallyAddress={tallyAddress} pollAddress={pollAddress || undefined} />
+                <ResultsDisplay tallyAddress={tallyAddress} pollAddress={pollAddress || undefined} pollId={propPollId} />
               ) : (
                 <div className="border-2 border-black bg-white p-8 text-center">
                   <h3 className="font-display text-2xl font-black uppercase mb-2">{t.results.title}</h3>
