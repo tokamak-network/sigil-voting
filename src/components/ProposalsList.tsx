@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * ProposalsList - Browse all proposals with status, timer, vote count
  *
@@ -275,8 +277,7 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     const m = Math.floor((secs % 3600) / 60)
     const s = secs % 60
     const pad = (n: number) => String(n).padStart(2, '0')
-    if (h > 0) return `${h}${t.timer.hours} ${pad(m)}${t.timer.minutes}`
-    return `${pad(m)}${t.timer.minutes} ${pad(s)}${t.timer.seconds}`
+    return `${pad(h)}:${pad(m)}:${pad(s)}`
   }
 
   const handlePollCreated = (newPollId: number, newPollAddress: `0x${string}`, title?: string, durationSeconds?: number) => {
