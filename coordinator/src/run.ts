@@ -938,14 +938,30 @@ async function tallyAndPublish(
   const forVotes = currentTally[1] ?? 0n;
   const abstainVotes = currentTally[2] ?? 0n;
 
+  // Compute actual voter count from ballots (skip blank index 0)
+  let computedVoters = 0;
+  for (let i = 1; i < numSignUps; i++) {
+    const ballot = ballotMap.get(i);
+    if (!ballot) continue;
+    let hasVoted = false;
+    for (let j = 0; j < TALLY_NUM_OPTIONS; j++) {
+      const weight = ballot.votes[j] ?? 0n;
+      if (weight > 0n) {
+        hasVoted = true;
+        break;
+      }
+    }
+    if (hasVoted) computedVoters++;
+  }
+
   // Read numSignUpsAtDeployment from Poll contract to cap totalVoters
   // Tally.publishResults() reverts with VoterCountExceedsSignups if totalVoters > numSignUpsAtDeployment
   // This happens when users sign up AFTER poll deployment (auto-registration on first vote)
   const pollContract = new ethers.Contract(addrs.poll, POLL_ABI, signer.provider);
   const numSignUpsAtDeploy = Number(await retryRpc(() => pollContract.numSignUpsAtDeployment()));
-  const totalVoters = Math.min(numSignUps - 1, numSignUpsAtDeploy); // Exclude blank leaf, cap at deployment count
+  const totalVoters = Math.min(computedVoters, numSignUpsAtDeploy); // Cap to deployment count to avoid revert
 
-  log(`  Results: FOR=${forVotes}, AGAINST=${againstVotes}, ABSTAIN=${abstainVotes}, voters=${totalVoters} (allSignUps=${numSignUps - 1}, atDeployment=${numSignUpsAtDeploy})`);
+  log(`  Results: FOR=${forVotes}, AGAINST=${againstVotes}, ABSTAIN=${abstainVotes}, voters=${totalVoters} (computed=${computedVoters}, atDeployment=${numSignUpsAtDeploy})`);
 
   // Publish results on-chain
   log('  [7/7] Publishing results on-chain...');
