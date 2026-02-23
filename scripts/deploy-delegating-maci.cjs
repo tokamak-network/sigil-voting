@@ -8,6 +8,7 @@ const DEFAULTS = {
   gatekeeper: '0x4c18984A78910Dd1976d6DFd820f6d18e7edD672',
   stateTreeDepth: 2,
   accQueueSubDepth: 2,
+  proposalGateThreshold: '100',
 }
 
 async function main() {
@@ -22,6 +23,7 @@ async function main() {
   const gatekeeper = process.env.GATEKEEPER_ADDRESS || DEFAULTS.gatekeeper
   const stateTreeDepth = Number(process.env.STATE_TREE_DEPTH || DEFAULTS.stateTreeDepth)
   const accQueueSubDepth = Number(process.env.ACCQUEUE_SUB_DEPTH || DEFAULTS.accQueueSubDepth)
+  const proposalGateThreshold = process.env.PROPOSAL_GATE_THRESHOLD || DEFAULTS.proposalGateThreshold
 
   if (!token || token === '0x0000000000000000000000000000000000000000') {
     throw new Error('TOKEN_ADDRESS is required')
@@ -91,6 +93,18 @@ async function main() {
   await (await stateAq.transferOwnership(maciAddress)).wait()
   await (await maci.init()).wait()
   await (await maci.setDelegationRegistry(delegationRegistryAddress)).wait()
+
+  // Enable proposal creation for token holders by default
+  const erc20 = new ethers.Contract(token, ['function decimals() view returns (uint8)'], deployer)
+  let decimals = 18
+  try {
+    decimals = Number(await erc20.decimals())
+  } catch {
+    decimals = 18
+  }
+  const threshold = ethers.parseUnits(String(proposalGateThreshold), decimals)
+  await (await maci.addProposalGate(token, threshold)).wait()
+  console.log('ProposalGate:', token, threshold.toString())
 
   const TimelockExecutor = await ethers.getContractFactory('TimelockExecutor')
   const timelockExecutor = await TimelockExecutor.deploy(maciAddress)
