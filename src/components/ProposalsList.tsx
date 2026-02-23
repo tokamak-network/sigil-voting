@@ -504,6 +504,10 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
             const status = getStatus(poll)
             const remaining = getRemaining(poll)
             const badge = getStatusBadge(poll)
+            const showFinalizedCount = poll.isFinalized
+            const countLabel = showFinalizedCount ? t.results.totalVoters : t.proposals.participants
+            const countValue = showFinalizedCount ? poll.totalVoters : poll.numMessages
+            const countUnit = showFinalizedCount ? t.proposalDetail.users : t.proposals.messages
 
             return (
               <button
@@ -545,8 +549,8 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
                   <div className="flex gap-12">
                     {/* Messages / Voters */}
                     <div>
-                      <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposals.participants}</span>
-                      <span className="text-2xl font-display font-bold">{poll.numMessages} <span className="text-sm font-normal text-slate-400">{t.proposals.messages}</span></span>
+                      <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{countLabel}</span>
+                      <span className="text-2xl font-display font-bold">{countValue} <span className="text-sm font-normal text-slate-400">{countUnit}</span></span>
                     </div>
 
                     {/* Timer or Status */}

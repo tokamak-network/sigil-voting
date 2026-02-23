@@ -996,10 +996,10 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
               {/* Stats */}
               <div className="grid grid-cols-2 gap-6">
                 <div className="p-6 border-2 border-black bg-white flex flex-col justify-between">
-                  <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">{t.proposalDetail.totalParticipants}</span>
+                  <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">{t.proposals.participants}</span>
                   <div className="flex items-baseline gap-2">
                     <span className="text-6xl font-display font-black italic">{numMessages}</span>
-                    <span className="text-sm font-bold text-slate-400">{t.proposalDetail.users}</span>
+                    <span className="text-sm font-bold text-slate-400">{t.proposals.messages}</span>
                   </div>
                 </div>
                 <div className="p-6 border-2 border-black bg-white flex flex-col justify-between">

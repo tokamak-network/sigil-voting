@@ -938,6 +938,17 @@ async function tallyAndPublish(
   const forVotes = currentTally[1] ?? 0n;
   const abstainVotes = currentTally[2] ?? 0n;
 
+  // Read numSignUpsAtDeployment from Poll contract to cap totalVoters
+  // Tally.publishResults() reverts with VoterCountExceedsSignups if totalVoters > numSignUpsAtDeployment
+  // This happens when users sign up AFTER poll deployment (auto-registration on first vote)
+  const pollContract = new ethers.Contract(addrs.poll, POLL_ABI, signer.provider);
+  let numSignUpsAtDeploy = 0;
+  try {
+    numSignUpsAtDeploy = Number(await retryRpc(() => pollContract.numSignUpsAtDeployment()));
+  } catch {
+    numSignUpsAtDeploy = 0;
+  }
+
   // Compute actual voter count from ballots (skip blank index 0)
   let computedVoters = 0;
   for (let i = 1; i < numSignUps; i++) {
@@ -954,12 +965,8 @@ async function tallyAndPublish(
     if (hasVoted) computedVoters++;
   }
 
-  // Read numSignUpsAtDeployment from Poll contract to cap totalVoters
-  // Tally.publishResults() reverts with VoterCountExceedsSignups if totalVoters > numSignUpsAtDeployment
-  // This happens when users sign up AFTER poll deployment (auto-registration on first vote)
-  const pollContract = new ethers.Contract(addrs.poll, POLL_ABI, signer.provider);
-  const numSignUpsAtDeploy = Number(await retryRpc(() => pollContract.numSignUpsAtDeployment()));
-  const totalVoters = Math.min(computedVoters, numSignUpsAtDeploy); // Cap to deployment count to avoid revert
+  const voterCap = numSignUpsAtDeploy > 0 ? numSignUpsAtDeploy : computedVoters;
+  const totalVoters = Math.min(computedVoters, voterCap); // Cap to deployment count to avoid revert
 
   log(`  Results: FOR=${forVotes}, AGAINST=${againstVotes}, ABSTAIN=${abstainVotes}, voters=${totalVoters} (computed=${computedVoters}, atDeployment=${numSignUpsAtDeploy})`);
 

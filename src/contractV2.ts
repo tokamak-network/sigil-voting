@@ -250,6 +250,13 @@ export const POLL_ABI = [
   },
   {
     type: 'function',
+    name: 'numSignUpsAtDeployment',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
     name: 'getDeployTimeAndDuration',
     inputs: [],
     outputs: [

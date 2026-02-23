@@ -61,6 +61,20 @@ export function TallyingStatus({
     query: { enabled: hasValidPoll, refetchInterval: 10000 },
   })
 
+  const { data: numMessagesRaw } = useReadContract({
+    address: addr,
+    abi: POLL_ABI,
+    functionName: 'numMessages',
+    query: { enabled: hasValidPoll, refetchInterval: 30000 },
+  })
+
+  const { data: numSignUpsAtDeployRaw } = useReadContract({
+    address: addr,
+    abi: POLL_ABI,
+    functionName: 'numSignUpsAtDeployment',
+    query: { enabled: hasValidPoll, refetchInterval: 30000 },
+  })
+
   const { data: processingComplete } = useReadContract({
     address: mpAddr,
     abi: MESSAGE_PROCESSOR_ABI,
@@ -78,6 +92,8 @@ export function TallyingStatus({
   // Determine current step (1-based)
   const isProcessed = processingComplete === true
   const isFinalized = tallyVerified === true
+  const numMessages = numMessagesRaw !== undefined ? Number(numMessagesRaw) : 0
+  const numEligibleSignUps = numSignUpsAtDeployRaw !== undefined ? Number(numSignUpsAtDeployRaw) : numSignUps
 
   // Adaptive countdown: adjusts remaining time based on actual on-chain progress
   // Total ~3min: merge ~50s, processing ~50s, tally ~25s, publish ~20s
@@ -290,8 +306,13 @@ export function TallyingStatus({
                     {t.tallying.participation}
                   </span>
                   <div className="flex flex-col">
-                    <span className="text-3xl font-display font-black italic leading-none">{numSignUps}</span>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase mt-1">{t.tallying.totalUsers}</span>
+                    <span className="text-3xl font-display font-black italic leading-none">{numMessages}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase mt-1">{t.proposals.messages}</span>
+                    {numEligibleSignUps > 0 && (
+                      <span className="text-[10px] font-bold text-slate-400 uppercase mt-2">
+                        {t.tallying.totalUsers}: {numEligibleSignUps}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
