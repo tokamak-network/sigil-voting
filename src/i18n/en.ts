@@ -26,7 +26,7 @@ export const en: Translations = {
   landing: {
     badge: 'Private Voting Protocol',
     title: 'Your Vote.\nYour Secret.',
-    subtitle: 'Public token votes create receipts, whales, and censorship. SIGIL fixes it for DAOs, DeFi, and public goods.',
+    subtitle: 'Public token votes create receipts, whales, and censorship. SIGIL fixes it for communities, DAOs, and public goods.',
     enterApp: 'Launch App',
     heroStatus: 'Live on Ethereum testnet',
     heroVersion: 'By Tokamak Network',
@@ -73,7 +73,7 @@ export const en: Translations = {
         desc: 'Being coerced? Change your voting key. Previous votes are automatically invalidated during tallying. The coercer will never know.',
       },
       verify: {
-        title: 'Open SDK for Any DAO',
+        title: 'Open SDK for Any Community',
         sub: '',
         desc: 'Integrate private voting with the SIGIL SDK and embeddable widget.',
       },
@@ -164,7 +164,7 @@ export const en: Translations = {
     },
     advantages: {
       title: 'Why SIGIL?',
-      subtitle: 'Private votes, bribe-resistance, and quadratic fairness — in a single protocol your DAO can deploy today.',
+      subtitle: 'Private votes, bribe-resistance, and quadratic fairness — in a single protocol your community can use today.',
       erc20: { title: 'Use Your Token', desc: 'Vote with the governance token you already hold. No wrapping or migration needed.' },
       serverless: { title: 'No App to Install', desc: 'Vote directly from your browser. Connect your wallet and you\'re ready.' },
       l2: { title: 'Low Cost Options', desc: 'Also runs on L2 networks like Base and Arbitrum for lower transaction fees.' },
@@ -191,11 +191,11 @@ export const en: Translations = {
       a6: 'Change your voting key. This silently invalidates all previous votes. Re-vote with your true choice using the new key. The coercer cannot detect the key change — it looks like any other encrypted message.',
       q7: 'What do I need to vote?',
       a7: 'Just a browser wallet (like MetaMask) and some testnet ETH for gas fees. No app to install, no account to create.',
-      q8: 'Can our DAO use its own governance token?',
+      q8: 'Can we use our own governance token?',
       a8: 'Yes. Your existing token balances become voting credits automatically. No wrapping or migration needed.',
     },
     cta: {
-      title: 'Your DAO Deserves Better Governance.',
+      title: 'Your Community Deserves Better Governance.',
       button: 'Try on Testnet',
       step1: 'Connect Wallet',
       step2: 'Vote',

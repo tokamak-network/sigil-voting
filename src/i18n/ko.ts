@@ -26,7 +26,7 @@ export const ko: Translations = {
   landing: {
     badge: '비밀투표 프로토콜',
     title: 'Your Vote.\nYour Secret.',
-    subtitle: '공개 토큰 투표는 영수증, 고래, 검열을 만듭니다. SIGIL은 DAO, DeFi, 공공재를 위해 이를 해결합니다.',
+    subtitle: '공개 토큰 투표는 영수증, 고래, 검열을 만듭니다. SIGIL은 커뮤니티, DAO, 공공재를 위해 이를 해결합니다.',
     enterApp: '앱 시작',
     heroStatus: '이더리움 테스트넷 라이브',
     heroVersion: 'By Tokamak Network',
@@ -73,7 +73,7 @@ export const ko: Translations = {
         desc: '강요받고 있나요? 투표 키를 변경하세요. 이전 투표는 집계 시 자동 무효화됩니다. 강요한 사람은 절대 알 수 없습니다.',
       },
       verify: {
-        title: '모든 DAO를 위한 SDK',
+        title: '모든 커뮤니티를 위한 SDK',
         sub: '',
         desc: 'SIGIL SDK와 임베드 위젯으로 비밀 투표를 통합하세요.',
       },
@@ -164,7 +164,7 @@ export const ko: Translations = {
     },
     advantages: {
       title: '왜 SIGIL인가?',
-      subtitle: '비공개 투표, 매수 방지, 이차투표 공정성 — 당신의 DAO가 지금 바로 쓸 수 있는 하나의 프로토콜.',
+      subtitle: '비공개 투표, 매수 방지, 이차투표 공정성 — 당신의 커뮤니티가 지금 바로 쓸 수 있는 하나의 프로토콜.',
       erc20: { title: '내 토큰으로 투표', desc: '이미 보유한 거버넌스 토큰으로 바로 투표하세요. 래핑이나 마이그레이션이 필요 없습니다.' },
       serverless: { title: '설치 없이 바로', desc: '브라우저에서 바로 투표하세요. 지갑만 연결하면 준비 완료.' },
       l2: { title: '저렴한 비용', desc: 'Base, Arbitrum 같은 L2 네트워크에서 더 낮은 수수료로 이용할 수 있습니다.' },
@@ -191,11 +191,11 @@ export const ko: Translations = {
       a6: '투표 키를 변경하세요. 이전 투표가 자동으로 무효화됩니다. 새 키로 진짜 의사를 다시 투표하세요. 강요한 사람은 키 변경을 감지할 수 없습니다 — 다른 암호화 메시지와 구분이 불가능합니다.',
       q7: '투표하려면 뭐가 필요하나요?',
       a7: '브라우저 지갑(MetaMask 등)과 가스비용 테스트넷 ETH만 있으면 됩니다. 앱 설치도, 회원가입도 필요 없습니다.',
-      q8: '우리 DAO 토큰으로 투표할 수 있나요?',
+      q8: '우리 토큰으로 투표할 수 있나요?',
       a8: '네. 기존 토큰 보유량이 자동으로 투표 크레딧이 됩니다. 래핑이나 마이그레이션이 필요 없습니다.',
     },
     cta: {
-      title: '당신의 DAO, 더 나은 거버넌스를 누릴 자격이 있습니다.',
+      title: '당신의 커뮤니티, 더 나은 거버넌스를 누릴 자격이 있습니다.',
       button: '테스트넷에서 체험',
       step1: '지갑 연결',
       step2: '투표',
