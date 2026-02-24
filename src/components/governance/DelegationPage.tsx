@@ -30,7 +30,7 @@ export function DelegationPage() {
   const isConfigured = DELEGATION_REGISTRY_ADDRESS !== ZERO_ADDRESS
   const isWrongNetwork = chainId !== undefined && chainId !== 11155111
 
-  const estimateGasWithBuffer = async (functionName: 'delegate' | 'undelegate', args?: readonly unknown[]) => {
+  const estimateGasWithBuffer = async (functionName: 'delegate' | 'undelegate', args?: readonly [`0x${string}`] | readonly []) => {
     const fallbackGas = 200_000n
     if (!publicClient || !address) return fallbackGas
     try {
@@ -109,7 +109,7 @@ export function DelegationPage() {
     setTxHash(null)
     setLastAction('delegate')
     if (isWrongNetwork) {
-      setError(t.maci?.switchNetwork || t.governance.delegation.error)
+      setError(t.header.wrongNetwork)
       return
     }
     if (!delegateAddress || !delegateAddress.startsWith('0x') || delegateAddress.length !== 42) {
@@ -162,7 +162,7 @@ export function DelegationPage() {
     setTxHash(null)
     setLastAction('undelegate')
     if (isWrongNetwork) {
-      setError(t.maci?.switchNetwork || t.governance.delegation.error)
+      setError(t.header.wrongNetwork)
       return
     }
     try {
@@ -248,7 +248,7 @@ export function DelegationPage() {
 
       {isWrongNetwork && (
         <div className="bg-amber-50 border-2 border-amber-500 text-amber-700 p-3 mb-4 text-sm font-bold">
-          {t.maci?.wrongNetwork || t.governance.delegation.error}
+          {t.header.wrongNetwork}
         </div>
       )}
 
