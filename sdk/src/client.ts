@@ -155,8 +155,8 @@ export class SigilClient {
 
     const fromBlock = Math.max(0, this.deployBlock ?? 0);
     const events: DeployPollEvent[] = [];
-    const deployEvent = this.maciInterface.getEvent('DeployPoll');
-    const topic = this.maciInterface.getEventTopic(deployEvent);
+    const deployEvent = this.maciInterface.getEvent('DeployPoll')!;
+    const topic = deployEvent.topicHash;
 
     for (let start = fromBlock; start <= latest; start += this.logChunkSize) {
       const end = Math.min(start + this.logChunkSize - 1, latest);
@@ -169,6 +169,7 @@ export class SigilClient {
       for (const log of logs) {
         try {
           const parsed = this.maciInterface.parseLog(log);
+          if (!parsed) continue;
           const pollId = Number(parsed.args.pollId);
           events.push({
             pollId,

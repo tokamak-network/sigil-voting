@@ -1,6 +1,6 @@
 {
-  "name": "@sigil/sdk",
-  "version": "0.2.0",
+  "name": "sigil-sdk",
+  "version": "0.3.0",
   "description": "SIGIL — Private, fair, collusion-resistant governance SDK for DAOs. MACI-based private voting with quadratic voting and anti-collusion on Ethereum.",
   "type": "module",
   "sideEffects": false,
