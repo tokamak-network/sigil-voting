@@ -75,7 +75,7 @@ export function HomeContent() {
           </div>
 
           {/* RIGHT: 파란 비주얼 패널 (35%) */}
-          <div className="lg:w-[25%] bg-primary flex items-center justify-center p-12 relative overflow-hidden">
+          <div className="lg:w-[25%] min-h-[180px] bg-primary flex items-center justify-center p-12 relative overflow-hidden">
             <div className="absolute inset-0 overflow-hidden pointer-events-none select-none flex justify-center">
               <div className="hero-scroll-text flex flex-col items-center" style={{ gap: '5rem' }}>
                 {['SIGIL', 'SIGIL', 'SIGIL', 'SIGIL'].map((text, i) => (
