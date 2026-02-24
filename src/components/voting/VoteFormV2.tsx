@@ -13,11 +13,11 @@
  *   6. Poll.publishMessage(encMessage, encPubKey)
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAccount, usePublicClient, useBalance, useReadContract } from 'wagmi';
 import { formatEther, type PublicClient } from 'viem';
 import { writeContract } from '../../writeHelper';
-import { POLL_ABI, VOICE_CREDIT_PROXY_ADDRESS, ERC20_VOICE_CREDIT_PROXY_ABI, MACI_V2_ADDRESS, MACI_DEPLOY_BLOCK } from '../../contractV2';
+import { POLL_ABI, VOICE_CREDIT_PROXY_ADDRESS, ERC20_VOICE_CREDIT_PROXY_ABI, MACI_V2_ADDRESS, MACI_ABI, MACI_DEPLOY_BLOCK, DEFAULT_COORD_PUB_KEY_X, DEFAULT_COORD_PUB_KEY_Y } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 import { VoteConfirmModal } from './VoteConfirmModal';
 import { TransactionModal } from './TransactionModal';
@@ -34,12 +34,8 @@ import { ToastContainer, type ToastItem } from '../Toast';
 interface VoteFormV2Props {
   pollId: number;
   pollAddress: `0x${string}`;
-  coordinatorPubKeyX: bigint;
-  coordinatorPubKeyY: bigint;
   voiceCredits?: number;
   isExpired?: boolean;
-  isRegistered?: boolean;
-  onSignUp?: () => Promise<void>;
   onVoteSubmitted?: (txHash: string) => void;
 }
 
@@ -48,12 +44,8 @@ type TxStage = 'idle' | 'registering' | 'keyChanging' | 'encrypting' | 'signing'
 export function VoteFormV2({
   pollId,
   pollAddress,
-  coordinatorPubKeyX,
-  coordinatorPubKeyY,
   voiceCredits = 100,
   isExpired = false,
-  isRegistered = true,
-  onSignUp,
   onVoteSubmitted,
 }: VoteFormV2Props) {
   const { address } = useAccount();
@@ -68,6 +60,42 @@ export function VoteFormV2({
   const [estimatedGasEth, setEstimatedGasEth] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const { t } = useTranslation();
+
+  const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`;
+  const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS;
+
+  // Read coordinator keys from poll contract (with defaults while loading)
+  const { data: coordPubKeyXRaw } = useReadContract({
+    address: pollAddress,
+    abi: POLL_ABI,
+    functionName: 'coordinatorPubKeyX',
+    query: { enabled: !!pollAddress },
+  });
+  const { data: coordPubKeyYRaw } = useReadContract({
+    address: pollAddress,
+    abi: POLL_ABI,
+    functionName: 'coordinatorPubKeyY',
+    query: { enabled: !!pollAddress },
+  });
+  const coordinatorPubKeyX =
+    coordPubKeyXRaw !== undefined ? BigInt(coordPubKeyXRaw as bigint) : DEFAULT_COORD_PUB_KEY_X;
+  const coordinatorPubKeyY =
+    coordPubKeyYRaw !== undefined ? BigInt(coordPubKeyYRaw as bigint) : DEFAULT_COORD_PUB_KEY_Y;
+
+  // Read poll deploy time (for delegation-aware re-signup check)
+  const { data: deployTimeAndDurationRaw } = useReadContract({
+    address: pollAddress,
+    abi: POLL_ABI,
+    functionName: 'getDeployTimeAndDuration',
+    query: { enabled: !!pollAddress },
+  });
+  const pollDeployTime = deployTimeAndDurationRaw
+    ? Number((deployTimeAndDurationRaw as [bigint, bigint])[0])
+    : null;
+
+  // Registration state
+  const [signedUp, setSignedUp] = useState(false);
+  const forceSignupRef = useRef(false);
 
   // Read token address from voiceCreditProxy for dynamic links
   const { data: vcTokenAddress } = useReadContract({
@@ -101,7 +129,7 @@ export function VoteFormV2({
         const gasPrice = await publicClient.getGasPrice();
         const gasCostWei = gasLimit * gasPrice;
         // Add 20% buffer for safety
-        const totalCost = isRegistered
+        const totalCost = signedUp
           ? gasCostWei * 120n / 100n
           : gasCostWei * 280n / 100n; // signUp + publishMessage ≈ 2.8x
         setEstimatedGasEth(parseFloat(formatEther(totalCost)).toFixed(4));
@@ -112,7 +140,174 @@ export function VoteFormV2({
       }
     };
     estimateGas();
-  }, [publicClient, pollAddress, address, isRegistered]);
+  }, [publicClient, pollAddress, address, signedUp]);
+
+  // Reset signup state when switching proposals or accounts
+  useEffect(() => {
+    setSignedUp(false);
+    forceSignupRef.current = false;
+  }, [pollId, address]);
+
+  // Check if user already signed up (localStorage fast path + on-chain fallback)
+  useEffect(() => {
+    if (!address) return;
+
+    const delegationChangedAtRaw = localStorage.getItem(storageKey.delegationChangedAt(address));
+    const delegationChangedAt = delegationChangedAtRaw ? Number(delegationChangedAtRaw) : 0;
+    const shouldForceReSignup = Boolean(
+      delegationChangedAt && pollDeployTime && pollDeployTime * 1000 >= delegationChangedAt,
+    );
+    if (shouldForceReSignup && !forceSignupRef.current) {
+      forceSignupRef.current = true;
+      localStorage.removeItem(storageKey.signup(address));
+      localStorage.removeItem(storageKey.pk(address));
+      localStorage.removeItem(storageKey.stateIndex(address));
+      setSignedUp(false);
+      return;
+    }
+
+    // Fast path: check localStorage signals
+    const hasSignupFlag = localStorage.getItem(storageKey.signup(address));
+    const hasGlobalKey = localStorage.getItem(storageKey.pk(address));
+    const hasPollKey = localStorage.getItem(storageKey.pubkey(address, pollId));
+    const hasVotedFlag = parseInt(localStorage.getItem(storageKey.nonce(address, pollId)) || '1', 10) > 1;
+    if (hasSignupFlag || hasGlobalKey || hasPollKey || hasVotedFlag) {
+      setSignedUp(true);
+      if (!hasSignupFlag) localStorage.setItem(storageKey.signup(address), 'true');
+      return;
+    }
+
+    // Slow path: check on-chain SignUp events (handles cleared localStorage)
+    if (!publicClient || !isConfigured) return;
+    const checkOnChainSignUp = async () => {
+      try {
+        const logs = await getLogsChunked(
+          publicClient,
+          {
+            address: MACI_V2_ADDRESS,
+            event: {
+              type: 'event',
+              name: 'SignUp',
+              inputs: [
+                { name: 'stateIndex', type: 'uint256', indexed: true },
+                { name: 'pubKeyX', type: 'uint256', indexed: true },
+                { name: 'pubKeyY', type: 'uint256', indexed: false },
+                { name: 'voiceCreditBalance', type: 'uint256', indexed: false },
+                { name: 'timestamp', type: 'uint256', indexed: false },
+              ],
+            },
+          },
+          MACI_DEPLOY_BLOCK,
+          'latest',
+        );
+        let lastMatch: { stateIndex: number; pubKeyX: string; pubKeyY: string } | null = null;
+        for (const log of logs) {
+          if (!log.transactionHash) continue;
+          try {
+            const tx = await publicClient.getTransaction({ hash: log.transactionHash });
+            if (tx.from.toLowerCase() === address.toLowerCase()) {
+              const rawIndex = log.topics[1] ? parseInt(log.topics[1] as string, 16) : NaN;
+              const stateIndex = !isNaN(rawIndex) && rawIndex > 0 ? rawIndex : 1;
+              const pubKeyX = log.topics[2] ? BigInt(log.topics[2]).toString() : '0';
+              const pubKeyY = (log as unknown as { args?: { pubKeyY?: bigint } }).args?.pubKeyY?.toString() ?? '0';
+              lastMatch = { stateIndex, pubKeyX, pubKeyY };
+            }
+          } catch {
+            // Skip if tx fetch fails
+          }
+        }
+        if (lastMatch) {
+          localStorage.setItem(storageKey.signup(address), 'true');
+          localStorage.setItem(storageKey.stateIndex(address), String(lastMatch.stateIndex));
+          localStorage.setItem(storageKey.pk(address), JSON.stringify([lastMatch.pubKeyX, lastMatch.pubKeyY]));
+          setSignedUp(true);
+        }
+      } catch {
+        // On-chain check failed — leave as unregistered
+      }
+    };
+    checkOnChainSignUp();
+  }, [address, publicClient, isConfigured, pollId, pollDeployTime]);
+
+  // Sign up on MACI contract
+  const handleSignUp = useCallback(async () => {
+    if (!address) return;
+    try {
+      const cm = await preloadCrypto();
+      const sk = await deriveKeyFromWallet(address, cm);
+      const pk = await cm.eddsaDerivePublicKey(sk);
+
+      let hash: `0x${string}` = '0x' as `0x${string}`;
+      let signUpRetries = 0;
+      const maxSignUpRetries = 5;
+      while (true) {
+        try {
+          const gas = await estimateGasWithBuffer({
+            publicClient,
+            address: MACI_V2_ADDRESS,
+            abi: MACI_ABI,
+            functionName: 'signUp',
+            args: [pk[0], pk[1], '0x' as `0x${string}`, '0x' as `0x${string}`],
+            account: address,
+            fallbackGas: 500_000n,
+          });
+          hash = await writeContract({
+            address: MACI_V2_ADDRESS,
+            abi: MACI_ABI,
+            functionName: 'signUp',
+            args: [pk[0], pk[1], '0x' as `0x${string}`, '0x' as `0x${string}`],
+            gas,
+            account: address,
+          });
+          break;
+        } catch (retryErr) {
+          const retryMsg = retryErr instanceof Error ? retryErr.message : '';
+          if (
+            (retryMsg.includes('underpriced') || retryMsg.includes('nonce') || retryMsg.includes('already known')) &&
+            signUpRetries < maxSignUpRetries
+          ) {
+            signUpRetries++;
+            await new Promise(r => setTimeout(r, 10_000));
+            continue;
+          }
+          throw retryErr;
+        }
+      }
+
+      if (publicClient) {
+        try {
+          const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: TX_TIMEOUT_MS });
+          for (const log of receipt.logs) {
+            if (log.address.toLowerCase() !== MACI_V2_ADDRESS.toLowerCase()) continue;
+            if (log.topics.length >= 2 && log.topics[0]) {
+              const stateIndex = parseInt(log.topics[1] as string, 16);
+              if (!isNaN(stateIndex) && stateIndex > 0) {
+                localStorage.setItem(storageKey.stateIndex(address), String(stateIndex));
+              }
+            }
+          }
+        } catch {
+          localStorage.setItem(storageKey.stateIndex(address), '1');
+        }
+      }
+
+      localStorage.setItem(storageKey.signup(address), 'true');
+      localStorage.removeItem(storageKey.delegationChangedAt(address));
+      await cm.storeEncrypted(storageKey.sk(address), sk.toString(), address);
+      localStorage.setItem(storageKey.pk(address), JSON.stringify([pk[0].toString(), pk[1].toString()]));
+      setSignedUp(true);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
+        throw new Error('signup:' + t.voteForm.errorRejected);
+      } else if (msg.includes('insufficient funds') || msg.includes('exceeds the balance')) {
+        throw new Error('signup:' + t.voteForm.errorGas);
+      } else {
+        const shortMsg = msg.length > 120 ? msg.slice(0, 120) + '...' : msg;
+        throw new Error('signup:' + t.maci.signup.error + ' (' + shortMsg + ')');
+      }
+    }
+  }, [address, publicClient, t]);
 
   // Vote history detection (shared MACI nonce: votes + key changes)
   const hasVoted = address ? getMaciNonce(address, pollId) > 1 : false;
@@ -184,16 +379,16 @@ export function VoteFormV2({
 
   const handleSubmit = async () => {
     if (choice === null || !address) return;
-    wasRegisteredRef.current = isRegistered;
+    wasRegisteredRef.current = signedUp;
     const isReVote = getMaciNonce(address, pollId) > 1;
     setIsSubmitting(true);
     setError(null);
 
     try {
       // Step 0: Auto-register if not yet signed up
-      if (!isRegistered && onSignUp) {
+      if (!signedUp) {
         setTxStage('registering');
-        await onSignUp();
+        await handleSignUp();
       }
 
       setTxStage('encrypting');
@@ -211,9 +406,9 @@ export function VoteFormV2({
         try {
           const parsed = JSON.parse(storedPk);
           if (parsed[0].toString() !== currentPubKey[0].toString() || parsed[1].toString() !== currentPubKey[1].toString()) {
-            if (onSignUp) {
+            {
               setTxStage('registering');
-              await onSignUp();
+              await handleSignUp();
               const fresh = await getOrCreateMaciKeypair(
                 address, pollId, cm.derivePrivateKey, cm.eddsaDerivePublicKey, cm.loadEncrypted, cm.storeEncrypted,
               );
@@ -384,7 +579,7 @@ export function VoteFormV2({
       )}
 
       {/* Auto-register notice for first-time voters */}
-      {!isRegistered && !hasVoted && (
+      {!signedUp && !hasVoted && (
         <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border-2 border-blue-200">
           <span className="material-symbols-outlined text-[16px] text-blue-500" aria-hidden="true">info</span>
           <span className="text-xs font-bold text-blue-600 uppercase tracking-wide">{t.voteForm.autoRegisterNotice}</span>
@@ -541,7 +736,7 @@ export function VoteFormV2({
             {ethBalanceStr} ETH
           </span>
         </div>
-        {!isRegistered && (
+        {!signedUp && (
           <p className="text-xs font-mono text-amber-600 pt-1">{t.voteForm.firstVoteNote}</p>
         )}
         {estimatedGasEth && ethBalanceNum < parseFloat(estimatedGasEth) && (
@@ -686,6 +881,34 @@ async function resolveStateIndexFromLogs(
   return null;
 }
 
+const MACI_KEY_MESSAGE = 'SIGIL Voting Key v1';
+
+/**
+ * Derive MACI global private key from wallet signature.
+ * Tries encrypted cache first; prompts wallet only if not cached.
+ */
+async function deriveKeyFromWallet(address: string, cm: CryptoModules): Promise<bigint> {
+  const cached = await cm.loadEncrypted(storageKey.sk(address), address);
+  if (cached) return BigInt(cached);
+  const provider = getEthereumProvider();
+  if (!provider) throw new Error('No wallet provider');
+  const sig = await provider.request({
+    method: 'personal_sign',
+    params: [
+      `0x${Array.from(new TextEncoder().encode(MACI_KEY_MESSAGE)).map(b => b.toString(16).padStart(2, '0')).join('')}`,
+      address,
+    ],
+  }) as string;
+  const sigHex = sig.slice(2);
+  if (sigHex.length < 130) throw new Error('Invalid signature: too short');
+  const sigMatches = sigHex.match(/.{2}/g);
+  if (!sigMatches) throw new Error('Invalid signature format');
+  const sigBytes = new Uint8Array(sigMatches.map(h => parseInt(h, 16)));
+  const sk = cm.derivePrivateKey(sigBytes);
+  await cm.storeEncrypted(storageKey.sk(address), sk.toString(), address);
+  return sk;
+}
+
 async function getOrCreateMaciKeypair(
   address: string,
   pollId: number,
@@ -733,7 +956,6 @@ async function getOrCreateMaciKeypair(
   }
 
   // Fallback: derive from wallet signature (deterministic, recoverable)
-  const MACI_KEY_MESSAGE = 'SIGIL Voting Key v1';
   const provider = getEthereumProvider();
   if (!provider) throw new Error('No wallet provider');
   const sig = await provider.request({

@@ -12,12 +12,10 @@
  * Layout matches mockup pages 5 (voting) and 6 (voted).
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useAccount, useReadContract, usePublicClient } from 'wagmi'
-import { writeContract } from '../writeHelper'
 import {
   MACI_V2_ADDRESS,
-  MACI_DEPLOY_BLOCK,
   MACI_ABI,
   TALLY_ABI,
   V2Phase,
@@ -28,48 +26,11 @@ import { TallyingStatus } from './voting/TallyingStatus'
 import { ResultsDisplay } from './voting/ResultsDisplay'
 import { PollTimer } from './voting/PollTimer'
 import { useTranslation } from '../i18n'
-import { estimateGasWithBuffer } from '../utils/gas'
-import { storageKey } from '../storageKeys'
-import { preloadCrypto } from '../crypto/preload'
-import type { CryptoModules } from '../crypto/preload'
-import { getLogsChunked } from '../utils/viemLogs'
-import { getEthereumProvider } from '../lib/ethereum'
-import { TX_TIMEOUT_MS } from '../constants/voting'
 import { useDelegation } from '../hooks/useDelegation'
 import { usePollData } from '../hooks/usePollData'
 import { useVotingPhase } from '../hooks/useVotingPhase'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
-
-const MACI_KEY_MESSAGE = 'SIGIL Voting Key v1'
-
-/**
- * Derive MACI private key deterministically from wallet signature.
- * Same wallet + same message = same key, every time.
- * Falls back to localStorage cache to avoid repeated MetaMask popups.
- */
-async function deriveKeyFromWallet(address: string, cm: CryptoModules): Promise<bigint> {
-  // Try cache first
-  const cached = await cm.loadEncrypted(storageKey.sk(address), address)
-  if (cached) return BigInt(cached)
-
-  // Request wallet signature (MetaMask popup)
-  const provider = getEthereumProvider()
-  if (!provider) throw new Error('No wallet provider')
-  const sig = await provider.request({
-    method: 'personal_sign',
-    params: [
-      `0x${Array.from(new TextEncoder().encode(MACI_KEY_MESSAGE)).map(b => b.toString(16).padStart(2, '0')).join('')}`,
-      address,
-    ],
-  }) as string
-  const sigBytes = new Uint8Array(sig.slice(2).match(/.{2}/g)!.map(h => parseInt(h, 16)))
-  const sk = cm.derivePrivateKeyFromSignature(sigBytes)
-
-  // Cache for future use
-  await cm.storeEncrypted(storageKey.sk(address), sk.toString(), address)
-  return sk
-}
 
 interface VoteSubmittedData {
   pollId: number
@@ -93,12 +54,9 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
 
   const [error, setError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
-  const [, setIsSigningUp] = useState(false)
   const [isPollExpired, setIsPollExpired] = useState(false)
   const [showReVoteForm, setShowReVoteForm] = useState(false)
-  const [signedUp, setSignedUp] = useState(false)
   const [phaseCheckTrigger, setPhaseCheckTrigger] = useState(0)
-  const forceSignupRef = useRef(false)
 
   // Reset transient state when switching between proposals
   useEffect(() => {
@@ -106,8 +64,6 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
     setTxHash(null)
     setIsPollExpired(false)
     setShowReVoteForm(false)
-    setSignedUp(false)
-    forceSignupRef.current = false
   }, [propPollId])
 
   // Reset vote form when account changes (e.g. MetaMask account switch)
@@ -144,15 +100,13 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
     setTallyAddress,
     messageProcessorAddress,
     setMessageProcessorAddress,
-    coordPubKeyX,
-    coordPubKeyY,
     voiceCredits,
     numMessages,
     isLoadingPoll,
   } = usePollData(propPollId, publicClient, isConfigured, address)
 
   // === Phase Detection ===
-  const { phase, phaseLoaded, pollDeployTime, votingEndTime } = useVotingPhase({
+  const { phase, phaseLoaded, votingEndTime } = useVotingPhase({
     pollAddress,
     publicClient,
     pollId: propPollId,
@@ -195,7 +149,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
   const currentStep = hasPoll && (phase !== V2Phase.Voting || isPollExpired) ? 1 : 0
 
   // Read numSignUps from MACI
-  const { data: numSignUpsRaw, refetch: refetchSignUps } = useReadContract({
+  const { data: numSignUpsRaw } = useReadContract({
     address: MACI_V2_ADDRESS,
     abi: MACI_ABI,
     functionName: 'numSignUps',
@@ -203,183 +157,6 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
   })
   const numSignUps = numSignUpsRaw !== undefined ? Number(numSignUpsRaw) : 0
 
-  // Check if user already signed up (localStorage fast path + on-chain fallback)
-  useEffect(() => {
-    if (!address) return
-
-    const delegationChangedAtRaw = localStorage.getItem(storageKey.delegationChangedAt(address))
-    const delegationChangedAt = delegationChangedAtRaw ? Number(delegationChangedAtRaw) : 0
-    const shouldForceReSignup = Boolean(
-      delegationChangedAt && pollDeployTime && pollDeployTime * 1000 >= delegationChangedAt
-    )
-    if (shouldForceReSignup && !forceSignupRef.current) {
-      forceSignupRef.current = true
-      localStorage.removeItem(storageKey.signup(address))
-      localStorage.removeItem(storageKey.pk(address))
-      localStorage.removeItem(storageKey.stateIndex(address))
-      setSignedUp(false)
-      return
-    }
-
-    // Fast path: check localStorage signals
-    const hasSignupFlag = localStorage.getItem(storageKey.signup(address))
-    const hasGlobalKey = localStorage.getItem(storageKey.pk(address))
-    const hasPollKey = localStorage.getItem(storageKey.pubkey(address, propPollId))
-    const hasVoted = parseInt(localStorage.getItem(storageKey.nonce(address, propPollId)) || '1', 10) > 1
-    if (hasSignupFlag || hasGlobalKey || hasPollKey || hasVoted) {
-      setSignedUp(true)
-      if (!hasSignupFlag) localStorage.setItem(storageKey.signup(address), 'true')
-      return
-    }
-
-    // Slow path: check on-chain SignUp events (handles cleared localStorage)
-    if (!publicClient || !isConfigured) return
-    const checkOnChainSignUp = async () => {
-      try {
-        const logs = await getLogsChunked(
-          publicClient,
-          {
-            address: MACI_V2_ADDRESS,
-            event: {
-              type: 'event',
-              name: 'SignUp',
-              inputs: [
-                { name: 'stateIndex', type: 'uint256', indexed: true },
-                { name: 'pubKeyX', type: 'uint256', indexed: true },
-                { name: 'pubKeyY', type: 'uint256', indexed: false },
-                { name: 'voiceCreditBalance', type: 'uint256', indexed: false },
-                { name: 'timestamp', type: 'uint256', indexed: false },
-              ],
-            },
-          },
-          MACI_DEPLOY_BLOCK,
-          'latest',
-        )
-
-        // Find the LAST (most recent) signUp from this address
-        let lastMatch: { stateIndex: number; pubKeyX: string; pubKeyY: string } | null = null
-        for (const log of logs) {
-          if (!log.transactionHash) continue
-          try {
-            const tx = await publicClient.getTransaction({ hash: log.transactionHash })
-            if (tx.from.toLowerCase() === address.toLowerCase()) {
-              const rawIndex = log.topics[1] ? parseInt(log.topics[1] as string, 16) : NaN
-              const stateIndex = !isNaN(rawIndex) && rawIndex > 0 ? rawIndex : 1
-              // pubKeyX is indexed (topics[2]), pubKeyY is in args
-              const pubKeyX = log.topics[2] ? BigInt(log.topics[2]).toString() : '0'
-              const pubKeyY = (log as unknown as { args?: { pubKeyY?: bigint } }).args?.pubKeyY?.toString() ?? '0'
-              lastMatch = { stateIndex, pubKeyX, pubKeyY }
-              // Don't break — keep iterating to find the LAST (most recent) match
-            }
-          } catch {
-            // Skip if tx fetch fails
-          }
-        }
-        if (lastMatch) {
-          localStorage.setItem(storageKey.signup(address), 'true')
-          localStorage.setItem(storageKey.stateIndex(address), String(lastMatch.stateIndex))
-          // Store registered pubKey so we can verify key match before voting
-          localStorage.setItem(storageKey.pk(address), JSON.stringify([lastMatch.pubKeyX, lastMatch.pubKeyY]))
-          setSignedUp(true)
-        }
-      } catch {
-        // On-chain check failed — leave as unregistered
-      }
-    }
-    checkOnChainSignUp()
-  }, [address, publicClient, isConfigured, propPollId, pollDeployTime])
-
-  // === SignUp (called by VoteFormV2 via callback) ===
-  const handleSignUp = useCallback(async () => {
-    if (!address) return
-    setError(null)
-    setIsSigningUp(true)
-
-    try {
-      const cm = await preloadCrypto()
-      // Derive MACI key deterministically from wallet signature
-      // This ensures the same wallet always produces the same voting key
-      const sk = await deriveKeyFromWallet(address, cm)
-      const pk = await cm.eddsaDerivePublicKey(sk)
-
-      // Auto-retry on nonce conflict (coordinator might be sending tx simultaneously)
-      let hash: `0x${string}` = '0x' as `0x${string}`;
-      let signUpRetries = 0;
-      const maxSignUpRetries = 5;
-      while (true) {
-        try {
-          const gas = await estimateGasWithBuffer({
-            publicClient,
-            address: MACI_V2_ADDRESS,
-            abi: MACI_ABI,
-            functionName: 'signUp',
-            args: [pk[0], pk[1], '0x' as `0x${string}`, '0x' as `0x${string}`],
-            account: address,
-            fallbackGas: 500_000n,
-          })
-          hash = await writeContract({
-            address: MACI_V2_ADDRESS,
-            abi: MACI_ABI,
-            functionName: 'signUp',
-            args: [pk[0], pk[1], '0x' as `0x${string}`, '0x' as `0x${string}`],
-            gas,
-            account: address,
-          })
-          break
-        } catch (retryErr) {
-          const retryMsg = retryErr instanceof Error ? retryErr.message : ''
-          if ((retryMsg.includes('underpriced') || retryMsg.includes('nonce') || retryMsg.includes('already known')) && signUpRetries < maxSignUpRetries) {
-            signUpRetries++
-            await new Promise(r => setTimeout(r, 10_000))
-            continue
-          }
-          throw retryErr
-        }
-      }
-
-      // Parse SignUp event to get stateIndex (2 min timeout)
-      if (publicClient) {
-        try {
-          const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: TX_TIMEOUT_MS })
-          for (const log of receipt.logs) {
-            // Only parse logs from MACI contract (not other contracts' events)
-            if (log.address.toLowerCase() !== MACI_V2_ADDRESS.toLowerCase()) continue
-            if (log.topics.length >= 2 && log.topics[0]) {
-              const stateIndex = parseInt(log.topics[1] as string, 16)
-              if (!isNaN(stateIndex) && stateIndex > 0) {
-                localStorage.setItem(storageKey.stateIndex(address), String(stateIndex))
-              }
-            }
-          }
-        } catch {
-          localStorage.setItem(storageKey.stateIndex(address), '1')
-        }
-      }
-
-      localStorage.setItem(storageKey.signup(address), 'true')
-      localStorage.removeItem(storageKey.delegationChangedAt(address))
-      await cm.storeEncrypted(storageKey.sk(address), sk.toString(), address)
-      localStorage.setItem(storageKey.pk(address), JSON.stringify([pk[0].toString(), pk[1].toString()]))
-
-      setSignedUp(true)
-      setTxHash(hash)
-      refetchSignUps()
-    } catch (err) {
-      console.error('SignUp error:', err)
-      const msg = err instanceof Error ? err.message : String(err)
-      if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
-        throw new Error('signup:' + t.voteForm.errorRejected)
-      } else if (msg.includes('insufficient funds') || msg.includes('exceeds the balance')) {
-        throw new Error('signup:' + t.voteForm.errorGas)
-      } else {
-        // Show actual error for debugging
-        const shortMsg = msg.length > 120 ? msg.slice(0, 120) + '...' : msg
-        throw new Error('signup:' + t.maci.signup.error + ' (' + shortMsg + ')')
-      }
-    } finally {
-      setIsSigningUp(false)
-    }
-  }, [address, refetchSignUps, publicClient, t])
 
   // My vote info
   const myVote = address ? getLastVote(address, propPollId) : null
@@ -695,12 +472,8 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
                     <VoteFormV2
                       pollId={propPollId}
                       pollAddress={pollAddress!}
-                      coordinatorPubKeyX={coordPubKeyX}
-                      coordinatorPubKeyY={coordPubKeyY}
                       voiceCredits={voiceCredits}
                       isExpired={isPollExpired}
-                      isRegistered={signedUp}
-                      onSignUp={handleSignUp}
                       onVoteSubmitted={(voteTxHash) => {
                         setTxHash(voteTxHash)
                         setShowReVoteForm(false)

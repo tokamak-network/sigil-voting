@@ -21,8 +21,6 @@ import {
   POLL_ABI,
   VOICE_CREDIT_PROXY_ADDRESS,
   VOICE_CREDIT_PROXY_ABI,
-  DEFAULT_COORD_PUB_KEY_X,
-  DEFAULT_COORD_PUB_KEY_Y,
 } from '../contractV2'
 import { storageKey, parseOnChainTitle } from '../storageKeys'
 import { getLogsChunked } from '../utils/viemLogs'
@@ -37,8 +35,6 @@ export interface UsePollDataResult {
   setTallyAddress: Dispatch<SetStateAction<`0x${string}` | null>>
   messageProcessorAddress: `0x${string}` | null
   setMessageProcessorAddress: Dispatch<SetStateAction<`0x${string}` | null>>
-  coordPubKeyX: bigint
-  coordPubKeyY: bigint
   voiceCredits: number
   numMessages: number
   isLoadingPoll: boolean
@@ -169,24 +165,6 @@ export function usePollData(
 
   const hasPoll = pollAddress !== null
 
-  const { data: coordPubKeyXRaw } = useReadContract({
-    address: pollAddress ?? ZERO_ADDRESS,
-    abi: POLL_ABI,
-    functionName: 'coordinatorPubKeyX',
-    query: { enabled: hasPoll },
-  })
-  const { data: coordPubKeyYRaw } = useReadContract({
-    address: pollAddress ?? ZERO_ADDRESS,
-    abi: POLL_ABI,
-    functionName: 'coordinatorPubKeyY',
-    query: { enabled: hasPoll },
-  })
-
-  const coordPubKeyX =
-    coordPubKeyXRaw !== undefined ? BigInt(coordPubKeyXRaw as bigint) : DEFAULT_COORD_PUB_KEY_X
-  const coordPubKeyY =
-    coordPubKeyYRaw !== undefined ? BigInt(coordPubKeyYRaw as bigint) : DEFAULT_COORD_PUB_KEY_Y
-
   const { data: voiceCreditsRaw } = useReadContract({
     address: VOICE_CREDIT_PROXY_ADDRESS,
     abi: VOICE_CREDIT_PROXY_ABI,
@@ -215,8 +193,6 @@ export function usePollData(
     setTallyAddress,
     messageProcessorAddress,
     setMessageProcessorAddress,
-    coordPubKeyX,
-    coordPubKeyY,
     voiceCredits,
     numMessages,
     isLoadingPoll,
