@@ -28,11 +28,11 @@ The coercer cannot distinguish key-change messages from vote messages on-chain. 
 
 | Layer | Tech |
 |-------|------|
-| Contracts | Solidity 0.8.24 — MACI, Poll, MessageProcessor, Tally, AccQueue, Groth16 verifiers (14 contracts) |
-| Circuits | Circom 2.1.6 — MessageProcessor, TallyVotes, DuplexSponge, SHA256Hasher (14 circuits) |
-| Coordinator | TypeScript — Auto-runner via GitHub Actions cron (every 5 min), generates Groth16 proofs with snarkjs |
-| Frontend | Next.js 15 + React 19 + Wagmi 3 + Tailwind — i18n (KO/EN), deployed on Vercel |
-| SDK | `sdk/` — Client library (key management, message encryption, command packing) |
+| Contracts | Solidity 0.8.24 — MACI, Poll, MessageProcessor, Tally, AccQueue, Groth16 verifiers, DelegationRegistry, TimelockExecutor (22 contracts) |
+| Circuits | Circom 2.1.6 — MessageProcessor, TallyVotes, DuplexSponge, SHA256Hasher |
+| Coordinator | TypeScript — Auto-runner via GitHub Actions cron (every 5 min), generates Groth16 proofs with snarkjs, multi-key support, error retry with exponential backoff |
+| Frontend | Next.js 15 + React 19 + Wagmi 3 + Tailwind — i18n (KO/EN), deployed on Vercel, real-time status polling, mobile responsive |
+| SDK | `sigil-sdk` on npm — Client library + React widget (key management, encryption, command packing) |
 
 ## Architecture
 
@@ -61,7 +61,7 @@ User (browser)
 
 Two deployments exist: `v2` (dev, tree depth 2) and `prod` (tree depth 4, max 624 voters).
 
-Frontend uses the `v2` deployment. Contract addresses are in [`src/config.json`](./src/config.json).
+Frontend deployment is controlled by `NEXT_PUBLIC_CIRCUIT_MODE` env var (`dev` → v2, `prod` → prod). Default: `dev`. Contract addresses are in [`src/config.json`](./src/config.json).
 
 | Contract | Address (v2) |
 |----------|-------------|
@@ -83,10 +83,36 @@ npm run dev
 
 Open http://localhost:3000. Connect a wallet with Sepolia ETH.
 
+## SDK
+
+Install the standalone SDK for integrating SIGIL voting into any app:
+
+```bash
+npm install sigil-sdk
+```
+
+```typescript
+import { SigilClient } from 'sigil-sdk';
+
+const client = new SigilClient({ maciAddress, provider });
+await client.signUp(signer);
+await client.vote(pollId, choice, weight, signer);
+```
+
+React component:
+
+```tsx
+import { SigilVoteWidget } from 'sigil-sdk/react';
+
+<SigilVoteWidget maciAddress="0x..." pollId={1} />
+```
+
+Full API reference: [`sdk/README.md`](./sdk/README.md)
+
 ## Testing
 
 ```bash
-# Unit + component + security tests (293 tests)
+# Unit + component + security tests (320 tests)
 npm test
 
 # Smart contracts (requires Foundry)
@@ -104,8 +130,7 @@ circuits/      Circom circuits (MessageProcessor, TallyVotes, DuplexSponge)
 coordinator/   Auto-runner that processes votes and generates proofs
 sdk/           Client library (key management, encryption, command packing)
 src/           Next.js frontend (components, crypto, i18n, hooks)
-test/          Vitest tests (components, circuits, crypto, security)
-e2e/           End-to-end tests against Sepolia
+test/          Vitest tests (components, circuits, crypto, security, e2e)
 scripts/       Hardhat deploy scripts
 ```
 
@@ -125,9 +150,11 @@ Runtime secret exposure check (`src/lib/envCheck.ts`) blocks `PRIVATE_KEY` or `S
 
 Error boundaries (`app/error.tsx`, `app/(app)/error.tsx`) hide stack traces in production.
 
-Coordinator writes structured JSON audit logs for every poll processing action.
+Coordinator writes structured JSON audit logs for every poll processing action. Errors are classified as TRANSIENT or PERMANENT with automatic retry for transient failures.
 
 48 security-specific tests cover all 15 OWASP-aligned categories. Run `npm test` to verify.
+
+A code-level security audit was conducted — see [`docs/security-audit-report.md`](./docs/security-audit-report.md). Two HIGH-severity issues in TimelockExecutor were fixed (permissionless registration, unvalidated tally address).
 
 **What this does NOT cover**: CSP allows `unsafe-eval` (required by snarkjs WASM). Rate limiting is in-memory per serverless instance (resets on cold start). Zod validation is client-side only. See Known Limitations.
 
@@ -136,10 +163,12 @@ Coordinator writes structured JSON audit logs for every poll processing action.
 - **Proposal gating**: Only token holders above a threshold can create proposals
 - **Vote delegation**: Delegate voting power to another address via DelegationRegistry
 - **Timelock execution**: Proposals go through a timelock before on-chain execution
+- **Delegation dashboard**: View current delegate, delegators list, and revoke delegation
+- **Proposal search & filter**: Search by title, filter by status (Active/Ended/Tallied)
 
 ## Known Limitations
 
-- Testnet only (Sepolia). Not audited for mainnet use.
+- Testnet only (Sepolia). Code-level audit completed (see Security). No external audit for mainnet use.
 - Coordinator is a single trusted party. It cannot see individual votes but can halt processing.
 - Circuit files (~130 MB) are downloaded at runtime from GitHub Releases, cached in GitHub Actions.
 - `circomlibjs` dependency bundles ethers v5 internally, which has known low-severity vulnerabilities in its `elliptic` transitive dependency. This does not affect SIGIL's use of circomlibjs (Poseidon hashing only).
