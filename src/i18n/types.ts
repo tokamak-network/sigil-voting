@@ -475,6 +475,7 @@ export interface Translations {
     statusVoting: string
     statusRevealing: string
     statusEnded: string
+    searchPlaceholder: string
   }
   voteHistory: {
     alreadyVoted: string
@@ -752,6 +753,14 @@ export interface Translations {
       description: string
       goToProposals: string
       nav: string
+      myDelegation: string
+      delegatedTo: string
+      revokeDelegation: string
+      delegationsReceived: string
+      totalDelegators: string
+      delegatorsList: string
+      andMore: string
+      noDelegationsReceived: string
     }
     execution: {
       title: string

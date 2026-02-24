@@ -51,6 +51,8 @@ export function DelegationPage() {
     setMounted(true)
   }, [])
 
+  const shortenAddress = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-4)
+
   // Read current delegate
   const { data: currentDelegate, refetch: refetchDelegate } = useReadContract({
     address: DELEGATION_REGISTRY_ADDRESS as `0x${string}`,
@@ -76,7 +78,7 @@ export function DelegationPage() {
   })
   const delegatorList = Array.isArray(delegators) ? delegators : []
   const delegateDisplay = typeof currentDelegate === 'string' && currentDelegate !== ZERO_ADDRESS
-    ? currentDelegate
+    ? shortenAddress(currentDelegate)
     : null
   const { data: proxyDelegationRegistry, isError: proxyDelegationError } = useReadContract({
     address: VOICE_CREDIT_PROXY_ADDRESS,
@@ -204,8 +206,6 @@ export function DelegationPage() {
     }
   }, [address, refetchDelegate, refetchIsDelegating])
 
-  const shortenAddress = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-4)
-
   if (!mounted) {
     return (
       <div className="max-w-lg mx-auto p-6">
@@ -252,46 +252,70 @@ export function DelegationPage() {
         </div>
       )}
 
-      {/* Current delegation status */}
-      <div className="border-2 border-border-light dark:border-border-dark p-4 mb-6">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-          {t.governance.delegation.currentDelegate}
-        </h2>
-        {isDelegating ? (
-          <div className="flex items-center justify-between">
-            <span className="font-mono text-sm font-bold">
-              {delegateDisplay ? shortenAddress(delegateDisplay) : '—'}
-            </span>
-            <button
-              onClick={handleUndelegate}
-              disabled={isUndelegatingTx || (isConfirming && lastAction === 'undelegate')}
-              className="bg-red-500 text-white text-xs font-bold px-3 py-1.5 hover:bg-red-600 transition-colors"
-            >
-              {isUndelegatingTx || (isConfirming && lastAction === 'undelegate')
-                ? t.governance.delegation.undelegating
-                : t.governance.delegation.undelegate}
-            </button>
-          </div>
-        ) : (
-          <p className="text-sm text-slate-500">{t.governance.delegation.notDelegating}</p>
-        )}
-        {delegateDisplay && (
-          <p className="text-[10px] text-slate-400 mt-1 break-all font-mono">
-            {delegateDisplay}
-          </p>
-        )}
-        {delegatorList.length > 0 && (
-          <>
-            <p className="text-xs text-slate-500 mt-2">
-              {t.governance.delegation.received} {delegatorList.length}
-            </p>
-            <div className="mt-2 text-[10px] font-mono text-slate-500 break-all">
-              {delegatorList.slice(0, 4).map((d) => shortenAddress(d as string)).join(', ')}
-              {delegatorList.length > 4 ? ` +${delegatorList.length - 4}` : ''}
-            </div>
-          </>
-        )}
-        <p className="text-xs text-slate-400 mt-3">{delegationEffectNote}</p>
+      {/* Delegation Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        {/* My Delegation Status */}
+        <div className="border-2 border-border-light dark:border-border-dark p-4">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+            {t.governance.delegation.myDelegation}
+          </h2>
+          {isDelegating ? (
+            <>
+              <div className="mb-3">
+                <p className="text-[10px] text-slate-400 mb-1">{t.governance.delegation.delegatedTo}</p>
+                <p className="font-mono text-sm font-bold break-all">
+                  {delegateDisplay || '—'}
+                </p>
+              </div>
+              <button
+                onClick={handleUndelegate}
+                disabled={isUndelegatingTx || (isConfirming && lastAction === 'undelegate')}
+                className="w-full bg-red-500 text-white text-xs font-bold px-3 py-2 hover:bg-red-600 transition-colors"
+              >
+                {isUndelegatingTx || (isConfirming && lastAction === 'undelegate')
+                  ? t.governance.delegation.undelegating
+                  : t.governance.delegation.revokeDelegation}
+              </button>
+            </>
+          ) : (
+            <p className="text-sm text-slate-500">{t.governance.delegation.notDelegating}</p>
+          )}
+        </div>
+
+        {/* Delegations Received */}
+        <div className="border-2 border-border-light dark:border-border-dark p-4">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+            {t.governance.delegation.delegationsReceived}
+          </h2>
+          {delegatorList.length > 0 ? (
+            <>
+              <div className="mb-3">
+                <p className="text-[10px] text-slate-400 mb-1">{t.governance.delegation.totalDelegators}</p>
+                <p className="text-2xl font-display font-bold">{delegatorList.length}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] text-slate-400 uppercase tracking-wider">{t.governance.delegation.delegatorsList}</p>
+                {delegatorList.slice(0, 5).map((d, i) => (
+                  <div key={i} className="text-[10px] font-mono text-slate-600 break-all">
+                    {d as string}
+                  </div>
+                ))}
+                {delegatorList.length > 5 && (
+                  <p className="text-[10px] text-slate-400">
+                    {t.governance.delegation.andMore.replace('{count}', String(delegatorList.length - 5))}
+                  </p>
+                )}
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-slate-500">{t.governance.delegation.noDelegationsReceived}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Delegation Effect Note */}
+      <div className="bg-blue-50 border-2 border-blue-200 p-3 mb-6">
+        <p className="text-xs text-blue-700">{delegationEffectNote}</p>
       </div>
 
       {/* Success messages */}

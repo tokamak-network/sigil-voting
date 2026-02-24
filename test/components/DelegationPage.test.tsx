@@ -88,7 +88,7 @@ describe('DelegationPage', () => {
     mockCurrentDelegate = '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd'
     renderWithProviders(<DelegationPage />)
     expect(await screen.findByText('0xabcd...abcd')).toBeInTheDocument()
-    expect(await screen.findByText(/Remove Delegation|위임 해제/i)).toBeInTheDocument()
+    expect(await screen.findByText(/Remove Delegation|Revoke Delegation|위임 해제/i)).toBeInTheDocument()
   })
 
   it('shows not delegating message when no delegation', async () => {

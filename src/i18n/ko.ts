@@ -503,6 +503,7 @@ export const ko: Translations = {
     statusVoting: '투표 중',
     statusRevealing: '집계 중',
     statusEnded: '종료',
+    searchPlaceholder: '제안 제목이나 설명으로 검색...',
   },
   voteHistory: {
     alreadyVoted: '이 제안에 이미 투표하셨습니다.',
@@ -780,6 +781,14 @@ export const ko: Translations = {
       description: '투표권을 신뢰하는 주소에 위임하세요. 위임 중에는 본인이 직접 투표할 수 없습니다.',
       goToProposals: '제안으로 이동',
       nav: '위임',
+      myDelegation: '내 위임 현황',
+      delegatedTo: '위임 대상',
+      revokeDelegation: '위임 해제',
+      delegationsReceived: '위임받은 투표권',
+      totalDelegators: '총 위임자 수',
+      delegatorsList: '위임자 목록',
+      andMore: '외 {count}명',
+      noDelegationsReceived: '위임받은 투표권이 없습니다',
     },
     execution: {
       title: '온체인 실행',

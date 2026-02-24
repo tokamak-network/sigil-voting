@@ -88,8 +88,8 @@ describe('VoteFormV2', () => {
 
   it('shows default weight of 1', () => {
     const { container } = renderWithProviders(<VoteFormV2 {...defaultProps} />)
-    // Weight display is the large centered number in the flex-1 box
-    const weightDisplay = container.querySelector('.font-mono.font-bold.text-4xl')
+    // Weight display is the large centered number in the flex-1 box (responsive: text-3xl sm:text-4xl)
+    const weightDisplay = container.querySelector('.flex-1.h-12')
     expect(weightDisplay?.textContent).toBe('1')
   })
 

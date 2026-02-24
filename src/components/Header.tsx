@@ -90,12 +90,12 @@ export function Header() {
     <header className="sticky top-0 z-50 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b-2 border-border-light dark:border-border-dark">
       <div className="container mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
         {/* Left: Brand + Testnet badge */}
-        <div className="flex items-center gap-2">
-          <Link href="/" className="flex items-center gap-2">
-            <img src="/assets/symbol.svg" alt="SIGIL" className="w-8 h-8" />
-            <span className="font-display font-extrabold text-xl tracking-tighter uppercase">SIGIL</span>
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <Link href="/" className="flex items-center gap-1.5 sm:gap-2">
+            <img src="/assets/symbol.svg" alt="SIGIL" className="w-6 h-6 sm:w-8 sm:h-8" />
+            <span className="font-display font-extrabold text-lg sm:text-xl tracking-tighter uppercase">SIGIL</span>
           </Link>
-          <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold uppercase tracking-wider border border-amber-300 rounded-sm">
+          <span className="px-1.5 py-0.5 sm:px-2 bg-amber-100 text-amber-700 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider border border-amber-300 rounded-sm whitespace-nowrap">
             {t.header.testnet}
           </span>
         </div>
@@ -164,7 +164,7 @@ export function Header() {
             <button
               onClick={handleSwitchNetwork}
               disabled={isSwitching}
-              className="bg-red-500 text-white px-4 py-2 text-xs font-bold border-2 border-black"
+              className="bg-red-500 text-white px-2 py-1.5 sm:px-4 sm:py-2 text-[10px] sm:text-xs font-bold border-2 border-black whitespace-nowrap"
             >
               {isSwitching ? t.header.switching : t.header.wrongNetwork}
             </button>
@@ -178,12 +178,12 @@ export function Header() {
                 className="flex items-center border-2 border-border-light dark:border-border-dark hover:border-red-500 transition-colors group"
                 title={t.header.disconnect}
               >
-                <div className="px-3 py-1 bg-black text-white text-xs font-bold group-hover:bg-red-500 transition-colors">{shortenAddress(address!)}</div>
+                <div className="px-2 py-1 sm:px-3 bg-black text-white text-[10px] sm:text-xs font-bold group-hover:bg-red-500 transition-colors">{shortenAddress(address!)}</div>
               </button>
               {showDisconnectConfirm && (
-                <div className="absolute right-0 top-full mt-2 bg-white border-2 border-black p-3 min-w-[200px] z-50" style={{ boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)' }}>
+                <div className="absolute right-0 top-full mt-2 bg-white border-2 border-black p-3 min-w-[200px] max-w-[90vw] z-50" style={{ boxShadow: '4px 4px 0px 0px rgba(0, 0, 0, 1)' }}>
                   <p className="text-xs font-bold text-slate-700 mb-3">{t.header.disconnectConfirm}</p>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <button
                       onClick={() => { disconnect(); setShowDisconnectConfirm(false); }}
                       className="flex-1 bg-red-500 text-white text-xs font-bold py-1.5 px-3 hover:bg-red-600 transition-colors"
@@ -207,7 +207,7 @@ export function Header() {
             <button
               onClick={handleConnect}
               disabled={isConnecting}
-              className="bg-primary text-white font-display font-bold px-4 py-2 hover:translate-x-1 hover:-translate-y-1 transition-transform border-2 border-black"
+              className="bg-primary text-white font-display font-bold px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm hover:translate-x-1 hover:-translate-y-1 transition-transform border-2 border-black whitespace-nowrap"
             >
               {isConnecting ? t.header.connecting : t.header.connect.toUpperCase()}
             </button>

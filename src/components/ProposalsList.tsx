@@ -87,6 +87,7 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   const [now, setNow] = useState(0)
   const [refreshKey, setRefreshKey] = useState(0)
   const [filter, setFilter] = useState<FilterTab>('all')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
 
@@ -321,12 +322,27 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [polls, now])
 
-  // Filtered polls
+  // Filtered polls (by status and search)
   const filteredPolls = useMemo(() => {
-    if (filter === 'all') return polls
-    return polls.filter(poll => getFilterCategory(poll) === filter)
+    let result = polls
+
+    // Filter by status
+    if (filter !== 'all') {
+      result = result.filter(poll => getFilterCategory(poll) === filter)
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      result = result.filter(poll =>
+        poll.title.toLowerCase().includes(query) ||
+        (poll.description?.toLowerCase() || '').includes(query)
+      )
+    }
+
+    return result
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [polls, filter, now])
+  }, [polls, filter, searchQuery, now])
 
   // Status badge styling
   const getStatusBadge = (poll: PollInfo) => {
@@ -361,44 +377,68 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   return (
     <div className="container mx-auto px-6 py-12">
       {/* ── Header Section ── */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-6xl font-display font-black uppercase italic leading-none tracking-tighter">
-              {t.proposals.title}
-            </h1>
-            <span className="bg-primary text-white text-xs font-bold px-3 py-1 uppercase tracking-widest">
-              {t.proposals.daoGovernance}
-            </span>
+      <div className="mb-12">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-6">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-6xl font-display font-black uppercase italic leading-none tracking-tighter">
+                {t.proposals.title}
+              </h1>
+              <span className="bg-primary text-white text-xs font-bold px-3 py-1 uppercase tracking-widest">
+                {t.proposals.daoGovernance}
+              </span>
+            </div>
+            <p className="text-slate-500 font-medium text-lg">
+              {t.proposals.subtitle}
+            </p>
           </div>
-          <p className="text-slate-500 font-medium text-lg">
-            {t.proposals.subtitle}
-          </p>
+
+          {/* ── Filter Tabs (desktop: inline with header) ── */}
+          <div className="flex flex-nowrap overflow-x-auto border-2 border-black font-bold text-sm bg-white">
+            {([
+              { key: 'all' as FilterTab, label: t.proposals.filterAll, dot: null },
+              { key: 'voting' as FilterTab, label: t.proposals.filterVoting, dot: 'bg-primary' },
+              { key: 'processing' as FilterTab, label: t.proposals.filterProcessing, dot: 'bg-amber-400' },
+              { key: 'ended' as FilterTab, label: t.proposals.filterEnded, dot: null },
+            ]).map(({ key, label, dot }, idx) => (
+              <button
+                key={key}
+                onClick={() => setFilter(key)}
+                className={`px-6 py-3 uppercase tracking-wider flex items-center gap-2 transition-colors duration-100 ${
+                  idx > 0 ? 'border-l-2 border-black' : ''
+                } ${
+                  filter === key
+                    ? 'bg-black text-white'
+                    : 'hover:bg-slate-50'
+                }`}
+              >
+                {dot && <span className={`w-2 h-2 rounded-full ${dot}`}></span>}
+                {label} ({counts[key]})
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* ── Filter Tabs (desktop: inline with header) ── */}
-        <div className="flex flex-nowrap overflow-x-auto border-2 border-black font-bold text-sm bg-white">
-          {([
-            { key: 'all' as FilterTab, label: t.proposals.filterAll, dot: null },
-            { key: 'voting' as FilterTab, label: t.proposals.filterVoting, dot: 'bg-primary' },
-            { key: 'processing' as FilterTab, label: t.proposals.filterProcessing, dot: 'bg-amber-400' },
-            { key: 'ended' as FilterTab, label: t.proposals.filterEnded, dot: null },
-          ]).map(({ key, label, dot }, idx) => (
+        {/* ── Search Bar ── */}
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t.proposals.searchPlaceholder}
+            className="w-full border-2 border-black p-3 pl-10 font-sans text-sm focus:outline-none focus:border-primary"
+          />
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl">
+            search
+          </span>
+          {searchQuery && (
             <button
-              key={key}
-              onClick={() => setFilter(key)}
-              className={`px-6 py-3 uppercase tracking-wider flex items-center gap-2 transition-colors duration-100 ${
-                idx > 0 ? 'border-l-2 border-black' : ''
-              } ${
-                filter === key
-                  ? 'bg-black text-white'
-                  : 'hover:bg-slate-50'
-              }`}
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-black"
             >
-              {dot && <span className={`w-2 h-2 rounded-full ${dot}`}></span>}
-              {label} ({counts[key]})
+              <span className="material-symbols-outlined text-xl">close</span>
             </button>
-          ))}
+          )}
         </div>
       </div>
 

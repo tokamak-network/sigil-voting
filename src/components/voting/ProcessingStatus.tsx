@@ -128,14 +128,14 @@ export function ProcessingStatus({
   const hasValidAddresses = !!mpAddress && !!tAddress && mpAddress !== ZERO_ADDRESS && tAddress !== ZERO_ADDRESS;
   const estimateMs = 4 * 60 * 1000;
 
-  const { data: processingComplete } = useReadContract({
+  const { data: processingComplete, dataUpdatedAt: procUpdatedAt } = useReadContract({
     address: mpAddress!,
     abi: MESSAGE_PROCESSOR_ABI,
     functionName: 'processingComplete',
     query: { enabled: hasValidAddresses, refetchInterval: 10000 },
   });
 
-  const { data: tallyVerified } = useReadContract({
+  const { data: tallyVerified, dataUpdatedAt: tallyUpdatedAt } = useReadContract({
     address: tAddress!,
     abi: TALLY_ABI,
     functionName: 'tallyVerified',
@@ -143,6 +143,7 @@ export function ProcessingStatus({
   });
 
   const isFinalized = tallyVerified === true;
+  const isRefreshing = procUpdatedAt > 0 || tallyUpdatedAt > 0;
 
   // Simplified waiting state when addresses not available
   if (!hasValidAddresses) {
@@ -200,6 +201,9 @@ export function ProcessingStatus({
           <span className="material-symbols-outlined text-primary text-2xl animate-spin" aria-hidden="true">progress_activity</span>
         )}
         <h3 className="font-display text-2xl font-black uppercase tracking-tight">{t.processing.title}</h3>
+        {!isFinalized && isRefreshing && (
+          <span className="w-2 h-2 bg-primary rounded-full animate-pulse" title="Auto-refreshing" aria-label="Auto-refreshing status"></span>
+        )}
       </div>
       <p className="text-sm text-slate-500 mb-6">{t.processing.desc}</p>
 

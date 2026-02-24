@@ -45,14 +45,14 @@ export function MergingStatus({ pollAddress, votingEndTime }: MergingStatusProps
 
   const isStuck = elapsed > STUCK_THRESHOLD_MS;
 
-  const { data: stateAqMerged, isPending: stateLoading } = useReadContract({
+  const { data: stateAqMerged, isPending: stateLoading, dataUpdatedAt: stateUpdatedAt } = useReadContract({
     address: address!,
     abi: POLL_ABI,
     functionName: 'stateAqMerged',
     query: { enabled: hasValidAddress, refetchInterval: 10000 },
   });
 
-  const { data: messageAqMerged, isPending: msgLoading } = useReadContract({
+  const { data: messageAqMerged, isPending: msgLoading, dataUpdatedAt: msgUpdatedAt } = useReadContract({
     address: address!,
     abi: POLL_ABI,
     functionName: 'messageAqMerged',
@@ -63,6 +63,7 @@ export function MergingStatus({ pollAddress, votingEndTime }: MergingStatusProps
   const stateComplete = stateAqMerged === true;
   const messageComplete = messageAqMerged === true;
   const allMerged = stateComplete && messageComplete;
+  const isRefreshing = stateUpdatedAt > 0 || msgUpdatedAt > 0;
 
   const estimateMs = 2 * 60 * 1000;
   const remaining = Math.max(0, estimateMs - elapsed);
@@ -77,6 +78,9 @@ export function MergingStatus({ pollAddress, votingEndTime }: MergingStatusProps
         <h3 className="font-display text-2xl font-black uppercase tracking-tight">
           {t.merging.title}
         </h3>
+        {!allMerged && isRefreshing && (
+          <span className="w-2 h-2 bg-primary rounded-full animate-pulse" title="Auto-refreshing" aria-label="Auto-refreshing status"></span>
+        )}
       </div>
       <p className="text-sm text-slate-500 mb-6">{t.merging.desc}</p>
 

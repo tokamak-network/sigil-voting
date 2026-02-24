@@ -492,7 +492,7 @@ export function VoteFormV2({
   return (
     <>
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      <div className="bg-white p-8 border-4 border-black flex flex-col gap-10 md:sticky md:top-32" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>
+      <div className="bg-white p-4 sm:p-6 md:p-8 border-4 border-black flex flex-col gap-6 sm:gap-8 md:gap-10 md:sticky md:top-32" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>
 
       {/* Vote history banner */}
       {hasVoted && lastVote && (
@@ -539,13 +539,13 @@ export function VoteFormV2({
 
       {/* CHOOSE DIRECTION */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+        <h3 className="text-xs font-bold uppercase tracking-[0.2em] mb-4 sm:mb-6 flex items-center gap-2">
           <span className="w-2 h-2 bg-primary"></span>
           {t.voteForm.title}
         </h3>
-        <div className="grid grid-cols-2 gap-4" role="radiogroup" aria-label={t.voteForm.title}>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4" role="radiogroup" aria-label={t.voteForm.title}>
           <button
-            className={`border-2 border-black py-6 font-black text-lg uppercase tracking-widest flex flex-col items-center justify-center gap-1 transition-all ${
+            className={`border-2 border-black py-4 sm:py-6 font-black text-sm sm:text-lg uppercase tracking-widest flex flex-col items-center justify-center gap-1 transition-all ${
               choice === 1
                 ? 'bg-emerald-500 text-white'
                 : 'bg-white text-black hover:bg-slate-50'
@@ -556,11 +556,11 @@ export function VoteFormV2({
             role="radio"
             aria-checked={choice === 1}
           >
-            <span className="material-symbols-outlined text-3xl">add_circle</span>
+            <span className="material-symbols-outlined text-2xl sm:text-3xl">add_circle</span>
             {t.voteForm.for}
           </button>
           <button
-            className={`border-2 border-black py-6 font-black text-lg uppercase tracking-widest flex flex-col items-center justify-center gap-1 transition-all ${
+            className={`border-2 border-black py-4 sm:py-6 font-black text-sm sm:text-lg uppercase tracking-widest flex flex-col items-center justify-center gap-1 transition-all ${
               choice === 0
                 ? 'bg-red-500 text-white'
                 : 'bg-white text-black hover:bg-slate-50'
@@ -571,7 +571,7 @@ export function VoteFormV2({
             role="radio"
             aria-checked={choice === 0}
           >
-            <span className="material-symbols-outlined text-3xl">remove_circle</span>
+            <span className="material-symbols-outlined text-2xl sm:text-3xl">remove_circle</span>
             {t.voteForm.against}
           </button>
         </div>
@@ -579,26 +579,26 @@ export function VoteFormV2({
 
       {/* VOTE INTENSITY */}
       <div>
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0 mb-4 sm:mb-6">
           <h3 className="text-xs font-bold uppercase tracking-[0.2em] flex items-center gap-2">
             <span className="w-2 h-2 bg-primary"></span>
             {t.voteForm.weightLabel}
           </h3>
-          <span className="text-xs font-mono font-bold bg-black text-white px-2 py-1 uppercase">{t.voteForm.cost} = {t.voteForm.weightLabel}²</span>
+          <span className="text-[10px] sm:text-xs font-mono font-bold bg-black text-white px-2 py-1 uppercase">{t.voteForm.cost} = {t.voteForm.weightLabel}²</span>
         </div>
-        <div className="flex items-center gap-4 mb-8">
+        <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
           <button
-            className="w-16 h-16 border-2 border-black flex items-center justify-center font-bold text-2xl hover:bg-slate-100 transition-colors"
+            className="w-12 h-12 sm:w-16 sm:h-16 border-2 border-black flex items-center justify-center font-bold text-xl sm:text-2xl hover:bg-slate-100 transition-colors shrink-0"
             onClick={() => setWeight(Math.max(1, weight - 1))}
             disabled={isSubmitting || weight <= 1}
           >
             -
           </button>
-          <div className="flex-1 h-16 border-2 border-black flex items-center justify-center font-mono font-bold text-4xl bg-slate-50">
+          <div className="flex-1 h-12 sm:h-16 border-2 border-black flex items-center justify-center font-mono font-bold text-3xl sm:text-4xl bg-slate-50">
             {weight}
           </div>
           <button
-            className="w-16 h-16 border-2 border-black flex items-center justify-center font-bold text-2xl hover:bg-slate-100 transition-colors"
+            className="w-12 h-12 sm:w-16 sm:h-16 border-2 border-black flex items-center justify-center font-bold text-xl sm:text-2xl hover:bg-slate-100 transition-colors shrink-0"
             onClick={() => setWeight(Math.min(MAX_WEIGHT, weight + 1))}
             disabled={isSubmitting || weight >= MAX_WEIGHT}
           >
@@ -677,19 +677,19 @@ export function VoteFormV2({
       </div>
 
       {/* Submit */}
-      <div className="pt-4">
+      <div className="pt-2 sm:pt-4">
         <button
           onClick={() => setShowConfirm(true)}
           disabled={choice === null || isSubmitting || !address || creditExceeded}
-          className="w-full bg-primary text-white py-6 font-display font-black uppercase italic text-2xl tracking-widest border-2 border-black hover:translate-y-[-2px] hover:translate-x-[-2px] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:translate-x-0"
+          className="w-full bg-primary text-white py-4 sm:py-6 font-display font-black uppercase italic text-xl sm:text-2xl tracking-widest border-2 border-black hover:translate-y-[-2px] hover:translate-x-[-2px] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:translate-x-0"
           style={{ boxShadow: '4px 4px 0px 0px rgba(37, 99, 235, 1)' }}
           aria-busy={isSubmitting}
         >
           {isSubmitting ? t.voteForm.submitting : t.voteForm.submit}
         </button>
-        <div className="flex items-center justify-center gap-2 mt-6 py-3 bg-slate-50 border border-black/10">
+        <div className="flex items-center justify-center gap-2 mt-4 sm:mt-6 py-3 bg-slate-50 border border-black/10">
           <span className="material-symbols-outlined text-[16px] text-green-600">lock</span>
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+          <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-widest text-center">
             {t.voteForm.desc}
           </p>
         </div>

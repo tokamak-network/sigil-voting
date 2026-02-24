@@ -47,14 +47,14 @@ export function TallyingStatus({
   const hasValidTally = tAddr !== ZERO_ADDRESS
 
   // On-chain state polling
-  const { data: stateAqMerged } = useReadContract({
+  const { data: stateAqMerged, dataUpdatedAt: stateUpdatedAt } = useReadContract({
     address: addr,
     abi: POLL_ABI,
     functionName: 'stateAqMerged',
     query: { enabled: hasValidPoll, refetchInterval: 10000 },
   })
 
-  const { data: messageAqMerged } = useReadContract({
+  const { data: messageAqMerged, dataUpdatedAt: msgUpdatedAt } = useReadContract({
     address: addr,
     abi: POLL_ABI,
     functionName: 'messageAqMerged',
@@ -75,14 +75,14 @@ export function TallyingStatus({
     query: { enabled: hasValidPoll, refetchInterval: 30000 },
   })
 
-  const { data: processingComplete } = useReadContract({
+  const { data: processingComplete, dataUpdatedAt: procUpdatedAt } = useReadContract({
     address: mpAddr,
     abi: MESSAGE_PROCESSOR_ABI,
     functionName: 'processingComplete',
     query: { enabled: hasValidMp, refetchInterval: 10000 },
   })
 
-  const { data: tallyVerified } = useReadContract({
+  const { data: tallyVerified, dataUpdatedAt: tallyUpdatedAt } = useReadContract({
     address: tAddr,
     abi: TALLY_ABI,
     functionName: 'tallyVerified',
@@ -94,6 +94,7 @@ export function TallyingStatus({
   const isFinalized = tallyVerified === true
   const numMessages = numMessagesRaw !== undefined ? Number(numMessagesRaw) : 0
   const numEligibleSignUps = numSignUpsAtDeployRaw !== undefined ? Number(numSignUpsAtDeployRaw) : numSignUps
+  const isRefreshing = !isFinalized && (stateUpdatedAt > 0 || msgUpdatedAt > 0 || procUpdatedAt > 0 || tallyUpdatedAt > 0)
 
   // Adaptive countdown: adjusts remaining time based on actual on-chain progress
   // Total ~3min: merge ~50s, processing ~50s, tally ~25s, publish ~20s
@@ -143,6 +144,9 @@ export function TallyingStatus({
           <span className="font-display font-black text-lg italic uppercase tracking-widest">
             {t.tallying.banner}
           </span>
+          {isRefreshing && (
+            <span className="w-2 h-2 bg-black rounded-full animate-pulse" title="Auto-refreshing" aria-label="Auto-refreshing status"></span>
+          )}
         </div>
       </div>
 

@@ -178,15 +178,15 @@ export default function VoteHistoryPage() {
   }
 
   return (
-    <div className="container mx-auto px-6 py-12">
+    <div className="container mx-auto px-4 sm:px-6 py-8 sm:py-12">
       {/* Header */}
-      <div className="mb-12">
+      <div className="mb-8 sm:mb-12">
         <div className="flex items-center gap-3 mb-2">
-          <h1 className="text-6xl font-display font-black uppercase italic leading-none tracking-tighter">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-display font-black uppercase italic leading-none tracking-tighter">
             {t.voteHistory.pageTitle}
           </h1>
         </div>
-        <p className="text-slate-500 font-medium text-lg">
+        <p className="text-slate-500 font-medium text-base sm:text-lg">
           {t.voteHistory.pageSubtitle}
         </p>
       </div>
@@ -248,36 +248,36 @@ export default function VoteHistoryPage() {
                 </div>
 
                 {/* Title */}
-                <h3 className="text-2xl font-display font-bold uppercase leading-tight mb-3 group-hover:text-primary transition-colors">
+                <h3 className="text-xl sm:text-2xl font-display font-bold uppercase leading-tight mb-3 group-hover:text-primary transition-colors">
                   {item.title}
                 </h3>
 
                 {/* Vote details grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6 mb-4">
                   <div>
-                    <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
+                    <span className="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
                       {t.voteHistory.myVote}
                     </span>
-                    <span className="text-lg font-display font-bold">{item.choice}</span>
+                    <span className="text-base sm:text-lg font-display font-bold">{item.choice}</span>
                   </div>
                   <div>
-                    <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
+                    <span className="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
                       {t.voteHistory.lastWeight}
                     </span>
-                    <span className="text-lg font-display font-bold">{item.weight}</span>
+                    <span className="text-base sm:text-lg font-display font-bold">{item.weight}</span>
                   </div>
                   <div>
-                    <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
+                    <span className="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
                       {t.voteHistory.lastCost}
                     </span>
-                    <span className="text-lg font-display font-bold">{item.cost} {t.voteForm.credits}</span>
+                    <span className="text-base sm:text-lg font-display font-bold">{item.cost} {t.voteForm.credits}</span>
                   </div>
                   {item.status === 'active' && remaining > 0 && (
                     <div>
-                      <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
+                      <span className="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">
                         {t.timer.remaining}
                       </span>
-                      <span className="text-lg font-mono font-bold text-primary">{formatTime(remaining)}</span>
+                      <span className="text-base sm:text-lg font-mono font-bold text-primary">{formatTime(remaining)}</span>
                     </div>
                   )}
                 </div>

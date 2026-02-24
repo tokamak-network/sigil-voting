@@ -71,21 +71,21 @@ export function PollTimer({ pollAddress, onExpired }: PollTimerProps) {
 
   return (
     <div role="timer" aria-live="polite">
-      <h4 className="text-xs font-bold uppercase tracking-[0.3em] text-slate-400 mb-8 text-center">{t.timer.remaining}</h4>
-      <div className="flex justify-center items-center gap-8">
+      <h4 className="text-xs font-bold uppercase tracking-[0.3em] text-slate-400 mb-4 sm:mb-8 text-center">{t.timer.remaining}</h4>
+      <div className="flex justify-center items-center gap-3 sm:gap-6 md:gap-8">
         <div className="text-center">
-          <span className="text-7xl lg:text-8xl font-mono font-bold text-primary tracking-tighter">{pad(hours)}</span>
-          <span className="block text-xs font-bold text-slate-400 uppercase mt-2">{t.timer.hours}</span>
+          <span className="text-4xl sm:text-6xl lg:text-8xl font-mono font-bold text-primary tracking-tighter">{pad(hours)}</span>
+          <span className="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mt-1 sm:mt-2">{t.timer.hours}</span>
         </div>
-        <span className="text-6xl font-mono font-bold text-slate-300 mb-6">:</span>
+        <span className="text-3xl sm:text-5xl md:text-6xl font-mono font-bold text-slate-300 mb-3 sm:mb-6">:</span>
         <div className="text-center">
-          <span className="text-7xl lg:text-8xl font-mono font-bold text-primary tracking-tighter">{pad(minutes)}</span>
-          <span className="block text-xs font-bold text-slate-400 uppercase mt-2">{t.timer.minutes}</span>
+          <span className="text-4xl sm:text-6xl lg:text-8xl font-mono font-bold text-primary tracking-tighter">{pad(minutes)}</span>
+          <span className="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mt-1 sm:mt-2">{t.timer.minutes}</span>
         </div>
-        <span className="text-6xl font-mono font-bold text-slate-300 mb-6">:</span>
+        <span className="text-3xl sm:text-5xl md:text-6xl font-mono font-bold text-slate-300 mb-3 sm:mb-6">:</span>
         <div className="text-center">
-          <span className="text-7xl lg:text-8xl font-mono font-bold text-primary tracking-tighter">{pad(seconds)}</span>
-          <span className="block text-xs font-bold text-slate-400 uppercase mt-2">{t.timer.seconds}</span>
+          <span className="text-4xl sm:text-6xl lg:text-8xl font-mono font-bold text-primary tracking-tighter">{pad(seconds)}</span>
+          <span className="block text-[10px] sm:text-xs font-bold text-slate-400 uppercase mt-1 sm:mt-2">{t.timer.seconds}</span>
         </div>
       </div>
     </div>

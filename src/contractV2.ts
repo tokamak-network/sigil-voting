@@ -3,18 +3,25 @@
  *
  * Separated contracts: MACI → Poll → MessageProcessor → Tally
  * No reveal functions. Encrypted messages only.
+ *
+ * @deprecated Import from lib/configLoader instead for environment-aware config
+ * This file is kept for backward compatibility only
  */
 
-import { config } from './config';
-
-// V2 Contract addresses (loaded from config.json)
-const v2 = config.v2 || {};
-export const MACI_DEPLOY_BLOCK = BigInt(config.deployBlock || 0);
-export const MACI_V2_ADDRESS = (v2.maci || '0x0000000000000000000000000000000000000000') as `0x${string}`;
-/** @deprecated Use useVoiceCreditToken() hook instead — reads token address from voiceCreditProxy on-chain */
-export const TOKEN_ADDRESS = (v2.token || v2.tonToken || '0x0000000000000000000000000000000000000000') as `0x${string}`;
-export const DEPLOYER_ADDRESS = (config.deployer || '0x0000000000000000000000000000000000000000') as `0x${string}`;
-export const VOICE_CREDIT_PROXY_ADDRESS = (v2.voiceCreditProxy || '0x0000000000000000000000000000000000000000') as `0x${string}`;
+export {
+  MACI_V2_ADDRESS,
+  MACI_DEPLOY_BLOCK,
+  TOKEN_ADDRESS,
+  DEPLOYER_ADDRESS,
+  VOICE_CREDIT_PROXY_ADDRESS,
+  MSG_PROCESSOR_VERIFIER_ADDRESS,
+  TALLY_VERIFIER_ADDRESS,
+  VK_REGISTRY_ADDRESS,
+  DEFAULT_COORD_PUB_KEY_X,
+  DEFAULT_COORD_PUB_KEY_Y,
+  DELEGATION_REGISTRY_ADDRESS,
+  TIMELOCK_EXECUTOR_ADDRESS,
+} from './lib/configLoader';
 
 // DelegatingVoiceCreditProxy (optional)
 export const DELEGATING_VOICE_CREDIT_PROXY_ABI = [
@@ -26,13 +33,6 @@ export const DELEGATING_VOICE_CREDIT_PROXY_ABI = [
     stateMutability: 'view',
   },
 ] as const;
-export const MSG_PROCESSOR_VERIFIER_ADDRESS = (v2.msgProcessorVerifier || '0x0000000000000000000000000000000000000000') as `0x${string}`;
-export const TALLY_VERIFIER_ADDRESS = (v2.tallyVerifier || '0x0000000000000000000000000000000000000000') as `0x${string}`;
-export const VK_REGISTRY_ADDRESS = (v2.vkRegistry || '0x0000000000000000000000000000000000000000') as `0x${string}`;
-
-// Default coordinator keys (from config.json, overridden by on-chain values when poll exists)
-export const DEFAULT_COORD_PUB_KEY_X = BigInt(v2.coordinatorPubKeyX || '111');
-export const DEFAULT_COORD_PUB_KEY_Y = BigInt(v2.coordinatorPubKeyY || '222');
 
 // Poll/MP/Tally are deployed dynamically via MACI.deployPoll()
 export const POLL_V2_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`;
@@ -376,8 +376,6 @@ export const ERC20_ABI = [
 ] as const;
 
 // Governance: Delegation Registry
-export const DELEGATION_REGISTRY_ADDRESS = (v2.delegationRegistry || '0x0000000000000000000000000000000000000000') as `0x${string}`;
-
 export const DELEGATION_REGISTRY_ABI = [
   {
     type: 'function',
@@ -433,8 +431,6 @@ export const DELEGATION_REGISTRY_ABI = [
 ] as const;
 
 // Governance: Timelock Executor
-export const TIMELOCK_EXECUTOR_ADDRESS = (v2.timelockExecutor || '0x0000000000000000000000000000000000000000') as `0x${string}`;
-
 export const TIMELOCK_EXECUTOR_ABI = [
   {
     type: 'function',
