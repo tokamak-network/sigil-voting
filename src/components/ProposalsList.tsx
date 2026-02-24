@@ -257,7 +257,7 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     }
 
     loadPolls()
-  }, [nextPollId, publicClient, address, refreshKey, polls.length])
+  }, [nextPollId, publicClient, address, refreshKey])
 
   const getStatus = (poll: PollInfo): 'active' | 'ended' | 'finalized' | 'failed' | 'noVotes' => {
     const votingEndTime = poll.deployTime + poll.duration
