@@ -71,12 +71,22 @@ const TV_ZKEY = IS_PROD
 
 // ─── Load Configuration ───────────────────────────────────────────────
 
+interface CoordinatorKeyEntry {
+  deploymentId: string;       // 'v2' or 'prod'
+  maciAddress: string;
+  coordinatorSk: bigint;
+  coordinatorPubKeyX: string; // from config.json for quick comparison
+  coordinatorPubKeyY: string;
+}
+
 interface Config {
   privateKey: string;
-  coordinatorSk: bigint;
+  coordinatorSk: bigint;       // primary key (backward compat)
   rpcUrl: string;
-  maciAddress: string;
+  maciAddress: string;         // primary MACI address
   deployBlock: number;
+  coordinatorKeys: CoordinatorKeyEntry[];  // all available coordinator keys
+  allMaciAddresses: string[];              // all known MACI contract addresses
 }
 
 export function loadConfig(): Config {
@@ -92,29 +102,73 @@ export function loadConfig(): Config {
   const get = (k: string) => process.env[k] || envVars[k] || '';
 
   const privateKey = get('PRIVATE_KEY');
-  const coordKey = get('COORDINATOR_PRIVATE_KEY');
   const rpcUrl = get('SEPOLIA_RPC_URL') || 'https://ethereum-sepolia-rpc.publicnode.com';
 
   if (!privateKey) throw new Error('PRIVATE_KEY not set in .env');
-  if (!coordKey) throw new Error('COORDINATOR_PRIVATE_KEY not set in .env');
 
   const configJson = JSON.parse(readFileSync(resolve(PROJECT_ROOT, 'src/config.json'), 'utf8'));
   // MACI_ADDRESS env overrides config.json (allows prod circuits with v2 contract)
   const maciAddress = get('MACI_ADDRESS') || (IS_PROD ? configJson.prod?.maci : configJson.v2?.maci);
   if (!maciAddress) throw new Error(`MACI address not found in config.json (mode=${CIRCUIT_MODE})`);
 
-  const rawCoordinatorSk = BigInt(`0x${coordKey.replace(/^0x/, '')}`);
-  const coordinatorSk = normalizeCoordinatorSk(rawCoordinatorSk);
-  if (coordinatorSk !== rawCoordinatorSk) {
-    console.warn('[WARN] COORDINATOR_PRIVATE_KEY reduced to BabyJubjub suborder for circuit compatibility');
+  // Build coordinator keys list: support per-deployment keys
+  // Priority: COORDINATOR_PRIVATE_KEY_V2 / _PROD > generic COORDINATOR_PRIVATE_KEY
+  const coordKeyGeneric = get('COORDINATOR_PRIVATE_KEY');
+  const coordKeyV2 = get('COORDINATOR_PRIVATE_KEY_V2');
+  const coordKeyProd = get('COORDINATOR_PRIVATE_KEY_PROD');
+
+  // At least one coordinator key must be set
+  if (!coordKeyGeneric && !coordKeyV2 && !coordKeyProd) {
+    throw new Error('No coordinator key set. Set COORDINATOR_PRIVATE_KEY, COORDINATOR_PRIVATE_KEY_V2, or COORDINATOR_PRIVATE_KEY_PROD');
   }
+
+  const coordinatorKeys: CoordinatorKeyEntry[] = [];
+  const allMaciAddresses: string[] = [];
+
+  // Helper to normalize and create a key entry
+  const makeKeyEntry = (deploymentId: string, rawKey: string, maciAddr: string, pubKeyX: string, pubKeyY: string): CoordinatorKeyEntry => {
+    const raw = BigInt(`0x${rawKey.replace(/^0x/, '')}`);
+    const sk = normalizeCoordinatorSk(raw);
+    if (sk !== raw) {
+      console.warn(`[WARN] COORDINATOR_PRIVATE_KEY_${deploymentId.toUpperCase()} reduced to BabyJubjub suborder`);
+    }
+    return { deploymentId, maciAddress: maciAddr, coordinatorSk: sk, coordinatorPubKeyX: pubKeyX, coordinatorPubKeyY: pubKeyY };
+  };
+
+  // v2 deployment
+  if (configJson.v2?.maci) {
+    const v2Key = coordKeyV2 || coordKeyGeneric;
+    if (v2Key) {
+      coordinatorKeys.push(makeKeyEntry('v2', v2Key, configJson.v2.maci, configJson.v2.coordinatorPubKeyX, configJson.v2.coordinatorPubKeyY));
+    }
+    allMaciAddresses.push(configJson.v2.maci);
+  }
+
+  // prod deployment
+  if (configJson.prod?.maci) {
+    const prodKey = coordKeyProd || coordKeyGeneric;
+    if (prodKey) {
+      coordinatorKeys.push(makeKeyEntry('prod', prodKey, configJson.prod.maci, configJson.prod.coordinatorPubKeyX, configJson.prod.coordinatorPubKeyY));
+    }
+    allMaciAddresses.push(configJson.prod.maci);
+  }
+
+  if (coordinatorKeys.length === 0) {
+    throw new Error('No valid coordinator keys could be configured for any deployment');
+  }
+
+  // Primary key: use the one matching current CIRCUIT_MODE, or first available
+  const primaryKey = coordinatorKeys.find(k => k.maciAddress.toLowerCase() === maciAddress.toLowerCase())
+    ?? coordinatorKeys[0];
 
   return {
     privateKey: privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`,
-    coordinatorSk,
+    coordinatorSk: primaryKey.coordinatorSk,
     rpcUrl,
     maciAddress,
     deployBlock: configJson.deployBlock || 0,
+    coordinatorKeys,
+    allMaciAddresses,
   };
 }
 
@@ -382,6 +436,8 @@ export async function initCrypto(): Promise<CryptoKit> {
 }
 
 // ─── Poll Processing Pipeline ─────────────────────────────────────────
+
+export type { CoordinatorKeyEntry };
 
 export interface PollAddresses {
   poll: string;

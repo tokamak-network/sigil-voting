@@ -49,4 +49,6 @@ jobs:
         env:
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           COORDINATOR_PRIVATE_KEY: ${{ secrets.COORDINATOR_PRIVATE_KEY }}
+          COORDINATOR_PRIVATE_KEY_V2: ${{ secrets.COORDINATOR_PRIVATE_KEY_V2 }}
+          COORDINATOR_PRIVATE_KEY_PROD: ${{ secrets.COORDINATOR_PRIVATE_KEY_PROD }}
           SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
