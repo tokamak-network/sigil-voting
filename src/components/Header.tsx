@@ -71,7 +71,8 @@ export function Header() {
   const handleConnect = () => connect({ connector: injected() })
 
   const isDelegatePage = pathname.startsWith('/vote/delegate')
-  const isVotePage = pathname.startsWith('/vote') && !isDelegatePage
+  const isHistoryPage = pathname.startsWith('/vote/history')
+  const isVotePage = pathname.startsWith('/vote') && !isDelegatePage && !isHistoryPage
   const isTechPage = pathname === '/technology'
   const isLandingPage = pathname === '/'
   const isMarketingPage = isLandingPage || isTechPage
@@ -125,6 +126,12 @@ export function Header() {
               className={`font-display font-bold text-sm uppercase tracking-wide transition-colors ${isVotePage ? 'text-primary' : 'text-slate-500 hover:text-black dark:hover:text-white'}`}
             >
               {t.header.proposals}
+            </Link>
+            <Link
+              href="/vote/history"
+              className={`font-display font-bold text-sm uppercase tracking-wide transition-colors ${isHistoryPage ? 'text-primary' : 'text-slate-500 hover:text-black dark:hover:text-white'}`}
+            >
+              {t.voteHistory.nav}
             </Link>
             <Link
               href="/vote/delegate"
@@ -252,6 +259,13 @@ export function Header() {
                   className={`px-6 py-4 text-left font-display font-bold text-sm uppercase tracking-wide border-b border-slate-100 ${isVotePage ? 'text-primary bg-blue-50' : 'text-slate-700 hover:bg-slate-50'}`}
                 >
                   {t.header.proposals}
+                </Link>
+                <Link
+                  href="/vote/history"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`px-6 py-4 text-left font-display font-bold text-sm uppercase tracking-wide border-b border-slate-100 ${isHistoryPage ? 'text-primary bg-blue-50' : 'text-slate-700 hover:bg-slate-50'}`}
+                >
+                  {t.voteHistory.nav}
                 </Link>
                 <Link
                   href="/vote/delegate"

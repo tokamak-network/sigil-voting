@@ -26,6 +26,7 @@ import { getLastVote, getMaciNonce, incrementMaciNonce } from './voteUtils';
 import { storageKey } from '../../storageKeys';
 import { getLogsChunked } from '../../utils/viemLogs';
 import { estimateGasWithBuffer } from '../../utils/gas';
+import { ToastContainer, type ToastItem } from '../Toast';
 
 interface VoteFormV2Props {
   pollId: number;
@@ -62,6 +63,7 @@ export function VoteFormV2({
   const [showConfirm, setShowConfirm] = useState(false);
   const [txStage, setTxStage] = useState<TxStage>('idle');
   const [estimatedGasEth, setEstimatedGasEth] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
   const { t } = useTranslation();
 
   // Read token address from voiceCreditProxy for dynamic links
@@ -121,6 +123,58 @@ export function VoteFormV2({
 
   // Preload crypto modules in background on mount
   useEffect(() => { preloadCrypto(); }, []);
+
+  // Toast management
+  const addToast = (message: string, type: 'success' | 'error' | 'info') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+  const removeToast = (id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  // Classify error and return user-friendly message
+  const classifyError = (err: unknown): string => {
+    const msg = err instanceof Error ? err.message : String(err);
+
+    // Signup errors come pre-translated with 'signup:' prefix
+    if (msg.startsWith('signup:')) {
+      return msg.slice(7);
+    }
+
+    // User rejected transaction
+    if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
+      return t.voteErrors.cancelled;
+    }
+
+    // Insufficient gas
+    if (msg.includes('insufficient funds') || msg.includes('exceeds the balance')) {
+      return t.voteErrors.insufficientGas;
+    }
+
+    // Transaction timeout
+    if (msg.includes('timed out') || msg.includes('timeout') || msg.includes('Timed out')) {
+      return t.voteErrors.timeout;
+    }
+
+    // Encryption errors
+    if (msg.includes('ECDH') || msg.includes('shared key') || msg.includes('invalid point')) {
+      return t.voteErrors.encryption;
+    }
+
+    // Poll ended
+    if (msg.includes('poll') && (msg.includes('ended') || msg.includes('closed') || msg.includes('expired'))) {
+      return t.voteErrors.pollEnded;
+    }
+
+    // Already voted (nonce issue)
+    if (msg.includes('nonce') && msg.includes('already')) {
+      return t.voteErrors.alreadyVoted;
+    }
+
+    // Generic error
+    return t.voteErrors.genericError;
+  };
 
   // Capture registration state at submit time (so it doesn't change mid-flow)
   const wasRegisteredRef = useRef(true);
@@ -376,21 +430,9 @@ export function VoteFormV2({
         console.error('Vote error:', err);
       }
       setTxStage('error');
-      const msg = err instanceof Error ? err.message : String(err);
-      // Signup errors come pre-translated with 'signup:' prefix
-      if (msg.startsWith('signup:')) {
-        setError(msg.slice(7));
-      } else if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
-        setError(t.voteForm.errorRejectedFriendly);
-      } else if (msg.includes('insufficient funds') || msg.includes('exceeds the balance')) {
-        setError(t.voteForm.errorGasFriendly);
-      } else if (msg.includes('timed out') || msg.includes('timeout') || msg.includes('Timed out')) {
-        setError(t.voteForm.errorTimeout);
-      } else if (msg.includes('ECDH') || msg.includes('shared key') || msg.includes('invalid point')) {
-        setError(t.voteForm.errorEncryption);
-      } else {
-        setError(t.voteForm.errorGeneric);
-      }
+      const errorMessage = classifyError(err);
+      setError(errorMessage);
+      addToast(errorMessage, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -420,29 +462,37 @@ export function VoteFormV2({
     ];
 
     return (
-      <TransactionModal
-        title={t.voteForm.processing}
-        steps={txSteps}
-        currentStep={txStage}
-        subtitle={stageMessages[txStage]}
-      />
+      <>
+        <ToastContainer toasts={toasts} onRemove={removeToast} />
+        <TransactionModal
+          title={t.voteForm.processing}
+          steps={txSteps}
+          currentStep={txStage}
+          subtitle={stageMessages[txStage]}
+        />
+      </>
     );
   }
 
   // Poll expired
   if (isExpired) {
     return (
-      <div className="bg-white p-8 border-4 border-black flex flex-col gap-10" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>
-        <div className="p-12 text-center">
-          <span className="material-symbols-outlined text-6xl text-slate-300">timer_off</span>
-          <p className="font-display font-bold text-xl uppercase mt-4">{t.timer.ended}</p>
+      <>
+        <ToastContainer toasts={toasts} onRemove={removeToast} />
+        <div className="bg-white p-8 border-4 border-black flex flex-col gap-10" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>
+          <div className="p-12 text-center">
+            <span className="material-symbols-outlined text-6xl text-slate-300">timer_off</span>
+            <p className="font-display font-bold text-xl uppercase mt-4">{t.timer.ended}</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="bg-white p-8 border-4 border-black flex flex-col gap-10 md:sticky md:top-32" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>
+    <>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+      <div className="bg-white p-8 border-4 border-black flex flex-col gap-10 md:sticky md:top-32" style={{ boxShadow: '6px 6px 0px 0px rgba(0, 0, 0, 1)' }}>
 
       {/* Vote history banner */}
       {hasVoted && lastVote && (
@@ -685,7 +735,8 @@ export function VoteFormV2({
           <p className="text-xs font-bold text-slate-500 text-center">{t.voteForm.successNext}</p>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

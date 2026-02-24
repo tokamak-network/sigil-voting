@@ -445,7 +445,7 @@ export interface PollAddresses {
   tally: string;
 }
 
-/** Step 1: Merge AccQueues on-chain */
+/** Step 1: Merge AccQueues on-chain (with retry logic for transient errors) */
 async function mergeAccQueues(
   pollAddr: string,
   signer: ethers.Wallet,
@@ -457,41 +457,55 @@ async function mergeAccQueues(
   const msgM = await retryRpc(() => pollRead.messageAqMerged());
 
   if (!stateM) {
-    try {
-      log('  Merging State AccQueue sub-roots...');
-      const tx1 = await poll.mergeMaciStateAqSubRoots(0);
-      await tx1.wait();
-    } catch (e) {
-      log(`  State sub-roots: ${(e as Error).message?.includes('Already') ? 'already merged' : (e as Error).message?.slice(0, 80)}`);
-    }
-    try {
-      log('  Merging State AccQueue...');
-      const tx2 = await poll.mergeMaciStateAq();
-      await tx2.wait();
-      log('  State AccQueue merged');
-    } catch (e) {
-      log(`  State AQ merge: ${(e as Error).message?.slice(0, 80)}`);
-    }
+    // State AccQueue sub-roots merge (with retry)
+    await sendTxWithRetry(
+      'mergeMaciStateAqSubRoots',
+      async () => {
+        log('  Merging State AccQueue sub-roots...');
+        const tx1 = await poll.mergeMaciStateAqSubRoots(0);
+        await tx1.wait();
+      },
+      2, // Max 2 retries (3 total attempts)
+    );
+
+    // State AccQueue main merge (with retry)
+    await sendTxWithRetry(
+      'mergeMaciStateAq',
+      async () => {
+        log('  Merging State AccQueue...');
+        const tx2 = await poll.mergeMaciStateAq();
+        await tx2.wait();
+        log('  State AccQueue merged');
+      },
+      2, // Max 2 retries (3 total attempts)
+    );
   } else {
     log('  State AccQueue: already merged');
   }
 
   if (!msgM) {
-    try {
-      log('  Merging Message AccQueue sub-roots...');
-      const tx3 = await poll.mergeMessageAqSubRoots(0);
-      await tx3.wait();
-    } catch (e) {
-      log(`  Message sub-roots: ${(e as Error).message?.includes('Already') ? 'already merged' : (e as Error).message?.slice(0, 80)}`);
-    }
-    try {
-      log('  Merging Message AccQueue...');
-      const tx4 = await poll.mergeMessageAq();
-      await tx4.wait();
-      log('  Message AccQueue merged');
-    } catch (e) {
-      log(`  Message AQ merge: ${(e as Error).message?.slice(0, 80)}`);
-    }
+    // Message AccQueue sub-roots merge (with retry)
+    await sendTxWithRetry(
+      'mergeMessageAqSubRoots',
+      async () => {
+        log('  Merging Message AccQueue sub-roots...');
+        const tx3 = await poll.mergeMessageAqSubRoots(0);
+        await tx3.wait();
+      },
+      2, // Max 2 retries (3 total attempts)
+    );
+
+    // Message AccQueue main merge (with retry)
+    await sendTxWithRetry(
+      'mergeMessageAq',
+      async () => {
+        log('  Merging Message AccQueue...');
+        const tx4 = await poll.mergeMessageAq();
+        await tx4.wait();
+        log('  Message AccQueue merged');
+      },
+      2, // Max 2 retries (3 total attempts)
+    );
   } else {
     log('  Message AccQueue: already merged');
   }
@@ -1096,6 +1110,86 @@ async function estimateGasWithBuffer(fn: () => Promise<bigint>): Promise<bigint 
   }
 }
 
+// ─── Error Classification ─────────────────────────────────────────────
+
+type ErrorCategory = 'TRANSIENT' | 'PERMANENT';
+
+interface ErrorClassification {
+  category: ErrorCategory;
+  reason: string;
+}
+
+/**
+ * Classify errors as TRANSIENT (network, gas, nonce) or PERMANENT (contract logic, key mismatch).
+ * TRANSIENT errors should be retried. PERMANENT errors should fail fast.
+ */
+function classifyError(error: Error): ErrorClassification {
+  const msg = error.message?.toLowerCase() ?? '';
+
+  // TRANSIENT errors (network, RPC, gas estimation)
+  if (msg.includes('econnreset') || msg.includes('etimedout') || msg.includes('enotfound')) {
+    return { category: 'TRANSIENT', reason: 'network connection error' };
+  }
+  if (msg.includes('network') || msg.includes('rate limit') || msg.includes('too many requests')) {
+    return { category: 'TRANSIENT', reason: 'network/rate limit' };
+  }
+  if (msg.includes('nonce') || msg.includes('replacement fee too low') || msg.includes('already known')) {
+    return { category: 'TRANSIENT', reason: 'transaction nonce/mempool issue' };
+  }
+  if (msg.includes('gas required exceeds allowance') || msg.includes('insufficient funds')) {
+    return { category: 'TRANSIENT', reason: 'gas estimation or insufficient balance' };
+  }
+  if (msg.includes('timeout') || msg.includes('timed out')) {
+    return { category: 'TRANSIENT', reason: 'operation timeout' };
+  }
+
+  // PERMANENT errors (contract logic, key mismatch, invalid proofs)
+  if (msg.includes('execution reverted') || msg.includes('revert')) {
+    // AccQueue merge reverts are often transient (race conditions)
+    if (msg.includes('accqueue') || msg.includes('merge')) {
+      return { category: 'TRANSIENT', reason: 'AccQueue merge race condition' };
+    }
+    return { category: 'PERMANENT', reason: 'contract execution reverted (logic error)' };
+  }
+  if (msg.includes('invalid proof') || msg.includes('proof verification failed')) {
+    return { category: 'PERMANENT', reason: 'ZK proof verification failed' };
+  }
+  if (msg.includes('key mismatch') || msg.includes('coordinator')) {
+    return { category: 'PERMANENT', reason: 'coordinator key mismatch' };
+  }
+  if (msg.includes('signature') || msg.includes('eddsa')) {
+    return { category: 'PERMANENT', reason: 'signature verification failed' };
+  }
+
+  // Default: treat unknown errors as TRANSIENT (conservative approach)
+  return { category: 'TRANSIENT', reason: 'unknown error (default to transient)' };
+}
+
+/**
+ * Structured error log entry (JSON format for easy parsing)
+ */
+function logStructuredError(params: {
+  timestamp: string;
+  action: string;
+  pollId?: number;
+  errorType: ErrorCategory;
+  errorMessage: string;
+  result: 'error' | 'retry' | 'success';
+  attempt?: number;
+  maxAttempts?: number;
+}) {
+  console.error(JSON.stringify({
+    timestamp: params.timestamp,
+    action: params.action,
+    pollId: params.pollId,
+    errorType: params.errorType,
+    errorMessage: params.errorMessage,
+    result: params.result,
+    attempt: params.attempt,
+    maxAttempts: params.maxAttempts,
+  }));
+}
+
 async function sendTxWithRetry(
   label: string,
   send: () => Promise<void>,
@@ -1106,12 +1200,35 @@ async function sendTxWithRetry(
       await send();
       return;
     } catch (err) {
-      const errMsg = (err as Error).message?.slice(0, 80)?.replace(/0x[a-fA-F0-9]{40,}/g, '[REDACTED]') ?? 'unknown';
-      if (attempt === maxRetries) {
+      const error = err as Error;
+      const errMsg = error.message?.slice(0, 80)?.replace(/0x[a-fA-F0-9]{40,}/g, '[REDACTED]') ?? 'unknown';
+      const classification = classifyError(error);
+
+      // Structured error logging
+      logStructuredError({
+        timestamp: new Date().toISOString(),
+        action: label,
+        errorType: classification.category,
+        errorMessage: errMsg,
+        result: attempt === maxRetries ? 'error' : 'retry',
+        attempt: attempt + 1,
+        maxAttempts: maxRetries + 1,
+      });
+
+      // PERMANENT errors: fail fast (don't retry)
+      if (classification.category === 'PERMANENT') {
+        log(`  ${label} PERMANENT FAILURE (${classification.reason}): ${errMsg}`);
         throw err;
       }
-      const delay = 2000 * (attempt + 1);
-      log(`  ${label} failed: ${errMsg}. Retrying in ${delay}ms...`);
+
+      // TRANSIENT errors: retry with exponential backoff
+      if (attempt === maxRetries) {
+        log(`  ${label} failed after ${maxRetries + 1} attempts (${classification.reason}): ${errMsg}`);
+        throw err;
+      }
+
+      const delay = 2000 * (2 ** attempt); // Exponential backoff: 2s, 4s, 8s
+      log(`  ${label} TRANSIENT ERROR (${classification.reason}): ${errMsg}. Retrying in ${delay}ms... (attempt ${attempt + 1}/${maxRetries + 1})`);
       await new Promise((r) => setTimeout(r, delay));
     }
   }

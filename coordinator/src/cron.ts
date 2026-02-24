@@ -55,6 +55,52 @@ function log(msg: string) {
   console.log(`[${new Date().toISOString()}] ${msg}`);
 }
 
+/**
+ * Classify errors as TRANSIENT (network, gas, nonce) or PERMANENT (contract logic, key mismatch).
+ * Matches classification logic in run.ts for consistency.
+ */
+function classifyErrorCategory(error: Error): 'TRANSIENT' | 'PERMANENT' {
+  const msg = error.message?.toLowerCase() ?? '';
+
+  // TRANSIENT errors (network, RPC, gas estimation)
+  if (msg.includes('econnreset') || msg.includes('etimedout') || msg.includes('enotfound')) {
+    return 'TRANSIENT';
+  }
+  if (msg.includes('network') || msg.includes('rate limit') || msg.includes('too many requests')) {
+    return 'TRANSIENT';
+  }
+  if (msg.includes('nonce') || msg.includes('replacement fee too low') || msg.includes('already known')) {
+    return 'TRANSIENT';
+  }
+  if (msg.includes('gas required exceeds allowance') || msg.includes('insufficient funds')) {
+    return 'TRANSIENT';
+  }
+  if (msg.includes('timeout') || msg.includes('timed out')) {
+    return 'TRANSIENT';
+  }
+
+  // PERMANENT errors (contract logic, key mismatch, invalid proofs)
+  if (msg.includes('execution reverted') || msg.includes('revert')) {
+    // AccQueue merge reverts are often transient (race conditions)
+    if (msg.includes('accqueue') || msg.includes('merge')) {
+      return 'TRANSIENT';
+    }
+    return 'PERMANENT';
+  }
+  if (msg.includes('invalid proof') || msg.includes('proof verification failed')) {
+    return 'PERMANENT';
+  }
+  if (msg.includes('key mismatch') || msg.includes('coordinator')) {
+    return 'PERMANENT';
+  }
+  if (msg.includes('signature') || msg.includes('eddsa')) {
+    return 'PERMANENT';
+  }
+
+  // Default: treat unknown errors as TRANSIENT (conservative approach)
+  return 'TRANSIENT';
+}
+
 async function retryRpc<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -272,25 +318,69 @@ async function main() {
           );
           if (result === 'key_mismatch') {
             log(`  ${label}: recovery failed — key mismatch (should not happen)`);
+            console.error(JSON.stringify({
+              timestamp: new Date().toISOString(),
+              action: 'stuckPollRecovery',
+              pollId,
+              errorType: 'PERMANENT',
+              errorMessage: 'key mismatch during recovery',
+              result: 'error',
+              attempt,
+              maxAttempts: STUCK_POLL_MAX_RETRIES,
+            }));
             break;
           }
           log(`  ${label}: RECOVERED on attempt ${attempt}`);
+          console.log(JSON.stringify({
+            timestamp: new Date().toISOString(),
+            action: 'stuckPollRecovery',
+            pollId,
+            result: 'success',
+            attempt,
+          }));
           recovered = true;
           stuckRecovered++;
           processed++;
           break;
         } catch (err) {
-          const errMsg = (err as Error).message?.slice(0, 150)?.replace(/0x[a-fA-F0-9]{40,}/g, '[ADDR]') ?? 'unknown';
-          log(`  ${label}: recovery attempt ${attempt} FAILED — ${errMsg}`);
+          const error = err as Error;
+          const errMsg = error.message?.slice(0, 150)?.replace(/0x[a-fA-F0-9]{40,}/g, '[ADDR]') ?? 'unknown';
+          const errorCategory = classifyErrorCategory(error);
+
+          log(`  ${label}: recovery attempt ${attempt} FAILED (${errorCategory}) — ${errMsg}`);
+
+          console.error(JSON.stringify({
+            timestamp: new Date().toISOString(),
+            action: 'stuckPollRecovery',
+            pollId,
+            errorType: errorCategory,
+            errorMessage: errMsg,
+            result: 'retry',
+            attempt,
+            maxAttempts: STUCK_POLL_MAX_RETRIES,
+          }));
+
           if (attempt < STUCK_POLL_MAX_RETRIES) {
-            // Wait before retrying
-            await new Promise(r => setTimeout(r, 3000));
+            // Exponential backoff for stuck poll recovery: 2s, 4s
+            const delay = 2000 * (2 ** (attempt - 1));
+            log(`  ${label}: waiting ${delay}ms before retry...`);
+            await new Promise(r => setTimeout(r, delay));
           }
         }
       }
 
       if (!recovered) {
         log(`  ${label}: PERMANENTLY STUCK — recovery failed after ${STUCK_POLL_MAX_RETRIES} attempts. Manual intervention required.`);
+        console.error(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          action: 'stuckPollRecovery',
+          pollId,
+          errorType: 'PERMANENT',
+          errorMessage: 'recovery failed after max retries',
+          result: 'error',
+          attempt: STUCK_POLL_MAX_RETRIES,
+          maxAttempts: STUCK_POLL_MAX_RETRIES,
+        }));
         stuckFailed++;
         failed++;
       }
@@ -306,14 +396,46 @@ async function main() {
       );
       if (result === 'key_mismatch') {
         log(`  ${label}: SKIPPED (coordinator key mismatch — unexpected after pre-check)`);
+        // Structured error log
+        console.error(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          action: 'processPoll',
+          pollId,
+          errorType: 'PERMANENT',
+          errorMessage: 'coordinator key mismatch',
+          result: 'error',
+        }));
         keyMismatch++;
       } else {
         log(`  ${label}: DONE`);
+        // Structured success log
+        console.log(JSON.stringify({
+          timestamp: new Date().toISOString(),
+          action: 'processPoll',
+          pollId,
+          result: 'success',
+        }));
         processed++;
       }
     } catch (err) {
-      const errMsg = (err as Error).message?.slice(0, 150)?.replace(/0x[a-fA-F0-9]{40,}/g, '[ADDR]') ?? 'unknown';
-      log(`  ${label}: FAILED — ${errMsg}`);
+      const error = err as Error;
+      const errMsg = error.message?.slice(0, 150)?.replace(/0x[a-fA-F0-9]{40,}/g, '[ADDR]') ?? 'unknown';
+
+      // Classify error to determine if it's worth retrying later
+      const errorCategory = classifyErrorCategory(error);
+
+      log(`  ${label}: FAILED (${errorCategory}) — ${errMsg}`);
+
+      // Structured error log
+      console.error(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        action: 'processPoll',
+        pollId,
+        errorType: errorCategory,
+        errorMessage: errMsg,
+        result: 'error',
+      }));
+
       failed++;
     }
   }

@@ -483,6 +483,17 @@ export interface Translations {
     lastWeight: string
     lastCost: string
     creditsRemaining: string
+    pageTitle: string
+    pageSubtitle: string
+    emptyTitle: string
+    emptyDesc: string
+    goToProposals: string
+    votedOn: string
+    status: string
+    myVote: string
+    result: string
+    connectWallet: string
+    nav: string
   }
   myVote: {
     title: string
@@ -567,6 +578,15 @@ export interface Translations {
     quadraticScaling: string
     minCredit: string
     maxCredits: string
+  }
+  voteErrors: {
+    cancelled: string
+    insufficientGas: string
+    pollEnded: string
+    alreadyVoted: string
+    genericError: string
+    timeout: string
+    encryption: string
   }
   technology: {
     nav: string

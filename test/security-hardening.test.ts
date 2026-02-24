@@ -466,10 +466,10 @@ describe('Security [14/15]: Error Leak Prevention', () => {
 
   it('VoteFormV2 shows generic error message, not raw errors', () => {
     const src = readFileSync(resolve(__dirname, '../src/components/voting/VoteFormV2.tsx'), 'utf8')
-    // Error handling shows translated generic messages, not raw err.message
-    expect(src).toContain('errorGeneric')
-    expect(src).toContain('errorRejectedFriendly')
-    expect(src).toContain('errorGasFriendly')
+    // Error handling shows translated generic messages via voteErrors, not raw err.message
+    expect(src).toContain('voteErrors.cancelled')
+    expect(src).toContain('voteErrors.insufficientGas')
+    expect(src).toContain('voteErrors.genericError')
   })
 
   it('coordinator sanitizes error messages (no raw stack)', () => {
