@@ -966,18 +966,21 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
           </button>
 
           {/* Proposal Header */}
-          <div className="mb-12">
-            <div className="flex items-center gap-3 flex-wrap mb-4">
-              <span className="bg-black text-white text-xs font-bold px-3 py-1 uppercase tracking-widest">
-                {t.proposalDetail.proposalPrefix} #{propPollId + 1}
-              </span>
-              <span className="px-4 py-1 bg-white text-black border-2 border-black font-bold text-sm italic uppercase tracking-tighter">
-                {t.proposalDetail.votingOpen}
-              </span>
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-12">
+            <div className="flex-1 max-w-3xl">
+              <div className="flex items-center gap-4 mb-4">
+                <span className="bg-black text-white text-xs font-bold px-3 py-1 uppercase tracking-widest">
+                  {t.proposalDetail.proposalPrefix} #{propPollId + 1}
+                </span>
+              </div>
+              <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-black uppercase italic leading-tight tracking-tighter">
+                {displayTitle}
+              </h1>
             </div>
-            <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-black uppercase italic leading-tight tracking-tighter">
-              {displayTitle}
-            </h1>
+            <div className="flex flex-col items-end shrink-0">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
+              <span className="px-6 py-3 bg-white text-black border-2 border-black font-black text-xl italic uppercase tracking-tighter">{t.proposalDetail.votingOpen}</span>
+            </div>
           </div>
 
           {/* Main Grid */}
@@ -1226,21 +1229,31 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
             </h1>
           </div>
         ) : (
-          <div className="mb-12">
-            <div className="flex items-center gap-3 flex-wrap mb-4">
-              <span className="bg-black text-white text-xs font-bold px-3 py-1 uppercase tracking-widest">
-                {t.proposalDetail.proposalPrefix} #{propPollId + 1}
-              </span>
-              <span className={`px-4 py-1 border-2 border-black font-bold text-sm italic uppercase tracking-tighter ${
-                phase === V2Phase.Failed ? 'bg-red-500 text-white' : 'bg-slate-200 text-slate-600'
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-12">
+            <div className="flex-1 max-w-3xl">
+              <div className="flex items-center gap-4 mb-4">
+                <span className="bg-black text-white text-xs font-bold px-3 py-1 uppercase tracking-widest">
+                  {t.proposalDetail.proposalPrefix} #{propPollId + 1}
+                </span>
+              </div>
+              <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-black uppercase italic leading-tight tracking-tighter">
+                {displayTitle}
+              </h1>
+            </div>
+            <div className="flex flex-col items-end shrink-0">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
+              <span className={`px-6 py-3 bg-white border-2 border-black font-black text-xl italic uppercase tracking-tighter ${
+                phase === V2Phase.Failed ? 'text-red-600' : 'text-slate-500'
               }`}>
-                {phase === V2Phase.NoVotes && t.noVotes.title}
-                {phase === V2Phase.Failed && t.failed.title}
+                {phase === V2Phase.NoVotes && t.noVotes.title.toUpperCase()}
+                {phase === V2Phase.Failed && (
+                  <span className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg">schedule</span>
+                    {t.failed.title.toUpperCase()}
+                  </span>
+                )}
               </span>
             </div>
-            <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-black uppercase italic leading-tight tracking-tighter">
-              {displayTitle}
-            </h1>
           </div>
         )}
 
