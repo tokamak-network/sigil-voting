@@ -38,7 +38,7 @@
     "dev:full": "npx tsx coordinator/src/run.ts & next dev",
     "coordinator": "npx tsx coordinator/src/run.ts",
     "audit": "npm audit --audit-level=moderate",
-    "prepare": "git config core.hooksPath .githooks",
+    "prepare": "git rev-parse --git-dir > /dev/null 2>&1 && git config core.hooksPath .githooks || true",
     "test:all": "forge test && vitest run --config vitest.config.ts --exclude 'test/circuits/**'"
   },
   "dependencies": {
