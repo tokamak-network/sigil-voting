@@ -21,7 +21,7 @@ import {
   TIMELOCK_EXECUTOR_ABI,
 } from '../contractV2'
 import { useTranslation } from '../i18n'
-import { storageKey } from '../storageKeys'
+import { storageKey, parseOnChainTitle } from '../storageKeys'
 import { getLogsChunked } from '../utils/viemLogs'
 import CreatePollForm from './CreatePollForm'
 
@@ -227,8 +227,14 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
           return {
             id: i,
             address: pollAddr,
-            title: (onChainTitle as string) || localStorage.getItem(storageKey.pollTitle(i)) || `#${i + 1}`,
-            description: localStorage.getItem(storageKey.pollDesc(i)) || undefined,
+            ...(() => {
+              const raw = (onChainTitle as string) || ''
+              const parsed = raw ? parseOnChainTitle(raw) : null
+              return {
+                title: parsed?.title || localStorage.getItem(storageKey.pollTitle(i)) || `#${i + 1}`,
+                description: parsed?.description || localStorage.getItem(storageKey.pollDesc(i)) || undefined,
+              }
+            })(),
             isOpen: isOpen as boolean,
             isFinalized,
             deployTime: Number(td[0]),

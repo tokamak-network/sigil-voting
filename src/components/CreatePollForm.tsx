@@ -94,7 +94,7 @@ export default function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePo
         abi: MACI_ABI,
         functionName: 'deployPoll',
         args: [
-          title.trim(),
+          description.trim() ? `${title.trim()}\n\n${description.trim()}` : title.trim(),
           durationSeconds,
           DEFAULT_COORD_PUB_KEY_X,
           DEFAULT_COORD_PUB_KEY_Y,
@@ -111,7 +111,7 @@ export default function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePo
         abi: MACI_ABI,
         functionName: 'deployPoll',
         args: [
-          title.trim(),
+          description.trim() ? `${title.trim()}\n\n${description.trim()}` : title.trim(),
           durationSeconds,
           DEFAULT_COORD_PUB_KEY_X,
           DEFAULT_COORD_PUB_KEY_Y,

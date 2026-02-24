@@ -22,3 +22,10 @@ export const storageKey = {
   pollDesc: (pollId: number) => `${PREFIX}-poll-desc-${pollId}`,
   pollsCache: `${PREFIX}-polls-cache`,
 }
+
+/** Parse on-chain title field that may contain description after \n\n */
+export function parseOnChainTitle(raw: string): { title: string; description?: string } {
+  const idx = raw.indexOf('\n\n')
+  if (idx === -1) return { title: raw }
+  return { title: raw.slice(0, idx), description: raw.slice(idx + 2) }
+}

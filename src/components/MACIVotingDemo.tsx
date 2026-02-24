@@ -37,7 +37,7 @@ import { ResultsDisplay } from './voting/ResultsDisplay'
 import { PollTimer } from './voting/PollTimer'
 import { useTranslation } from '../i18n'
 import { estimateGasWithBuffer } from '../utils/gas'
-import { storageKey } from '../storageKeys'
+import { storageKey, parseOnChainTitle } from '../storageKeys'
 import { preloadCrypto } from '../crypto/preload'
 import type { CryptoModules } from '../crypto/preload'
 import { getLogsChunked } from '../utils/viemLogs'
@@ -302,8 +302,13 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
               functionName: 'title',
             }) as string
             if (onChainTitle) {
-              setPollTitle(onChainTitle)
-              localStorage.setItem(storageKey.pollTitle(propPollId), onChainTitle)
+              const parsed = parseOnChainTitle(onChainTitle)
+              setPollTitle(parsed.title)
+              localStorage.setItem(storageKey.pollTitle(propPollId), parsed.title)
+              if (parsed.description) {
+                setPollDescription(parsed.description)
+                localStorage.setItem(storageKey.pollDesc(propPollId), parsed.description)
+              }
             }
           } catch {
             // Fallback to localStorage
@@ -311,8 +316,10 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
             if (title) setPollTitle(title)
           }
         }
-        const desc = localStorage.getItem(storageKey.pollDesc(propPollId))
-        if (desc) setPollDescription(desc)
+        if (!pollDescription) {
+          const desc = localStorage.getItem(storageKey.pollDesc(propPollId))
+          if (desc) setPollDescription(desc)
+        }
 
         for (const log of logs) {
           const args = log.args as { pollId?: bigint; pollAddr?: `0x${string}`; messageProcessorAddr?: `0x${string}`; tallyAddr?: `0x${string}` }
