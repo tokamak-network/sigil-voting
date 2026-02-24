@@ -16,7 +16,7 @@ export function FooterStatic() {
               <a href="https://x.com/Sigil_Builder" target="_blank" rel="noopener noreferrer" className="w-10 h-10 border-2 border-border-light dark:border-border-dark flex items-center justify-center hover:bg-primary hover:text-white transition-colors">
                 <span className="font-display font-bold">X</span>
               </a>
-              <a href="https://github.com/tokamak-network/zk-dex-d1-private-voting" target="_blank" rel="noopener noreferrer" className="w-10 h-10 border-2 border-border-light dark:border-border-dark flex items-center justify-center hover:bg-primary hover:text-white transition-colors">
+              <a href="https://github.com/tokamak-network/sigil-voting" target="_blank" rel="noopener noreferrer" className="w-10 h-10 border-2 border-border-light dark:border-border-dark flex items-center justify-center hover:bg-primary hover:text-white transition-colors">
                 <span className="font-display font-bold">GH</span>
               </a>
             </div>
@@ -25,7 +25,7 @@ export function FooterStatic() {
             <h5 className="font-display font-bold mb-6 uppercase text-base">{t.footer.resources}</h5>
             <ul className="space-y-4 text-base text-slate-500">
               <li><a href="https://maci.pse.dev" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{t.footer.whitepaper}</a></li>
-              <li><a href="https://github.com/tokamak-network/zk-dex-d1-private-voting" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{t.footer.audit}</a></li>
+              <li><a href="https://github.com/tokamak-network/sigil-voting" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">{t.footer.audit}</a></li>
             </ul>
           </div>
           <div className="md:col-span-3">

@@ -15,11 +15,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/tokamak-network/zk-dex-d1-private-voting.git"
+    "url": "https://github.com/tokamak-network/sigil-voting.git"
   },
-  "homepage": "https://github.com/tokamak-network/zk-dex-d1-private-voting",
+  "homepage": "https://github.com/tokamak-network/sigil-voting",
   "bugs": {
-    "url": "https://github.com/tokamak-network/zk-dex-d1-private-voting/issues"
+    "url": "https://github.com/tokamak-network/sigil-voting/issues"
   },
   "license": "MIT",
   "type": "module",

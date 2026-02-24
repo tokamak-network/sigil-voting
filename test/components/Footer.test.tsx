@@ -17,14 +17,14 @@ describe('Footer', () => {
     expect(xLink).toHaveAttribute('rel', 'noopener noreferrer')
 
     const ghLink = screen.getByText('GH').closest('a')
-    expect(ghLink).toHaveAttribute('href', 'https://github.com/tokamak-network/zk-dex-d1-private-voting')
+    expect(ghLink).toHaveAttribute('href', 'https://github.com/tokamak-network/sigil-voting')
   })
 
   it('renders resource links', () => {
     renderWithProviders(<Footer />)
     const maciLink = document.querySelector('a[href="https://maci.pse.dev"]')
     expect(maciLink).toBeInTheDocument()
-    const repoLink = document.querySelectorAll('a[href="https://github.com/tokamak-network/zk-dex-d1-private-voting"]')
+    const repoLink = document.querySelectorAll('a[href="https://github.com/tokamak-network/sigil-voting"]')
     expect(repoLink.length).toBeGreaterThanOrEqual(1)
   })
 
