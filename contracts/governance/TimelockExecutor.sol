@@ -46,12 +46,17 @@ contract TimelockExecutor {
     error NotCreatorOrOwner();
     error ExecutionFailed();
     error InvalidState();
+    error InvalidTallyForPoll();
+    error NotPollCreator();
+    error ZeroAddress();
 
     constructor(address _maci) {
         maci = _maci;
     }
 
     /// @notice Register an execution target for a poll
+    /// @dev Validates that tallyAddr.poll() matches MACI's registered poll for this pollId.
+    ///      Only MACI owner can register executions (prevents front-running attacks).
     function registerExecution(
         uint256 pollId,
         address tallyAddr,
@@ -62,6 +67,24 @@ contract TimelockExecutor {
     ) external {
         if (_executions[pollId].state != ExecutionState.None) revert AlreadyRegistered();
         if (delay < MIN_DELAY) revert DelayTooShort();
+        if (tallyAddr == address(0) || target == address(0)) revert ZeroAddress();
+
+        // Access control: only MACI owner can register executions
+        (bool ownerOk, bytes memory ownerData) = maci.staticcall(abi.encodeWithSignature("owner()"));
+        if (!ownerOk) revert NotCreatorOrOwner();
+        address maciOwner = abi.decode(ownerData, (address));
+        if (msg.sender != maciOwner) revert NotPollCreator();
+
+        // Validate tallyAddr: its poll() must match MACI's registered poll for this pollId
+        (bool pollOk, bytes memory pollData) = maci.staticcall(abi.encodeWithSignature("polls(uint256)", pollId));
+        if (!pollOk || pollData.length < 32) revert InvalidTallyForPoll();
+        address registeredPoll = abi.decode(pollData, (address));
+
+        (bool tallyPollOk, bytes memory tallyPollData) = tallyAddr.staticcall(abi.encodeWithSignature("poll()"));
+        if (!tallyPollOk || tallyPollData.length < 32) revert InvalidTallyForPoll();
+        address tallyPoll = abi.decode(tallyPollData, (address));
+
+        if (registeredPoll == address(0) || tallyPoll != registeredPoll) revert InvalidTallyForPoll();
 
         _executions[pollId] = Execution({
             creator: msg.sender,

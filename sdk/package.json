@@ -1,10 +1,11 @@
 {
-  "name": "sigil-sdk",
+  "name": "@sigil/sdk",
   "version": "0.2.0",
-  "description": "SIGIL — Private, fair, collusion-resistant governance SDK for DAOs",
+  "description": "SIGIL — Private, fair, collusion-resistant governance SDK for DAOs. MACI-based private voting with quadratic voting and anti-collusion on Ethereum.",
   "type": "module",
   "sideEffects": false,
   "main": "dist/index.js",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
@@ -15,6 +16,10 @@
       "types": "./dist/widget.d.ts",
       "import": "./dist/widget.js"
     },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    },
     "./crypto": {
       "types": "./dist/crypto/index.d.ts",
       "import": "./dist/crypto/index.js"
@@ -22,14 +27,18 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "npm run build && npm test",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "governance",
@@ -37,10 +46,15 @@
     "voting",
     "privacy",
     "zk",
+    "zk-snark",
     "maci",
     "quadratic-voting",
     "anti-collusion",
-    "ethereum"
+    "ethereum",
+    "groth16",
+    "baby-jubjub",
+    "poseidon",
+    "eddsa"
   ],
   "author": "Tokamak Network",
   "license": "MIT",
@@ -60,9 +74,23 @@
     "@noble/hashes": "^2.0.1"
   },
   "peerDependencies": {
-    "ethers": "^6.0.0"
+    "ethers": "^6.0.0",
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   },
   "devDependencies": {
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "typescript": "^5.5.0",
     "ethers": "^6.13.0",
     "vitest": "^4.0.18"
