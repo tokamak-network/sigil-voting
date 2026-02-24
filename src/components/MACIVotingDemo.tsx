@@ -973,7 +973,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
                   {t.proposalDetail.proposalPrefix} #{propPollId + 1}
                 </span>
               </div>
-              <h1 className="font-display text-5xl lg:text-7xl font-black uppercase italic leading-[0.9] tracking-tighter max-w-4xl">
+              <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-black uppercase italic leading-tight tracking-tighter">
                 {displayTitle}
               </h1>
             </div>
@@ -1236,7 +1236,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
                   {t.proposalDetail.proposalPrefix} #{propPollId + 1}
                 </span>
               </div>
-              <h1 className="font-display text-5xl lg:text-7xl font-black uppercase italic leading-[0.9] tracking-tighter max-w-4xl">
+              <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-black uppercase italic leading-tight tracking-tighter">
                 {displayTitle}
               </h1>
             </div>

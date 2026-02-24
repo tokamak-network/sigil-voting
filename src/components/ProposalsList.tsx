@@ -582,11 +582,11 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
                   </div>
 
                   {/* ── Title ── */}
-                  <h3 className="text-3xl font-display font-bold uppercase leading-tight mb-2">
+                  <h3 className="text-xl md:text-2xl font-display font-bold uppercase leading-snug mb-2 line-clamp-3">
                     {poll.title}
                   </h3>
                   {poll.description && (
-                    <p className="text-sm text-slate-500 truncate mb-6">{poll.description}</p>
+                    <p className="text-sm text-slate-500 line-clamp-2 mb-6">{poll.description}</p>
                   )}
                   {!poll.description && <div className="mb-6" />}
                 </div>
