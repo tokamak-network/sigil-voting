@@ -20,7 +20,7 @@ describe('LandingPage', () => {
 
   it('renders the testnet notice', () => {
     renderWithProviders(<LandingPage setCurrentPage={setCurrentPage} />)
-    expect(screen.getByText(/SDK on NPM|NPM SDK/i)).toBeInTheDocument()
+    expect(screen.getByText(/Free on testnet|테스트넷에서 무료/i)).toBeInTheDocument()
   })
 
   it('renders 8 FAQ items', () => {
