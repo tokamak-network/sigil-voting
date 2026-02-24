@@ -27,6 +27,15 @@ body {
   min-height: 100vh;
 }
 
+/* Hero visual panel - scrolling text animation */
+@keyframes hero-text-scroll {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+.hero-scroll-text {
+  animation: hero-text-scroll 20s linear infinite;
+}
+
 /* Grid background variant */
 .grid-bg {
   background-size: 40px 40px;

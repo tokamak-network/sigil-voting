@@ -35,75 +35,64 @@ export function HomeContent() {
   return (
     <main>
       {/* 1. Hero Section */}
-      <section id="overview" className="relative pt-20 pb-32 overflow-hidden border-b-2 border-border-light dark:border-border-dark">
-        <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            <div className="lg:col-span-7">
-              <div className="inline-flex items-center gap-2 px-3 py-1 border-2 border-primary text-primary font-display text-xs font-bold mb-6">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                </span>
-                {t.landing.heroStatus.toUpperCase()}_
-              </div>
-              <h1 className="text-6xl md:text-8xl font-display font-extrabold leading-tight mb-8 uppercase">
-                {titleLines[0]}<br />
-                <span className="text-primary">{titleLines[1]}</span>
-              </h1>
-              <p className="text-xl max-w-xl mb-10 text-slate-600 dark:text-slate-400">
-                {t.landing.subtitle}
-              </p>
-              <div className="flex flex-wrap gap-4">
-                <Link
-                  href="/vote"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-primary text-white font-display text-lg font-extrabold px-8 py-4 border-2 border-black hover:translate-x-1 hover:-translate-y-1 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)] uppercase"
-                >
-                  {t.landing.enterApp}
-                </Link>
-                <Link
-                  href="/technology"
-                  className="border-2 border-border-light dark:border-border-dark font-display text-lg font-extrabold px-8 py-4 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors uppercase"
-                >
-                  {t.landing.documentation}
-                </Link>
-              </div>
-              <p className="mt-4 text-xs font-display uppercase tracking-widest text-slate-500">
-                {t.landing.testnetNote}
-              </p>
+      <section id="overview" className="border-b-2 border-border-light dark:border-border-dark">
+        <div className="flex flex-col lg:flex-row min-h-[80vh]">
+          {/* LEFT: 텍스트 영역 (65%) */}
+          <div className="lg:w-[75%] bg-white dark:bg-black p-12 lg:p-24 flex flex-col justify-center border-r-2 border-border-light dark:border-border-dark">
+            <div className="inline-flex items-center gap-2 px-3 py-1 border-2 border-primary text-primary font-display text-xs font-bold mb-6 w-fit">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+              </span>
+              {t.landing.heroStatus.toUpperCase()}_
             </div>
-            <div className="lg:col-span-5 relative">
-              <div className="border-2 border-border-light dark:border-border-dark p-8 bg-white dark:bg-black/40 backdrop-blur-sm relative z-10">
-                <div className="flex justify-between items-center mb-6">
-                  <span className="font-display text-xs font-bold opacity-50 uppercase">{t.landing.heroVersion}</span>
-                </div>
-                <div className="space-y-4">
-                  <div className="p-4 border-2 border-primary bg-primary/5 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-primary">verified_user</span>
-                      <span className="font-display text-sm font-bold">{t.landing.zeroExposure.title}</span>
-                    </div>
-                    <span className="material-symbols-outlined text-primary text-sm">check_circle</span>
-                  </div>
-                  <div className="p-4 border-2 border-border-light dark:border-border-dark flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined">hub</span>
-                      <span className="font-display text-sm font-bold">{t.landing.maciSecured.title}</span>
-                    </div>
-                    <span className="material-symbols-outlined text-primary text-sm">check_circle</span>
-                  </div>
-                  <div className="p-4 border-2 border-border-light dark:border-border-dark flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined">token</span>
-                      <span className="font-display text-sm font-bold">Ethereum Sepolia</span>
-                    </div>
-                    <span className="material-symbols-outlined text-primary text-sm">check_circle</span>
-                  </div>
-                </div>
+            <h1 className="text-6xl md:text-8xl font-display font-extrabold leading-tight mb-8 uppercase">
+              {titleLines[0]}<br />
+              <span className="text-primary">{titleLines[1]}</span>
+            </h1>
+            <p className="text-xl max-w-xl mb-10 text-slate-600 dark:text-slate-400">
+              {t.landing.subtitle}
+            </p>
+            <div className="flex flex-wrap gap-4">
+              <Link
+                href="/vote"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-primary text-white font-display text-lg font-extrabold px-8 py-4 border-2 border-black hover:translate-x-1 hover:-translate-y-1 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)] uppercase"
+              >
+                {t.landing.enterApp}
+              </Link>
+              <Link
+                href="/technology"
+                className="border-2 border-border-light dark:border-border-dark font-display text-lg font-extrabold px-8 py-4 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors uppercase"
+              >
+                {t.landing.documentation}
+              </Link>
+            </div>
+            <p className="mt-4 text-xs font-display uppercase tracking-widest text-slate-500">
+              {t.landing.testnetNote}
+            </p>
+          </div>
+
+          {/* RIGHT: 파란 비주얼 패널 (35%) */}
+          <div className="lg:w-[25%] bg-primary flex items-center justify-center p-12 relative overflow-hidden">
+            <div className="absolute inset-0 overflow-hidden pointer-events-none select-none flex justify-center">
+              <div className="hero-scroll-text flex flex-col items-center" style={{ gap: '5rem' }}>
+                {['SIGIL', 'SIGIL', 'SIGIL', 'SIGIL'].map((text, i) => (
+                  <span
+                    key={i}
+                    className="text-white/20 font-display font-black uppercase tracking-tighter"
+                    style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', fontSize: '10rem', lineHeight: 1 }}
+                  >
+                    {text}
+                  </span>
+                ))}
               </div>
-              <div className="absolute -top-10 -right-10 w-64 h-64 bg-primary/10 -z-0"></div>
-              <div className="absolute -bottom-10 -left-10 w-32 h-32 border-2 border-primary/20 -z-0"></div>
+            </div>
+            <div className="relative z-10 flex flex-col items-start gap-4">
+              <div className="bg-black text-white p-6 border-4 border-white shadow-[12px_12px_0px_0px_rgba(255,255,255,1)]">
+                <span className="font-display text-xl font-black italic uppercase tracking-tight whitespace-nowrap">{t.landing.heroVersion}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -131,21 +120,21 @@ export function HomeContent() {
       {/* 3. Core Features */}
       <section className="py-24 grid-bg" id="features">
         <div className="container mx-auto px-6">
-          <div className="mb-16">
-            <h2 className="font-display text-4xl font-extrabold mb-4 uppercase">{t.landing.coreFeatures}</h2>
-            <div className="w-24 h-2 bg-primary"></div>
+          <div className="text-center mb-12">
+            <h2 className="font-display text-3xl md:text-4xl font-extrabold uppercase tracking-wide">{t.landing.coreFeatures}</h2>
+            <div className="mx-auto mt-4 w-16 h-1 bg-primary" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border-2 border-border-light dark:border-border-dark">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border-2 border-border-light dark:border-border-dark">
             {[
               { icon: 'visibility_off', title: t.landing.features.privacy.title, desc: t.landing.features.privacy.desc },
               { icon: 'block', title: t.landing.features.coercion.title, desc: t.landing.features.coercion.desc },
               { icon: 'balance', title: t.landing.features.fairness.title, desc: t.landing.features.fairness.desc },
               { icon: 'fact_check', title: t.landing.features.verified.title, desc: t.landing.features.verified.desc },
             ].map((feat, i) => (
-              <div key={i} className={`p-8 bg-white dark:bg-white ${i < 3 ? 'md:border-r-2 border-b-2' : 'lg:border-b-2'} border-border-light dark:border-border-dark hover:bg-primary hover:text-white transition-colors group`}>
+              <div key={i} className={`p-8 bg-white dark:bg-zinc-900 ${i < 3 ? 'md:border-r-2 border-b-2' : 'lg:border-b-2'} border-border-light dark:border-border-dark hover:bg-primary hover:text-white transition-colors group`}>
                 <span className="material-symbols-outlined text-4xl mb-6 text-primary group-hover:text-white">{feat.icon}</span>
-                <h3 className="font-display text-xl font-bold mb-4 uppercase">{feat.title}</h3>
-                <p className="text-base leading-relaxed opacity-80 group-hover:opacity-100">{feat.desc}</p>
+                <h3 className="font-display text-lg font-bold mb-4 uppercase">{feat.title}</h3>
+                <p className="text-sm leading-relaxed opacity-80 group-hover:opacity-100">{feat.desc}</p>
               </div>
             ))}
           </div>
@@ -153,13 +142,13 @@ export function HomeContent() {
       </section>
 
       {/* 4. How Privacy Is Guaranteed */}
-      <section id="flow" className="py-20 bg-white border-y-2 border-border-light dark:border-border-dark">
+      <section id="flow" className="py-24 bg-white border-y-2 border-border-light dark:border-border-dark">
         <div className="container mx-auto px-6">
           <div className="text-center mb-12">
             <h2 className="font-display text-3xl md:text-4xl font-extrabold uppercase tracking-wide">{t.landing.operationalFlow}</h2>
-            <div className="mx-auto mt-3 h-1 w-16 bg-primary"></div>
+            <div className="mx-auto mt-4 w-16 h-1 bg-primary" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-2 border-border-light dark:border-border-dark">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-0 border-2 border-border-light dark:border-border-dark">
             {[
               { num: '01', title: t.landing.lifecycle.step1.title, desc: t.landing.lifecycle.step1.desc, icon: 'lock', color: 'text-primary' },
               { num: '02', title: t.landing.lifecycle.step2.title, desc: t.landing.lifecycle.step2.desc, icon: 'shield', color: 'text-emerald-500' },
@@ -179,14 +168,14 @@ export function HomeContent() {
       </section>
 
       {/* 4.5. Transparency */}
-      <section id="trust" className="py-20 bg-blue-50/60 border-b-2 border-border-light dark:border-border-dark">
+      <section id="trust" className="py-24 bg-blue-50/60 border-b-2 border-border-light dark:border-border-dark">
         <div className="container mx-auto px-6">
           <div className="text-center mb-12">
-            <h3 className="font-display text-4xl md:text-5xl font-extrabold uppercase tracking-wide">{t.landing.transparency.title}</h3>
-            <div className="mx-auto mt-3 h-1 w-16 bg-primary"></div>
+            <h2 className="font-display text-3xl md:text-4xl font-extrabold uppercase tracking-wide">{t.landing.transparency.title}</h2>
+            <div className="mx-auto mt-4 w-16 h-1 bg-primary" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            <div className="border-2 border-border-light dark:border-border-dark p-8 bg-white dark:bg-white">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="border-2 border-border-light dark:border-border-dark p-8 bg-white dark:bg-zinc-900">
               <div className="flex items-center gap-2 mb-6">
                 <span className="material-symbols-outlined text-primary">visibility</span>
                 <h4 className="font-display text-sm font-bold uppercase tracking-widest">{t.landing.transparency.visibleTitle}</h4>
@@ -203,7 +192,7 @@ export function HomeContent() {
                 ))}
               </div>
             </div>
-            <div className="border-2 border-border-light dark:border-border-dark p-8 bg-white dark:bg-white">
+            <div className="border-2 border-border-light dark:border-border-dark p-8 bg-white dark:bg-zinc-900">
               <div className="flex items-center gap-2 mb-6">
                 <span className="material-symbols-outlined text-red-500">visibility_off</span>
                 <h4 className="font-display text-sm font-bold uppercase tracking-widest">{t.landing.transparency.hiddenTitle}</h4>
@@ -221,7 +210,7 @@ export function HomeContent() {
               </div>
             </div>
           </div>
-          <div className="max-w-5xl mx-auto mt-8 p-6 border-2 border-primary/60 bg-primary/5">
+          <div className="max-w-6xl mx-auto mt-8 p-6 border-2 border-primary/60 bg-primary/5">
             <div className="flex items-start gap-3">
               <span className="material-symbols-outlined text-primary text-5xl">admin_panel_settings</span>
               <div>
@@ -236,12 +225,12 @@ export function HomeContent() {
       {/* 4.7. Operational Advantages */}
       <section id="advantages" className="py-24 grid-bg">
         <div className="container mx-auto px-6">
-          <div className="mb-16">
-            <h2 className="font-display text-4xl font-extrabold mb-4 uppercase">{t.landing.advantages.title}</h2>
-            <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl">{t.landing.advantages.subtitle}</p>
-            <div className="w-24 h-2 bg-primary mt-4"></div>
+          <div className="text-center mb-12">
+            <h2 className="font-display text-3xl md:text-4xl font-extrabold uppercase tracking-wide">{t.landing.advantages.title}</h2>
+            <p className="mt-4 text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">{t.landing.advantages.subtitle}</p>
+            <div className="mx-auto mt-4 w-16 h-1 bg-primary" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border-2 border-border-light dark:border-border-dark">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border-2 border-border-light dark:border-border-dark">
             {advantageItems.map((item, i) => {
               const isLast = i === advantageTotal - 1
               const mdLastRowStart = advantageTotal - (advantageTotal % mdCols || mdCols)
@@ -260,7 +249,7 @@ export function HomeContent() {
               return (
                 <div
                   key={i}
-                  className={`p-8 bg-white dark:bg-white border-border-light dark:border-border-dark hover:bg-primary hover:text-white transition-colors group ${baseBorder} ${mdBorder} ${lgBorder} ${mdRight} ${lgRight}`}
+                  className={`p-8 bg-white dark:bg-zinc-900 border-border-light dark:border-border-dark hover:bg-primary hover:text-white transition-colors group ${baseBorder} ${mdBorder} ${lgBorder} ${mdRight} ${lgRight}`}
                 >
                 <span className="material-symbols-outlined text-3xl mb-4 text-primary group-hover:text-white">{item.icon}</span>
                 <h3 className="font-display text-lg font-bold mb-2 uppercase">{item.title}</h3>
@@ -275,10 +264,13 @@ export function HomeContent() {
       {/* 7. Developer SDK */}
       <section className="py-24 bg-white dark:bg-background-dark border-y-2 border-border-light dark:border-border-dark" id="sdk">
         <div className="container mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+          <div className="text-center mb-12">
+            <h2 className="font-display text-3xl md:text-4xl font-extrabold uppercase tracking-wide">{t.landing.sdkIntegration}</h2>
+            <p className="mt-4 text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">{t.landing.integration.subtitle}</p>
+            <div className="mx-auto mt-4 w-16 h-1 bg-primary" />
+          </div>
+          <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
             <div>
-              <h2 className="font-display text-4xl font-extrabold mb-8 uppercase">{t.landing.sdkIntegration}</h2>
-              <p className="text-lg text-slate-600 dark:text-slate-400 mb-8">{t.landing.integration.subtitle}</p>
               <div className="space-y-6">
                 {[
                   { icon: 'code', text: t.landing.integration.trust1 },
@@ -314,15 +306,18 @@ export function HomeContent() {
       {/* 8. FAQ */}
       <section className="py-24 grid-bg border-t-2 border-border-light dark:border-border-dark" id="faq">
         <div className="container mx-auto px-6">
-          <h2 className="font-display text-4xl font-extrabold mb-12 uppercase text-center">{t.landing.faq.title}</h2>
+          <div className="text-center mb-12">
+            <h2 className="font-display text-3xl md:text-4xl font-extrabold uppercase tracking-wide">{t.landing.faq.title}</h2>
+            <div className="mx-auto mt-4 w-16 h-1 bg-primary" />
+          </div>
           <FaqAccordion items={faqItems} />
         </div>
       </section>
 
       {/* 11. CTA */}
-      <section className="py-24 bg-primary text-white border-y-2 border-black">
+      <section className="py-24 bg-primary text-white border-y-2 border-border-light dark:border-border-dark">
         <div className="container mx-auto px-6 text-center">
-          <h2 className="font-display text-5xl md:text-7xl font-black mb-8 uppercase leading-tight">{t.landing.cta.title}</h2>
+          <h2 className="font-display text-4xl md:text-5xl font-black mb-8 uppercase leading-tight">{t.landing.cta.title}</h2>
           <div className="flex flex-wrap justify-center gap-6">
             <Link
               href="/vote"

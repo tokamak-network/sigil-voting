@@ -12,7 +12,7 @@ export function FaqAccordion({ items }: { items: FaqItem[] }) {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto">
       {rows.map((row, rowIndex) => (
         <details key={rowIndex} className="group">
           <summary className="list-none cursor-pointer [&::-webkit-details-marker]:hidden">
@@ -24,7 +24,7 @@ export function FaqAccordion({ items }: { items: FaqItem[] }) {
                 return (
                   <div
                     key={`${rowIndex}-${colIndex}`}
-                    className="border-2 border-border-light dark:border-border-dark p-6 bg-white dark:bg-white hover:border-primary transition-colors select-none"
+                    className="border-2 border-border-light dark:border-border-dark p-6 bg-white dark:bg-zinc-900 hover:border-primary transition-colors select-none"
                   >
                     <div className="flex justify-between items-center">
                       <h4 className="font-display font-bold uppercase text-base pr-4 text-slate-900">{item.q}</h4>
