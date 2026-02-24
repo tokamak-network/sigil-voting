@@ -23,6 +23,7 @@ import {
 import { useTranslation } from '../i18n'
 import { storageKey, parseOnChainTitle } from '../storageKeys'
 import { getLogsChunked } from '../utils/viemLogs'
+import { FAIL_THRESHOLD_S } from '../constants/voting'
 import CreatePollForm from './CreatePollForm'
 
 interface PollInfo {
@@ -257,8 +258,6 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
 
     loadPolls()
   }, [nextPollId, publicClient, address, refreshKey, polls.length])
-
-  const FAIL_THRESHOLD_S = 30 * 60 // 30 minutes after voting ends (matches MACIVotingDemo)
 
   const getStatus = (poll: PollInfo): 'active' | 'ended' | 'finalized' | 'failed' | 'noVotes' => {
     const votingEndTime = poll.deployTime + poll.duration

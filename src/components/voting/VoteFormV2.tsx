@@ -25,6 +25,8 @@ import { preloadCrypto } from '../../crypto/preload';
 import { getLastVote, getMaciNonce, incrementMaciNonce } from './voteUtils';
 import { storageKey } from '../../storageKeys';
 import { getLogsChunked } from '../../utils/viemLogs';
+import { getEthereumProvider } from '../../lib/ethereum';
+import { TX_TIMEOUT_MS, SHA256_SCALAR_MASK, CMD_BITS } from '../../constants/voting';
 import { estimateGasWithBuffer } from '../../utils/gas';
 import { ToastContainer, type ToastItem } from '../Toast';
 
@@ -269,10 +271,10 @@ export function VoteFormV2({
         const kcNonce = BigInt(getMaciNonce(address, pollId));
         const stateIndex = BigInt(resolvedStateIndex);
         // Key change command: voteOption=0, weight=0
-        const kcPackedCommand = stateIndex | (0n << 50n) | (0n << 100n) | (kcNonce << 150n) | (BigInt(pollId) << 200n);
+        const kcPackedCommand = stateIndex | (0n << CMD_BITS.VOTE_OPTION) | (0n << CMD_BITS.WEIGHT) | (kcNonce << CMD_BITS.NONCE) | (BigInt(pollId) << CMD_BITS.POLL_ID);
 
         const kcSaltBytes = globalThis.crypto.getRandomValues(new Uint8Array(32));
-        const kcSalt = BigInt('0x' + Array.from(kcSaltBytes).map(b => b.toString(16).padStart(2, '0')).join('')) & ((1n << 253n) - 1n);
+        const kcSalt = BigInt('0x' + Array.from(kcSaltBytes).map(b => b.toString(16).padStart(2, '0')).join('')) & SHA256_SCALAR_MASK;
 
         // cmdHash: Poseidon(stateIndex, newPubKeyX, newPubKeyY, weight=0, salt)
         const kcCmdHashF = poseidon([
@@ -312,7 +314,7 @@ export function VoteFormV2({
 
         // Wait for on-chain confirmation (2 min timeout)
         if (publicClient) {
-          const receipt = await publicClient.waitForTransactionReceipt({ hash: kcHash, timeout: 120_000 });
+          const receipt = await publicClient.waitForTransactionReceipt({ hash: kcHash, timeout: TX_TIMEOUT_MS });
           if (receipt.status === 'reverted') {
             throw new Error('Key change transaction reverted on-chain');
           }
@@ -363,7 +365,7 @@ export function VoteFormV2({
       setTxStage('signing');
 
       const saltBytes = globalThis.crypto.getRandomValues(new Uint8Array(32));
-      const salt = BigInt('0x' + Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('')) & ((1n << 253n) - 1n);
+      const salt = BigInt('0x' + Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('')) & SHA256_SCALAR_MASK;
 
       // cmdHash must match circuit: Poseidon(stateIndex, newPubKeyX, newPubKeyY, newVoteWeight, salt)
       const cmdHashF = poseidon([
@@ -411,7 +413,7 @@ export function VoteFormV2({
 
       // Wait for on-chain confirmation before saving state (2 min timeout)
       if (publicClient) {
-        const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 120_000 });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: TX_TIMEOUT_MS });
         if (receipt.status === 'reverted') {
           throw new Error('Transaction reverted on-chain');
         }
@@ -861,7 +863,7 @@ async function getOrCreateMaciKeypair(
 
   // Fallback: derive from wallet signature (deterministic, recoverable)
   const MACI_KEY_MESSAGE = 'SIGIL Voting Key v1';
-  const provider = (window as unknown as { ethereum?: { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum;
+  const provider = getEthereumProvider();
   if (!provider) throw new Error('No wallet provider');
   const sig = await provider.request({
     method: 'personal_sign',
@@ -893,10 +895,10 @@ function packCommand(
 ): bigint {
   return (
     stateIndex |
-    (voteOptionIndex << 50n) |
-    (newVoteWeight << 100n) |
-    (nonce << 150n) |
-    (pollId << 200n)
+    (voteOptionIndex << CMD_BITS.VOTE_OPTION) |
+    (newVoteWeight << CMD_BITS.WEIGHT) |
+    (nonce << CMD_BITS.NONCE) |
+    (pollId << CMD_BITS.POLL_ID)
   );
 }
 

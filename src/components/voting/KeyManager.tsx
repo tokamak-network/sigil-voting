@@ -17,7 +17,9 @@ import { useTranslation } from '../../i18n';
 import { preloadCrypto } from '../../crypto/preload';
 import { estimateGasWithBuffer } from '../../utils/gas';
 import { getMaciNonce, incrementMaciNonce } from './voteUtils';
-import { storageKey } from '../../storageKeys';
+import { storageKey } from '../../storageKeys'
+import { getEthereumProvider } from '../../lib/ethereum'
+import { SHA256_SCALAR_MASK, CMD_BITS } from '../../constants/voting';
 
 interface KeyManagerProps {
   pollId: number;
@@ -89,7 +91,7 @@ export function KeyManager({
       } else {
         // Derive from wallet signature (same as signUp flow)
         const MACI_KEY_MESSAGE = 'SIGIL Voting Key v1';
-        const provider = (window as unknown as { ethereum?: { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum;
+        const provider = getEthereumProvider();
         if (!provider) throw new Error('No wallet provider');
         const sig = await provider.request({
           method: 'personal_sign',
@@ -119,11 +121,11 @@ export function KeyManager({
       const stateIndex = globalIdx ? BigInt(globalIdx) : pollIdx ? BigInt(pollIdx) : 1n;
       // Pack command with full bit-packing: stateIndex | (voteOption << 50) | (weight << 100) | (nonce << 150) | (pollId << 200)
       // Key change: voteOption=0, weight=0, but nonce and pollId must be included
-      const packedCommand = stateIndex | (0n << 50n) | (0n << 100n) | (nonce << 150n) | (BigInt(pollId) << 200n);
+      const packedCommand = stateIndex | (0n << CMD_BITS.VOTE_OPTION) | (0n << CMD_BITS.WEIGHT) | (nonce << CMD_BITS.NONCE) | (BigInt(pollId) << CMD_BITS.POLL_ID);
 
       // Compute command hash for EdDSA signature
       const saltBytes = crypto.getRandomValues(new Uint8Array(31));
-      const salt = BigInt('0x' + Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('')) & ((1n << 253n) - 1n);
+      const salt = BigInt('0x' + Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('')) & SHA256_SCALAR_MASK;
       const poseidon = await cm.buildPoseidon();
       const F = poseidon.F;
       // cmdHash must match circuit: Poseidon(stateIndex, newPubKeyX, newPubKeyY, newVoteWeight, salt)

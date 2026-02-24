@@ -41,6 +41,8 @@ import { storageKey, parseOnChainTitle } from '../storageKeys'
 import { preloadCrypto } from '../crypto/preload'
 import type { CryptoModules } from '../crypto/preload'
 import { getLogsChunked } from '../utils/viemLogs'
+import { getEthereumProvider } from '../lib/ethereum'
+import { TX_TIMEOUT_MS, FAIL_THRESHOLD_S } from '../constants/voting'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
 
@@ -57,7 +59,7 @@ async function deriveKeyFromWallet(address: string, cm: CryptoModules): Promise<
   if (cached) return BigInt(cached)
 
   // Request wallet signature (MetaMask popup)
-  const provider = (window as unknown as { ethereum?: { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum
+  const provider = getEthereumProvider()
   if (!provider) throw new Error('No wallet provider')
   const sig = await provider.request({
     method: 'personal_sign',
@@ -221,7 +223,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
       })
       setDelegationTxHash(hash)
       if (publicClient) {
-        const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 120_000 })
+        const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: TX_TIMEOUT_MS })
         if (receipt.status !== 'success') throw new Error('tx reverted')
       }
       await Promise.all([refetchDelegate(), refetchIsDelegating(), refetchDelegators()])
@@ -500,7 +502,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
   useEffect(() => {
     if (!pollAddress || !publicClient) return
 
-    const FAIL_THRESHOLD_S = 30 * 60 // 30 minutes after voting ends
+
 
     const checkPhase = async () => {
       try {
@@ -711,7 +713,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
       // Parse SignUp event to get stateIndex (2 min timeout)
       if (publicClient) {
         try {
-          const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 120_000 })
+          const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: TX_TIMEOUT_MS })
           for (const log of receipt.logs) {
             // Only parse logs from MACI contract (not other contracts' events)
             if (log.address.toLowerCase() !== MACI_V2_ADDRESS.toLowerCase()) continue
