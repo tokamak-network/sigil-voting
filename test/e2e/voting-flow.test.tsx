@@ -72,6 +72,8 @@ vi.mock('../../src/contractV2', () => ({
   ERC20_VOICE_CREDIT_PROXY_ABI: [],
   TALLY_ABI: [],
   MESSAGE_PROCESSOR_ABI: [],
+  DEFAULT_COORD_PUB_KEY_X: 0n,
+  DEFAULT_COORD_PUB_KEY_Y: 0n,
 }));
 
 vi.mock('../../src/writeHelper', () => ({
@@ -113,11 +115,8 @@ describe('E2E: Full Voting Flow', () => {
       <VoteFormV2
         pollId={0}
         pollAddress={POLL_ADDR}
-        coordinatorPubKeyX={123n}
-        coordinatorPubKeyY={456n}
         voiceCredits={100}
         isExpired={false}
-        isRegistered={true}
       />
     );
 
@@ -170,11 +169,8 @@ describe('E2E: Full Voting Flow', () => {
       <VoteFormV2
         pollId={0}
         pollAddress={POLL_ADDR}
-        coordinatorPubKeyX={123n}
-        coordinatorPubKeyY={456n}
         voiceCredits={100}
         isExpired={false}
-        isRegistered={true}
       />
     );
 
@@ -200,11 +196,8 @@ describe('E2E: Full Voting Flow', () => {
       <VoteFormV2
         pollId={0}
         pollAddress={POLL_ADDR}
-        coordinatorPubKeyX={123n}
-        coordinatorPubKeyY={456n}
         voiceCredits={9} // Only 9 credits = max weight 3
         isExpired={false}
-        isRegistered={true}
       />
     );
 

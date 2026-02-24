@@ -29,9 +29,13 @@ vi.mock('wagmi', () => ({
 
 vi.mock('../../src/contractV2', () => ({
   MACI_V2_ADDRESS: '0xABCDEF1234567890abcdef1234567890abcdef12',
+  MACI_DEPLOY_BLOCK: 0n,
+  MACI_ABI: [],
   POLL_ABI: [],
   VOICE_CREDIT_PROXY_ADDRESS: '0x0000000000000000000000000000000000000000',
   ERC20_VOICE_CREDIT_PROXY_ABI: [],
+  DEFAULT_COORD_PUB_KEY_X: 0n,
+  DEFAULT_COORD_PUB_KEY_Y: 0n,
 }))
 
 vi.mock('../../src/writeHelper', () => ({
@@ -55,11 +59,8 @@ describe('VoteFormV2', () => {
   const defaultProps = {
     pollId: 0,
     pollAddress: POLL_ADDR,
-    coordinatorPubKeyX: 123n,
-    coordinatorPubKeyY: 456n,
     voiceCredits: 100,
     isExpired: false,
-    isRegistered: true,
   }
 
   it('renders vote form with For and Against buttons', () => {
@@ -139,7 +140,8 @@ describe('VoteFormV2', () => {
   })
 
   it('shows auto-register notice for unregistered users', () => {
-    renderWithProviders(<VoteFormV2 {...defaultProps} isRegistered={false} />)
+    // signedUp is internal state, defaults to false → auto-register notice shown
+    renderWithProviders(<VoteFormV2 {...defaultProps} />)
     const notice = document.querySelector('.bg-blue-50')
     expect(notice).toBeInTheDocument()
   })
