@@ -146,8 +146,13 @@ export function DelegationPage() {
       }
       setShowDelegateSuccess(true)
       setTxStatus('success')
-    } catch {
-      setError(t.governance.delegation.error)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
+        setError(t.voteForm.errorRejected)
+      } else {
+        setError(t.governance.delegation.error)
+      }
       setTxStatus('failed')
     } finally {
       setIsConfirming(false)
@@ -190,8 +195,13 @@ export function DelegationPage() {
       }
       setShowUndelegateSuccess(true)
       setTxStatus('success')
-    } catch {
-      setError(t.governance.delegation.error)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('rejected') || msg.includes('denied') || msg.includes('User rejected')) {
+        setError(t.voteForm.errorRejected)
+      } else {
+        setError(t.governance.delegation.error)
+      }
       setTxStatus('failed')
     } finally {
       setIsConfirming(false)
