@@ -22,6 +22,7 @@ import { useTranslation } from '../../i18n';
 import { VoteConfirmModal } from './VoteConfirmModal';
 import { TransactionModal } from './TransactionModal';
 import { preloadCrypto } from '../../crypto/preload';
+import type { CryptoModules } from '../../crypto/preload';
 import { getLastVote, getMaciNonce, incrementMaciNonce } from './voteUtils';
 import { storageKey } from '../../storageKeys';
 import { getLogsChunked } from '../../utils/viemLogs';
@@ -189,248 +190,118 @@ export function VoteFormV2({
     setError(null);
 
     try {
-      // Auto-register if not yet registered
+      // Step 0: Auto-register if not yet signed up
       if (!isRegistered && onSignUp) {
         setTxStage('registering');
         await onSignUp();
       }
 
       setTxStage('encrypting');
-      const crypto = await preloadCrypto();
-      const poseidon = await crypto.buildPoseidon();
-      const F = poseidon.F;
+      const cm = await preloadCrypto();
+      const poseidon = await cm.buildPoseidon();
 
-      // Get current keypair
-      let currentSk: bigint;
-      let currentPubKey: [bigint, bigint];
-      {
-        let kp = await getOrCreateMaciKeypair(
-          address, pollId, crypto.derivePrivateKey, crypto.eddsaDerivePublicKey, crypto.loadEncrypted, crypto.storeEncrypted,
-        );
-        currentSk = kp.sk;
-        currentPubKey = kp.pubKey;
+      // Get current keypair (poll-specific > global > wallet-derived)
+      let { sk: currentSk, pubKey: currentPubKey } = await getOrCreateMaciKeypair(
+        address, pollId, cm.derivePrivateKey, cm.eddsaDerivePublicKey, cm.loadEncrypted, cm.storeEncrypted,
+      );
 
-        // Verify local key matches on-chain registered key
-        // If they differ (e.g., E2E test registered with random key), re-register
-        const storedPk = localStorage.getItem(storageKey.pk(address));
-        if (storedPk) {
-          try {
-            const parsed = JSON.parse(storedPk);
-            const regPkX = parsed[0].toString();
-            const regPkY = parsed[1].toString();
-            if (regPkX !== currentPubKey[0].toString() || regPkY !== currentPubKey[1].toString()) {
-              // Key mismatch — re-register with wallet-derived key to get a new stateIndex
-              if (onSignUp) {
-                setTxStage('registering');
-                await onSignUp();
-                // Re-derive keypair after re-registration (stateIndex and key updated)
-                kp = await getOrCreateMaciKeypair(
-                  address, pollId, crypto.derivePrivateKey, crypto.eddsaDerivePublicKey, crypto.loadEncrypted, crypto.storeEncrypted,
-                );
-                currentSk = kp.sk;
-                currentPubKey = kp.pubKey;
-              }
+      // Verify local key matches on-chain registered key; re-register on mismatch
+      const storedPk = localStorage.getItem(storageKey.pk(address));
+      if (storedPk) {
+        try {
+          const parsed = JSON.parse(storedPk);
+          if (parsed[0].toString() !== currentPubKey[0].toString() || parsed[1].toString() !== currentPubKey[1].toString()) {
+            if (onSignUp) {
+              setTxStage('registering');
+              await onSignUp();
+              const fresh = await getOrCreateMaciKeypair(
+                address, pollId, cm.derivePrivateKey, cm.eddsaDerivePublicKey, cm.loadEncrypted, cm.storeEncrypted,
+              );
+              currentSk = fresh.sk;
+              currentPubKey = fresh.pubKey;
             }
-          } catch {
-            // If parsing fails, proceed with current key
           }
+        } catch {
+          // Parsing failed — proceed with current key
         }
       }
 
       const resolvedStateIndex = await resolveStateIndexFromLogs(publicClient ?? null, address, currentPubKey);
-      if (!resolvedStateIndex) {
-        throw new Error('State index not found for registered key');
-      }
+      if (!resolvedStateIndex) throw new Error('State index not found for registered key');
 
-      // Determine the keypair that will sign the vote message
       let voteSk = currentSk;
       let votePubKey = currentPubKey;
 
-      // --- Step A: Auto key change on re-vote ---
+      // --- Step A: Key change on re-vote ---
+      // Invalidates previous vote by rotating to a fresh keypair before voting again.
       if (isReVote) {
         setTxStage('keyChanging');
-
-        // Generate new random keypair
         const seed = globalThis.crypto.getRandomValues(new Uint8Array(32));
-        const newSk = crypto.derivePrivateKey(seed);
-        const newPubKey = await crypto.eddsaDerivePublicKey(newSk);
-
-        // ECDH for key change message
-        let kcEphemeral: Awaited<ReturnType<typeof crypto.generateEphemeralKeyPair>>;
-        let kcSharedKey: Awaited<ReturnType<typeof crypto.generateECDHSharedKey>>;
-        try {
-          kcEphemeral = await crypto.generateEphemeralKeyPair();
-          kcSharedKey = await crypto.generateECDHSharedKey(
-            kcEphemeral.sk,
-            [coordinatorPubKeyX, coordinatorPubKeyY],
-          );
-        } catch (ecdhErr) {
-          throw new Error('ECDH key exchange failed: ' + (ecdhErr instanceof Error ? ecdhErr.message : String(ecdhErr)));
-        }
-
-        const kcNonce = BigInt(getMaciNonce(address, pollId));
+        const newSk = cm.derivePrivateKey(seed);
+        const newPubKey = await cm.eddsaDerivePublicKey(newSk);
         const stateIndex = BigInt(resolvedStateIndex);
-        // Key change command: voteOption=0, weight=0
-        const kcPackedCommand = stateIndex | (0n << CMD_BITS.VOTE_OPTION) | (0n << CMD_BITS.WEIGHT) | (kcNonce << CMD_BITS.NONCE) | (BigInt(pollId) << CMD_BITS.POLL_ID);
 
-        const kcSaltBytes = globalThis.crypto.getRandomValues(new Uint8Array(32));
-        const kcSalt = BigInt('0x' + Array.from(kcSaltBytes).map(b => b.toString(16).padStart(2, '0')).join('')) & SHA256_SCALAR_MASK;
-
-        // cmdHash: Poseidon(stateIndex, newPubKeyX, newPubKeyY, weight=0, salt)
-        const kcCmdHashF = poseidon([
-          F.e(stateIndex),
-          F.e(newPubKey[0]),
-          F.e(newPubKey[1]),
-          F.e(0n),
-          F.e(kcSalt),
-        ]);
-        const kcCmdHash = F.toObject(kcCmdHashF);
-
-        // Sign with current key
-        const kcSignature = await crypto.eddsaSign(kcCmdHash, currentSk);
-
-        const kcPlaintext = [
-          kcPackedCommand,
-          newPubKey[0],
-          newPubKey[1],
-          kcSalt,
-          kcSignature.R8[0],
-          kcSignature.R8[1],
-          kcSignature.S,
-        ];
-
-        const kcCiphertext = await crypto.poseidonEncrypt(kcPlaintext, kcSharedKey, 0n);
-        const kcEncMessage: bigint[] = new Array(10).fill(0n);
-        for (let i = 0; i < Math.min(kcCiphertext.length, 10); i++) {
-          kcEncMessage[i] = kcCiphertext[i];
-        }
+        const { encMessage: kcMsg, ephemeralPubKey: kcEphPubKey } = await buildEncryptedMessage({
+          cm, poseidon,
+          stateIndex,
+          pubKeyX: newPubKey[0], pubKeyY: newPubKey[1],
+          voteOption: 0n, voteWeight: 0n,
+          signerSk: currentSk,
+          nonce: BigInt(getMaciNonce(address, pollId)),
+          pollId, coordinatorPubKeyX, coordinatorPubKeyY,
+        });
 
         setTxStage('confirming');
-
-        // Submit key change message
-        const kcHash = await publishWithRetry(pollAddress, kcEncMessage, kcEphemeral.pubKey, address, setTxStage, publicClient ?? undefined);
-
+        const kcHash = await publishWithRetry(pollAddress, kcMsg, kcEphPubKey, address, setTxStage, publicClient ?? undefined);
         setTxStage('waiting');
-
-        // Wait for on-chain confirmation (2 min timeout)
         if (publicClient) {
           const receipt = await publicClient.waitForTransactionReceipt({ hash: kcHash, timeout: TX_TIMEOUT_MS });
-          if (receipt.status === 'reverted') {
-            throw new Error('Key change transaction reverted on-chain');
-          }
+          if (receipt.status === 'reverted') throw new Error('Key change transaction reverted on-chain');
         }
 
-        // Save new keypair and increment nonce
-        localStorage.setItem(
-          storageKey.pubkey(address, pollId),
-          JSON.stringify([newPubKey[0].toString(), newPubKey[1].toString()]),
-        );
-        await crypto.storeEncrypted(
-          storageKey.skPoll(address, pollId),
-          newSk.toString(),
-          address,
-        );
+        localStorage.setItem(storageKey.pubkey(address, pollId), JSON.stringify([newPubKey[0].toString(), newPubKey[1].toString()]));
+        await cm.storeEncrypted(storageKey.skPoll(address, pollId), newSk.toString(), address);
         incrementMaciNonce(address, pollId);
-
-        // Use the new key for the vote
         voteSk = newSk;
         votePubKey = newPubKey;
       }
 
       // --- Step B: Send vote message ---
       setTxStage('encrypting');
-
-      let ephemeral: Awaited<ReturnType<typeof crypto.generateEphemeralKeyPair>>;
-      let sharedKey: Awaited<ReturnType<typeof crypto.generateECDHSharedKey>>;
-      try {
-        ephemeral = await crypto.generateEphemeralKeyPair();
-        sharedKey = await crypto.generateECDHSharedKey(
-          ephemeral.sk,
-          [coordinatorPubKeyX, coordinatorPubKeyY],
-        );
-      } catch (ecdhErr) {
-        throw new Error('ECDH key exchange failed: ' + (ecdhErr instanceof Error ? ecdhErr.message : String(ecdhErr)));
-      }
-
-      const nonce = BigInt(getMaciNonce(address, pollId));
       const stateIndex = BigInt(resolvedStateIndex);
-      const packedCommand = packCommand(
+
+      const { encMessage, ephemeralPubKey } = await buildEncryptedMessage({
+        cm, poseidon,
         stateIndex,
-        BigInt(choice),
-        BigInt(weight),
-        nonce,
-        BigInt(pollId),
-      );
-
-      setTxStage('signing');
-
-      const saltBytes = globalThis.crypto.getRandomValues(new Uint8Array(32));
-      const salt = BigInt('0x' + Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('')) & SHA256_SCALAR_MASK;
-
-      // cmdHash must match circuit: Poseidon(stateIndex, newPubKeyX, newPubKeyY, newVoteWeight, salt)
-      const cmdHashF = poseidon([
-        F.e(stateIndex),
-        F.e(votePubKey[0]),
-        F.e(votePubKey[1]),
-        F.e(BigInt(weight)),
-        F.e(salt),
-      ]);
-      const cmdHash = F.toObject(cmdHashF);
-
-      const signature = await crypto.eddsaSign(cmdHash, voteSk);
-
-      const plaintext = [
-        packedCommand,
-        votePubKey[0],
-        votePubKey[1],
-        salt,
-        signature.R8[0],
-        signature.R8[1],
-        signature.S,
-      ];
-
-      const ciphertext = await crypto.poseidonEncrypt(plaintext, sharedKey, 0n);
-
-      const encMessage: bigint[] = new Array(10).fill(0n);
-      for (let i = 0; i < Math.min(ciphertext.length, 10); i++) {
-        encMessage[i] = ciphertext[i];
-      }
+        pubKeyX: votePubKey[0], pubKeyY: votePubKey[1],
+        voteOption: BigInt(choice), voteWeight: BigInt(weight),
+        signerSk: voteSk,
+        nonce: BigInt(getMaciNonce(address, pollId)),
+        pollId, coordinatorPubKeyX, coordinatorPubKeyY,
+        onBeforeSigning: () => setTxStage('signing'),
+      });
 
       setTxStage('confirming');
+      if (!address) { setError(t.maci.connectWallet); setTxStage('error'); setIsSubmitting(false); return; }
 
-      // Re-check wallet connection before submitting transaction
-      if (!address) {
-        setError(t.maci.connectWallet);
-        setTxStage('error');
-        setIsSubmitting(false);
-        return;
-      }
-
-      const hash = await publishWithRetry(pollAddress, encMessage, ephemeral.pubKey, address, setTxStage, publicClient ?? undefined);
-
+      const hash = await publishWithRetry(pollAddress, encMessage, ephemeralPubKey, address, setTxStage, publicClient ?? undefined);
       setTxStage('waiting');
       setTxHash(hash);
 
-      // Wait for on-chain confirmation before saving state (2 min timeout)
       if (publicClient) {
         const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: TX_TIMEOUT_MS });
-        if (receipt.status === 'reverted') {
-          throw new Error('Transaction reverted on-chain');
-        }
+        if (receipt.status === 'reverted') throw new Error('Transaction reverted on-chain');
       }
 
-      // Only save state after confirmed on-chain
+      // Save state only after on-chain confirmation
       incrementMaciNonce(address, pollId);
       saveLastVote(address, pollId, choice, weight, cost);
       setCreditsSpent(address, pollId, cost);
-
       onVoteSubmitted?.(hash);
       setTxStage('done');
     } catch (err) {
       // Only log error type in production — never raw error objects with keys/signatures
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Vote error:', err);
-      }
+      if (process.env.NODE_ENV === 'development') console.error('Vote error:', err);
       setTxStage('error');
       const errorMessage = classifyError(err);
       setError(errorMessage);
@@ -884,6 +755,71 @@ async function getOrCreateMaciKeypair(
   await storeEncrypted(globalSkKey, sk.toString(), address);
   localStorage.setItem(globalPkKey, JSON.stringify([pubKey[0].toString(), pubKey[1].toString()]));
   return { sk, pubKey };
+}
+
+interface EncryptedMessageParams {
+  cm: CryptoModules;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  poseidon: any;
+  stateIndex: bigint;
+  pubKeyX: bigint;
+  pubKeyY: bigint;
+  voteOption: bigint;
+  voteWeight: bigint;
+  signerSk: bigint;
+  nonce: bigint;
+  pollId: number;
+  coordinatorPubKeyX: bigint;
+  coordinatorPubKeyY: bigint;
+  /** Called just before EdDSA signing — use to update UI stage to 'signing'. */
+  onBeforeSigning?: () => void;
+}
+
+/**
+ * Builds an encrypted MACI message (key change OR vote).
+ * Both share the same ECDH → pack → hash → sign → Poseidon-encrypt flow.
+ *
+ * Key change: voteOption=0, voteWeight=0, pubKey=newKey, signerSk=currentSk
+ * Vote:       voteOption=choice, voteWeight=weight, pubKey=current/newKey, signerSk=voteSk
+ */
+async function buildEncryptedMessage({
+  cm, poseidon,
+  stateIndex, pubKeyX, pubKeyY,
+  voteOption, voteWeight,
+  signerSk, nonce, pollId,
+  coordinatorPubKeyX, coordinatorPubKeyY,
+  onBeforeSigning,
+}: EncryptedMessageParams): Promise<{ encMessage: bigint[]; ephemeralPubKey: [bigint, bigint] }> {
+  let ephemeral: Awaited<ReturnType<typeof cm.generateEphemeralKeyPair>>;
+  let sharedKey: Awaited<ReturnType<typeof cm.generateECDHSharedKey>>;
+  try {
+    ephemeral = await cm.generateEphemeralKeyPair();
+    sharedKey = await cm.generateECDHSharedKey(ephemeral.sk, [coordinatorPubKeyX, coordinatorPubKeyY]);
+  } catch (e) {
+    throw new Error('ECDH key exchange failed: ' + (e instanceof Error ? e.message : String(e)));
+  }
+
+  const packedCommand = packCommand(stateIndex, voteOption, voteWeight, nonce, BigInt(pollId));
+
+  const saltBytes = globalThis.crypto.getRandomValues(new Uint8Array(32));
+  const salt = BigInt('0x' + Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('')) & SHA256_SCALAR_MASK;
+
+  // cmdHash must match circuit: Poseidon(stateIndex, pubKeyX, pubKeyY, voteWeight, salt)
+  const F = poseidon.F;
+  const cmdHashF = poseidon([F.e(stateIndex), F.e(pubKeyX), F.e(pubKeyY), F.e(voteWeight), F.e(salt)]);
+  const cmdHash = F.toObject(cmdHashF);
+
+  onBeforeSigning?.();
+  const signature = await cm.eddsaSign(cmdHash, signerSk);
+
+  const plaintext = [packedCommand, pubKeyX, pubKeyY, salt, signature.R8[0], signature.R8[1], signature.S];
+  const ciphertext = await cm.poseidonEncrypt(plaintext, sharedKey, 0n);
+
+  const encMessage: bigint[] = new Array(10).fill(0n);
+  for (let i = 0; i < Math.min(ciphertext.length, 10); i++) {
+    encMessage[i] = ciphertext[i];
+  }
+  return { encMessage, ephemeralPubKey: ephemeral.pubKey };
 }
 
 function packCommand(
