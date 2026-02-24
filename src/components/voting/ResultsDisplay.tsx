@@ -87,7 +87,7 @@ export function ResultsDisplay({ tallyAddress, pollAddress, pollId }: ResultsDis
             <span className="w-3 h-3 bg-primary rounded-full animate-pulse" title="Auto-refreshing" aria-label="Auto-refreshing results"></span>
           )}
         </div>
-        <p className="text-lg font-display font-bold uppercase text-slate-500">{t.processing.processing}</p>
+        <p className="text-lg font-display font-bold uppercase text-slate-500">{t.processing.inProgress}</p>
         <p className="text-sm text-slate-400">{t.processing.desc}</p>
       </div>
     );

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useAccount, useReadContract, usePublicClient } from 'wagmi'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from '../../../../src/i18n'

@@ -113,12 +113,10 @@ export function ProcessingStatus({
   const { t } = useTranslation();
 
   // Use on-chain votingEndTime as base (survives page refresh), fallback to mount time
-  const [baseTime, setBaseTime] = useState(0);
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
     const initialBase = votingEndTime ? votingEndTime * 1000 : Date.now();
-    setBaseTime(initialBase);
     setElapsed(Date.now() - initialBase);
     const interval = setInterval(() => setElapsed(Date.now() - initialBase), 1000);
     return () => clearInterval(interval);
