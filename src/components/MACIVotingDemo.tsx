@@ -19,16 +19,8 @@ import {
   MACI_V2_ADDRESS,
   MACI_DEPLOY_BLOCK,
   MACI_ABI,
-  POLL_ABI,
   TALLY_ABI,
-  VOICE_CREDIT_PROXY_ADDRESS,
-  VOICE_CREDIT_PROXY_ABI,
-  DELEGATING_VOICE_CREDIT_PROXY_ABI,
-  DELEGATION_REGISTRY_ADDRESS,
-  DELEGATION_REGISTRY_ABI,
   V2Phase,
-  DEFAULT_COORD_PUB_KEY_X,
-  DEFAULT_COORD_PUB_KEY_Y,
 } from '../contractV2'
 import { VoteFormV2 } from './voting/VoteFormV2'
 import { getLastVote } from './voting/voteUtils'
@@ -37,12 +29,15 @@ import { ResultsDisplay } from './voting/ResultsDisplay'
 import { PollTimer } from './voting/PollTimer'
 import { useTranslation } from '../i18n'
 import { estimateGasWithBuffer } from '../utils/gas'
-import { storageKey, parseOnChainTitle } from '../storageKeys'
+import { storageKey } from '../storageKeys'
 import { preloadCrypto } from '../crypto/preload'
 import type { CryptoModules } from '../crypto/preload'
 import { getLogsChunked } from '../utils/viemLogs'
 import { getEthereumProvider } from '../lib/ethereum'
-import { TX_TIMEOUT_MS, FAIL_THRESHOLD_S } from '../constants/voting'
+import { TX_TIMEOUT_MS } from '../constants/voting'
+import { useDelegation } from '../hooks/useDelegation'
+import { usePollData } from '../hooks/usePollData'
+import { useVotingPhase } from '../hooks/useVotingPhase'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
 
@@ -94,44 +89,24 @@ interface MACIVotingDemoProps {
 export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmitted }: MACIVotingDemoProps) {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
-  // writeContract from writeHelper.ts — bypasses wagmi connector entirely
   const { t } = useTranslation()
 
-  const [phase, setPhase] = useState<V2Phase>(V2Phase.Voting)
-  const [phaseLoaded, setPhaseLoaded] = useState(false)
-  const [signedUp, setSignedUp] = useState(false)
-  const [pollAddress, setPollAddress] = useState<`0x${string}` | null>(null)
-  const [tallyAddress, setTallyAddress] = useState<`0x${string}` | null>(null)
-  const [messageProcessorAddress, setMessageProcessorAddress] = useState<`0x${string}` | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [txHash, setTxHash] = useState<string | null>(null)
   const [, setIsSigningUp] = useState(false)
-  const [isLoadingPoll, setIsLoadingPoll] = useState(true)
-  const [pollTitle, setPollTitle] = useState<string | null>(null)
-  const [pollDescription, setPollDescription] = useState<string | null>(null)
   const [isPollExpired, setIsPollExpired] = useState(false)
   const [showReVoteForm, setShowReVoteForm] = useState(false)
-  const [pollDeployTime, setPollDeployTime] = useState<number | null>(null)
-  const [votingEndTime, setVotingEndTime] = useState<number | null>(null)
+  const [signedUp, setSignedUp] = useState(false)
   const [phaseCheckTrigger, setPhaseCheckTrigger] = useState(0)
   const forceSignupRef = useRef(false)
 
   // Reset transient state when switching between proposals
   useEffect(() => {
-    setPhase(V2Phase.Voting)
-    setPhaseLoaded(false)
     setError(null)
     setTxHash(null)
     setIsPollExpired(false)
     setShowReVoteForm(false)
-    setPollAddress(null)
-    setTallyAddress(null)
-    setMessageProcessorAddress(null)
-    setPollTitle(null)
-    setPollDescription(null)
-    setPollDeployTime(null)
-    setVotingEndTime(null)
-    setIsLoadingPoll(true)
+    setSignedUp(false)
     forceSignupRef.current = false
   }, [propPollId])
 
@@ -143,102 +118,53 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
   }, [address])
 
   const isConfigured = MACI_V2_ADDRESS !== ZERO_ADDRESS
-  const hasPoll = pollAddress !== null
 
-  const isDelegationConfigured = DELEGATION_REGISTRY_ADDRESS !== ZERO_ADDRESS
-  const { data: proxyDelegationRegistry, isError: proxyDelegationError } = useReadContract({
-    address: VOICE_CREDIT_PROXY_ADDRESS,
-    abi: DELEGATING_VOICE_CREDIT_PROXY_ABI,
-    functionName: 'delegationRegistry',
-    query: { enabled: VOICE_CREDIT_PROXY_ADDRESS !== ZERO_ADDRESS },
-  })
-  const { data: currentDelegate, refetch: refetchDelegate } = useReadContract({
-    address: DELEGATION_REGISTRY_ADDRESS,
-    abi: DELEGATION_REGISTRY_ABI,
-    functionName: 'getDelegate',
-    args: address ? [address] : undefined,
-    query: { enabled: isDelegationConfigured && !!address },
-  })
-  const { data: isDelegating, refetch: refetchIsDelegating } = useReadContract({
-    address: DELEGATION_REGISTRY_ADDRESS,
-    abi: DELEGATION_REGISTRY_ABI,
-    functionName: 'isDelegating',
-    args: address ? [address] : undefined,
-    query: { enabled: isDelegationConfigured && !!address },
-  })
-  const { data: delegators, refetch: refetchDelegators } = useReadContract({
-    address: DELEGATION_REGISTRY_ADDRESS,
-    abi: DELEGATION_REGISTRY_ABI,
-    functionName: 'getDelegators',
-    args: address ? [address] : undefined,
-    query: { enabled: isDelegationConfigured && !!address, refetchInterval: 4000 },
-  })
+  // === Delegation ===
+  const {
+    isDelegationConfigured,
+    isDelegating,
+    delegateDisplay,
+    delegatorList,
+    delegationEffectNote,
+    isDelegationEffective: _isDelegationEffective,
+    isDelegationLocked,
+    isUndelegating,
+    delegationError,
+    delegationSuccess,
+    delegationTxHash,
+    handleUndelegate,
+  } = useDelegation()
 
-  const shorten = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-4)
-  const delegatorList = Array.isArray(delegators) ? delegators : []
-  const delegateDisplay = typeof currentDelegate === 'string' && currentDelegate !== ZERO_ADDRESS
-    ? currentDelegate
-    : null
-  const delegationRegistryMatch =
-    typeof proxyDelegationRegistry === 'string' &&
-    proxyDelegationRegistry !== ZERO_ADDRESS &&
-    proxyDelegationRegistry.toLowerCase() === DELEGATION_REGISTRY_ADDRESS.toLowerCase()
-  const isDelegationEffective = isDelegationConfigured && !proxyDelegationError && delegationRegistryMatch
-  const isDelegationLocked = Boolean(isDelegationEffective && isDelegating)
-  const delegationEffectNote = isDelegationEffective
-    ? t.governance.delegation.effectNote
-    : t.governance.delegation.effectNoteLimited
+  // === Poll Data (address, title, tally/mp addresses, credits) ===
+  const {
+    pollAddress,
+    pollTitle,
+    pollDescription,
+    tallyAddress,
+    setTallyAddress,
+    messageProcessorAddress,
+    setMessageProcessorAddress,
+    coordPubKeyX,
+    coordPubKeyY,
+    voiceCredits,
+    numMessages,
+    isLoadingPoll,
+  } = usePollData(propPollId, publicClient, isConfigured, address)
 
-  const [isUndelegating, setIsUndelegating] = useState(false)
-  const [delegationError, setDelegationError] = useState<string | null>(null)
-  const [delegationSuccess, setDelegationSuccess] = useState(false)
-  const [delegationTxHash, setDelegationTxHash] = useState<string | null>(null)
-
-  const handleUndelegate = useCallback(async () => {
-    if (!address) {
-      setDelegationError(t.maci.connectWallet)
-      return
-    }
-    setDelegationError(null)
-    setDelegationSuccess(false)
-    setDelegationTxHash(null)
-    try {
-      setIsUndelegating(true)
-      const gas = await estimateGasWithBuffer({
-        publicClient,
-        address: DELEGATION_REGISTRY_ADDRESS,
-        abi: DELEGATION_REGISTRY_ABI,
-        functionName: 'undelegate',
-        args: [],
-        account: address as `0x${string}`,
-        fallbackGas: 200_000n,
-      })
-      const hash = await writeContract({
-        address: DELEGATION_REGISTRY_ADDRESS,
-        abi: DELEGATION_REGISTRY_ABI,
-        functionName: 'undelegate',
-        args: [],
-        gas,
-        account: address as `0x${string}`,
-      })
-      setDelegationTxHash(hash)
-      if (publicClient) {
-        const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: TX_TIMEOUT_MS })
-        if (receipt.status !== 'success') throw new Error('tx reverted')
-      }
-      await Promise.all([refetchDelegate(), refetchIsDelegating(), refetchDelegators()])
-      if (address) {
-        localStorage.setItem(storageKey.delegationChangedAt(address), String(Date.now()))
-      }
-      setDelegationSuccess(true)
-    } catch {
-      setDelegationError(t.governance.delegation.error)
-    } finally {
-      setIsUndelegating(false)
-    }
-  }, [address, publicClient, refetchDelegate, refetchIsDelegating, refetchDelegators, t])
+  // === Phase Detection ===
+  const { phase, phaseLoaded, pollDeployTime, votingEndTime } = useVotingPhase({
+    pollAddress,
+    publicClient,
+    pollId: propPollId,
+    isPollExpired,
+    phaseCheckTrigger,
+    tallyAddress,
+    setTallyAddress,
+    setMessageProcessorAddress,
+  })
 
   // Read tally results for dynamic PASSED/REJECTED badge
+  const hasPoll = pollAddress !== null
   const tallyReady = !!tallyAddress && tallyAddress !== ZERO_ADDRESS && phase === V2Phase.Finalized
   const { data: tallyFor } = useReadContract({
     address: tallyAddress!,
@@ -257,141 +183,6 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
   const isTied = forNum === againstNum && forNum > 0
   const isPassed = forNum > againstNum
 
-  // Load poll address from contract using propPollId
-  useEffect(() => {
-    if (!publicClient || !isConfigured) return
-    setIsLoadingPoll(true)
-
-    const loadPoll = async () => {
-      try {
-        // Parallel: fetch poll address + event logs simultaneously
-        const [addr, logs] = await Promise.all([
-          publicClient.readContract({
-            address: MACI_V2_ADDRESS,
-            abi: MACI_ABI,
-            functionName: 'polls',
-            args: [BigInt(propPollId)],
-          }),
-          getLogsChunked(
-            publicClient,
-            {
-              address: MACI_V2_ADDRESS,
-              event: {
-                type: 'event',
-                name: 'DeployPoll',
-                inputs: [
-                  { name: 'pollId', type: 'uint256', indexed: true },
-                  { name: 'pollAddr', type: 'address', indexed: false },
-                  { name: 'messageProcessorAddr', type: 'address', indexed: false },
-                  { name: 'tallyAddr', type: 'address', indexed: false },
-                ],
-              },
-            },
-            MACI_DEPLOY_BLOCK,
-            'latest',
-          ).catch(() => []),
-        ])
-
-        const pollAddr = addr as `0x${string}`
-        if (pollAddr && pollAddr !== ZERO_ADDRESS) {
-          setPollAddress(pollAddr)
-
-          // Read title from on-chain Poll contract (authoritative)
-          try {
-            const onChainTitle = await publicClient.readContract({
-              address: pollAddr,
-              abi: POLL_ABI,
-              functionName: 'title',
-            }) as string
-            if (onChainTitle) {
-              const parsed = parseOnChainTitle(onChainTitle)
-              setPollTitle(parsed.title)
-              localStorage.setItem(storageKey.pollTitle(propPollId), parsed.title)
-              if (parsed.description) {
-                setPollDescription(parsed.description)
-                localStorage.setItem(storageKey.pollDesc(propPollId), parsed.description)
-              }
-            }
-          } catch {
-            // Fallback to localStorage
-            const title = localStorage.getItem(storageKey.pollTitle(propPollId))
-            if (title) setPollTitle(title)
-          }
-        }
-        if (!pollDescription) {
-          const desc = localStorage.getItem(storageKey.pollDesc(propPollId))
-          if (desc) setPollDescription(desc)
-        }
-
-        for (const log of logs) {
-          const args = (log as unknown as { args: { pollId?: bigint; pollAddr?: `0x${string}`; messageProcessorAddr?: `0x${string}`; tallyAddr?: `0x${string}` } }).args
-          if (args.pollId !== undefined && Number(args.pollId) === propPollId) {
-            if (args.tallyAddr) {
-              setTallyAddress(args.tallyAddr)
-              localStorage.setItem(storageKey.pollTitle(propPollId) + ':tally', args.tallyAddr)
-            }
-            if (args.messageProcessorAddr) {
-              setMessageProcessorAddress(args.messageProcessorAddr)
-              localStorage.setItem(storageKey.pollTitle(propPollId) + ':mp', args.messageProcessorAddr)
-            }
-            break
-          }
-        }
-        // Fallback: restore from localStorage if events returned empty
-        if (!tallyAddress) {
-          const cached = localStorage.getItem(storageKey.pollTitle(propPollId) + ':tally') as `0x${string}` | null
-          if (cached) setTallyAddress(cached)
-        }
-        if (!messageProcessorAddress) {
-          const cached = localStorage.getItem(storageKey.pollTitle(propPollId) + ':mp') as `0x${string}` | null
-          if (cached) setMessageProcessorAddress(cached)
-        }
-      } catch {
-        // Poll doesn't exist
-      } finally {
-        setIsLoadingPoll(false)
-      }
-    }
-
-    loadPoll()
-  }, [propPollId, publicClient, isConfigured, tallyAddress, messageProcessorAddress])
-
-  // Read coordinator keys from Poll contract (on-chain, not hardcoded)
-  const { data: coordPubKeyXRaw } = useReadContract({
-    address: pollAddress || ZERO_ADDRESS,
-    abi: POLL_ABI,
-    functionName: 'coordinatorPubKeyX',
-    query: { enabled: hasPoll },
-  })
-  const { data: coordPubKeyYRaw } = useReadContract({
-    address: pollAddress || ZERO_ADDRESS,
-    abi: POLL_ABI,
-    functionName: 'coordinatorPubKeyY',
-    query: { enabled: hasPoll },
-  })
-
-  const coordPubKeyX = coordPubKeyXRaw !== undefined ? BigInt(coordPubKeyXRaw as bigint) : DEFAULT_COORD_PUB_KEY_X
-  const coordPubKeyY = coordPubKeyYRaw !== undefined ? BigInt(coordPubKeyYRaw as bigint) : DEFAULT_COORD_PUB_KEY_Y
-
-  // Read voice credits from VoiceCreditProxy (user's token balance = credits)
-  const { data: voiceCreditsRaw } = useReadContract({
-    address: VOICE_CREDIT_PROXY_ADDRESS,
-    abi: VOICE_CREDIT_PROXY_ABI,
-    functionName: 'getVoiceCredits',
-    args: address ? [address, '0x'] : undefined,
-    query: { enabled: isConfigured && VOICE_CREDIT_PROXY_ADDRESS !== ZERO_ADDRESS && !!address, refetchInterval: 30000 },
-  })
-  const voiceCredits = voiceCreditsRaw !== undefined ? Number(voiceCreditsRaw) : 0
-
-  // Read numMessages from Poll contract for stats
-  const { data: numMessagesRaw } = useReadContract({
-    address: pollAddress || ZERO_ADDRESS,
-    abi: POLL_ABI,
-    functionName: 'numMessages',
-    query: { enabled: hasPoll, refetchInterval: 30000 },
-  })
-  const numMessages = numMessagesRaw !== undefined ? Number(numMessagesRaw) : 0
-
   // Auto-dismiss tx banner after 30 seconds
   useEffect(() => {
     if (!txHash) return
@@ -401,7 +192,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
 
   // 2 steps: 0=Vote, 1=Result
   // Ended proposals -> always show result (step 1), regardless of registration
-  const currentStep = (hasPoll && (phase !== V2Phase.Voting || isPollExpired)) ? 1 : 0
+  const currentStep = hasPoll && (phase !== V2Phase.Voting || isPollExpired) ? 1 : 0
 
   // Read numSignUps from MACI
   const { data: numSignUpsRaw, refetch: refetchSignUps } = useReadContract({
@@ -497,170 +288,6 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
     }
     checkOnChainSignUp()
   }, [address, publicClient, isConfigured, propPollId, pollDeployTime])
-
-  // Determine phase from poll state (with Finalized detection)
-  useEffect(() => {
-    if (!pollAddress || !publicClient) return
-
-
-
-    const checkPhase = async () => {
-      try {
-        // Parallel: fetch all poll state in one batch
-        const [isOpen, stateMerged, msgMerged, deployTimeAndDuration, numMessages] = await Promise.all([
-          publicClient.readContract({
-            address: pollAddress,
-            abi: POLL_ABI,
-            functionName: 'isVotingOpen',
-          }),
-          publicClient.readContract({
-            address: pollAddress,
-            abi: POLL_ABI,
-            functionName: 'stateAqMerged',
-          }),
-          publicClient.readContract({
-            address: pollAddress,
-            abi: POLL_ABI,
-            functionName: 'messageAqMerged',
-          }),
-          publicClient.readContract({
-            address: pollAddress,
-            abi: POLL_ABI,
-            functionName: 'getDeployTimeAndDuration',
-          }).catch(() => null),
-          publicClient.readContract({
-            address: pollAddress,
-            abi: POLL_ABI,
-            functionName: 'numMessages',
-          }).catch(() => 0n),
-        ])
-
-        // Store votingEndTime for timer components
-        if (deployTimeAndDuration) {
-          const [deployTime, duration] = deployTimeAndDuration as [bigint, bigint]
-          setPollDeployTime(Number(deployTime))
-          setVotingEndTime(Number(deployTime) + Number(duration))
-        }
-
-        if (isOpen) {
-          if (isPollExpired) {
-            // Timer expired locally but contract still says open — show processing UI
-            setPhase(V2Phase.Merging)
-          } else {
-            setPhase(V2Phase.Voting)
-          }
-          setPhaseLoaded(true)
-          return
-        }
-
-        // No votes cast — show empty result immediately
-        if (Number(numMessages) === 0) {
-          setPhase(V2Phase.NoVotes)
-          setPhaseLoaded(true)
-          return
-        }
-
-        // If tallyAddress not yet known, re-discover from deploy logs or localStorage
-        let checkTallyAddr = tallyAddress
-        if ((!checkTallyAddr || checkTallyAddr === ZERO_ADDRESS) && !isOpen) {
-          // Try localStorage first (fast, no RPC)
-          const cachedTally = localStorage.getItem(storageKey.pollTitle(propPollId) + ':tally') as `0x${string}` | null
-          if (cachedTally && cachedTally !== ZERO_ADDRESS) {
-            checkTallyAddr = cachedTally
-            setTallyAddress(cachedTally)
-          } else {
-            // Fallback: query events from RPC
-            try {
-              const deployLogs = await getLogsChunked(
-                publicClient,
-                {
-                  address: MACI_V2_ADDRESS,
-                  event: {
-                    type: 'event',
-                    name: 'DeployPoll',
-                    inputs: [
-                      { name: 'pollId', type: 'uint256', indexed: true },
-                      { name: 'pollAddr', type: 'address', indexed: false },
-                      { name: 'messageProcessorAddr', type: 'address', indexed: false },
-                      { name: 'tallyAddr', type: 'address', indexed: false },
-                    ],
-                  },
-                },
-                MACI_DEPLOY_BLOCK,
-                'latest',
-              )
-              for (const dl of deployLogs) {
-                const dArgs = (dl as unknown as { args: { pollId?: bigint; tallyAddr?: `0x${string}`; messageProcessorAddr?: `0x${string}` } }).args
-                if (dArgs.pollId !== undefined && Number(dArgs.pollId) === propPollId) {
-                  if (dArgs.tallyAddr) {
-                    checkTallyAddr = dArgs.tallyAddr
-                    setTallyAddress(dArgs.tallyAddr)
-                    localStorage.setItem(storageKey.pollTitle(propPollId) + ':tally', dArgs.tallyAddr)
-                  }
-                  if (dArgs.messageProcessorAddr) {
-                    setMessageProcessorAddress(dArgs.messageProcessorAddr)
-                    localStorage.setItem(storageKey.pollTitle(propPollId) + ':mp', dArgs.messageProcessorAddr)
-                  }
-                  break
-                }
-              }
-            } catch (e) {
-              if (process.env.NODE_ENV === 'development') console.warn('[checkPhase] getLogs failed:', e)
-            }
-          }
-        }
-
-        // Check if tally is verified first (success path)
-        if (checkTallyAddr && checkTallyAddr !== ZERO_ADDRESS) {
-          try {
-            const verified = await publicClient.readContract({
-              address: checkTallyAddr,
-              abi: TALLY_ABI,
-              functionName: 'tallyVerified',
-            })
-            if (verified) {
-              setPhase(V2Phase.Finalized)
-              setPhaseLoaded(true)
-              return
-            }
-          } catch {
-            // Tally contract might not support tallyVerified
-          }
-        }
-
-        // Check if stuck too long → Failed
-        if (deployTimeAndDuration) {
-          const [deployTime, duration] = deployTimeAndDuration as [bigint, bigint]
-          const votingEndTime = Number(deployTime) + Number(duration)
-          const now = Math.floor(Date.now() / 1000)
-          if (now - votingEndTime > FAIL_THRESHOLD_S) {
-            setPhase(V2Phase.Failed)
-            setPhaseLoaded(true)
-            return
-          }
-        }
-
-        if (!stateMerged || !msgMerged) {
-          setPhase(V2Phase.Merging)
-          setPhaseLoaded(true)
-          return
-        }
-
-        setPhase(V2Phase.Processing)
-        setPhaseLoaded(true)
-      } catch {
-        // Poll might not exist yet or read failed
-        setPhaseLoaded(true)
-      }
-    }
-
-    checkPhase()
-    // Voting phase: 5s poll. Merging/Processing: 8s. Finalized: stop.
-    if (phase === V2Phase.Finalized) return
-    const ms = phase === V2Phase.Voting ? 5000 : 8000
-    const interval = setInterval(checkPhase, ms)
-    return () => clearInterval(interval)
-  }, [pollAddress, publicClient, tallyAddress, messageProcessorAddress, phase, propPollId, phaseCheckTrigger, isPollExpired])
 
   // === SignUp (called by VoteFormV2 via callback) ===
   const handleSignUp = useCallback(async () => {
@@ -760,6 +387,8 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
 
   // Receipt ID: use the actual tx hash stored in localStorage (real on-chain proof)
   const receiptId = txHash ? `${txHash.slice(0, 8)}...${txHash.slice(-6)}` : null
+
+  const shorten = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-4)
 
   const delegationPanel = (isDelegationConfigured && address) ? (
     <div className="border-2 border-black bg-white p-4 mb-6">
