@@ -91,13 +91,13 @@ export function KeyManager({
         const MACI_KEY_MESSAGE = 'SIGIL Voting Key v1';
         const provider = (window as unknown as { ethereum?: { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum;
         if (!provider) throw new Error('No wallet provider');
-        const sig: string = await provider.request({
+        const sig = await provider.request({
           method: 'personal_sign',
           params: [
             `0x${Array.from(new TextEncoder().encode(MACI_KEY_MESSAGE)).map(b => b.toString(16).padStart(2, '0')).join('')}`,
             address,
           ],
-        });
+        }) as string;
         const sigBytes = new Uint8Array(sig.slice(2).match(/.{2}/g)!.map(h => parseInt(h, 16)));
         currentSk = cm.derivePrivateKey(sigBytes);
         // Cache for future use

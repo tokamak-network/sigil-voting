@@ -59,13 +59,13 @@ async function deriveKeyFromWallet(address: string, cm: CryptoModules): Promise<
   // Request wallet signature (MetaMask popup)
   const provider = (window as unknown as { ethereum?: { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum
   if (!provider) throw new Error('No wallet provider')
-  const sig: string = await provider.request({
+  const sig = await provider.request({
     method: 'personal_sign',
     params: [
       `0x${Array.from(new TextEncoder().encode(MACI_KEY_MESSAGE)).map(b => b.toString(16).padStart(2, '0')).join('')}`,
       address,
     ],
-  })
+  }) as string
   const sigBytes = new Uint8Array(sig.slice(2).match(/.{2}/g)!.map(h => parseInt(h, 16)))
   const sk = cm.derivePrivateKeyFromSignature(sigBytes)
 
@@ -322,7 +322,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
         }
 
         for (const log of logs) {
-          const args = log.args as { pollId?: bigint; pollAddr?: `0x${string}`; messageProcessorAddr?: `0x${string}`; tallyAddr?: `0x${string}` }
+          const args = (log as unknown as { args: { pollId?: bigint; pollAddr?: `0x${string}`; messageProcessorAddr?: `0x${string}`; tallyAddr?: `0x${string}` } }).args
           if (args.pollId !== undefined && Number(args.pollId) === propPollId) {
             if (args.tallyAddr) {
               setTallyAddress(args.tallyAddr)
@@ -474,7 +474,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
               const stateIndex = !isNaN(rawIndex) && rawIndex > 0 ? rawIndex : 1
               // pubKeyX is indexed (topics[2]), pubKeyY is in args
               const pubKeyX = log.topics[2] ? BigInt(log.topics[2]).toString() : '0'
-              const pubKeyY = log.args?.pubKeyY?.toString() ?? '0'
+              const pubKeyY = (log as unknown as { args?: { pubKeyY?: bigint } }).args?.pubKeyY?.toString() ?? '0'
               lastMatch = { stateIndex, pubKeyX, pubKeyY }
               // Don't break — keep iterating to find the LAST (most recent) match
             }
@@ -588,7 +588,7 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
                 'latest',
               )
               for (const dl of deployLogs) {
-                const dArgs = dl.args as { pollId?: bigint; tallyAddr?: `0x${string}`; messageProcessorAddr?: `0x${string}` }
+                const dArgs = (dl as unknown as { args: { pollId?: bigint; tallyAddr?: `0x${string}`; messageProcessorAddr?: `0x${string}` } }).args
                 if (dArgs.pollId !== undefined && Number(dArgs.pollId) === propPollId) {
                   if (dArgs.tallyAddr) {
                     checkTallyAddr = dArgs.tallyAddr

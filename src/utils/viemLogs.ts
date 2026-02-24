@@ -1,6 +1,10 @@
-import type { GetLogsParameters, PublicClient } from 'viem';
+import type { AbiEvent, GetLogsParameters, PublicClient } from 'viem';
 
-type GetLogsParams = Omit<GetLogsParameters, 'fromBlock' | 'toBlock'>;
+type GetLogsParams = {
+  address?: `0x${string}` | `0x${string}`[];
+  event?: AbiEvent;
+  args?: Record<string, unknown>;
+};
 
 export async function getLogsChunked(
   publicClient: PublicClient,
@@ -21,10 +25,10 @@ export async function getLogsChunked(
 
     try {
       const batch = await publicClient.getLogs({
-        ...params,
+        ...(params as GetLogsParameters),
         fromBlock: start,
         toBlock: batchEnd,
-      });
+      } as GetLogsParameters);
       logs.push(...batch);
       start = batchEnd + 1n;
       chunkSize = initialChunkSize;

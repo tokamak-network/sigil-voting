@@ -791,7 +791,7 @@ async function resolveStateIndexFromLogs(
 
     let lastMatch: number | null = null;
     for (const log of logs) {
-      const args = log.args as { stateIndex?: bigint; pubKeyY?: bigint } | undefined;
+      const args = (log as unknown as { args?: { stateIndex?: bigint; pubKeyY?: bigint } }).args;
       const pubKeyY = args?.pubKeyY?.toString() ?? '0';
       if (pubKeyY !== pubKey[1].toString()) continue;
       const stateIndex = args?.stateIndex ? Number(args.stateIndex) : (
@@ -863,13 +863,13 @@ async function getOrCreateMaciKeypair(
   const MACI_KEY_MESSAGE = 'SIGIL Voting Key v1';
   const provider = (window as unknown as { ethereum?: { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum;
   if (!provider) throw new Error('No wallet provider');
-  const sig: string = await provider.request({
+  const sig = await provider.request({
     method: 'personal_sign',
     params: [
       `0x${Array.from(new TextEncoder().encode(MACI_KEY_MESSAGE)).map(b => b.toString(16).padStart(2, '0')).join('')}`,
       address,
     ],
-  });
+  }) as string;
   const sigHex = sig.slice(2);
   if (sigHex.length < 130) throw new Error('Invalid signature: too short');
   const sigMatches = sigHex.match(/.{2}/g);

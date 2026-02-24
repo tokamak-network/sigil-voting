@@ -169,7 +169,7 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
           'latest',
         )
         for (const log of logs) {
-          const args = log.args as { pollId?: bigint; tallyAddr?: `0x${string}` }
+          const args = (log as unknown as { args: { pollId?: bigint; tallyAddr?: `0x${string}` } }).args
           if (args.pollId !== undefined && args.tallyAddr) {
             tallyMap.set(Number(args.pollId), args.tallyAddr)
             localStorage.setItem(storageKey.pollTitle(Number(args.pollId)) + ':tally', args.tallyAddr)
