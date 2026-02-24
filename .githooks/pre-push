@@ -1,0 +1,26 @@
+#!/bin/bash
+# SIGIL pre-push hook: block push if tests fail
+# Prevents broken code from reaching CI
+#
+# Setup: git config core.hooksPath .githooks
+
+set -e
+
+export PATH="$HOME/.foundry/bin:$PATH"
+
+echo "=== pre-push: Running forge fmt --check ==="
+forge fmt --check
+echo "✓ Format OK"
+
+echo ""
+echo "=== pre-push: Running forge test ==="
+forge test
+echo "✓ Contract tests OK"
+
+echo ""
+echo "=== pre-push: Running vitest ==="
+npx vitest run --config vitest.config.ts --exclude 'test/circuits/**'
+echo "✓ Unit tests OK"
+
+echo ""
+echo "=== pre-push: All checks passed ==="

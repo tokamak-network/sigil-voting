@@ -37,7 +37,9 @@
     "test:e2e:browser": "playwright test",
     "dev:full": "npx tsx coordinator/src/run.ts & next dev",
     "coordinator": "npx tsx coordinator/src/run.ts",
-    "audit": "npm audit --audit-level=moderate"
+    "audit": "npm audit --audit-level=moderate",
+    "prepare": "git config core.hooksPath .githooks",
+    "test:all": "forge test && vitest run --config vitest.config.ts --exclude 'test/circuits/**'"
   },
   "dependencies": {
     "@noble/hashes": "^2.0.1",

@@ -11,6 +11,7 @@ contract MockTally {
     uint256 public forVotes;
     uint256 public againstVotes;
     uint256 public totalVoters;
+    address public poll;
 
     function setTallyVerified(bool v) external {
         tallyVerified = v;
@@ -27,15 +28,30 @@ contract MockTally {
     function setTotalVoters(uint256 v) external {
         totalVoters = v;
     }
+
+    function setPoll(address p) external {
+        poll = p;
+    }
 }
 
 contract MockMACI {
     address public owner;
+    mapping(uint256 => address) private _polls;
 
     function setOwner(address o) external {
         owner = o;
     }
+
+    function setPoll(uint256 pollId, address pollAddr) external {
+        _polls[pollId] = pollAddr;
+    }
+
+    function polls(uint256 pollId) external view returns (address) {
+        return _polls[pollId];
+    }
 }
+
+contract MockPoll {}
 
 contract MockTarget {
     uint256 public value;
@@ -51,11 +67,11 @@ contract TimelockExecutorTest is Test {
     TimelockExecutor public executor;
     MockTally public tally;
     MockMACI public mockMaci;
+    MockPoll public mockPoll;
     MockTarget public target;
 
-    address creator = address(0xA1);
-    address nonOwner = address(0xB2);
     address maciOwner = address(0xC3);
+    address nonOwner = address(0xB2);
 
     uint256 constant POLL_ID = 1;
     uint256 constant DELAY = 7200; // 2 hours
@@ -65,7 +81,12 @@ contract TimelockExecutorTest is Test {
         mockMaci = new MockMACI();
         mockMaci.setOwner(maciOwner);
 
+        mockPoll = new MockPoll();
+        mockMaci.setPoll(POLL_ID, address(mockPoll));
+
         tally = new MockTally();
+        tally.setPoll(address(mockPoll));
+
         target = new MockTarget();
 
         executor = new TimelockExecutor(address(mockMaci));
@@ -74,7 +95,8 @@ contract TimelockExecutorTest is Test {
     /* ── Helper ──────────────────────────────────────────────────── */
 
     function _register(uint256 pollId) internal {
-        vm.prank(creator);
+        mockMaci.setPoll(pollId, address(mockPoll));
+        vm.prank(maciOwner);
         executor.registerExecution(
             pollId, address(tally), address(target), abi.encodeCall(MockTarget.setValue, (42)), DELAY, QUORUM
         );
@@ -95,7 +117,7 @@ contract TimelockExecutorTest is Test {
         (address c, address t, address tgt,,, uint256 q,, TimelockExecutor.ExecutionState s) =
             executor.getExecution(POLL_ID);
 
-        assertEq(c, creator);
+        assertEq(c, maciOwner);
         assertEq(t, address(tally));
         assertEq(tgt, address(target));
         assertEq(q, QUORUM);
@@ -107,7 +129,7 @@ contract TimelockExecutorTest is Test {
     function test_registerExecution_duplicate_reverts() public {
         _register(POLL_ID);
 
-        vm.prank(creator);
+        vm.prank(maciOwner);
         vm.expectRevert(TimelockExecutor.AlreadyRegistered.selector);
         executor.registerExecution(
             POLL_ID, address(tally), address(target), abi.encodeCall(MockTarget.setValue, (99)), DELAY, QUORUM
@@ -117,7 +139,7 @@ contract TimelockExecutorTest is Test {
     /* ── 3. registerExecution delayTooShort reverts ──────────────── */
 
     function test_registerExecution_delayTooShort_reverts() public {
-        vm.prank(creator);
+        vm.prank(maciOwner);
         vm.expectRevert(TimelockExecutor.DelayTooShort.selector);
         executor.registerExecution(
             POLL_ID, address(tally), address(target), abi.encodeCall(MockTarget.setValue, (42)), 1800, QUORUM
@@ -224,23 +246,31 @@ contract TimelockExecutorTest is Test {
         executor.execute(POLL_ID);
     }
 
-    /* ── 12. cancel by creator ───────────────────────────────────── */
+    /* ── 12. cancel by original creator (after MACI ownership transfer) */
 
     function test_cancel_byCreator() public {
         _register(POLL_ID);
 
-        vm.prank(creator);
+        // Transfer MACI ownership — original creator can still cancel
+        address newOwner = address(0xD4);
+        mockMaci.setOwner(newOwner);
+
+        vm.prank(maciOwner);
         executor.cancel(POLL_ID);
 
         assertEq(uint8(executor.getState(POLL_ID)), uint8(TimelockExecutor.ExecutionState.Cancelled));
     }
 
-    /* ── 13. cancel by MACI owner ────────────────────────────────── */
+    /* ── 13. cancel by current MACI owner (not original creator) ── */
 
     function test_cancel_byMaciOwner() public {
         _register(POLL_ID);
 
-        vm.prank(maciOwner);
+        // Transfer MACI ownership — new owner can also cancel
+        address newOwner = address(0xD4);
+        mockMaci.setOwner(newOwner);
+
+        vm.prank(newOwner);
         executor.cancel(POLL_ID);
 
         assertEq(uint8(executor.getState(POLL_ID)), uint8(TimelockExecutor.ExecutionState.Cancelled));
@@ -265,7 +295,7 @@ contract TimelockExecutorTest is Test {
         vm.warp(block.timestamp + DELAY);
         executor.execute(POLL_ID);
 
-        vm.prank(creator);
+        vm.prank(maciOwner);
         vm.expectRevert(TimelockExecutor.AlreadyExecuted.selector);
         executor.cancel(POLL_ID);
     }
@@ -292,7 +322,7 @@ contract TimelockExecutorTest is Test {
 
         // Cancelled (use a different pollId)
         _register(2);
-        vm.prank(creator);
+        vm.prank(maciOwner);
         executor.cancel(2);
         assertEq(uint8(executor.getState(2)), uint8(TimelockExecutor.ExecutionState.Cancelled));
     }
