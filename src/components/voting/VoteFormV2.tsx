@@ -605,14 +605,16 @@ export function VoteFormV2({
             <span className="text-sm font-bold text-amber-700 uppercase tracking-wide">{t.voteForm.noCreditsTitle}</span>
           </div>
           <p className="text-xs text-amber-600">{t.voteForm.noCreditsDesc}</p>
-          <a
-            href={`https://sepolia.etherscan.io/address/${vcTokenAddress || ''}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs font-bold text-primary underline"
-          >
-            {t.createPoll.getTokens}
-          </a>
+          {vcTokenAddress && (
+            <a
+              href={`https://sepolia.etherscan.io/address/${vcTokenAddress}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-bold text-primary underline"
+            >
+              {t.createPoll.getTokens}
+            </a>
+          )}
         </div>
       )}
 
