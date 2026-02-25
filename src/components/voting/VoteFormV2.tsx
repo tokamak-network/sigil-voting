@@ -203,12 +203,20 @@ export function VoteFormV2({
           MACI_DEPLOY_BLOCK,
           'latest',
         );
+        // Batch getTransaction calls in parallel chunks (avoids N sequential RPC calls)
         let lastMatch: { stateIndex: number; pubKeyX: string; pubKeyY: string } | null = null;
-        for (const log of logs) {
+        const logsWithHash = logs.filter(l => l.transactionHash);
+        const CHUNK = 10;
+        for (let i = 0; i < logsWithHash.length; i += CHUNK) {
           if (cancelled) return;
-          if (!log.transactionHash) continue;
-          try {
-            const tx = await publicClient.getTransaction({ hash: log.transactionHash });
+          const chunk = logsWithHash.slice(i, i + CHUNK);
+          const txs = await Promise.all(
+            chunk.map(l => publicClient.getTransaction({ hash: l.transactionHash! }).catch(() => null))
+          );
+          for (let j = 0; j < chunk.length; j++) {
+            const tx = txs[j];
+            const log = chunk[j];
+            if (!tx) continue;
             if (tx.from.toLowerCase() === address.toLowerCase()) {
               const rawIndex = log.topics[1] ? parseInt(log.topics[1] as string, 16) : NaN;
               const stateIndex = !isNaN(rawIndex) && rawIndex > 0 ? rawIndex : 1;
@@ -216,8 +224,6 @@ export function VoteFormV2({
               const pubKeyY = (log as unknown as { args?: { pubKeyY?: bigint } }).args?.pubKeyY?.toString() ?? '0';
               lastMatch = { stateIndex, pubKeyX, pubKeyY };
             }
-          } catch {
-            // Skip if tx fetch fails
           }
         }
         if (lastMatch && !cancelled) {
