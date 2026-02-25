@@ -1,0 +1,11 @@
+#!/bin/bash
+# SIGIL pre-commit hook: TypeScript type check
+# Catches broken types (e.g. wrong props) before the commit lands
+#
+# Setup: git config core.hooksPath .githooks  (already in package.json prepare)
+
+set -e
+
+echo "=== pre-commit: Running tsc --noEmit ==="
+npx tsc --noEmit
+echo "✓ TypeScript OK"
