@@ -10,7 +10,7 @@
  * as a side-effect during phase detection (fallback discovery path).
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { PublicClient } from 'viem'
 import { POLL_ABI, TALLY_ABI, MACI_V2_ADDRESS, MACI_DEPLOY_BLOCK, V2Phase } from '../contractV2'
@@ -52,6 +52,7 @@ export function useVotingPhase({
   const [phaseLoaded, setPhaseLoaded] = useState(false)
   const [pollDeployTime, setPollDeployTime] = useState<number | null>(null)
   const [votingEndTime, setVotingEndTime] = useState<number | null>(null)
+  const cancelledRef = useRef(false)
 
   // Reset phase state when switching polls
   useEffect(() => {
@@ -76,6 +77,8 @@ export function useVotingPhase({
           .readContract({ address: pollAddress, abi: POLL_ABI, functionName: 'numMessages' })
           .catch(() => 0n),
       ])
+
+      if (cancelledRef.current) return
 
       if (deployTimeAndDuration) {
         const [deployTime, duration] = deployTimeAndDuration as [bigint, bigint]
@@ -197,12 +200,16 @@ export function useVotingPhase({
   useEffect(() => {
     if (!pollAddress || !publicClient) return
 
+    cancelledRef.current = false
     checkPhase()
     if (phase === V2Phase.Finalized) return
 
     const ms = phase === V2Phase.Voting ? 5000 : 8000
     const interval = setInterval(checkPhase, ms)
-    return () => clearInterval(interval)
+    return () => {
+      cancelledRef.current = true
+      clearInterval(interval)
+    }
   }, [pollAddress, publicClient, phase, phaseCheckTrigger, checkPhase])
 
   return { phase, phaseLoaded, pollDeployTime, votingEndTime }

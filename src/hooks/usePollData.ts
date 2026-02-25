@@ -66,6 +66,7 @@ export function usePollData(
   useEffect(() => {
     if (!publicClient || !isConfigured) return
     setIsLoadingPoll(true)
+    let cancelled = false
 
     const loadPoll = async () => {
       try {
@@ -96,6 +97,7 @@ export function usePollData(
           ).catch(() => []),
         ])
 
+        if (cancelled) return
         const pollAddr = addr as `0x${string}`
         if (pollAddr && pollAddr !== ZERO_ADDRESS) {
           setPollAddress(pollAddr)
@@ -156,11 +158,12 @@ export function usePollData(
       } catch {
         // Poll doesn't exist yet
       } finally {
-        setIsLoadingPoll(false)
+        if (!cancelled) setIsLoadingPoll(false)
       }
     }
 
     loadPoll()
+    return () => { cancelled = true }
   }, [pollId, publicClient, isConfigured])
 
   const hasPoll = pollAddress !== null

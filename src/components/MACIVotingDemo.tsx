@@ -82,7 +82,6 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
     delegateDisplay,
     delegatorList,
     delegationEffectNote,
-    isDelegationEffective: _isDelegationEffective,
     isDelegationLocked,
     isUndelegating,
     delegationError,
