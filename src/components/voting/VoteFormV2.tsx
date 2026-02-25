@@ -135,7 +135,7 @@ export function VoteFormV2({
           : gasCostWei * 280n / 100n; // signUp + publishMessage ≈ 2.8x
         if (!cancelled) setEstimatedGasEth(parseFloat(formatEther(totalCost)).toFixed(4));
       } catch (err) {
-        console.warn('Gas estimation failed:', err);
+        if (process.env.NODE_ENV === 'development') console.warn('Gas estimation failed:', err);
         // Reset to null only if we had a previous value (avoids no-op setState on mount)
         if (!cancelled && estimatedGasEth !== null) setEstimatedGasEth(null);
       }

@@ -152,8 +152,6 @@ export default function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePo
               }
               const newPollId = Number(newPollIdBig)
 
-              localStorage.setItem('maci-last-poll-id', newPollId.toString())
-              localStorage.setItem('maci-last-poll-addr', pollAddr)
               localStorage.setItem(storageKey.pollTitle(newPollId), title.trim())
               if (messageProcessorAddr) {
                 localStorage.setItem(storageKey.pollTitle(newPollId) + ':mp', messageProcessorAddr)
@@ -183,8 +181,6 @@ export default function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePo
                 const pollAddr = ('0x' + log.data.slice(26, 66)) as `0x${string}`
                 const messageProcessorAddr = ('0x' + log.data.slice(90, 130)) as `0x${string}`
                 const tallyAddr = ('0x' + log.data.slice(154, 194)) as `0x${string}`
-                localStorage.setItem('maci-last-poll-id', newPollId.toString())
-                localStorage.setItem('maci-last-poll-addr', pollAddr)
                 localStorage.setItem(storageKey.pollTitle(newPollId), title.trim())
                 localStorage.setItem(storageKey.pollTitle(newPollId) + ':mp', messageProcessorAddr)
                 localStorage.setItem(storageKey.pollTitle(newPollId) + ':tally', tallyAddr)
