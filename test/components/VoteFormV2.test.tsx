@@ -14,11 +14,7 @@ vi.mock('wagmi', () => ({
     address: '0x1234567890abcdef1234567890abcdef12345678',
     isConnected: true,
   }),
-  usePublicClient: () => ({
-    estimateContractGas: vi.fn().mockResolvedValue(200000n),
-    getGasPrice: vi.fn().mockResolvedValue(10000000000n),
-    waitForTransactionReceipt: vi.fn().mockResolvedValue({ status: 'success' }),
-  }),
+  usePublicClient: () => null,
   useBalance: () => ({ data: { value: 1000000000000000000n, decimals: 18, formatted: '1.0', symbol: 'ETH' } }),
   useConnect: () => ({ connect: vi.fn(), isPending: false }),
   useDisconnect: () => ({ disconnect: vi.fn() }),

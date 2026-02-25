@@ -115,6 +115,7 @@ export function VoteFormV2({
   // Estimate gas cost on mount
   useEffect(() => {
     if (!publicClient || !pollAddress || !address) return;
+    let cancelled = false;
     const estimateGas = async () => {
       try {
         // Use a dummy publishMessage call to estimate gas
@@ -132,14 +133,15 @@ export function VoteFormV2({
         const totalCost = signedUp
           ? gasCostWei * 120n / 100n
           : gasCostWei * 280n / 100n; // signUp + publishMessage ≈ 2.8x
-        setEstimatedGasEth(parseFloat(formatEther(totalCost)).toFixed(4));
+        if (!cancelled) setEstimatedGasEth(parseFloat(formatEther(totalCost)).toFixed(4));
       } catch (err) {
         console.warn('Gas estimation failed:', err);
-        // Show null so UI displays "..." instead of misleading value
-        setEstimatedGasEth(null);
+        // Reset to null only if we had a previous value (avoids no-op setState on mount)
+        if (!cancelled && estimatedGasEth !== null) setEstimatedGasEth(null);
       }
     };
     estimateGas();
+    return () => { cancelled = true; };
   }, [publicClient, pollAddress, address, signedUp]);
 
   // Reset signup state when switching proposals or accounts
@@ -179,6 +181,7 @@ export function VoteFormV2({
 
     // Slow path: check on-chain SignUp events (handles cleared localStorage)
     if (!publicClient || !isConfigured) return;
+    let cancelled = false;
     const checkOnChainSignUp = async () => {
       try {
         const logs = await getLogsChunked(
@@ -202,6 +205,7 @@ export function VoteFormV2({
         );
         let lastMatch: { stateIndex: number; pubKeyX: string; pubKeyY: string } | null = null;
         for (const log of logs) {
+          if (cancelled) return;
           if (!log.transactionHash) continue;
           try {
             const tx = await publicClient.getTransaction({ hash: log.transactionHash });
@@ -216,7 +220,7 @@ export function VoteFormV2({
             // Skip if tx fetch fails
           }
         }
-        if (lastMatch) {
+        if (lastMatch && !cancelled) {
           localStorage.setItem(storageKey.signup(address), 'true');
           localStorage.setItem(storageKey.stateIndex(address), String(lastMatch.stateIndex));
           localStorage.setItem(storageKey.pk(address), JSON.stringify([lastMatch.pubKeyX, lastMatch.pubKeyY]));
@@ -227,6 +231,7 @@ export function VoteFormV2({
       }
     };
     checkOnChainSignUp();
+    return () => { cancelled = true; };
   }, [address, publicClient, isConfigured, pollId, pollDeployTime]);
 
   // Sign up on MACI contract

@@ -20,17 +20,21 @@ const mockSignUp = vi.fn();
 const mockPublishMessage = vi.fn();
 const mockWaitForReceipt = vi.fn();
 
+// Stable reference — prevents gas estimation effect from re-running on every re-render
+const mockPublicClient = {
+  estimateContractGas: vi.fn().mockRejectedValue(new Error('skip')),
+  getGasPrice: vi.fn().mockResolvedValue(10000000000n),
+  waitForTransactionReceipt: mockWaitForReceipt,
+  getLogs: vi.fn().mockResolvedValue([]),
+  getBlockNumber: vi.fn().mockResolvedValue(1000n),
+};
+
 vi.mock('wagmi', () => ({
   useAccount: vi.fn(() => ({
     address: '0x1234567890abcdef1234567890abcdef12345678',
     isConnected: true,
   })),
-  usePublicClient: vi.fn(() => ({
-    estimateContractGas: vi.fn().mockResolvedValue(200000n),
-    getGasPrice: vi.fn().mockResolvedValue(10000000000n),
-    waitForTransactionReceipt: mockWaitForReceipt,
-    getLogs: vi.fn().mockResolvedValue([]),
-  })),
+  usePublicClient: vi.fn(() => mockPublicClient),
   useBalance: vi.fn(() => ({
     data: { value: 1000000000000000000n, decimals: 18, formatted: '1.0', symbol: 'ETH' },
   })),
