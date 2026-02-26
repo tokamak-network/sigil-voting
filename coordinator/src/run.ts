@@ -1314,7 +1314,7 @@ export async function processPoll(
   coordinatorSk: bigint,
   crypto: CryptoKit,
   deployBlock: number,
-): Promise<'processed' | 'key_mismatch'> {
+): Promise<'processed' | 'key_mismatch' | 'processing_incomplete'> {
   log(`\n  ★ Processing Poll ${pollId}`);
   auditLog({ action: 'processPoll:start', pollId, result: 'success' });
 
@@ -1350,18 +1350,10 @@ export async function processPoll(
   const { stateLeaves, messages } = await fetchEvents(maci, addrs.poll, provider, deployBlock);
   log(`  Found ${stateLeaves.length} signups, ${messages.length} messages`);
 
-  // Skip if no real votes (only padding message exists)
-  if (stateLeaves.length === 0) {
-    log('  ⚠ No voters signed up — skipping processing (nothing to tally)');
-    return 'processed';
-  }
-
-  // Check if all messages are padding (encPubKey = 0,0)
-  const realMessages = messages.filter(m => m.encPubKeyX !== 0n || m.encPubKeyY !== 0n);
-  if (realMessages.length === 0) {
-    log('  ⚠ No real votes — only padding messages. Skipping processing.');
-    return 'processed';
-  }
+  // Note: do NOT early-return for stateLeaves.length === 0 or all-padding messages.
+  // processAndSubmitProofs handles blank-only state trees gracefully: invalid messages
+  // (wrong state index / failed ECDH decryption) are no-ops in the ZK circuit.
+  // This ensures tallyVerified=true on-chain even for polls with 0 real votes.
 
   // Initialize trees (needed for both message processing and tally)
   const initTrees = async () => {
