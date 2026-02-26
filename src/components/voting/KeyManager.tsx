@@ -51,6 +51,9 @@ export function KeyManager({
 
   // writeContract from writeHelper.ts
 
+  // Preload crypto WASM on mount so key change doesn't wait for init
+  useEffect(() => { preloadCrypto(); }, []);
+
   // Load current key from localStorage (poll-specific > global)
   useEffect(() => {
     if (!address) return;
