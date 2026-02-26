@@ -872,7 +872,13 @@ async function tallyAndPublish(
   const stateCommitment = crypto.hash(newStateRoot, newBallotRoot);
   const numBatches = Math.ceil(numSignUps / TALLY_BATCH_SIZE);
 
-  // Running accumulators
+  // Read on-chain tally commitment for resume support (handles cron restarts mid-tally)
+  const tallyContractRead = new ethers.Contract(addrs.tally, TALLY_ABI, signer.provider);
+  const onChainTallyCommitment = BigInt(await retryRpc(() => tallyContractRead.tallyCommitment()));
+
+  const blankLeaf: StateLeaf = { pubKeyX: 0n, pubKeyY: 0n, voiceCreditBalance: 2n ** 32n, timestamp: 0n };
+
+  // Running accumulators (may be fast-forwarded if resuming)
   let currentTally = new Array(TALLY_NUM_OPTIONS).fill(0n) as bigint[];
   let currentTotalSpent = 0n;
   let currentPerOptionSpent = new Array(TALLY_NUM_OPTIONS).fill(0n) as bigint[];
@@ -880,9 +886,66 @@ async function tallyAndPublish(
   let currentPerOptionSpentRoot = crypto.quinaryTreeRoot(currentPerOptionSpent);
   let prevTallyCommitment = 0n; // First batch has no previous
 
-  const blank: StateLeaf = { pubKeyX: 0n, pubKeyY: 0n, voiceCreditBalance: 2n ** 32n, timestamp: 0n };
+  // Resume: if on-chain has a non-zero tally commitment from a previous run,
+  // fast-forward local accumulators to find the resume batch.
+  let startBatch = 0;
+  if (onChainTallyCommitment !== 0n) {
+    let found = false;
+    let simTally = new Array(TALLY_NUM_OPTIONS).fill(0n) as bigint[];
+    let simTotalSpent = 0n;
+    let simPerOptionSpent = new Array(TALLY_NUM_OPTIONS).fill(0n) as bigint[];
 
-  for (let batchNum = 0; batchNum < numBatches; batchNum++) {
+    for (let b = 0; b < numBatches; b++) {
+      const bStart = b * TALLY_BATCH_SIZE;
+      const simNewTally = [...simTally];
+      let simNewTotal = simTotalSpent;
+      const simNewPerOption = [...simPerOptionSpent];
+
+      for (let i = 0; i < TALLY_BATCH_SIZE; i++) {
+        const vIdx = bStart + i;
+        if (vIdx < numSignUps) {
+          const ballot = ballotMap.get(vIdx) ?? { nonce: 0n, votes: new Array<bigint>(MAX_VOTE_OPTIONS).fill(0n), voteOptionRoot: 0n };
+          for (let j = 0; j < TALLY_NUM_OPTIONS; j++) {
+            const w = ballot.votes[j] ?? 0n;
+            simNewTally[j] = (simNewTally[j] ?? 0n) + w;
+            const sq = w * w;
+            simNewPerOption[j] = (simNewPerOption[j] ?? 0n) + sq;
+            simNewTotal += sq;
+          }
+        }
+      }
+
+      const simTallyRoot = crypto.quinaryTreeRoot(simNewTally);
+      const simPerOptRoot = crypto.quinaryTreeRoot(simNewPerOption);
+      const simCommitment = crypto.hash(simTallyRoot, simNewTotal, simPerOptRoot);
+
+      if (simCommitment === onChainTallyCommitment) {
+        // This batch's output matches what's on-chain: resume from NEXT batch
+        startBatch = b + 1;
+        currentTally = simNewTally;
+        currentTotalSpent = simNewTotal;
+        currentPerOptionSpent = simNewPerOption;
+        currentTallyResultsRoot = simTallyRoot;
+        currentPerOptionSpentRoot = simPerOptRoot;
+        prevTallyCommitment = simCommitment;
+        log(`  Resuming tally from batch ${startBatch}/${numBatches} (${b + 1} batch(es) already on-chain)`);
+        found = true;
+        break;
+      }
+
+      simTally = simNewTally;
+      simTotalSpent = simNewTotal;
+      simPerOptionSpent = simNewPerOption;
+    }
+
+    if (!found) {
+      log(`  ⚠ on-chain tallyCommitment (${onChainTallyCommitment}) doesn't match any expected batch — cannot resume safely`);
+      auditLog({ action: 'tallyAndPublish:resumeFailed', pollId, result: 'failure', error: 'commitment mismatch' });
+      return;
+    }
+  }
+
+  for (let batchNum = startBatch; batchNum < numBatches; batchNum++) {
     const batchStart = batchNum * TALLY_BATCH_SIZE;
 
     const batchStateLeaves: bigint[][] = [];
@@ -900,7 +963,7 @@ async function tallyAndPublish(
       const voterIdx = batchStart + i;
 
       if (voterIdx < numSignUps) {
-        const leaf = stateMap.get(voterIdx) ?? blank;
+        const leaf = stateMap.get(voterIdx) ?? blankLeaf;
         const defaultBallot: Ballot = { nonce: 0n, votes: new Array<bigint>(MAX_VOTE_OPTIONS).fill(0n), voteOptionRoot: 0n };
         const ballot = ballotMap.get(voterIdx) ?? defaultBallot;
 
@@ -923,7 +986,7 @@ async function tallyAndPublish(
         }
       } else {
         // Padding: use blank values with valid Merkle proof
-        batchStateLeaves.push([blank.pubKeyX, blank.pubKeyY, blank.voiceCreditBalance, blank.timestamp]);
+        batchStateLeaves.push([blankLeaf.pubKeyX, blankLeaf.pubKeyY, blankLeaf.voiceCreditBalance, blankLeaf.timestamp]);
         batchBallotNonces.push(0n);
         batchVoteWeights.push(new Array(TALLY_NUM_OPTIONS).fill(0n));
         batchVoteOptionRoots.push(0n);
@@ -990,18 +1053,19 @@ async function tallyAndPublish(
         },
       );
       log(`  Tally batch ${batchNum + 1} proof submitted`);
+      // Only update accumulators on SUCCESS — prevents cascade failures on retry
+      currentTally = newTally;
+      currentTotalSpent = newTotalSpent;
+      currentPerOptionSpent = newPerOptionSpent;
+      currentTallyResultsRoot = newTallyResultsRoot;
+      currentPerOptionSpentRoot = newPerOptionSpentRoot;
+      prevTallyCommitment = newTallyCommitment;
     } catch (err) {
       const errMsg = (err as Error).message?.slice(0, 80)?.replace(/0x[a-fA-F0-9]{40,}/g, '[REDACTED]') ?? 'unknown';
       log(`  Tally batch ${batchNum + 1} failed: ${errMsg}`);
+      // Do NOT update accumulators — stop here; next cron run will resume from this batch
+      break;
     }
-
-    // Update running accumulators for next batch
-    currentTally = newTally;
-    currentTotalSpent = newTotalSpent;
-    currentPerOptionSpent = newPerOptionSpent;
-    currentTallyResultsRoot = newTallyResultsRoot;
-    currentPerOptionSpentRoot = newPerOptionSpentRoot;
-    prevTallyCommitment = newTallyCommitment;
   }
 
   // Final results
@@ -1342,6 +1406,17 @@ export async function processPoll(
   const { stateMap, ballotMap, stateTree, newStateRoot, newBallotRoot } = await processAndSubmitProofs(
     pollId, addrs, stateLeaves, messages, coordinatorSk, signer, crypto,
   );
+
+  // Guard: verify processing is complete before tallying
+  {
+    const mpRead = new ethers.Contract(addrs.mp, MP_ABI, signer.provider);
+    const isComplete = await retryRpc(() => mpRead.processingComplete());
+    if (!isComplete) {
+      log('  ✖ processingComplete=false — skipping tally (will retry next cron run)');
+      auditLog({ action: 'processPoll:processingNotComplete', pollId, result: 'failure', error: 'ProcessingNotDone' });
+      return 'processing_incomplete';
+    }
+  }
 
   // Steps 6-7: Tally + publish
   await tallyAndPublish(pollId, addrs, numSignUps, stateMap, ballotMap, stateTree, newStateRoot, newBallotRoot, signer, crypto);
