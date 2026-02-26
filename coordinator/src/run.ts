@@ -1514,7 +1514,7 @@ const isDirectRun = process.argv[1]?.endsWith('run.ts') || process.argv[1]?.ends
 if (isDirectRun) {
   main().catch(err => {
     // Sanitize fatal errors — never log raw stack or private keys
-    const errMsg = (err as Error).message?.slice(0, 120)?.replace(/0x[a-fA-F0-9]{40,}/g, '[REDACTED]') ?? 'unknown';
+    const errMsg = (err as Error).message?.slice(0, 120)?.replace(/0x[a-fA-F0-9]{40,}/g, '[REDACTED]').replace(/\/[^\s]+/g, '[PATH]') ?? 'unknown';
     console.error(`Fatal error: ${errMsg}`);
     process.exit(1);
   });

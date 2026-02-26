@@ -459,7 +459,7 @@ main()
     process.exit(0);
   })
   .catch(err => {
-    const errMsg = (err as Error).message?.slice(0, 120)?.replace(/0x[a-fA-F0-9]{40,}/g, '[REDACTED]') ?? 'unknown';
+    const errMsg = (err as Error).message?.slice(0, 120)?.replace(/0x[a-fA-F0-9]{40,}/g, '[REDACTED]').replace(/\/[^\s]+/g, '[PATH]') ?? 'unknown';
     console.error(`Fatal: ${errMsg}`);
     process.exit(1);
   });
