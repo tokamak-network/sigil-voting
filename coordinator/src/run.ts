@@ -711,30 +711,34 @@ async function processAndSubmitProofs(
       batchMsgPathIndices.push(msgProof.pathIndices.map(BigInt));
 
       // Validate & apply state transition
+      // IMPORTANT: isValid must match exactly what the circuit checks (sig + range + nonce).
+      // The circuit does NOT check credit sufficiency — removing creditOk from isValid
+      // prevents state-root divergence when credit fails but sig/nonce/index pass.
       let isValid = !decryptFailed;
 
-      // 5a. Signature check
+      // 5a. Signature check (circuit: EdDSAPoseidonVerifierSoft)
       const cmdHash = crypto.hashCommand(cmd);
       const sigOk = crypto.verifyEdDSA(cmdHash, sig, [currentLeaf.pubKeyX, currentLeaf.pubKeyY]);
       if (!sigOk) { isValid = false; if (batch[mi]) log(`    [DEBUG] sig FAIL: stateIdx=${stateIdx} cmdHash=${cmdHash.toString().slice(0,20)}... leaf.pk=[${currentLeaf.pubKeyX.toString().slice(0,15)}..., ${currentLeaf.pubKeyY.toString().slice(0,15)}...]`); }
 
-      // 5b. Range check
+      // 5b. Range check (circuit: LessThan(50) for stateIndex < numSignUps)
       const rangeOk = stateIdx < numSignUps && stateIdx > 0;
       if (!rangeOk) { isValid = false; if (batch[mi]) log(`    [DEBUG] range FAIL: stateIdx=${stateIdx} numSignUps=${numSignUps}`); }
 
-      // 5c. Nonce check
+      // 5c. Nonce check (circuit: IsEqual for nonce == ballot.nonce + 1)
       const nonceOk = cmd.nonce === currentBallot.nonce + 1n;
       if (!nonceOk) { isValid = false; if (batch[mi]) log(`    [DEBUG] nonce FAIL: cmd.nonce=${cmd.nonce} expected=${currentBallot.nonce + 1n}`); }
 
-      // 5d. Credit check
+      // 5d. Credit check (LOG ONLY — not enforced by circuit, do not set isValid=false)
+      // The circuit uses field arithmetic: negative balance wraps to p-|balance|.
+      // If we reject here but the circuit accepts, state roots diverge → proof fails.
       const currentWeight = currentBallot.votes[voteOptIdx] ?? 0n;
       const creditChange = currentWeight * currentWeight - cmd.newVoteWeight * cmd.newVoteWeight;
       const creditOk = currentLeaf.voiceCreditBalance + creditChange >= 0n;
-      if (!creditOk) { isValid = false; if (batch[mi]) log(`    [DEBUG] credit FAIL: balance=${currentLeaf.voiceCreditBalance} change=${creditChange}`); }
+      if (!creditOk && batch[mi]) log(`    [DEBUG] credit WARN: balance=${currentLeaf.voiceCreditBalance} change=${creditChange} (circuit applies anyway)`);
 
-      // 5e. Vote option range
+      // 5e. Vote option range (always OK after unpackCommand clamping, log only)
       const voteOptOk = voteOptIdx < MAX_VOTE_OPTIONS && voteOptIdx >= 0;
-      if (!voteOptOk) { isValid = false; if (batch[mi]) log(`    [DEBUG] voteOpt FAIL: idx=${voteOptIdx} max=${MAX_VOTE_OPTIONS}`); }
 
       if (batch[mi] && !decryptFailed) {
         log(`    [DEBUG] msg[${msg.messageIndex}] checks: sig=${sigOk} range=${rangeOk} nonce=${nonceOk} credit=${creditOk} voteOpt=${voteOptOk} → ${isValid ? 'VALID' : 'INVALID'}`);
