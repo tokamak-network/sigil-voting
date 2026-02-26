@@ -8,6 +8,32 @@ import { DelegationPage } from '../../src/components/governance/DelegationPage'
 const mockWriteContract = vi.fn()
 const mockWaitForReceipt = vi.fn()
 
+// Stable publicClient mock (same reference across renders prevents useCallback loop)
+const stablePublicClient = {
+  waitForTransactionReceipt: (...args: unknown[]) => mockWaitForReceipt(...args),
+  estimateContractGas: vi.fn().mockResolvedValue(120000n),
+}
+
+// Mock getLogsChunked to control marketplace data
+const mockGetLogsChunked = vi.fn()
+vi.mock('../../src/utils/viemLogs', () => ({
+  getLogsChunked: (...args: unknown[]) => mockGetLogsChunked(...args),
+}))
+
+vi.mock('viem', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('viem')>()
+  return {
+    ...actual,
+    decodeEventLog: ({ data }: { data: string }) => {
+      try {
+        return { args: JSON.parse(atob((data as string).slice(2))) }
+      } catch {
+        throw new Error('bad log')
+      }
+    },
+  }
+})
+
 let mockAccountState = {
   address: undefined as `0x${string}` | undefined,
   isConnected: false,
@@ -19,10 +45,7 @@ let mockIsDelegating: unknown = false
 
 vi.mock('wagmi', () => ({
   useAccount: () => mockAccountState,
-  usePublicClient: () => ({
-    waitForTransactionReceipt: mockWaitForReceipt,
-    estimateContractGas: vi.fn().mockResolvedValue(120000n),
-  }),
+  usePublicClient: () => stablePublicClient,
   useReadContract: (config: any) => {
     if (config?.functionName === 'getDelegate')
       return { data: mockCurrentDelegate, isLoading: false, refetch: vi.fn() }
@@ -42,9 +65,13 @@ vi.mock('wagmi', () => ({
 vi.mock('../../src/contractV2', () => ({
   MACI_V2_ADDRESS: '0xABCDEF1234567890abcdef1234567890abcdef12',
   DELEGATION_REGISTRY_ADDRESS: '0x0000000000000000000000000000000000000001',
-  DELEGATION_REGISTRY_ABI: [],
+  DELEGATION_REGISTRY_ABI: [
+    { type: 'event', name: 'Delegated', inputs: [{ name: 'delegator', type: 'address', indexed: true }, { name: 'delegate', type: 'address', indexed: true }] },
+    { type: 'event', name: 'Undelegated', inputs: [{ name: 'delegator', type: 'address', indexed: true }, { name: 'previousDelegate', type: 'address', indexed: true }] },
+  ],
   VOICE_CREDIT_PROXY_ADDRESS: '0x0000000000000000000000000000000000000002',
   DELEGATING_VOICE_CREDIT_PROXY_ABI: [],
+  MACI_DEPLOY_BLOCK: 0n,
 }))
 
 describe('DelegationPage', () => {
@@ -59,6 +86,8 @@ describe('DelegationPage', () => {
     mockIsDelegating = false
     mockWaitForReceipt.mockResolvedValue({ status: 'success' })
     mockWriteContract.mockResolvedValue('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+    // Default: empty marketplace
+    mockGetLogsChunked.mockResolvedValue([])
   })
 
   it('shows connect wallet message when not connected', async () => {
@@ -134,5 +163,58 @@ describe('DelegationPage', () => {
     const delegateBtn = screen.getByRole('button', { name: /^Delegate$|^위임하기$/i })
     await user.click(delegateBtn)
     expect(mockWriteContract).toHaveBeenCalled()
+  })
+
+  it('shows marketplace section when not delegating', async () => {
+    mockAccountState = {
+      address: '0x1234567890abcdef1234567890abcdef12345678',
+      isConnected: true,
+      chainId: 11155111,
+    }
+    mockIsDelegating = false
+    renderWithProviders(<DelegationPage />)
+    expect(await screen.findByText(/Browse Delegates|위임 대리인 찾기/i)).toBeInTheDocument()
+  })
+
+  it('hides marketplace when already delegating', async () => {
+    mockAccountState = {
+      address: '0x1234567890abcdef1234567890abcdef12345678',
+      isConnected: true,
+      chainId: 11155111,
+    }
+    mockIsDelegating = true
+    mockCurrentDelegate = '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd'
+    renderWithProviders(<DelegationPage />)
+    // marketplace section should not appear
+    const marketplace = screen.queryByText(/Browse Delegates|위임 대리인 찾기/i)
+    expect(marketplace).not.toBeInTheDocument()
+  })
+
+  it('fills address input when selecting delegate from marketplace', async () => {
+    const user = userEvent.setup()
+    const delegatorAddr = '0xaaaa000000000000000000000000000000000001'
+    const delegateAddr = '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef'
+    mockAccountState = {
+      address: '0x1234567890abcdef1234567890abcdef12345678',
+      isConnected: true,
+      chainId: 11155111,
+    }
+    mockIsDelegating = false
+
+    // Return logs with pre-decoded args (as viem returns when event param is provided)
+    // First call: Delegated logs; second call: Undelegated logs (empty)
+    mockGetLogsChunked
+      .mockResolvedValueOnce([{ args: { delegator: delegatorAddr, delegate: delegateAddr } }])
+      .mockResolvedValueOnce([])
+
+    renderWithProviders(<DelegationPage />)
+    // Wait for marketplace to load and display the select button (the inner <button> element)
+    const selectBtns = await screen.findAllByRole('button', { name: /Select|선택/i })
+    // Click the actual <button> element (last one if multiple - the outer div role="button" also matches)
+    const selectBtn = selectBtns[selectBtns.length - 1]
+    await user.click(selectBtn)
+
+    const input = screen.getByPlaceholderText(/0x... address to delegate to/i) as HTMLInputElement
+    expect(input.value.toLowerCase()).toBe(delegateAddr.toLowerCase())
   })
 })

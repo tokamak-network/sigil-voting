@@ -761,6 +761,12 @@ export interface Translations {
       delegatorsList: string
       andMore: string
       noDelegationsReceived: string
+      marketplace: string
+      marketplaceSearch: string
+      marketplaceEmpty: string
+      marketplaceLoading: string
+      marketplaceDelegators: string
+      selectDelegate: string
     }
     execution: {
       title: string

@@ -789,6 +789,12 @@ export const en: Translations = {
       delegatorsList: 'Delegators',
       andMore: '+ {count} more',
       noDelegationsReceived: 'No delegations received',
+      marketplace: 'Browse Delegates',
+      marketplaceSearch: 'Search by address...',
+      marketplaceEmpty: 'No registered delegates found',
+      marketplaceLoading: 'Loading delegates...',
+      marketplaceDelegators: '{count} delegator(s)',
+      selectDelegate: 'Select',
     },
     execution: {
       title: 'On-Chain Execution',

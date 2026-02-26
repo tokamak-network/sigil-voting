@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAccount, useReadContract, useWriteContract, usePublicClient } from 'wagmi'
 import { useTranslation } from '../../i18n'
 import { storageKey } from '../../storageKeys'
@@ -9,9 +9,33 @@ import {
   DELEGATING_VOICE_CREDIT_PROXY_ABI,
   DELEGATION_REGISTRY_ADDRESS,
   DELEGATION_REGISTRY_ABI,
+  MACI_DEPLOY_BLOCK,
 } from '../../contractV2'
+import { getLogsChunked } from '../../utils/viemLogs'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+
+interface DelegateEntry {
+  address: `0x${string}`
+  delegatorCount: number
+}
+
+const DELEGATED_EVENT = {
+  type: 'event' as const,
+  name: 'Delegated',
+  inputs: [
+    { name: 'delegator', type: 'address', indexed: true },
+    { name: 'delegate', type: 'address', indexed: true },
+  ],
+}
+const UNDELEGATED_EVENT = {
+  type: 'event' as const,
+  name: 'Undelegated',
+  inputs: [
+    { name: 'delegator', type: 'address', indexed: true },
+    { name: 'previousDelegate', type: 'address', indexed: true },
+  ],
+}
 
 export function DelegationPage() {
   const { t } = useTranslation()
@@ -27,8 +51,82 @@ export function DelegationPage() {
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null)
   const [txStatus, setTxStatus] = useState<'idle' | 'pending' | 'success' | 'failed'>('idle')
 
+  // Marketplace state
+  const [delegates, setDelegates] = useState<DelegateEntry[]>([])
+  const [marketplaceLoading, setMarketplaceLoading] = useState(false)
+  const [marketplaceSearch, setMarketplaceSearch] = useState('')
+
   const isConfigured = DELEGATION_REGISTRY_ADDRESS !== ZERO_ADDRESS
   const isWrongNetwork = chainId !== undefined && chainId !== 11155111
+
+  const filteredDelegates = delegates.filter(
+    (d) =>
+      d.address !== address?.toLowerCase() &&
+      (marketplaceSearch === '' || d.address.toLowerCase().includes(marketplaceSearch.toLowerCase())),
+  )
+
+  // Load delegate marketplace: parse Delegated/Undelegated events to find active delegates
+  const loadDelegates = useCallback(async () => {
+    if (!publicClient || DELEGATION_REGISTRY_ADDRESS === ZERO_ADDRESS) return
+    setMarketplaceLoading(true)
+    try {
+      const fromBlock = MACI_DEPLOY_BLOCK ?? 0n
+      const [delegatedLogs, undelegatedLogs] = await Promise.all([
+        getLogsChunked(
+          publicClient,
+          { address: DELEGATION_REGISTRY_ADDRESS as `0x${string}`, event: DELEGATED_EVENT },
+          fromBlock,
+          'latest',
+        ),
+        getLogsChunked(
+          publicClient,
+          { address: DELEGATION_REGISTRY_ADDRESS as `0x${string}`, event: UNDELEGATED_EVENT },
+          fromBlock,
+          'latest',
+        ),
+      ])
+
+      // Build set of currently active delegators (delegated but not undelegated later)
+      // Use a map: delegator -> latestDelegate (from most recent Delegated event)
+      // viem returns args on typed event logs; cast through unknown to access
+      type LogWithDelegatedArgs = { args: { delegator?: string; delegate?: string } }
+      type LogWithUndelegatedArgs = { args: { delegator?: string } }
+      const delegatorToDelegate = new Map<string, string>()
+      for (const log of delegatedLogs) {
+        const { delegator, delegate } = (log as unknown as LogWithDelegatedArgs).args
+        if (delegator && delegate) {
+          delegatorToDelegate.set(delegator.toLowerCase(), delegate.toLowerCase())
+        }
+      }
+      // Remove undelegated ones
+      for (const log of undelegatedLogs) {
+        const { delegator } = (log as unknown as LogWithUndelegatedArgs).args
+        if (delegator) {
+          delegatorToDelegate.delete(delegator.toLowerCase())
+        }
+      }
+
+      // Count delegators per delegate
+      const delegateCount = new Map<string, number>()
+      for (const delegate of delegatorToDelegate.values()) {
+        delegateCount.set(delegate, (delegateCount.get(delegate) ?? 0) + 1)
+      }
+
+      const entries: DelegateEntry[] = Array.from(delegateCount.entries())
+        .map(([addr, count]) => ({
+          address: addr as `0x${string}`,
+          delegatorCount: count,
+        }))
+        .sort((a, b) => b.delegatorCount - a.delegatorCount)
+
+      setDelegates(entries)
+    } catch {
+      // Silently fail — marketplace is non-critical
+      setDelegates([])
+    } finally {
+      setMarketplaceLoading(false)
+    }
+  }, [publicClient])
 
   const estimateGasWithBuffer = async (functionName: 'delegate' | 'undelegate', args?: readonly [`0x${string}`] | readonly []) => {
     const fallbackGas = 200_000n
@@ -50,6 +148,12 @@ export function DelegationPage() {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (mounted) {
+      void loadDelegates()
+    }
+  }, [mounted, loadDelegates])
 
   const shortenAddress = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-4)
 
@@ -342,6 +446,54 @@ export function DelegationPage() {
       {txStatus === 'pending' && txHash && (
         <div className="bg-slate-50 border-2 border-slate-300 text-slate-700 p-3 mb-4 text-xs font-mono">
           Pending: {txHash.slice(0, 10)}...{txHash.slice(-8)}
+        </div>
+      )}
+
+      {/* Delegate Marketplace */}
+      {!isDelegating && (
+        <div className="border-2 border-border-light dark:border-border-dark p-4 mb-4">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+            {t.governance.delegation.marketplace}
+          </h2>
+          <input
+            type="text"
+            value={marketplaceSearch}
+            onChange={(e) => setMarketplaceSearch(e.target.value)}
+            placeholder={t.governance.delegation.marketplaceSearch}
+            className="w-full border-2 border-border-light dark:border-border-dark p-2 text-sm font-mono mb-3 focus:outline-none focus:border-primary"
+          />
+          {marketplaceLoading ? (
+            <p className="text-xs text-slate-400">{t.governance.delegation.marketplaceLoading}</p>
+          ) : filteredDelegates.length === 0 ? (
+            <p className="text-xs text-slate-400">{t.governance.delegation.marketplaceEmpty}</p>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {filteredDelegates.map((d) => (
+                  <div
+                    key={d.address}
+                    className="flex items-center justify-between border border-slate-200 p-2 hover:bg-slate-50 cursor-pointer"
+                    onClick={() => setDelegateAddress(d.address)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setDelegateAddress(d.address) }}
+                  >
+                    <div>
+                      <p className="text-xs font-mono text-slate-700">{shortenAddress(d.address)}</p>
+                      <p className="text-[10px] text-slate-400">
+                        {t.governance.delegation.marketplaceDelegators.replace('{count}', String(d.delegatorCount))}
+                      </p>
+                    </div>
+                    <button
+                      className="text-xs font-bold text-black border-2 border-black px-2 py-1 hover:bg-black hover:text-white transition-colors"
+                      onClick={(e) => { e.stopPropagation(); setDelegateAddress(d.address) }}
+                      tabIndex={-1}
+                    >
+                      {t.governance.delegation.selectDelegate}
+                    </button>
+                  </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

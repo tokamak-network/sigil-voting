@@ -789,6 +789,12 @@ export const ko: Translations = {
       delegatorsList: '위임자 목록',
       andMore: '외 {count}명',
       noDelegationsReceived: '위임받은 투표권이 없습니다',
+      marketplace: '위임 대리인 찾기',
+      marketplaceSearch: '주소로 검색...',
+      marketplaceEmpty: '등록된 위임 대리인이 없습니다',
+      marketplaceLoading: '위임 목록 로딩 중...',
+      marketplaceDelegators: '{count}명 위임',
+      selectDelegate: '선택',
     },
     execution: {
       title: '온체인 실행',
