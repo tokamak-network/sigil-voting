@@ -114,7 +114,9 @@ export class TransactionSubmitter {
     againstVotes: bigint,
     abstainVotes: bigint,
     totalVoters: bigint,
-    tallyResultsHash: bigint,
+    tallyResultsRoot: bigint,
+    totalSpent: bigint,
+    perOptionSpentRoot: bigint,
   ): Promise<ethers.TransactionReceipt | null> {
     console.log('Publishing results...');
     const tx = await this.tally.publishResults(
@@ -122,7 +124,9 @@ export class TransactionSubmitter {
       againstVotes,
       abstainVotes,
       totalVoters,
-      tallyResultsHash,
+      tallyResultsRoot,
+      totalSpent,
+      perOptionSpentRoot,
     );
     return tx.wait();
   }

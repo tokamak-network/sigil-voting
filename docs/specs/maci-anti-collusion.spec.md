@@ -149,7 +149,7 @@ command = {
 
 **Command Hash**:
 ```
-commandHash = Poseidon4(packedValues, newPubKeyX, newPubKeyY, salt)
+commandHash = Poseidon5(stateIndex, newPubKeyX, newPubKeyY, newVoteWeight, salt)
 ```
 
 **Encryption Flow**:
@@ -249,7 +249,7 @@ Individual vote choices are **permanently private** — never revealed.
 ```
 State Leaf:     Poseidon4(pubKeyX, pubKeyY, voiceCreditBalance, timestamp)
 Ballot Hash:    Poseidon2(nonce, voteOptionRoot)
-Command Hash:   Poseidon4(packedValues, newPubKeyX, newPubKeyY, salt)
+Command Hash:   Poseidon5(stateIndex, newPubKeyX, newPubKeyY, newVoteWeight, salt)
 Tally Commit:   Poseidon3(votesRoot, totalSpent, perOptionSpent)
 Message Leaf:   Poseidon(Poseidon5(enc[0..4]), Poseidon5(enc[5..9]), encPubKeyX, encPubKeyY)
 Blank Leaf:     Pedersen generator-based constant (MACI defined)
