@@ -248,7 +248,7 @@ export default function VoteHistoryPage() {
                 </div>
 
                 {/* Title */}
-                <h3 className="text-xl sm:text-2xl font-display font-bold uppercase leading-tight mb-3 group-hover:text-primary transition-colors">
+                <h3 className="text-xl sm:text-2xl font-display font-bold uppercase leading-tight mb-3 group-hover:text-primary transition-colors truncate" title={item.title}>
                   {item.title}
                 </h3>
 

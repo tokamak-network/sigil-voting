@@ -16,7 +16,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAccount, usePublicClient, useBalance, useReadContract } from 'wagmi';
 import { formatEther, type PublicClient } from 'viem';
-import { writeContract } from '../../writeHelper';
+import { writeContract, relayPublishMessage } from '../../writeHelper';
+
+const RELAYER_URL = process.env.NEXT_PUBLIC_RELAYER_URL as string | undefined;
 import { POLL_ABI, VOICE_CREDIT_PROXY_ADDRESS, ERC20_VOICE_CREDIT_PROXY_ABI, MACI_V2_ADDRESS, MACI_ABI, MACI_DEPLOY_BLOCK, DEFAULT_COORD_PUB_KEY_X, DEFAULT_COORD_PUB_KEY_Y } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 import { VoteConfirmModal } from './VoteConfirmModal';
@@ -1083,6 +1085,20 @@ async function publishWithRetry(
   maxRetries = 5,
 ): Promise<`0x${string}`> {
   let retries = 0;
+
+  // Gasless path: if VITE_RELAYER_URL is set, submit via relayer instead of user wallet
+  if (RELAYER_URL) {
+    return await relayPublishMessage(
+      {
+        pollAddress,
+        encMessage,
+        encPubKeyX: ephemeralPubKey[0],
+        encPubKeyY: ephemeralPubKey[1],
+      },
+      RELAYER_URL,
+    );
+  }
+
   while (true) {
     try {
       const gas = await estimateGasWithBuffer({

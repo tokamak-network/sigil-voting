@@ -7,6 +7,9 @@ import { createWalletClient, custom, type Abi } from 'viem'
 import { sepolia } from 'viem/chains'
 import { getEthereumProvider } from './lib/ethereum'
 
+export { relayPublishMessage } from './lib/relayer'
+export type { RelayPublishParams } from './lib/relayer'
+
 export async function writeContract<TAbi extends Abi>(params: {
   address: `0x${string}`
   abi: TAbi
