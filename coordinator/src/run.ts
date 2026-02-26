@@ -1269,6 +1269,14 @@ export async function processPoll(
     return 'key_mismatch';
   }
 
+  // Guard: skip polls with zero messages (NoSubtrees error would occur in mergeMessageAqSubRoots)
+  const numMessages = await retryRpc(() => pollRead.numMessages());
+  if (numMessages === 0n || numMessages === 0) {
+    log('  ⚠ No messages published — skipping (nothing to tally)');
+    auditLog({ action: 'processPoll:noMessages', pollId, result: 'success' });
+    return 'processed';
+  }
+
   // Step 1: Merge
   log('  [1/7] AccQueue merge...');
   await mergeAccQueues(addrs.poll, signer);
