@@ -53,6 +53,11 @@ export function useVotingPhase({
   const [pollDeployTime, setPollDeployTime] = useState<number | null>(null)
   const [votingEndTime, setVotingEndTime] = useState<number | null>(null)
   const cancelledRef = useRef(false)
+  // Caches last known endTime so FAIL_THRESHOLD works even when deployTimeAndDuration call
+  // temporarily fails (network blip) or the contract is an older version.
+  const endTimeRef = useRef<number | null>(null)
+  // Tracks when we first detected the poll is stuck (merged but not finalized, no timing data).
+  const stuckDetectedRef = useRef<number | null>(null)
 
   // Reset phase state when switching polls
   useEffect(() => {
@@ -60,6 +65,8 @@ export function useVotingPhase({
     setPhaseLoaded(false)
     setPollDeployTime(null)
     setVotingEndTime(null)
+    endTimeRef.current = null
+    stuckDetectedRef.current = null
   }, [pollId])
 
   const checkPhase = useCallback(async () => {
@@ -82,8 +89,10 @@ export function useVotingPhase({
 
       if (deployTimeAndDuration) {
         const [deployTime, duration] = deployTimeAndDuration as [bigint, bigint]
+        const endTime = Number(deployTime) + Number(duration)
         setPollDeployTime(Number(deployTime))
-        setVotingEndTime(Number(deployTime) + Number(duration))
+        setVotingEndTime(endTime)
+        endTimeRef.current = endTime  // cache for FAIL_THRESHOLD fallback
       }
 
       if (isOpen) {
@@ -174,10 +183,19 @@ export function useVotingPhase({
       }
 
       // Check if stuck too long → Failed
-      if (deployTimeAndDuration) {
-        const [deployTime, duration] = deployTimeAndDuration as [bigint, bigint]
-        const endTime = Number(deployTime) + Number(duration)
-        if (Math.floor(Date.now() / 1000) - endTime > FAIL_THRESHOLD_S) {
+      // endTimeRef is set above when deployTimeAndDuration succeeds; it also retains the last
+      // successful value across calls so a single RPC blip doesn't clear it.
+      const nowSec = Math.floor(Date.now() / 1000)
+      if (endTimeRef.current !== null && nowSec - endTimeRef.current > FAIL_THRESHOLD_S) {
+        setPhase(V2Phase.Failed)
+        setPhaseLoaded(true)
+        return
+      }
+      // Last resort: no timing data at all + poll is merged → wall-clock fallback
+      if (endTimeRef.current === null && stateMerged && msgMerged) {
+        if (stuckDetectedRef.current === null) {
+          stuckDetectedRef.current = Date.now()
+        } else if (Date.now() - stuckDetectedRef.current > FAIL_THRESHOLD_S * 1000) {
           setPhase(V2Phase.Failed)
           setPhaseLoaded(true)
           return

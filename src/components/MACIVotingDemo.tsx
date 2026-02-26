@@ -880,8 +880,8 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
           <div className="w-full">
             <div className="bg-white p-12 border-2 border-black text-center">
               <span className="material-symbols-outlined text-6xl text-slate-300 mb-4">how_to_vote</span>
-              <h2 className="font-display text-3xl font-black uppercase italic mb-4">{t.noVotes?.title || '투표 없음'}</h2>
-              <p className="text-slate-500 text-lg mb-8">{t.noVotes?.desc || '이 제안에 투표한 사람이 없어 집계할 결과가 없습니다.'}</p>
+              <h2 className="font-display text-3xl font-black uppercase italic mb-4">{t.noVotes.title}</h2>
+              <p className="text-slate-500 text-lg mb-8">{t.noVotes.desc}</p>
               <button
                 onClick={onBack}
                 className="bg-black text-white px-8 py-4 font-display font-black uppercase italic text-sm tracking-widest border-2 border-black hover:bg-slate-800 transition-colors"
