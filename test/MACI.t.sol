@@ -11,6 +11,7 @@ import "../contracts/VkRegistry.sol";
 import "../contracts/IVerifier.sol";
 import "../contracts/gatekeepers/FreeForAllGatekeeper.sol";
 import "../contracts/voiceCreditProxy/ConstantVoiceCreditProxy.sol";
+import "../contracts/voiceCreditProxy/ConfigurableVoiceCreditProxy.sol";
 import {PoseidonT4} from "poseidon-solidity/PoseidonT4.sol";
 
 /// @dev Mock verifier that always returns true (for testing)
@@ -38,9 +39,23 @@ contract RejectAllGatekeeper is ISignUpGatekeeper {
     }
 }
 
-/// @dev Simple ERC20 mock for token gate testing
+/// @dev Simple ERC20 mock for token gate testing (no decimals)
 contract MockERC20 {
     mapping(address => uint256) public balanceOf;
+
+    function mint(address to, uint256 amount) external {
+        balanceOf[to] += amount;
+    }
+}
+
+/// @dev ERC20 mock with decimals() for ConfigurableVoiceCreditProxy testing
+contract MockERC20Decimal {
+    mapping(address => uint256) public balanceOf;
+    uint8 public decimals;
+
+    constructor(uint8 _decimals) {
+        decimals = _decimals;
+    }
 
     function mint(address to, uint256 amount) external {
         balanceOf[to] += amount;
@@ -571,6 +586,147 @@ contract MACITest is Test {
         // This test exists to document that reveal functions are intentionally absent
         // The absence is verified by the compiler - if someone adds reveal, this serves as a reminder
         assertTrue(true);
+    }
+
+    // ============ 15. test_UpdateVoiceCreditProxy ============
+
+    function test_UpdateVoiceCreditProxy_BeforeSignUp() public {
+        ConstantVoiceCreditProxy newProxy = new ConstantVoiceCreditProxy(200);
+
+        vm.expectEmit(true, true, false, false);
+        emit MACI.VoiceCreditProxyUpdated(address(voiceCreditProxy), address(newProxy));
+
+        maci.updateVoiceCreditProxy(address(newProxy));
+        assertEq(address(maci.voiceCreditProxy()), address(newProxy));
+    }
+
+    function test_UpdateVoiceCreditProxy_AfterSignUp_Reverts() public {
+        maci.signUp(100, 200, "", "");
+
+        ConstantVoiceCreditProxy newProxy = new ConstantVoiceCreditProxy(200);
+
+        vm.expectRevert(MACI.SignUpsAlreadyStarted.selector);
+        maci.updateVoiceCreditProxy(address(newProxy));
+    }
+
+    function test_UpdateVoiceCreditProxy_ZeroAddress_Reverts() public {
+        vm.expectRevert(MACI.ZeroAddress.selector);
+        maci.updateVoiceCreditProxy(address(0));
+    }
+
+    function test_UpdateVoiceCreditProxy_NotOwner_Reverts() public {
+        ConstantVoiceCreditProxy newProxy = new ConstantVoiceCreditProxy(200);
+
+        vm.prank(address(0xCAFE));
+        vm.expectRevert(MACI.NotOwner.selector);
+        maci.updateVoiceCreditProxy(address(newProxy));
+    }
+
+    // ============ 16. test_ConfigurableVoiceCreditProxy ============
+
+    function test_ConfigurableProxy_SetToken() public {
+        // Deploy with no initial token
+        ConfigurableVoiceCreditProxy proxy = new ConfigurableVoiceCreditProxy(address(0));
+
+        MockERC20Decimal token = new MockERC20Decimal(18);
+        proxy.setToken(address(token));
+
+        assertEq(proxy.token(), address(token));
+        assertEq(proxy.tokenDecimals(), 18);
+    }
+
+    function test_ConfigurableProxy_SetToken_WithInitialToken() public {
+        MockERC20Decimal tokenA = new MockERC20Decimal(18);
+        // Deploy with initial token
+        ConfigurableVoiceCreditProxy proxy = new ConfigurableVoiceCreditProxy(address(tokenA));
+        assertEq(proxy.token(), address(tokenA));
+
+        // Can still update before lock
+        MockERC20Decimal tokenB = new MockERC20Decimal(6);
+        proxy.setToken(address(tokenB));
+        assertEq(proxy.token(), address(tokenB));
+        assertEq(proxy.tokenDecimals(), 6);
+    }
+
+    function test_ConfigurableProxy_SetToken_AfterLock_Reverts() public {
+        ConfigurableVoiceCreditProxy proxy = new ConfigurableVoiceCreditProxy(address(0));
+        maci.updateVoiceCreditProxy(address(proxy));
+
+        MockERC20Decimal token = new MockERC20Decimal(18);
+        proxy.setToken(address(token));
+
+        // Lock the proxy (owner calls lock() before signUps open)
+        proxy.lock();
+        assertTrue(proxy.locked());
+
+        // Trying to change token after lock must revert
+        MockERC20Decimal token2 = new MockERC20Decimal(18);
+        vm.expectRevert(ConfigurableVoiceCreditProxy.AlreadyLocked.selector);
+        proxy.setToken(address(token2));
+    }
+
+    function test_ConfigurableProxy_Lock_OnlyOnce_Reverts() public {
+        ConfigurableVoiceCreditProxy proxy = new ConfigurableVoiceCreditProxy(address(0));
+        proxy.lock();
+        vm.expectRevert(ConfigurableVoiceCreditProxy.AlreadyLocked.selector);
+        proxy.lock();
+    }
+
+    function test_ConfigurableProxy_GetVoiceCredits() public {
+        ConfigurableVoiceCreditProxy proxy = new ConfigurableVoiceCreditProxy(address(0));
+
+        MockERC20Decimal token = new MockERC20Decimal(18);
+        proxy.setToken(address(token));
+
+        address user = address(0xCAFE);
+        token.mint(user, 500 * 1e18);
+
+        uint256 credits = proxy.getVoiceCredits(user, "");
+        assertEq(credits, 500);
+    }
+
+    function test_ConfigurableProxy_GetVoiceCredits_NoToken_Reverts() public {
+        ConfigurableVoiceCreditProxy proxy = new ConfigurableVoiceCreditProxy(address(0));
+
+        vm.expectRevert(ConfigurableVoiceCreditProxy.TokenNotSet.selector);
+        proxy.getVoiceCredits(address(0xCAFE), "");
+    }
+
+    function test_ConfigurableProxy_SetToken_ZeroAddress_Reverts() public {
+        ConfigurableVoiceCreditProxy proxy = new ConfigurableVoiceCreditProxy(address(0));
+
+        vm.expectRevert(ConfigurableVoiceCreditProxy.ZeroAddress.selector);
+        proxy.setToken(address(0));
+    }
+
+    function test_ConfigurableProxy_TransferOwnership() public {
+        ConfigurableVoiceCreditProxy proxy = new ConfigurableVoiceCreditProxy(address(0));
+        address newOwner = address(0xBEEF);
+        proxy.transferOwnership(newOwner);
+        assertEq(proxy.owner(), newOwner);
+    }
+
+    function test_ConfigurableProxy_NotOwner_Reverts() public {
+        ConfigurableVoiceCreditProxy proxy = new ConfigurableVoiceCreditProxy(address(0));
+
+        vm.prank(address(0xCAFE));
+        vm.expectRevert(ConfigurableVoiceCreditProxy.NotOwner.selector);
+        proxy.setToken(address(0x1234));
+    }
+
+    function test_UpdateVoiceCreditProxy_ThenUseInSignUp() public {
+        ConfigurableVoiceCreditProxy proxy = new ConfigurableVoiceCreditProxy(address(0));
+        MockERC20Decimal token = new MockERC20Decimal(18);
+        proxy.setToken(address(token));
+        maci.updateVoiceCreditProxy(address(proxy));
+
+        address user = address(0xCAFE);
+        token.mint(user, 100 * 1e18);
+
+        // signUp as user — voice credits = 100
+        vm.prank(user);
+        maci.signUp(100, 200, "", "");
+        assertEq(maci.numSignUps(), 1);
     }
 
     // ============ 13. test_IntegrationFlow ============

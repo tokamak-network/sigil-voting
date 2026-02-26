@@ -51,6 +51,7 @@ contract MACI is DomainObjs {
     error ZeroDuration();
     error ZeroMessageTreeDepth();
     error ZeroThreshold();
+    error SignUpsAlreadyStarted();
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -58,6 +59,7 @@ contract MACI is DomainObjs {
     }
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event VoiceCreditProxyUpdated(address indexed oldProxy, address indexed newProxy);
 
     // ============ Events ============
     event SignUp(
@@ -151,6 +153,16 @@ contract MACI is DomainObjs {
     /// @notice Get number of proposal gates
     function proposalGateCount() external view returns (uint256) {
         return proposalGates.length;
+    }
+
+    /// @notice Update the voice credit proxy (owner only, before any signUp)
+    /// @param _newProxy New IVoiceCreditProxy address
+    function updateVoiceCreditProxy(address _newProxy) external onlyOwner {
+        if (_newProxy == address(0)) revert ZeroAddress();
+        if (numSignUps > 0) revert SignUpsAlreadyStarted();
+        address old = address(voiceCreditProxy);
+        voiceCreditProxy = IVoiceCreditProxy(_newProxy);
+        emit VoiceCreditProxyUpdated(old, _newProxy);
     }
 
     /// @notice Set delegation registry (optional, owner only)
