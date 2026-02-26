@@ -246,20 +246,21 @@ export async function POST(req: NextRequest) {
       functionName: 'nextPollId',
     })
 
-    let isRegisteredPoll = false
-    // nextPollId is the next to be assigned; valid IDs are 0..nextPollId-1
-    for (let pollId = 0n; pollId < nextPollId; pollId++) {
-      const registeredAddr = await publicClient.readContract({
-        address: maciAddress,
-        abi: MACI_ABI,
-        functionName: 'polls',
-        args: [pollId],
-      })
-      if (registeredAddr.toLowerCase() === pollAddr.toLowerCase()) {
-        isRegisteredPoll = true
-        break
-      }
-    }
+    // Verify pollAddress is a registered MACI poll — parallel fetch all at once
+    const pollIds = Array.from({ length: Number(nextPollId) }, (_, i) => BigInt(i))
+    const registeredAddrs = await Promise.all(
+      pollIds.map(pollId =>
+        publicClient.readContract({
+          address: maciAddress,
+          abi: MACI_ABI,
+          functionName: 'polls',
+          args: [pollId],
+        }),
+      ),
+    )
+    const isRegisteredPoll = registeredAddrs.some(
+      addr => addr.toLowerCase() === pollAddr.toLowerCase(),
+    )
 
     if (!isRegisteredPoll) {
       return NextResponse.json({ error: 'unknown_poll' }, { status: 400 })
