@@ -1086,7 +1086,7 @@ async function publishWithRetry(
 ): Promise<`0x${string}`> {
   let retries = 0;
 
-  // Gasless path: if VITE_RELAYER_URL is set, submit via relayer instead of user wallet
+  // Gasless path: if NEXT_PUBLIC_RELAYER_URL is set, submit via relayer instead of user wallet
   if (RELAYER_URL) {
     return await relayPublishMessage(
       {
