@@ -11,7 +11,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAccount, usePublicClient } from 'wagmi';
-import { writeContract } from '../../writeHelper';
+import { writeContract, relayPublishMessage } from '../../writeHelper';
+
+const RELAYER_URL = process.env.NEXT_PUBLIC_RELAYER_URL as string | undefined;
 import { POLL_ABI } from '../../contractV2';
 import { useTranslation } from '../../i18n';
 import { preloadCrypto } from '../../crypto/preload';
@@ -163,33 +165,46 @@ export function KeyManager({
         encMessage[i] = ciphertext[i];
       }
 
-      // Submit key change message
+      // Submit key change message — gasless via relay if configured
       if (!address) throw new Error('Wallet not connected');
-      const gas = await estimateGasWithBuffer({
-        publicClient,
-        address: pollAddress!,
-        abi: POLL_ABI,
-        functionName: 'publishMessage',
-        args: [
-          encMessage as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint],
-          ephemeral.pubKey[0],
-          ephemeral.pubKey[1],
-        ],
-        account: address,
-        fallbackGas: 500_000n,
-      });
-      const txHash = await writeContract({
-        address: pollAddress!,
-        abi: POLL_ABI,
-        functionName: 'publishMessage',
-        args: [
-          encMessage as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint],
-          ephemeral.pubKey[0],
-          ephemeral.pubKey[1],
-        ],
-        gas,
-        account: address,
-      });
+      let txHash: `0x${string}`;
+      if (RELAYER_URL) {
+        txHash = await relayPublishMessage(
+          {
+            pollAddress: pollAddress!,
+            encMessage,
+            encPubKeyX: ephemeral.pubKey[0],
+            encPubKeyY: ephemeral.pubKey[1],
+          },
+          RELAYER_URL,
+        );
+      } else {
+        const gas = await estimateGasWithBuffer({
+          publicClient,
+          address: pollAddress!,
+          abi: POLL_ABI,
+          functionName: 'publishMessage',
+          args: [
+            encMessage as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint],
+            ephemeral.pubKey[0],
+            ephemeral.pubKey[1],
+          ],
+          account: address,
+          fallbackGas: 500_000n,
+        });
+        txHash = await writeContract({
+          address: pollAddress!,
+          abi: POLL_ABI,
+          functionName: 'publishMessage',
+          args: [
+            encMessage as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint],
+            ephemeral.pubKey[0],
+            ephemeral.pubKey[1],
+          ],
+          gas,
+          account: address,
+        });
+      }
 
       // Wait for on-chain confirmation before saving state
       if (publicClient) {
