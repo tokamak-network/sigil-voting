@@ -53,13 +53,18 @@ const nextConfig: NextConfig = {
       },
     ]
   },
-  webpack: (config) => {
-    config.plugins.push(
-      new webpack.ProvidePlugin({
-        Buffer: ['buffer', 'Buffer'],
-        process: 'process/browser',
-      })
-    )
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Browser polyfills — only for client bundles.
+      // DO NOT apply process/browser to server bundles; it replaces Node.js process
+      // and makes process.env invisible (e.g. RELAYER_PRIVATE_KEY becomes undefined).
+      config.plugins.push(
+        new webpack.ProvidePlugin({
+          Buffer: ['buffer', 'Buffer'],
+          process: 'process/browser',
+        })
+      )
+    }
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,

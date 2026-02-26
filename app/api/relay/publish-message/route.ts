@@ -17,6 +17,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+
+export const dynamic = 'force-dynamic'
 import { createPublicClient, createWalletClient, http, parseAbi, isAddress } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { sepolia } from 'viem/chains'
@@ -106,7 +108,7 @@ function getPublicClient() {
 
 function getWalletClient() {
   if (!_walletClient) {
-    const privateKey = process.env.RELAYER_PRIVATE_KEY
+    const privateKey = (process.env.RELAYER_PRIVATE_KEY ?? '').trim()
     if (!privateKey || !privateKey.startsWith('0x')) {
       throw new Error('RELAYER_PRIVATE_KEY env var not set or invalid')
     }
@@ -292,7 +294,6 @@ export async function POST(req: NextRequest) {
   try {
     const txHash = await enqueueTx(async () => {
       const walletClient = getWalletClient()
-      const publicClient = getPublicClient()
 
       const msgTuple = encMessageBigInts as unknown as readonly [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint]
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -304,9 +305,9 @@ export async function POST(req: NextRequest) {
         args: [msgTuple, encPubKeyXBig, encPubKeyYBig],
       }) as `0x${string}`
 
-      // Wait for inclusion (1 confirmation)
-      await publicClient.waitForTransactionReceipt({ hash, confirmations: 1 })
-
+      // Return the hash immediately — do NOT await receipt.
+      // Sepolia block time (~12s) exceeds Vercel's 10s serverless timeout.
+      // The client calls waitForTransactionReceipt on its own publicClient.
       return hash
     })
 
