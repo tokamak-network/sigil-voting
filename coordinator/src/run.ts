@@ -685,9 +685,19 @@ async function processAndSubmitProofs(
 
       const currentBallot = ballotMap.get(stateIdx) ?? { ...blankBallot, votes: [...blankBallot.votes] };
 
-      // Collect circuit inputs (the circuit decrypts in-circuit, no cmd* needed)
-      batchMsgs.push(msg.data);
-      batchEncPubKeys.push([msg.encPubKeyX, msg.encPubKeyY]);
+      // Collect circuit inputs.
+      // If ECDH decryption failed (wrong coordinator key or corrupted message), zero out the
+      // message data and encPubKey so the circuit treats it as a padding message:
+      //   encKeyIsZero=1 → enabled=0 → auth tag check skipped → plaintext forced to 0 → no-op.
+      // Without this, the circuit would receive a non-zero encPubKey with an invalid auth tag
+      // and fail hard at the DuplexSponge auth tag constraint (line 79 in duplexSponge.circom).
+      // The state proof for stateIdx=0 (blank leaf) is already correct since unpack(0n)→stateIdx=0.
+      const circuitMsgData = decryptFailed
+        ? (new Array(10).fill(0n) as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint])
+        : msg.data;
+      const circuitEncPubKey: [bigint, bigint] = decryptFailed ? [0n, 0n] : [msg.encPubKeyX, msg.encPubKeyY];
+      batchMsgs.push(circuitMsgData);
+      batchEncPubKeys.push(circuitEncPubKey);
       batchMsgNonces.push(0n); // DuplexSponge nonce (always 0 in our protocol)
       batchStateLeaves.push([currentLeaf.pubKeyX, currentLeaf.pubKeyY, currentLeaf.voiceCreditBalance, currentLeaf.timestamp]);
       batchBallots.push([currentBallot.nonce, currentBallot.voteOptionRoot]);
