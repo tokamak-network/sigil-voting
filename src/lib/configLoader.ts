@@ -95,8 +95,8 @@ export function getActiveConfig(): ActiveConfig {
       timelockExecutor: (chainConfig.timelockExecutor || ZERO_ADDRESS) as `0x${string}`,
     },
     coordinatorPubKey: {
-      x: BigInt(chainConfig.coordinatorPubKeyX || '111'),
-      y: BigInt(chainConfig.coordinatorPubKeyY || '222'),
+      x: BigInt(chainConfig.coordinatorPubKeyX || '0'),
+      y: BigInt(chainConfig.coordinatorPubKeyY || '0'),
     },
     params: {
       stateTreeDepth: chainConfig.stateTreeDepth,

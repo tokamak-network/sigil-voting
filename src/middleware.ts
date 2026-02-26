@@ -68,7 +68,10 @@ export function middleware(req: NextRequest) {
   // CSRF: validate Origin header for state-changing methods
   const method = req.method.toUpperCase()
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
-    if (origin && host) {
+    if (!origin) {
+      return new NextResponse('Forbidden', { status: 403 })
+    }
+    if (host) {
       try {
         if (new URL(origin).host !== host) {
           return new NextResponse('Forbidden', { status: 403 })

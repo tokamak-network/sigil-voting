@@ -19,8 +19,9 @@ export async function writeContract<TAbi extends Abi>(params: {
   if (!provider) throw new Error('No wallet provider found. Please install MetaMask or another wallet.')
 
   // Verify user is on Sepolia before sending transaction
-  const chainId = (await provider.request({ method: 'eth_chainId' })) as string
-  if (parseInt(chainId, 16) !== sepolia.id) {
+  const chainIdRaw = await provider.request({ method: 'eth_chainId' })
+  if (typeof chainIdRaw !== 'string') throw new Error('Failed to read chainId from wallet.')
+  if (parseInt(chainIdRaw, 16) !== sepolia.id) {
     try {
       await provider.request({
         method: 'wallet_switchEthereumChain',

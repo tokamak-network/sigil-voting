@@ -18,6 +18,7 @@ import { preloadCrypto } from '../../crypto/preload';
 import { estimateGasWithBuffer } from '../../utils/gas';
 import { getMaciNonce, incrementMaciNonce } from './voteUtils';
 import { storageKey } from '../../storageKeys'
+import { TX_TIMEOUT_MS } from '../../constants/voting'
 import { getEthereumProvider } from '../../lib/ethereum'
 import { SHA256_SCALAR_MASK, CMD_BITS } from '../../constants/voting';
 
@@ -192,7 +193,7 @@ export function KeyManager({
 
       // Wait for on-chain confirmation before saving state
       if (publicClient) {
-        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash, timeout: TX_TIMEOUT_MS });
         if (receipt.status === 'reverted') {
           throw new Error('Key change transaction reverted on-chain');
         }
