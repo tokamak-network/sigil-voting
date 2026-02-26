@@ -28,11 +28,11 @@ The coercer cannot distinguish key-change messages from vote messages on-chain. 
 
 | Layer | Tech |
 |-------|------|
-| Contracts | Solidity 0.8.24 — MACI, Poll, MessageProcessor, Tally, AccQueue, Groth16 verifiers, DelegationRegistry, TimelockExecutor (22 contracts) |
+| Contracts | Solidity 0.8.24 — MACI, Poll, MessageProcessor, Tally, AccQueue, Groth16 verifiers, DelegationRegistry, TimelockExecutor (23 contracts) |
 | Circuits | Circom 2.1.6 — MessageProcessor, TallyVotes, DuplexSponge, SHA256Hasher |
 | Coordinator | TypeScript — Auto-runner via GitHub Actions cron (every 5 min), generates Groth16 proofs with snarkjs, multi-key support, error retry with exponential backoff |
 | Frontend | Next.js 15 + React 19 + Wagmi 3 + Tailwind — i18n (KO/EN), deployed on Vercel, real-time status polling, mobile responsive |
-| SDK | `sigil-sdk` on npm — Client library + React widget (key management, encryption, command packing) |
+| SDK | [`sigil-sdk`](https://www.npmjs.com/package/sigil-sdk) v0.3.0 on npm — Client library + React widget (key management, encryption, command packing) |
 
 ## Architecture
 
@@ -112,7 +112,7 @@ Full API reference: [`sdk/README.md`](./sdk/README.md)
 ## Testing
 
 ```bash
-# Unit + component + security tests (320 tests)
+# Unit + component + security tests (323 tests)
 npm test
 
 # Smart contracts (requires Foundry)
@@ -141,7 +141,7 @@ scripts/       Hardhat deploy scripts
 Next.js middleware (`src/middleware.ts`) handles:
 - Rate limiting (60 req/min per IP)
 - CORS (same-origin only)
-- CSRF (Origin header validation on POST/PUT/DELETE)
+- CSRF (Origin header validation on POST/PUT/DELETE/PATCH; requests without Origin are rejected)
 - Path blocking (`.env`, `.git`, `/api/internal` return 404)
 
 Input validation with Zod schemas (`src/lib/validation.ts`) for vote inputs, poll creation, and Ethereum addresses.
