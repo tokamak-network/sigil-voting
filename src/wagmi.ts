@@ -19,3 +19,9 @@ export const config = createConfig({
 })
 
 export { sepolia }
+
+/**
+ * Whether Privy is configured (App ID present).
+ * Components can use this to decide between Privy login and injected connector.
+ */
+export const isPrivyEnabled = !!process.env.NEXT_PUBLIC_PRIVY_APP_ID

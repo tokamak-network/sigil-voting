@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { useAccount, useDisconnect, useSwitchChain } from 'wagmi'
-import { usePrivy } from '@privy-io/react-auth'
+import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi'
+import { injected } from '@wagmi/core'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { sepolia } from '../wagmi'
+import { sepolia, isPrivyEnabled } from '../wagmi'
+import { usePrivySafe } from '../hooks/usePrivySafe'
 import { useTranslation } from '../i18n'
 import { LanguageSwitcher } from './LanguageSwitcher'
 import { getEthereumProvider } from '../lib/ethereum'
@@ -13,7 +14,8 @@ const shortenAddress = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-
 export function Header() {
   const pathname = usePathname()
   const { address, isConnected, chainId } = useAccount()
-  const { login, logout, authenticated } = usePrivy()
+  const { login, logout, authenticated } = usePrivySafe()
+  const { connect } = useConnect()
   const { disconnect } = useDisconnect()
   const { switchChain, isPending: isSwitching } = useSwitchChain()
   const { t } = useTranslation()
@@ -70,7 +72,13 @@ export function Header() {
     }
   }
 
-  const handleConnect = () => login()
+  const handleConnect = () => {
+    if (isPrivyEnabled) {
+      login()
+    } else {
+      connect({ connector: injected() })
+    }
+  }
 
   const handleDisconnect = () => {
     disconnect()

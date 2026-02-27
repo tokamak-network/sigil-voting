@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
-import { usePrivy, useWallets } from '@privy-io/react-auth'
+import { usePrivySafe, useWalletsSafe } from '../hooks/usePrivySafe'
 import { useTranslation } from '../i18n'
 
 interface InviteOnboardingProps {
@@ -13,8 +13,8 @@ type OnboardStep = 'login' | 'wallet' | 'ready'
 
 export function InviteOnboarding({ onReady }: InviteOnboardingProps) {
   const { t } = useTranslation()
-  const { authenticated, ready: privyReady } = usePrivy()
-  const { wallets } = useWallets()
+  const { authenticated, ready: privyReady } = usePrivySafe()
+  const { wallets } = useWalletsSafe()
   const { isConnected } = useAccount()
   const [step, setStep] = useState<OnboardStep>('login')
 
@@ -26,13 +26,11 @@ export function InviteOnboarding({ onReady }: InviteOnboardingProps) {
       return
     }
 
-    // Authenticated but waiting for embedded wallet
     if (!isConnected || wallets.length === 0) {
       setStep('wallet')
       return
     }
 
-    // Everything ready
     setStep('ready')
     const timer = setTimeout(onReady, 1000)
     return () => clearTimeout(timer)

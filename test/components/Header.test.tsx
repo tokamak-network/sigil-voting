@@ -7,6 +7,7 @@ import { Header } from '../../src/components/Header'
 // Mock wagmi hooks
 const mockDisconnect = vi.fn()
 const mockSwitchChain = vi.fn()
+const mockConnect = vi.fn()
 
 let mockAccountState = {
   address: undefined as `0x${string}` | undefined,
@@ -14,49 +15,34 @@ let mockAccountState = {
   chainId: 11155111 as number | undefined,
 }
 
-let mockVoiceCredits: unknown = undefined
-let mockGateCount: unknown = 0n
-let mockCanCreate: unknown = true
-
 vi.mock('wagmi', () => ({
   useAccount: () => mockAccountState,
-  useConnect: () => ({ connect: vi.fn(), isPending: false }),
+  useConnect: () => ({ connect: mockConnect, isPending: false }),
   useDisconnect: () => ({ disconnect: mockDisconnect }),
   useSwitchChain: () => ({ switchChain: mockSwitchChain, isPending: false }),
-  useReadContract: (config: any) => {
-    if (config?.functionName === 'getVoiceCredits') return { data: mockVoiceCredits, isLoading: false }
-    if (config?.functionName === 'proposalGateCount') return { data: mockGateCount, isLoading: false }
-    if (config?.functionName === 'canCreatePoll') return { data: mockCanCreate, isLoading: false }
-    return { data: undefined, isLoading: false }
-  },
+  useReadContract: () => ({ data: undefined, isLoading: false }),
 }))
 
-vi.mock('wagmi/connectors', () => ({
+vi.mock('@wagmi/core', () => ({
   injected: () => 'injected-connector',
 }))
 
 vi.mock('../../src/wagmi', () => ({
   sepolia: { id: 11155111 },
+  isPrivyEnabled: false,
 }))
 
-// Mock Privy
+// Mock usePrivySafe (returns no-ops since isPrivyEnabled=false)
 const mockLogin = vi.fn()
 const mockLogout = vi.fn()
 
-vi.mock('@privy-io/react-auth', () => ({
-  usePrivy: () => ({
+vi.mock('../../src/hooks/usePrivySafe', () => ({
+  usePrivySafe: () => ({
     login: mockLogin,
     logout: mockLogout,
     authenticated: false,
     ready: true,
   }),
-}))
-
-vi.mock('../../src/contractV2', () => ({
-  MACI_V2_ADDRESS: '0x0000000000000000000000000000000000000001',
-  MACI_ABI: [],
-  VOICE_CREDIT_PROXY_ADDRESS: '0x0000000000000000000000000000000000000002',
-  VOICE_CREDIT_PROXY_ABI: [],
 }))
 
 let mockPathname = '/'
@@ -80,9 +66,6 @@ describe('Header', () => {
       isConnected: false,
       chainId: 11155111,
     }
-    mockVoiceCredits = undefined
-    mockGateCount = 0n
-    mockCanCreate = true
   })
 
   it('renders the SIGIL brand name', () => {
@@ -97,13 +80,14 @@ describe('Header', () => {
     expect(connectButton).toBeInTheDocument()
   })
 
-  it('calls login when connect button is clicked', async () => {
+  it('calls connect when connect button is clicked (MetaMask mode)', async () => {
     const user = userEvent.setup()
     mockPathname = '/vote'
     renderWithProviders(<Header />)
     const connectButton = await screen.findByRole('button', { name: /connect|연결|sign in|로그인/i })
     await user.click(connectButton)
-    expect(mockLogin).toHaveBeenCalled()
+    // isPrivyEnabled is false, so it should call wagmi connect
+    expect(mockConnect).toHaveBeenCalled()
   })
 
   it('shows shortened address when connected', async () => {
@@ -122,7 +106,7 @@ describe('Header', () => {
     mockAccountState = {
       address: '0x1234567890abcdef1234567890abcdef12345678',
       isConnected: true,
-      chainId: 1, // mainnet, not sepolia
+      chainId: 1,
     }
     renderWithProviders(<Header />)
     expect(await screen.findByText(/Wrong Network|네트워크 변경/i)).toBeInTheDocument()

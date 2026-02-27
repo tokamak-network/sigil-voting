@@ -3,7 +3,8 @@
 import { use, Suspense, lazy, useCallback, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAccount } from 'wagmi'
-import { usePrivy } from '@privy-io/react-auth'
+import { usePrivySafe } from '../../../../src/hooks/usePrivySafe'
+import { isPrivyEnabled } from '../../../../src/wagmi'
 import { LoadingSpinner } from '../../../components/LoadingSpinner'
 import { InviteOnboarding } from '../../../../src/components/InviteOnboarding'
 
@@ -21,13 +22,13 @@ export default function PollDetailPage({ params }: PollPageProps) {
   const searchParams = useSearchParams()
   const pollIdNum = Number(pollId)
   const isInvite = searchParams.get('invite') === 'true'
-  const { login, authenticated, ready: privyReady } = usePrivy()
+  const { login, authenticated, ready: privyReady } = usePrivySafe()
   const { isConnected } = useAccount()
   const [onboardingDone, setOnboardingDone] = useState(false)
 
-  // Auto-login for invite links
+  // Auto-login for invite links (only when Privy is enabled)
   useEffect(() => {
-    if (isInvite && privyReady && !authenticated) {
+    if (isInvite && isPrivyEnabled && privyReady && !authenticated) {
       login()
     }
   }, [isInvite, privyReady, authenticated, login])

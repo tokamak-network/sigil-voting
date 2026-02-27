@@ -2,7 +2,8 @@
 
 import { StrictMode } from 'react'
 import { PrivyProvider } from '@privy-io/react-auth'
-import { WagmiProvider } from '@privy-io/wagmi'
+import { WagmiProvider as PrivyWagmiProvider } from '@privy-io/wagmi'
+import { WagmiProvider as PlainWagmiProvider } from 'wagmi'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { config, sepolia } from '../src/wagmi'
 import { LanguageProvider } from '../src/i18n'
@@ -22,6 +23,19 @@ const queryClient = new QueryClient({
 const PRIVY_APP_ID = process.env.NEXT_PUBLIC_PRIVY_APP_ID || ''
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  // When Privy App ID is not configured, fall back to plain wagmi (MetaMask-only mode)
+  if (!PRIVY_APP_ID) {
+    return (
+      <StrictMode>
+        <PlainWagmiProvider config={config}>
+          <QueryClientProvider client={queryClient}>
+            <LanguageProvider>{children}</LanguageProvider>
+          </QueryClientProvider>
+        </PlainWagmiProvider>
+      </StrictMode>
+    )
+  }
+
   return (
     <StrictMode>
       <PrivyProvider
@@ -42,10 +56,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
         }}
       >
         <QueryClientProvider client={queryClient}>
-          <WagmiProvider config={config}>
+          <PrivyWagmiProvider config={config}>
             <ProviderSync />
             <LanguageProvider>{children}</LanguageProvider>
-          </WagmiProvider>
+          </PrivyWagmiProvider>
         </QueryClientProvider>
       </PrivyProvider>
     </StrictMode>
