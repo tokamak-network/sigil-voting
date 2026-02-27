@@ -192,8 +192,8 @@ describe('Gasless Voting E2E', () => {
     const body = JSON.parse(options.body);
     expect(body.pollAddress.toLowerCase()).toBe(POLL_ADDR.toLowerCase());
     expect(body.encMessage).toHaveLength(10);
-    expect(body.encPubKey.x).toMatch(/^0x/);
-    expect(body.encPubKey.y).toMatch(/^0x/);
+    expect(body.encPubKeyX).toMatch(/^0x/);
+    expect(body.encPubKeyY).toMatch(/^0x/);
 
     // Verify receipt
     expect(receipt.txHash).toBe('0x' + 'f'.repeat(64));

@@ -473,10 +473,8 @@ export class SigilClient {
       const body = {
         pollAddress: pollAddr,
         encMessage: encMessage.map((v: bigint) => '0x' + v.toString(16)),
-        encPubKey: {
-          x: '0x' + ephemeralPubKey[0].toString(16),
-          y: '0x' + ephemeralPubKey[1].toString(16),
-        },
+        encPubKeyX: '0x' + ephemeralPubKey[0].toString(16),
+        encPubKeyY: '0x' + ephemeralPubKey[1].toString(16),
       };
       const res = await fetch(`${this.relayerUrl}/api/relay/publish-message`, {
         method: 'POST',

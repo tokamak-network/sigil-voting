@@ -9,11 +9,10 @@
  * UI: Brutalist / technical card design with Tailwind CSS.
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, memo } from 'react'
 import { useAccount, useReadContract, usePublicClient } from 'wagmi'
 import {
   MACI_V2_ADDRESS,
-  MACI_DEPLOY_BLOCK,
   MACI_ABI,
   POLL_ABI,
   TALLY_ABI,
@@ -22,7 +21,7 @@ import {
 } from '../contractV2'
 import { useTranslation } from '../i18n'
 import { storageKey, parseOnChainTitle } from '../storageKeys'
-import { getLogsChunked } from '../utils/viemLogs'
+import { useDeployPollLogs, invalidateDeployPollCache } from '../hooks/useDeployPollLogs'
 import { FAIL_THRESHOLD_S } from '../constants/voting'
 import CreatePollForm from './CreatePollForm'
 
@@ -83,7 +82,7 @@ interface ProposalCardProps {
   onSelectPoll: (pollId: number) => void
 }
 
-function ProposalCard({ poll, onSelectPoll }: ProposalCardProps) {
+const ProposalCard = memo(function ProposalCard({ poll, onSelectPoll }: ProposalCardProps) {
   const { t } = useTranslation()
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000))
 
@@ -227,12 +226,13 @@ function ProposalCard({ poll, onSelectPoll }: ProposalCardProps) {
       </div>
     </button>
   )
-}
+})
 
 export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
   const { t } = useTranslation()
+  const { logs: deployPollLogs } = useDeployPollLogs(publicClient)
   const [polls, setPolls] = useState<PollInfo[]>([])
   const [loading, setLoading] = useState(false)
   const [showCreatePoll, setShowCreatePoll] = useState(false)
@@ -291,36 +291,14 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     const loadPolls = async () => {
       // Only show loading spinner on initial load, not on background refresh
       if (polls.length === 0) setLoading(true)
-      // Pre-fetch DeployPoll events to get tally addresses
+      // Build tally map from shared DeployPoll log cache
       const tallyMap = new Map<number, `0x${string}`>()
-      try {
-        const logs = await getLogsChunked(
-          publicClient,
-          {
-            address: MACI_V2_ADDRESS,
-            event: {
-              type: 'event',
-              name: 'DeployPoll',
-              inputs: [
-                { name: 'pollId', type: 'uint256', indexed: true },
-                { name: 'pollAddr', type: 'address', indexed: false },
-                { name: 'messageProcessorAddr', type: 'address', indexed: false },
-                { name: 'tallyAddr', type: 'address', indexed: false },
-              ],
-            },
-          },
-          MACI_DEPLOY_BLOCK,
-          'latest',
-        )
-        for (const log of logs) {
-          const args = (log as unknown as { args: { pollId?: bigint; tallyAddr?: `0x${string}` } }).args
-          if (args.pollId !== undefined && args.tallyAddr) {
-            tallyMap.set(Number(args.pollId), args.tallyAddr)
-            localStorage.setItem(storageKey.pollTitle(Number(args.pollId)) + ':tally', args.tallyAddr)
-          }
-        }
-      } catch {
-        // Event reading may fail on some RPCs — restore from localStorage
+      for (const entry of deployPollLogs) {
+        tallyMap.set(entry.pollId, entry.tallyAddr)
+        localStorage.setItem(storageKey.pollTitle(entry.pollId) + ':tally', entry.tallyAddr)
+      }
+      // Fallback: if cache is empty, restore from localStorage
+      if (deployPollLogs.length === 0) {
         for (let i = 0; i < count; i++) {
           const cached = localStorage.getItem(storageKey.pollTitle(i) + ':tally') as `0x${string}` | null
           if (cached) tallyMap.set(i, cached)
@@ -400,10 +378,11 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     }
 
     loadPolls()
-  }, [nextPollId, publicClient, address, refreshKey])
+  }, [nextPollId, publicClient, address, refreshKey, deployPollLogs])
 
   const handlePollCreated = (newPollId: number, newPollAddress: `0x${string}`, title?: string, durationSeconds?: number) => {
     setShowCreatePoll(false)
+    invalidateDeployPollCache()
     // Add the new poll to the list immediately and persist to cache
     const newPoll: PollInfo = {
       id: newPollId,

@@ -78,7 +78,7 @@ export const en: Translations = {
       comingSoon: 'sigil-sdk v0.3.0 on npm',
     },
     stats: {
-      testsCount: '411',
+      testsCount: '437',
       testsLabel: 'Automated Tests',
       contractsCount: '7',
       contractsLabel: 'Security Properties',
@@ -136,7 +136,7 @@ export const en: Translations = {
       q3: 'How many voters can participate?',
       a3: 'Testnet runs with small limits for faster iteration. Mainnet will use higher capacity circuits.',
       q4: 'Has the code been audited?',
-      a4: 'Not yet formally audited. The codebase is open source with 411 automated tests (frontend, SDK, and contract) and security properties aligned to MACI. Built on Ethereum PSE MACI research. A formal third-party audit is planned before mainnet.',
+      a4: 'Not yet formally audited. The codebase is open source with 437 automated tests (frontend, SDK, and contract) and security properties aligned to MACI. Built on Ethereum PSE MACI research. A formal third-party audit is planned before mainnet.',
       q5: 'Which blockchains are supported?',
       a5: 'Currently deployed on Ethereum Sepolia testnet. Ethereum mainnet is the primary target. The contracts are standard Solidity, so deploying on any EVM chain (Base, Arbitrum, Polygon, etc.) requires no code changes.',
       q6: 'What if someone forces me to vote a certain way?',
