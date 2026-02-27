@@ -54,6 +54,8 @@ const results = await sigil.getResults(0);
 | **On-chain verified** | Groth16 proofs verified on Ethereum |
 | **Auto-registration** | `vote()` auto-calls `signUp()` if needed |
 | **Auto key change** | Re-votes automatically change EdDSA key for anti-collusion |
+| **Gasless voting** | Optional relayer support — voters pay zero gas |
+| **Event subscription** | `on()`/`off()` listeners for signup, vote, keychange, finalized |
 | **Delegation** | Optional vote delegation via DelegationRegistry |
 | **Timelock execution** | On-chain governance execution with timelock |
 
@@ -93,6 +95,7 @@ interface SigilConfig {
   storage?: SigilStorage;                 // Custom storage backend
   timelockExecutorAddress?: string;       // TimelockExecutor contract
   delegationRegistryAddress?: string;     // DelegationRegistry contract
+  relayerUrl?: string;                    // Relayer URL for gasless voting
 }
 ```
 
@@ -180,6 +183,53 @@ Get total number of deployed polls.
 
 Get the tally contract address for a poll from on-chain DeployPoll events.
 
+#### `on(event, callback)` / `off(event, callback)`
+
+Subscribe to SDK lifecycle events. Events: `'signup'`, `'vote'`, `'keychange'`, `'finalized'`.
+
+```ts
+sigil.on('vote', (event) => {
+  console.log('Voted on poll', event.pollId, 'tx:', event.txHash);
+});
+
+// Later: unsubscribe
+sigil.off('vote', myCallback);
+```
+
+#### `getDelegators(delegate?): Promise<string[]>`
+
+Get all addresses that delegated to a delegate. Defaults to signer address.
+
+```ts
+const delegators = await sigil.getDelegators();
+console.log('Delegators:', delegators);
+```
+
+#### `getExecutionInfo(pollId): Promise<ExecutionInfo>`
+
+Get full execution info for a poll (creator, target, callData, timelock, state).
+
+```ts
+const info = await sigil.getExecutionInfo(0);
+console.log('State:', info.state); // 'none' | 'registered' | 'scheduled' | 'executed' | 'cancelled'
+```
+
+#### Gasless Voting
+
+Pass `relayerUrl` in config to enable gasless voting. Votes are POSTed to the relayer instead of submitted on-chain directly.
+
+```ts
+const sigil = new SigilClient({
+  maciAddress: '0x...',
+  provider,
+  signer,
+  relayerUrl: 'https://relay.sigil.vote', // enables gasless
+});
+
+// vote() automatically uses relayer when relayerUrl is set
+await sigil.vote(0, 'for', 3); // voter pays zero gas
+```
+
 #### Governance: Timelock Execution
 
 Requires `timelockExecutorAddress` in config.
@@ -202,6 +252,7 @@ await sigil.delegate('0x...');
 await sigil.undelegate();
 const delegate = await sigil.getDelegate();
 const isDelegating = await sigil.isDelegating();
+const delegators = await sigil.getDelegators();
 ```
 
 #### `getKeyManager(): KeyManager`
@@ -493,6 +544,10 @@ import type {
   VoteReceipt,
   SignUpResult,
   KeyChangeResult,
+  SigilEvent,
+  ExecutionInfo,
+  ExecutionState,
+  DelegationInfo,
   WidgetConfig,
   WidgetHandle,
   SigilStorage,
