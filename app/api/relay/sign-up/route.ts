@@ -28,7 +28,7 @@ function isValidFieldElement(value: bigint): boolean {
 
 const MACI_ABI = parseAbi([
   'function signUp(uint256 _pubKeyX, uint256 _pubKeyY, bytes calldata _signUpGatekeeperData, bytes calldata _initialVoiceCreditProxyData) external returns (uint256)',
-  'event SignUp(uint256 indexed _stateIndex, uint256 indexed _userPubKeyX, uint256 indexed _userPubKeyY, uint256 _voiceCreditBalance, uint256 _timestamp)',
+  'event SignUp(uint256 indexed _stateIndex, uint256 indexed _userPubKeyX, uint256 _userPubKeyY, uint256 _voiceCreditBalance, uint256 _timestamp)',
 ])
 
 // --- Rate limiting (stricter: 3/min for signUp) ---
@@ -209,7 +209,7 @@ export async function POST(req: NextRequest) {
               topics: log.topics,
             })
             if (decoded.eventName === 'SignUp') {
-              stateIdx = Number((decoded.args as { _stateIndex: bigint })._stateIndex)
+              stateIdx = Number((decoded.args as { _stateIndex: bigint })._stateIndex ?? 0)
             }
           } catch { /* not our event */ }
         }
