@@ -692,6 +692,26 @@ export interface Translations {
       button: string
     }
   }
+  invite: {
+    title: string
+    copyLink: string
+    copied: string
+    qrTitle: string
+    shareTitle: string
+    noWalletNeeded: string
+    shareButton: string
+  }
+  privy: {
+    loginTitle: string
+    loginDesc: string
+    walletCreating: string
+    ready: string
+    loginButton: string
+    onboardingStep1: string
+    onboardingStep2: string
+    onboardingStep3: string
+    onboardingStep4: string
+  }
   governance: {
     delegation: {
       title: string

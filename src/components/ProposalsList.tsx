@@ -214,9 +214,32 @@ const ProposalCard = memo(function ProposalCard({ poll, onSelectPoll }: Proposal
           )}
         </div>
 
-        {/* Arrow */}
-        <div className="w-12 h-12 bg-black text-white flex items-center justify-center group-hover:bg-primary transition-colors">
-          <span className="material-symbols-outlined">arrow_forward</span>
+        <div className="flex gap-2">
+          {/* Share */}
+          {status === 'active' && (
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation()
+                const url = `${window.location.origin}/vote/${poll.id}?invite=true`
+                if (navigator.share) {
+                  navigator.share({ title: poll.title, text: t.invite.noWalletNeeded, url })
+                } else {
+                  navigator.clipboard.writeText(url)
+                }
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.click() }}
+              className="w-12 h-12 bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-primary hover:text-white transition-colors cursor-pointer"
+              title={t.invite.shareButton}
+            >
+              <span className="material-symbols-outlined text-lg">share</span>
+            </div>
+          )}
+          {/* Arrow */}
+          <div className="w-12 h-12 bg-black text-white flex items-center justify-center group-hover:bg-primary transition-colors">
+            <span className="material-symbols-outlined">arrow_forward</span>
+          </div>
         </div>
       </div>
 

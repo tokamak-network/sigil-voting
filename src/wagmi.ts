@@ -1,15 +1,12 @@
-import { http, fallback, createConfig } from 'wagmi'
+import { http, fallback } from 'wagmi'
 import { sepolia } from 'wagmi/chains'
-import { injected } from '@wagmi/core'
+import { createConfig } from '@privy-io/wagmi'
 
 // Sepolia RPC: use Vercel env var if available, otherwise public fallbacks
 const sepoliaRpcUrl = process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || undefined
 
 export const config = createConfig({
   chains: [sepolia],
-  connectors: [
-    injected(),
-  ],
   transports: {
     [sepolia.id]: sepoliaRpcUrl
       ? http(sepoliaRpcUrl)

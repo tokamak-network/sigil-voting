@@ -16,6 +16,7 @@ import { useTranslation } from '../i18n'
 import { TransactionModal } from './voting/TransactionModal'
 import { useVoiceCreditToken } from '../hooks/useVoiceCreditToken'
 import { estimateGasWithBuffer } from '../utils/gas'
+import { InviteSharePanel } from './InviteSharePanel'
 
 interface CreatePollFormProps {
   onPollCreated: (pollId: number, pollAddress: `0x${string}`, title?: string, durationSeconds?: number) => void
@@ -310,6 +311,12 @@ export default function CreatePollForm({ onPollCreated, onSelectPoll }: CreatePo
               {t.createPoll.close}
             </button>
           </div>
+          {/* Invite share panel */}
+          {createdPollId !== null && (
+            <div className="w-full max-w-lg mt-6">
+              <InviteSharePanel pollId={createdPollId} pollTitle={createdTitle} />
+            </div>
+          )}
         </div>
       </div>
     )

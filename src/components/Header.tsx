@@ -1,18 +1,19 @@
 import { useState, useEffect, useRef } from 'react'
-import { useAccount, useConnect, useDisconnect, useSwitchChain } from 'wagmi'
-import { injected } from '@wagmi/core'
+import { useAccount, useDisconnect, useSwitchChain } from 'wagmi'
+import { usePrivy } from '@privy-io/react-auth'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { sepolia } from '../wagmi'
 import { useTranslation } from '../i18n'
 import { LanguageSwitcher } from './LanguageSwitcher'
+import { getEthereumProvider } from '../lib/ethereum'
 
 const shortenAddress = (addr: string) => addr.slice(0, 6) + '...' + addr.slice(-4)
 
 export function Header() {
   const pathname = usePathname()
   const { address, isConnected, chainId } = useAccount()
-  const { connect, isPending: isConnecting } = useConnect()
+  const { login, logout, authenticated } = usePrivy()
   const { disconnect } = useDisconnect()
   const { switchChain, isPending: isSwitching } = useSwitchChain()
   const { t } = useTranslation()
@@ -43,16 +44,17 @@ export function Header() {
     try {
       await switchChain({ chainId: sepolia.id })
     } catch {
-      if (window.ethereum) {
+      const provider = getEthereumProvider()
+      if (provider) {
         try {
-          await window.ethereum.request({
+          await provider.request({
             method: 'wallet_switchEthereumChain',
             params: [{ chainId: '0xaa36a7' }],
           })
         } catch (switchError: unknown) {
           const err = switchError as { code?: number } | null
           if (err && typeof err === 'object' && err.code === 4902) {
-            await window.ethereum.request({
+            await provider.request({
               method: 'wallet_addEthereumChain',
               params: [{
                 chainId: '0xaa36a7',
@@ -68,7 +70,13 @@ export function Header() {
     }
   }
 
-  const handleConnect = () => connect({ connector: injected() })
+  const handleConnect = () => login()
+
+  const handleDisconnect = () => {
+    disconnect()
+    if (authenticated) logout()
+    setShowDisconnectConfirm(false)
+  }
 
   const isDelegatePage = pathname.startsWith('/vote/delegate')
   const isHistoryPage = pathname.startsWith('/vote/history')
@@ -185,7 +193,7 @@ export function Header() {
                   <p className="text-xs font-bold text-slate-700 mb-3">{t.header.disconnectConfirm}</p>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <button
-                      onClick={() => { disconnect(); setShowDisconnectConfirm(false); }}
+                      onClick={handleDisconnect}
                       className="flex-1 bg-red-500 text-white text-xs font-bold py-1.5 px-3 hover:bg-red-600 transition-colors"
                     >
                       {t.header.disconnectYes}
@@ -206,10 +214,9 @@ export function Header() {
           {showWalletControls && mounted && !isConnected && (
             <button
               onClick={handleConnect}
-              disabled={isConnecting}
               className="bg-primary text-white font-display font-bold px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm hover:translate-x-1 hover:-translate-y-1 transition-transform border-2 border-black whitespace-nowrap"
             >
-              {isConnecting ? t.header.connecting : t.header.connect.toUpperCase()}
+              {t.header.connect.toUpperCase()}
             </button>
           )}
 

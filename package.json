@@ -43,6 +43,8 @@
   },
   "dependencies": {
     "@noble/hashes": "^2.0.1",
+    "@privy-io/react-auth": "^3.14.1",
+    "@privy-io/wagmi": "^4.0.2",
     "@tanstack/react-query": "^5.90.20",
     "@testing-library/dom": "^10.4.1",
     "buffer": "^6.0.3",
@@ -50,6 +52,7 @@
     "next": "^15.5.12",
     "poseidon-solidity": "^0.0.5",
     "process": "^0.11.10",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "snarkjs": "^0.7.6",

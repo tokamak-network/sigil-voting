@@ -1,8 +1,11 @@
 'use client'
 
-import { use, Suspense, lazy, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { use, Suspense, lazy, useCallback, useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useAccount } from 'wagmi'
+import { usePrivy } from '@privy-io/react-auth'
 import { LoadingSpinner } from '../../../components/LoadingSpinner'
+import { InviteOnboarding } from '../../../../src/components/InviteOnboarding'
 
 const MACIVotingDemo = lazy(
   () => import('../../../../src/components/MACIVotingDemo')
@@ -15,7 +18,19 @@ interface PollPageProps {
 export default function PollDetailPage({ params }: PollPageProps) {
   const { pollId } = use(params)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const pollIdNum = Number(pollId)
+  const isInvite = searchParams.get('invite') === 'true'
+  const { login, authenticated, ready: privyReady } = usePrivy()
+  const { isConnected } = useAccount()
+  const [onboardingDone, setOnboardingDone] = useState(false)
+
+  // Auto-login for invite links
+  useEffect(() => {
+    if (isInvite && privyReady && !authenticated) {
+      login()
+    }
+  }, [isInvite, privyReady, authenticated, login])
 
   const handleBack = useCallback(() => {
     router.push('/vote')
@@ -30,7 +45,7 @@ export default function PollDetailPage({ params }: PollPageProps) {
       cost: number
       txHash: string
     }) => {
-      const searchParams = new URLSearchParams({
+      const searchParamsObj = new URLSearchParams({
         pollId: String(data.pollId),
         pollTitle: data.pollTitle,
         choice: String(data.choice),
@@ -38,7 +53,7 @@ export default function PollDetailPage({ params }: PollPageProps) {
         cost: String(data.cost),
         txHash: data.txHash,
       })
-      router.push(`/vote/submitted?${searchParams.toString()}`)
+      router.push(`/vote/submitted?${searchParamsObj.toString()}`)
     },
     [router]
   )
@@ -47,6 +62,15 @@ export default function PollDetailPage({ params }: PollPageProps) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <p className="text-lg font-display font-bold">Invalid poll ID</p>
+      </div>
+    )
+  }
+
+  // Show onboarding flow for invite links (authenticated but waiting for wallet)
+  if (isInvite && !onboardingDone && authenticated && !isConnected) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <InviteOnboarding onReady={() => setOnboardingDone(true)} />
       </div>
     )
   }

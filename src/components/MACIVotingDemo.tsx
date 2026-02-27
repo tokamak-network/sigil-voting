@@ -28,6 +28,7 @@ import { PollTimer } from './voting/PollTimer'
 import { useTranslation } from '../i18n'
 import { useDelegation } from '../hooks/useDelegation'
 import { usePollData } from '../hooks/usePollData'
+import { LoginButton } from './LoginButton'
 import { useVotingPhase } from '../hooks/useVotingPhase'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
@@ -251,7 +252,8 @@ export default function MACIVotingDemo({ pollId: propPollId, onBack, onVoteSubmi
           <div className="technical-card-heavy bg-white p-12 text-center">
             <span className="material-symbols-outlined text-6xl text-slate-300 mb-4" aria-hidden="true">account_balance_wallet</span>
             <h2 className="font-display text-3xl font-black uppercase mb-4">{t.maci.title}</h2>
-            <p className="text-slate-600">{t.maci.connectWallet}</p>
+            <p className="text-slate-600 mb-6">{t.privy.loginDesc}</p>
+            <LoginButton />
           </div>
         </div>
       </div>

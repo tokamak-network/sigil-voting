@@ -708,6 +708,26 @@ export const ko: Translations = {
       button: '테스트넷에서 체험',
     },
   },
+  invite: {
+    title: '초대 링크',
+    copyLink: '링크 복사',
+    copied: '복사됨!',
+    qrTitle: 'QR 코드로 공유',
+    shareTitle: '투표에 참여해주세요',
+    noWalletNeeded: '지갑 없이도 이메일이나 소셜 로그인으로 바로 투표할 수 있습니다.',
+    shareButton: '공유',
+  },
+  privy: {
+    loginTitle: '간편 로그인',
+    loginDesc: '이메일 또는 소셜 계정으로 로그인하세요. 지갑이 자동으로 생성됩니다.',
+    walletCreating: '지갑 생성 중...',
+    ready: '준비 완료!',
+    loginButton: '로그인',
+    onboardingStep1: '로그인 중...',
+    onboardingStep2: '지갑 생성 중...',
+    onboardingStep3: '투표자 등록 중...',
+    onboardingStep4: '준비 완료!',
+  },
   governance: {
     delegation: {
       title: '투표권 위임',

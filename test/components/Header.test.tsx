@@ -5,7 +5,6 @@ import { renderWithProviders } from '../helpers/render'
 import { Header } from '../../src/components/Header'
 
 // Mock wagmi hooks
-const mockConnect = vi.fn()
 const mockDisconnect = vi.fn()
 const mockSwitchChain = vi.fn()
 
@@ -21,7 +20,7 @@ let mockCanCreate: unknown = true
 
 vi.mock('wagmi', () => ({
   useAccount: () => mockAccountState,
-  useConnect: () => ({ connect: mockConnect, isPending: false }),
+  useConnect: () => ({ connect: vi.fn(), isPending: false }),
   useDisconnect: () => ({ disconnect: mockDisconnect }),
   useSwitchChain: () => ({ switchChain: mockSwitchChain, isPending: false }),
   useReadContract: (config: any) => {
@@ -38,6 +37,19 @@ vi.mock('wagmi/connectors', () => ({
 
 vi.mock('../../src/wagmi', () => ({
   sepolia: { id: 11155111 },
+}))
+
+// Mock Privy
+const mockLogin = vi.fn()
+const mockLogout = vi.fn()
+
+vi.mock('@privy-io/react-auth', () => ({
+  usePrivy: () => ({
+    login: mockLogin,
+    logout: mockLogout,
+    authenticated: false,
+    ready: true,
+  }),
 }))
 
 vi.mock('../../src/contractV2', () => ({
@@ -81,17 +93,17 @@ describe('Header', () => {
   it('shows connect button when not connected', async () => {
     mockPathname = '/vote'
     renderWithProviders(<Header />)
-    const connectButton = await screen.findByRole('button', { name: /connect|연결/i })
+    const connectButton = await screen.findByRole('button', { name: /connect|연결|sign in|로그인/i })
     expect(connectButton).toBeInTheDocument()
   })
 
-  it('calls connect when connect button is clicked', async () => {
+  it('calls login when connect button is clicked', async () => {
     const user = userEvent.setup()
     mockPathname = '/vote'
     renderWithProviders(<Header />)
-    const connectButton = await screen.findByRole('button', { name: /connect|연결/i })
+    const connectButton = await screen.findByRole('button', { name: /connect|연결|sign in|로그인/i })
     await user.click(connectButton)
-    expect(mockConnect).toHaveBeenCalled()
+    expect(mockLogin).toHaveBeenCalled()
   })
 
   it('shows shortened address when connected', async () => {

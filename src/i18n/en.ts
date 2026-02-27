@@ -708,6 +708,26 @@ export const en: Translations = {
       button: 'Try on Testnet',
     },
   },
+  invite: {
+    title: 'Invite Link',
+    copyLink: 'Copy Link',
+    copied: 'Copied!',
+    qrTitle: 'Share via QR Code',
+    shareTitle: 'Join the vote',
+    noWalletNeeded: 'No wallet needed — sign in with email or social account to vote instantly.',
+    shareButton: 'Share',
+  },
+  privy: {
+    loginTitle: 'Easy Login',
+    loginDesc: 'Sign in with email or social account. A wallet will be created automatically.',
+    walletCreating: 'Creating wallet...',
+    ready: 'Ready!',
+    loginButton: 'Sign In',
+    onboardingStep1: 'Signing in...',
+    onboardingStep2: 'Creating wallet...',
+    onboardingStep3: 'Registering voter...',
+    onboardingStep4: 'Ready!',
+  },
   governance: {
     delegation: {
       title: 'Delegate Voting Power',

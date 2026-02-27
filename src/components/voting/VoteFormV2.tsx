@@ -17,6 +17,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAccount, usePublicClient, useBalance, useReadContract } from 'wagmi';
 import { formatEther, type PublicClient } from 'viem';
 import { writeContract, relayPublishMessage } from '../../writeHelper';
+import { relaySignUp } from '../../lib/relayerSignUp';
 
 const RELAYER_URL = process.env.NEXT_PUBLIC_RELAYER_URL as string | undefined;
 import { POLL_ABI, VOICE_CREDIT_PROXY_ADDRESS, ERC20_VOICE_CREDIT_PROXY_ABI, MACI_V2_ADDRESS, MACI_ABI, MACI_DEPLOY_BLOCK, DEFAULT_COORD_PUB_KEY_X, DEFAULT_COORD_PUB_KEY_Y } from '../../contractV2';
@@ -242,7 +243,7 @@ export function VoteFormV2({
     return () => { cancelled = true; };
   }, [address, publicClient, isConfigured, pollId, pollDeployTime]);
 
-  // Sign up on MACI contract
+  // Sign up on MACI contract (gasless via relayer when RELAYER_URL is set)
   const handleSignUp = useCallback(async () => {
     if (!address) return;
     try {
@@ -251,56 +252,67 @@ export function VoteFormV2({
       const pk = await cm.eddsaDerivePublicKey(sk);
 
       let hash: `0x${string}` = '0x' as `0x${string}`;
-      let signUpRetries = 0;
-      const maxSignUpRetries = 5;
-      while (true) {
-        try {
-          const gas = await estimateGasWithBuffer({
-            publicClient,
-            address: MACI_V2_ADDRESS,
-            abi: MACI_ABI,
-            functionName: 'signUp',
-            args: [pk[0], pk[1], '0x' as `0x${string}`, '0x' as `0x${string}`],
-            account: address,
-            fallbackGas: 500_000n,
-          });
-          hash = await writeContract({
-            address: MACI_V2_ADDRESS,
-            abi: MACI_ABI,
-            functionName: 'signUp',
-            args: [pk[0], pk[1], '0x' as `0x${string}`, '0x' as `0x${string}`],
-            gas,
-            account: address,
-          });
-          break;
-        } catch (retryErr) {
-          const retryMsg = retryErr instanceof Error ? retryErr.message : '';
-          if (
-            (retryMsg.includes('underpriced') || retryMsg.includes('nonce') || retryMsg.includes('already known')) &&
-            signUpRetries < maxSignUpRetries
-          ) {
-            signUpRetries++;
-            await new Promise(r => setTimeout(r, 10_000));
-            continue;
-          }
-          throw retryErr;
-        }
-      }
 
-      if (publicClient) {
-        try {
-          const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: TX_TIMEOUT_MS });
-          for (const log of receipt.logs) {
-            if (log.address.toLowerCase() !== MACI_V2_ADDRESS.toLowerCase()) continue;
-            if (log.topics.length >= 2 && log.topics[0]) {
-              const stateIndex = parseInt(log.topics[1] as string, 16);
-              if (!isNaN(stateIndex) && stateIndex > 0) {
-                localStorage.setItem(storageKey.stateIndex(address), String(stateIndex));
+      if (RELAYER_URL) {
+        // Gasless path: relayer submits signUp on behalf of user
+        const result = await relaySignUp({ pubKeyX: pk[0], pubKeyY: pk[1] }, RELAYER_URL);
+        hash = result.txHash;
+        if (result.stateIndex > 0) {
+          localStorage.setItem(storageKey.stateIndex(address), String(result.stateIndex));
+        }
+      } else {
+        // Direct transaction path (MetaMask users)
+        let signUpRetries = 0;
+        const maxSignUpRetries = 5;
+        while (true) {
+          try {
+            const gas = await estimateGasWithBuffer({
+              publicClient,
+              address: MACI_V2_ADDRESS,
+              abi: MACI_ABI,
+              functionName: 'signUp',
+              args: [pk[0], pk[1], '0x' as `0x${string}`, '0x' as `0x${string}`],
+              account: address,
+              fallbackGas: 500_000n,
+            });
+            hash = await writeContract({
+              address: MACI_V2_ADDRESS,
+              abi: MACI_ABI,
+              functionName: 'signUp',
+              args: [pk[0], pk[1], '0x' as `0x${string}`, '0x' as `0x${string}`],
+              gas,
+              account: address,
+            });
+            break;
+          } catch (retryErr) {
+            const retryMsg = retryErr instanceof Error ? retryErr.message : '';
+            if (
+              (retryMsg.includes('underpriced') || retryMsg.includes('nonce') || retryMsg.includes('already known')) &&
+              signUpRetries < maxSignUpRetries
+            ) {
+              signUpRetries++;
+              await new Promise(r => setTimeout(r, 10_000));
+              continue;
+            }
+            throw retryErr;
+          }
+        }
+
+        if (publicClient) {
+          try {
+            const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: TX_TIMEOUT_MS });
+            for (const log of receipt.logs) {
+              if (log.address.toLowerCase() !== MACI_V2_ADDRESS.toLowerCase()) continue;
+              if (log.topics.length >= 2 && log.topics[0]) {
+                const stateIndex = parseInt(log.topics[1] as string, 16);
+                if (!isNaN(stateIndex) && stateIndex > 0) {
+                  localStorage.setItem(storageKey.stateIndex(address), String(stateIndex));
+                }
               }
             }
+          } catch {
+            localStorage.setItem(storageKey.stateIndex(address), '1');
           }
-        } catch {
-          localStorage.setItem(storageKey.stateIndex(address), '1');
         }
       }
 
