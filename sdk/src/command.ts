@@ -96,5 +96,5 @@ export async function computeCommandHash(
 export function generateSalt(): bigint {
   const saltBytes = crypto.getRandomValues(new Uint8Array(31));
   const hex = Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-  return BigInt('0x' + hex) % SNARK_SCALAR_FIELD;
+  return BigInt('0x' + hex) & ((1n << 253n) - 1n);
 }

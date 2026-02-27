@@ -22,7 +22,7 @@ import { ethers } from 'ethers';
 import type {
   Poll, PollStatus, PollResults, VoteChoice, VoteReceipt,
   SignUpResult, VoteOptions, KeyChangeResult,
-  ExecutionState,
+  ExecutionState, ExecutionInfo, SigilEvent,
 } from './types.js';
 import type { SigilStorage } from './storage.js';
 import { createDefaultStorage } from './storage.js';
@@ -51,6 +51,8 @@ export interface SigilConfig {
   timelockExecutorAddress?: string;
   /** DelegationRegistry contract address */
   delegationRegistryAddress?: string;
+  /** Relayer URL for gasless voting (POST encrypted votes via relayer) */
+  relayerUrl?: string;
 }
 
 // Minimal ABIs for SDK operations
@@ -122,10 +124,12 @@ export class SigilClient {
   private storage: SigilStorage;
   private timelockExecutorAddress?: string;
   private delegationRegistryAddress?: string;
+  private relayerUrl?: string;
   private deployBlock?: number;
   private logChunkSize: number;
   private deployPollCache?: { block: number; events: DeployPollEvent[] };
   private maciInterface = new ethers.Interface(MACI_ABI);
+  private listeners: Map<SigilEvent['type'], Set<(event: SigilEvent) => void>> = new Map();
 
   constructor(config: SigilConfig) {
     this.provider = config.provider;
@@ -138,8 +142,30 @@ export class SigilClient {
     this.keyManager = new KeyManager(this.storage, this.storageKeys);
     this.timelockExecutorAddress = config.timelockExecutorAddress;
     this.delegationRegistryAddress = config.delegationRegistryAddress;
+    this.relayerUrl = config.relayerUrl;
     this.deployBlock = typeof config.deployBlock === 'bigint' ? Number(config.deployBlock) : config.deployBlock;
     this.logChunkSize = config.logChunkSize && config.logChunkSize > 0 ? config.logChunkSize : 2000;
+  }
+
+  // ============ Event Subscription ============
+
+  /** Subscribe to SDK events (signup, vote, keychange, finalized) */
+  on(event: SigilEvent['type'], callback: (event: SigilEvent) => void): void {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event)!.add(callback);
+  }
+
+  /** Unsubscribe from SDK events */
+  off(event: SigilEvent['type'], callback: (event: SigilEvent) => void): void {
+    this.listeners.get(event)?.delete(callback);
+  }
+
+  /** Emit an event to all registered listeners */
+  private emit(event: SigilEvent['type'], data: Omit<SigilEvent, 'type'>): void {
+    const evt: SigilEvent = { type: event, ...data };
+    this.listeners.get(event)?.forEach(cb => cb(evt));
   }
 
   /** Get total number of deployed polls */
@@ -362,6 +388,8 @@ export class SigilClient {
     );
     this.keyManager.markSignedUp(address, stateIndex);
 
+    this.emit('signup', { pollId: 0, txHash: receipt.hash, data: { stateIndex, pubKey: [pubKey[0].toString(), pubKey[1].toString()] } });
+
     return { txHash: receipt.hash, stateIndex, pubKey };
   }
 
@@ -439,16 +467,49 @@ export class SigilClient {
 
     // Get poll contract address
     const pollAddr = await this.maci.polls(pollId);
-    const poll = new ethers.Contract(pollAddr, POLL_ABI, this.signer);
 
-    // Submit on-chain
+    // Gasless relay path: POST encrypted vote to relayer instead of on-chain tx
+    if (this.relayerUrl) {
+      const body = {
+        pollAddress: pollAddr,
+        encMessage: encMessage.map((v: bigint) => '0x' + v.toString(16)),
+        encPubKey: {
+          x: '0x' + ephemeralPubKey[0].toString(16),
+          y: '0x' + ephemeralPubKey[1].toString(16),
+        },
+      };
+      const res = await fetch(`${this.relayerUrl}/api/relay/publish-message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(`Relay failed (${res.status}): ${err.error ?? res.statusText}`);
+      }
+      const json = await res.json() as { txHash: string };
+      this.keyManager.incrementNonce(address, pollId);
+      const voteReceipt: VoteReceipt = {
+        txHash: json.txHash,
+        pollId,
+        choice,
+        numVotes,
+        creditsSpent,
+        timestamp: Math.floor(Date.now() / 1000),
+      };
+      this.emit('vote', { pollId, txHash: json.txHash, data: { choice, numVotes, creditsSpent } });
+      return voteReceipt;
+    }
+
+    // Direct on-chain submission
+    const poll = new ethers.Contract(pollAddr, POLL_ABI, this.signer);
     const tx = await poll.publishMessage(encMessage, ephemeralPubKey[0], ephemeralPubKey[1]);
     const receipt = await tx.wait();
 
     // Update nonce
     this.keyManager.incrementNonce(address, pollId);
 
-    return {
+    const voteReceipt: VoteReceipt = {
       txHash: receipt.hash,
       pollId,
       choice,
@@ -456,6 +517,8 @@ export class SigilClient {
       creditsSpent,
       timestamp: Math.floor(Date.now() / 1000),
     };
+    this.emit('vote', { pollId, txHash: receipt.hash, data: { choice, numVotes, creditsSpent } });
+    return voteReceipt;
   }
 
   /**
@@ -474,6 +537,8 @@ export class SigilClient {
     const kp = await this.keyManager.getOrCreateKeypair(address, pollId);
 
     const result = await this.changeKeyInternal(pollId, address, kp.sk, coordPubKey);
+
+    this.emit('keychange', { pollId, txHash: result.txHash, data: { newPubKey: [result.newPubKey[0].toString(), result.newPubKey[1].toString()] } });
 
     return {
       txHash: result.txHash,
@@ -640,6 +705,35 @@ export class SigilClient {
     const addr = voter ?? (this.signer ? await this.signer.getAddress() : undefined);
     if (!addr) throw new Error('No address provided');
     return await registry.isDelegating(addr);
+  }
+
+  /** Get all delegators for a delegate address (defaults to signer) */
+  async getDelegators(delegate?: string): Promise<string[]> {
+    if (!this.delegationRegistryAddress) throw new Error('delegationRegistryAddress not configured');
+    const registry = new ethers.Contract(this.delegationRegistryAddress, DELEGATION_REGISTRY_ABI, this.provider);
+    const addr = delegate ?? (this.signer ? await this.signer.getAddress() : undefined);
+    if (!addr) throw new Error('No address provided');
+    return await registry.getDelegators(addr);
+  }
+
+  // ============ Governance: Execution Info ============
+
+  /** Get full execution info for a poll */
+  async getExecutionInfo(pollId: number): Promise<ExecutionInfo> {
+    if (!this.timelockExecutorAddress) throw new Error('timelockExecutorAddress not configured');
+    const executor = new ethers.Contract(this.timelockExecutorAddress, TIMELOCK_EXECUTOR_ABI, this.provider);
+    const result = await executor.getExecution(pollId);
+    const stateMap: ExecutionState[] = ['none', 'registered', 'scheduled', 'executed', 'cancelled'];
+    return {
+      pollId,
+      creator: result[0],
+      target: result[2],
+      callData: result[3],
+      timelockDelay: Number(result[4]),
+      quorum: Number(result[5]),
+      scheduledAt: Number(result[6]),
+      state: stateMap[Number(result[7])] ?? 'none',
+    };
   }
 
   /** Access the internal key manager (for advanced use) */
