@@ -103,7 +103,7 @@ export function LandingPage({ setCurrentPage }: LandingPageProps) {
                   <div className="p-4 border-2 border-border-light dark:border-border-dark flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <span className="material-symbols-outlined">token</span>
-                      <span className="font-display text-sm font-bold">Ethereum Sepolia</span>
+                      <span className="font-display text-sm font-bold">{t.landing.networkName}</span>
                     </div>
                     <span className="material-symbols-outlined text-primary text-sm">check_circle</span>
                   </div>

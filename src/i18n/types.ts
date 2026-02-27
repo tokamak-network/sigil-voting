@@ -24,15 +24,13 @@ export interface Translations {
     testnet: string
   }
   landing: {
-    badge: string
+    networkName: string
     title: string
     subtitle: string
     enterApp: string
     heroStatus: string
     heroVersion: string
     testnetNote: string
-    heroLabel1: string
-    heroLabel2: string
     sectionNav: {
       features: string
       flow: string
@@ -58,19 +56,7 @@ export interface Translations {
       step2: { title: string; desc: string }
       step3: { title: string; desc: string }
     }
-    optionA: string
-    optionB: string
-    whyMaci: {
-      title: string
-      anti: { title: string; sub: string; desc: string }
-      privacy: { title: string; sub: string; desc: string }
-      verify: { title: string; sub: string; desc: string }
-    }
-    terminalAccess: string
-    connectDiscord: string
-    sourceCode: string
     documentation: string
-    proofVerified: string
     contactSales: string
     integration: {
       title: string
@@ -101,18 +87,6 @@ export interface Translations {
       licenseCount: string
       licenseLabel: string
     }
-    demo: {
-      title: string
-      subtitle: string
-      placeholder: string
-      note: string
-      stepSubmit: string
-      stepProof: string
-      stepResult: string
-      network: string
-      comingSoon: string
-    }
-    established: string
     sdkIntegration: string
     transparency: {
       title: string
@@ -143,16 +117,6 @@ export interface Translations {
       accQueue: string
       token: string
       viewOn: string
-    }
-    roadmap: {
-      title: string
-      subtitle: string
-      phase1: { title: string; status: string }
-      phase2: { title: string; status: string }
-      phase3: { title: string; status: string }
-      phase4: { title: string; status: string }
-      phase5: { title: string; status: string }
-      phase6: { title: string; status: string }
     }
     faq: {
       title: string
