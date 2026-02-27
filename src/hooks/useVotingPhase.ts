@@ -13,10 +13,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { PublicClient } from 'viem'
-import { POLL_ABI, TALLY_ABI, MACI_V2_ADDRESS, MACI_DEPLOY_BLOCK, V2Phase } from '../contractV2'
-import { getLogsChunked } from '../utils/viemLogs'
+import { POLL_ABI, TALLY_ABI, V2Phase } from '../contractV2'
 import { storageKey } from '../storageKeys'
 import { FAIL_THRESHOLD_S } from '../constants/voting'
+import { useDeployPollLogs } from './useDeployPollLogs'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
 
@@ -53,6 +53,11 @@ export function useVotingPhase({
   const [pollDeployTime, setPollDeployTime] = useState<number | null>(null)
   const [votingEndTime, setVotingEndTime] = useState<number | null>(null)
   const cancelledRef = useRef(false)
+
+  // Shared DeployPoll log cache (use ref to avoid re-creating checkPhase on every update)
+  const { logs: deployPollLogs } = useDeployPollLogs(publicClient)
+  const deployPollLogsRef = useRef(deployPollLogs)
+  deployPollLogsRef.current = deployPollLogs
   // Caches last known endTime so FAIL_THRESHOLD works even when deployTimeAndDuration call
   // temporarily fails (network blip) or the contract is an older version.
   const endTimeRef = useRef<number | null>(null)
@@ -117,49 +122,18 @@ export function useVotingPhase({
           checkTallyAddr = cachedTally
           setTallyAddress(a => a ?? cachedTally)
         } else {
-          // Fallback: query DeployPoll events
-          try {
-            const deployLogs = await getLogsChunked(
-              publicClient,
-              {
-                address: MACI_V2_ADDRESS,
-                event: {
-                  type: 'event',
-                  name: 'DeployPoll',
-                  inputs: [
-                    { name: 'pollId', type: 'uint256', indexed: true },
-                    { name: 'pollAddr', type: 'address', indexed: false },
-                    { name: 'messageProcessorAddr', type: 'address', indexed: false },
-                    { name: 'tallyAddr', type: 'address', indexed: false },
-                  ],
-                },
-              },
-              MACI_DEPLOY_BLOCK,
-              'latest',
-            )
-            for (const dl of deployLogs) {
-              const dArgs = (dl as unknown as {
-                args: {
-                  pollId?: bigint
-                  tallyAddr?: `0x${string}`
-                  messageProcessorAddr?: `0x${string}`
-                }
-              }).args
-              if (dArgs.pollId !== undefined && Number(dArgs.pollId) === pollId) {
-                if (dArgs.tallyAddr) {
-                  checkTallyAddr = dArgs.tallyAddr
-                  setTallyAddress(a => a ?? dArgs.tallyAddr!)
-                  localStorage.setItem(storageKey.pollTitle(pollId) + ':tally', dArgs.tallyAddr)
-                }
-                if (dArgs.messageProcessorAddr) {
-                  setMessageProcessorAddress(a => a ?? dArgs.messageProcessorAddr!)
-                  localStorage.setItem(storageKey.pollTitle(pollId) + ':mp', dArgs.messageProcessorAddr)
-                }
-                break
-              }
+          // Fallback: look up from shared DeployPoll log cache
+          const entry = deployPollLogsRef.current.find(e => e.pollId === pollId)
+          if (entry) {
+            if (entry.tallyAddr) {
+              checkTallyAddr = entry.tallyAddr
+              setTallyAddress(a => a ?? entry.tallyAddr)
+              localStorage.setItem(storageKey.pollTitle(pollId) + ':tally', entry.tallyAddr)
             }
-          } catch (e) {
-            if (process.env.NODE_ENV === 'development') console.warn('[checkPhase] getLogs failed:', e)
+            if (entry.messageProcessorAddr) {
+              setMessageProcessorAddress(a => a ?? entry.messageProcessorAddr)
+              localStorage.setItem(storageKey.pollTitle(pollId) + ':mp', entry.messageProcessorAddr)
+            }
           }
         }
       }

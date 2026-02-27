@@ -9,7 +9,7 @@
  * UI: Brutalist / technical card design with Tailwind CSS.
  */
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAccount, useReadContract, usePublicClient } from 'wagmi'
 import {
   MACI_V2_ADDRESS,
@@ -78,6 +78,157 @@ function ExecutableBadge({ pollId }: { pollId: number }) {
   )
 }
 
+interface ProposalCardProps {
+  poll: PollInfo
+  onSelectPoll: (pollId: number) => void
+}
+
+function ProposalCard({ poll, onSelectPoll }: ProposalCardProps) {
+  const { t } = useTranslation()
+  const [now, setNow] = useState(() => Math.floor(Date.now() / 1000))
+
+  const isActive = poll.isOpen && now < poll.deployTime + poll.duration
+
+  // Only tick the timer when the poll is active
+  useEffect(() => {
+    if (!isActive) return
+    const interval = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
+    return () => clearInterval(interval)
+  }, [isActive])
+
+  const getStatus = (): 'active' | 'ended' | 'finalized' | 'failed' | 'noVotes' => {
+    const votingEndTime = poll.deployTime + poll.duration
+    const locallyExpired = now >= votingEndTime
+    if (poll.isOpen && !locallyExpired) return 'active'
+    if (poll.isFinalized) return 'finalized'
+    if (!poll.isOpen && poll.numMessages === 0) return 'noVotes'
+    if (locallyExpired && poll.numMessages === 0) return 'noVotes'
+    if (now - votingEndTime > FAIL_THRESHOLD_S) return 'failed'
+    return 'ended'
+  }
+
+  const formatTime = (secs: number): string => {
+    if (secs <= 0) return t.timer.ended
+    const h = Math.floor(secs / 3600)
+    const m = Math.floor((secs % 3600) / 60)
+    const s = secs % 60
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${pad(h)}:${pad(m)}:${pad(s)}`
+  }
+
+  const status = getStatus()
+  const remaining = (poll.deployTime + poll.duration) - now
+
+  const getStatusBadge = () => {
+    if (status === 'active') return { label: t.proposals.statusVoting, className: 'bg-primary text-white' }
+    if (status === 'noVotes') return { label: t.noVotes.title, className: 'bg-slate-400 text-white' }
+    if (status === 'failed') return { label: t.failed.title, className: 'bg-red-500 text-white' }
+    if (status === 'ended') return { label: t.proposals.statusRevealing, className: 'bg-amber-400 text-black' }
+    return { label: t.proposals.statusEnded, className: 'bg-emerald-500 text-white' }
+  }
+
+  const badge = getStatusBadge()
+  const showFinalizedCount = poll.isFinalized
+  const countLabel = showFinalizedCount ? t.results.totalVoters : t.proposals.participants
+  const countValue = showFinalizedCount ? poll.totalVoters : poll.numMessages
+  const countUnit = showFinalizedCount ? t.proposalDetail.users : t.proposals.messages
+
+  return (
+    <button
+      onClick={() => onSelectPoll(poll.id)}
+      className="bg-white p-8 technical-card min-h-[320px] relative flex flex-col justify-between text-left group hover:shadow-[6px_6px_0px_0px_rgba(0,82,255,0.35)] transition-shadow duration-150 cursor-pointer"
+    >
+      {/* Card Top Row */}
+      <div>
+        <div className="flex justify-between items-start mb-6">
+          <span className={`text-xs font-bold px-3 py-1.5 uppercase tracking-widest ${badge.className}`}>
+            {badge.label}
+          </span>
+          <div className="flex items-center gap-2">
+            {poll.hasVoted && (
+              <div className="flex items-center gap-1.5 text-primary">
+                <span className="material-symbols-outlined text-sm font-bold">check</span>
+                <span className="text-xs font-bold uppercase tracking-widest">{t.proposals.voted}</span>
+              </div>
+            )}
+            {TIMELOCK_EXECUTOR_ADDRESS !== '0x0000000000000000000000000000000000000000' && poll.isFinalized && (
+              <ExecutableBadge pollId={poll.id} />
+            )}
+          </div>
+        </div>
+
+        {/* Title */}
+        <h3 className="text-xl md:text-2xl font-display font-bold uppercase leading-snug mb-2 line-clamp-3">
+          {poll.title}
+        </h3>
+        {poll.description && (
+          <p className="text-sm text-slate-500 line-clamp-2 mb-6">{poll.description}</p>
+        )}
+        {!poll.description && <div className="mb-6" />}
+      </div>
+
+      {/* Card Bottom Row */}
+      <div className="flex items-end justify-between">
+        <div className="flex gap-12">
+          {/* Messages / Voters */}
+          <div>
+            <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{countLabel}</span>
+            <span className="text-2xl font-display font-bold">{countValue} <span className="text-sm font-normal text-slate-400">{countUnit}</span></span>
+          </div>
+
+          {/* Timer or Status */}
+          {status === 'active' && remaining > 0 && (
+            <div>
+              <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.timer.remaining}</span>
+              <span className="text-2xl font-mono font-bold text-primary">{formatTime(remaining)}</span>
+            </div>
+          )}
+          {status === 'ended' && (
+            <div>
+              <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
+              <span className="text-2xl font-display font-bold">{t.proposals.calculating}</span>
+            </div>
+          )}
+          {status === 'noVotes' && (
+            <div>
+              <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
+              <span className="text-2xl font-display font-bold text-slate-400">{t.noVotes.title}</span>
+            </div>
+          )}
+          {status === 'failed' && (
+            <div>
+              <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-red-500 text-xl">error</span>
+                <span className="text-2xl font-display font-bold text-red-500">{t.failed.title}</span>
+              </div>
+            </div>
+          )}
+          {status === 'finalized' && (
+            <div>
+              <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposals.result}</span>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-emerald-500 text-xl">check_circle</span>
+                <span className="text-2xl font-display font-bold text-emerald-500">{t.proposals.status.finalized}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Arrow */}
+        <div className="w-12 h-12 bg-black text-white flex items-center justify-center group-hover:bg-primary transition-colors">
+          <span className="material-symbols-outlined">arrow_forward</span>
+        </div>
+      </div>
+
+      {/* Proposal # (absolute bottom-left) */}
+      <div className="absolute bottom-4 left-8 text-xs font-bold text-slate-300 uppercase">
+        {t.proposalDetail.proposalPrefix} #{poll.id + 1}
+      </div>
+    </button>
+  )
+}
+
 export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   const { address, isConnected } = useAccount()
   const publicClient = usePublicClient()
@@ -85,7 +236,6 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   const [polls, setPolls] = useState<PollInfo[]>([])
   const [loading, setLoading] = useState(false)
   const [showCreatePoll, setShowCreatePoll] = useState(false)
-  const [now, setNow] = useState(0)
   const [refreshKey, setRefreshKey] = useState(0)
   const [filter, setFilter] = useState<FilterTab>('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -119,13 +269,6 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
   useEffect(() => {
     const cached = loadCachedPolls()
     if (cached.length > 0) setPolls(cached)
-  }, [])
-
-  // Clock tick for timers
-  useEffect(() => {
-    setNow(Math.floor(Date.now() / 1000))
-    const interval = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000)
-    return () => clearInterval(interval)
   }, [])
 
   // Refresh poll data every 30 seconds (silent — no loading flash)
@@ -259,33 +402,6 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     loadPolls()
   }, [nextPollId, publicClient, address, refreshKey])
 
-  const getStatus = (poll: PollInfo): 'active' | 'ended' | 'finalized' | 'failed' | 'noVotes' => {
-    const votingEndTime = poll.deployTime + poll.duration
-    const locallyExpired = now >= votingEndTime
-    // If contract says open but local timer says expired, treat as ended
-    if (poll.isOpen && !locallyExpired) return 'active'
-    if (poll.isFinalized) return 'finalized'
-    // 0 votes → show "no votes" immediately
-    if (!poll.isOpen && poll.numMessages === 0) return 'noVotes'
-    if (locallyExpired && poll.numMessages === 0) return 'noVotes'
-    if (now - votingEndTime > FAIL_THRESHOLD_S) return 'failed'
-    return 'ended'
-  }
-
-  const getRemaining = (poll: PollInfo): number => {
-    const deadline = poll.deployTime + poll.duration
-    return deadline - now
-  }
-
-  const formatTime = (secs: number): string => {
-    if (secs <= 0) return t.timer.ended
-    const h = Math.floor(secs / 3600)
-    const m = Math.floor((secs % 3600) / 60)
-    const s = secs % 60
-    const pad = (n: number) => String(n).padStart(2, '0')
-    return `${pad(h)}:${pad(m)}:${pad(s)}`
-  }
-
   const handlePollCreated = (newPollId: number, newPollAddress: `0x${string}`, title?: string, durationSeconds?: number) => {
     setShowCreatePoll(false)
     // Add the new poll to the list immediately and persist to cache
@@ -308,13 +424,18 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     })
   }
 
-  // Map internal status to filter category
-  const getFilterCategory = (poll: PollInfo): FilterTab => {
-    const status = getStatus(poll)
-    if (status === 'active') return 'voting'
-    if (status === 'ended') return 'processing' // ended but not finalized = processing/revealing
-    return 'ended' // finalized, failed, or noVotes = ended
-  }
+  // Map internal status to filter category (snapshot-based, not per-second)
+  const getFilterCategory = useCallback((poll: PollInfo): FilterTab => {
+    const nowSec = Math.floor(Date.now() / 1000)
+    const votingEndTime = poll.deployTime + poll.duration
+    const locallyExpired = nowSec >= votingEndTime
+    if (poll.isOpen && !locallyExpired) return 'voting'
+    if (poll.isFinalized) return 'ended'
+    if (!poll.isOpen && poll.numMessages === 0) return 'ended'
+    if (locallyExpired && poll.numMessages === 0) return 'ended'
+    if (nowSec - votingEndTime > FAIL_THRESHOLD_S) return 'ended'
+    return 'processing' // ended but not finalized = processing/revealing
+  }, [])
 
   // Compute counts for filter tabs
   const counts = useMemo(() => {
@@ -324,8 +445,7 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
       result[cat]++
     }
     return result
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [polls, now])
+  }, [polls, getFilterCategory])
 
   // Filtered polls (by status and search)
   const filteredPolls = useMemo(() => {
@@ -346,26 +466,7 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
     }
 
     return result
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [polls, filter, searchQuery, now])
-
-  // Status badge styling
-  const getStatusBadge = (poll: PollInfo) => {
-    const status = getStatus(poll)
-    if (status === 'active') {
-      return { label: t.proposals.statusVoting, className: 'bg-primary text-white' }
-    }
-    if (status === 'noVotes') {
-      return { label: t.noVotes.title, className: 'bg-slate-400 text-white' }
-    }
-    if (status === 'failed') {
-      return { label: t.failed.title, className: 'bg-red-500 text-white' }
-    }
-    if (status === 'ended') {
-      return { label: t.proposals.statusRevealing, className: 'bg-amber-400 text-black' }
-    }
-    return { label: t.proposals.statusEnded, className: 'bg-emerald-500 text-white' }
-  }
+  }, [polls, filter, searchQuery, getFilterCategory])
 
   // Not configured fallback
   if (!isConfigured) {
@@ -546,111 +647,9 @@ export default function ProposalsList({ onSelectPoll }: ProposalsListProps) {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {filteredPolls.map((poll) => {
-            const status = getStatus(poll)
-            const remaining = getRemaining(poll)
-            const badge = getStatusBadge(poll)
-            const showFinalizedCount = poll.isFinalized
-            const countLabel = showFinalizedCount ? t.results.totalVoters : t.proposals.participants
-            const countValue = showFinalizedCount ? poll.totalVoters : poll.numMessages
-            const countUnit = showFinalizedCount ? t.proposalDetail.users : t.proposals.messages
-
-            return (
-              <button
-                key={poll.id}
-                onClick={() => onSelectPoll(poll.id)}
-                className="bg-white p-8 technical-card min-h-[320px] relative flex flex-col justify-between text-left group hover:shadow-[6px_6px_0px_0px_rgba(0,82,255,0.35)] transition-shadow duration-150 cursor-pointer"
-              >
-                {/* ── Card Top Row ── */}
-                <div>
-                  <div className="flex justify-between items-start mb-6">
-                    <span className={`text-xs font-bold px-3 py-1.5 uppercase tracking-widest ${badge.className}`}>
-                      {badge.label}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      {poll.hasVoted && (
-                        <div className="flex items-center gap-1.5 text-primary">
-                          <span className="material-symbols-outlined text-sm font-bold">check</span>
-                          <span className="text-xs font-bold uppercase tracking-widest">{t.proposals.voted}</span>
-                        </div>
-                      )}
-                      {TIMELOCK_EXECUTOR_ADDRESS !== '0x0000000000000000000000000000000000000000' && poll.isFinalized && (
-                        <ExecutableBadge pollId={poll.id} />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* ── Title ── */}
-                  <h3 className="text-xl md:text-2xl font-display font-bold uppercase leading-snug mb-2 line-clamp-3">
-                    {poll.title}
-                  </h3>
-                  {poll.description && (
-                    <p className="text-sm text-slate-500 line-clamp-2 mb-6">{poll.description}</p>
-                  )}
-                  {!poll.description && <div className="mb-6" />}
-                </div>
-
-                {/* ── Card Bottom Row ── */}
-                <div className="flex items-end justify-between">
-                  <div className="flex gap-12">
-                    {/* Messages / Voters */}
-                    <div>
-                      <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{countLabel}</span>
-                      <span className="text-2xl font-display font-bold">{countValue} <span className="text-sm font-normal text-slate-400">{countUnit}</span></span>
-                    </div>
-
-                    {/* Timer or Status */}
-                    {status === 'active' && remaining > 0 && (
-                      <div>
-                        <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.timer.remaining}</span>
-                        <span className="text-2xl font-mono font-bold text-primary">{formatTime(remaining)}</span>
-                      </div>
-                    )}
-                    {status === 'ended' && (
-                      <div>
-                        <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
-                        <span className="text-2xl font-display font-bold">{t.proposals.calculating}</span>
-                      </div>
-                    )}
-                    {status === 'noVotes' && (
-                      <div>
-                        <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
-                        <span className="text-2xl font-display font-bold text-slate-400">{t.noVotes.title}</span>
-                      </div>
-                    )}
-                    {status === 'failed' && (
-                      <div>
-                        <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposalDetail.currentStatus}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-red-500 text-xl">error</span>
-                          <span className="text-2xl font-display font-bold text-red-500">{t.failed.title}</span>
-                        </div>
-                      </div>
-                    )}
-                    {status === 'finalized' && (
-                      <div>
-                        <span className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{t.proposals.result}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-emerald-500 text-xl">check_circle</span>
-                          <span className="text-2xl font-display font-bold text-emerald-500">{t.proposals.status.finalized}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Arrow */}
-                  <div className="w-12 h-12 bg-black text-white flex items-center justify-center group-hover:bg-primary transition-colors">
-                    <span className="material-symbols-outlined">arrow_forward</span>
-                  </div>
-                </div>
-
-                {/* ── Proposal # (absolute bottom-left) ── */}
-                <div className="absolute bottom-4 left-8 text-xs font-bold text-slate-300 uppercase">
-                  {t.proposalDetail.proposalPrefix} #{poll.id + 1}
-                </div>
-              </button>
-            )
-          })}
+          {filteredPolls.map((poll) => (
+            <ProposalCard key={poll.id} poll={poll} onSelectPoll={onSelectPoll} />
+          ))}
         </div>
       )}
     </div>

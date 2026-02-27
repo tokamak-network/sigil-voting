@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useReadContract } from 'wagmi';
+import { useReadContracts } from 'wagmi';
 import { POLL_ABI, MESSAGE_PROCESSOR_ABI, TALLY_ABI } from '../contractV2';
 
 export type VotePhase = 'voting' | 'merging' | 'processing' | 'tallying' | 'finalized' | 'unknown';
@@ -45,48 +45,41 @@ export function usePollingStatus({
   const hasValidMp = !!messageProcessorAddress && messageProcessorAddress !== ZERO_ADDRESS;
   const hasValidTally = !!tallyAddress && tallyAddress !== ZERO_ADDRESS;
 
-  // Poll state: stateAqMerged and messageAqMerged
-  const { data: stateAqMerged } = useReadContract({
-    address: pollAddress!,
-    abi: POLL_ABI,
-    functionName: 'stateAqMerged',
+  // Batch all 4 status reads into a single multicall
+  const shouldPoll = enabled && !isVotingOpen;
+  const { data: results } = useReadContracts({
+    contracts: [
+      {
+        address: pollAddress!,
+        abi: POLL_ABI,
+        functionName: 'stateAqMerged',
+      },
+      {
+        address: pollAddress!,
+        abi: POLL_ABI,
+        functionName: 'messageAqMerged',
+      },
+      {
+        address: messageProcessorAddress!,
+        abi: MESSAGE_PROCESSOR_ABI,
+        functionName: 'processingComplete',
+      },
+      {
+        address: tallyAddress!,
+        abi: TALLY_ABI,
+        functionName: 'tallyVerified',
+      },
+    ],
     query: {
-      enabled: enabled && hasValidPoll && !isVotingOpen,
+      enabled: shouldPoll && hasValidPoll,
       refetchInterval: POLL_INTERVAL_MS,
     },
   });
 
-  const { data: messageAqMerged } = useReadContract({
-    address: pollAddress!,
-    abi: POLL_ABI,
-    functionName: 'messageAqMerged',
-    query: {
-      enabled: enabled && hasValidPoll && !isVotingOpen,
-      refetchInterval: POLL_INTERVAL_MS,
-    },
-  });
-
-  // MessageProcessor state: processingComplete
-  const { data: processingComplete } = useReadContract({
-    address: messageProcessorAddress!,
-    abi: MESSAGE_PROCESSOR_ABI,
-    functionName: 'processingComplete',
-    query: {
-      enabled: enabled && hasValidMp && !isVotingOpen,
-      refetchInterval: POLL_INTERVAL_MS,
-    },
-  });
-
-  // Tally state: tallyVerified
-  const { data: tallyVerified } = useReadContract({
-    address: tallyAddress!,
-    abi: TALLY_ABI,
-    functionName: 'tallyVerified',
-    query: {
-      enabled: enabled && hasValidTally && !isVotingOpen,
-      refetchInterval: POLL_INTERVAL_MS,
-    },
-  });
+  const stateAqMerged = results?.[0]?.status === 'success' ? results[0].result : undefined;
+  const messageAqMerged = results?.[1]?.status === 'success' ? results[1].result : undefined;
+  const processingComplete = hasValidMp && results?.[2]?.status === 'success' ? results[2].result : undefined;
+  const tallyVerified = hasValidTally && results?.[3]?.status === 'success' ? results[3].result : undefined;
 
   // Determine current phase
   const phase: VotePhase = (() => {

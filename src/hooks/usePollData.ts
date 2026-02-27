@@ -16,14 +16,13 @@ import { useReadContract } from 'wagmi'
 import type { PublicClient } from 'viem'
 import {
   MACI_V2_ADDRESS,
-  MACI_DEPLOY_BLOCK,
   MACI_ABI,
   POLL_ABI,
   VOICE_CREDIT_PROXY_ADDRESS,
   VOICE_CREDIT_PROXY_ABI,
 } from '../contractV2'
 import { storageKey, parseOnChainTitle } from '../storageKeys'
-import { getLogsChunked } from '../utils/viemLogs'
+import { useDeployPollLogs } from './useDeployPollLogs'
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as `0x${string}`
 
@@ -53,6 +52,9 @@ export function usePollData(
   const [messageProcessorAddress, setMessageProcessorAddress] = useState<`0x${string}` | null>(null)
   const [isLoadingPoll, setIsLoadingPoll] = useState(true)
 
+  // Shared DeployPoll log cache
+  const { logs: deployPollLogs } = useDeployPollLogs(publicClient)
+
   // Reset when switching proposals
   useEffect(() => {
     setPollAddress(null)
@@ -70,32 +72,12 @@ export function usePollData(
 
     const loadPoll = async () => {
       try {
-        const [addr, logs] = await Promise.all([
-          publicClient.readContract({
-            address: MACI_V2_ADDRESS,
-            abi: MACI_ABI,
-            functionName: 'polls',
-            args: [BigInt(pollId)],
-          }),
-          getLogsChunked(
-            publicClient,
-            {
-              address: MACI_V2_ADDRESS,
-              event: {
-                type: 'event',
-                name: 'DeployPoll',
-                inputs: [
-                  { name: 'pollId', type: 'uint256', indexed: true },
-                  { name: 'pollAddr', type: 'address', indexed: false },
-                  { name: 'messageProcessorAddr', type: 'address', indexed: false },
-                  { name: 'tallyAddr', type: 'address', indexed: false },
-                ],
-              },
-            },
-            MACI_DEPLOY_BLOCK,
-            'latest',
-          ).catch(() => []),
-        ])
+        const addr = await publicClient.readContract({
+          address: MACI_V2_ADDRESS,
+          abi: MACI_ABI,
+          functionName: 'polls',
+          args: [BigInt(pollId)],
+        })
 
         if (cancelled) return
         const pollAddr = addr as `0x${string}`
@@ -127,26 +109,16 @@ export function usePollData(
         const desc = localStorage.getItem(storageKey.pollDesc(pollId))
         if (desc) setPollDescription(d => d ?? desc)
 
-        // Discover tally/mp addresses from DeployPoll events
-        for (const log of logs) {
-          const args = (log as unknown as {
-            args: {
-              pollId?: bigint
-              pollAddr?: `0x${string}`
-              messageProcessorAddr?: `0x${string}`
-              tallyAddr?: `0x${string}`
-            }
-          }).args
-          if (args.pollId !== undefined && Number(args.pollId) === pollId) {
-            if (args.tallyAddr) {
-              setTallyAddress(args.tallyAddr)
-              localStorage.setItem(storageKey.pollTitle(pollId) + ':tally', args.tallyAddr)
-            }
-            if (args.messageProcessorAddr) {
-              setMessageProcessorAddress(args.messageProcessorAddr)
-              localStorage.setItem(storageKey.pollTitle(pollId) + ':mp', args.messageProcessorAddr)
-            }
-            break
+        // Discover tally/mp addresses from shared DeployPoll logs
+        const entry = deployPollLogs.find(e => e.pollId === pollId)
+        if (entry) {
+          if (entry.tallyAddr) {
+            setTallyAddress(entry.tallyAddr)
+            localStorage.setItem(storageKey.pollTitle(pollId) + ':tally', entry.tallyAddr)
+          }
+          if (entry.messageProcessorAddr) {
+            setMessageProcessorAddress(entry.messageProcessorAddr)
+            localStorage.setItem(storageKey.pollTitle(pollId) + ':mp', entry.messageProcessorAddr)
           }
         }
 
@@ -164,7 +136,7 @@ export function usePollData(
 
     loadPoll()
     return () => { cancelled = true }
-  }, [pollId, publicClient, isConfigured])
+  }, [pollId, publicClient, isConfigured, deployPollLogs])
 
   const hasPoll = pollAddress !== null
 

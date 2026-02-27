@@ -7,6 +7,7 @@ vi.mock('wagmi', () => ({
   useAccount: () => ({ address: undefined, isConnected: false }),
   usePublicClient: () => null,
   useReadContract: () => ({ data: undefined }),
+  useReadContracts: () => ({ data: undefined }),
 }))
 
 vi.mock('../../src/contractV2', () => ({
