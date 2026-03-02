@@ -134,7 +134,7 @@ export const en: Translations = {
       q2: 'How much does it cost to use?',
       a2: 'Currently on Sepolia testnet. On mainnet, verification costs depend on batch size and network conditions. Voters pay gas per vote transaction. L2 networks are typically cheaper than L1.',
       q3: 'How many voters can participate?',
-      a3: 'Testnet runs with small limits for faster iteration. Mainnet will use higher capacity circuits.',
+      a3: 'Testnet supports up to 624 voters per poll for faster iteration. Mainnet will use higher capacity circuits to scale to thousands of voters.',
       q4: 'Has the code been audited?',
       a4: 'Not yet formally audited. The codebase is open source with 437 automated tests (frontend, SDK, and contract) and security properties aligned to MACI. Built on Ethereum PSE MACI research. A formal third-party audit is planned before mainnet.',
       q5: 'Which blockchains are supported?',
