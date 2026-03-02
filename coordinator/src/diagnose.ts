@@ -4,7 +4,7 @@
  * Usage: cd coordinator && npx tsx src/diagnose.ts <pollId>
  */
 import { ethers } from 'ethers';
-import { loadConfig, initCrypto, MACI_ABI, POLL_ABI, TALLY_ABI } from './run.js';
+import { loadConfig, initCrypto, chunkedQueryFilter, MACI_ABI, POLL_ABI, TALLY_ABI } from './run.js';
 
 const pollId = parseInt(process.argv[2] || '6');
 
@@ -18,7 +18,7 @@ async function main() {
   const maci = new ethers.Contract(config.maciAddress, MACI_ABI, provider);
 
   // Find poll addresses
-  const deployEvents = await maci.queryFilter(maci.filters.DeployPoll(), config.deployBlock);
+  const deployEvents = await chunkedQueryFilter(maci, maci.filters.DeployPoll(), config.deployBlock);
   const ev = deployEvents.find((e: any) => Number(e.args.pollId) === pollId);
   if (!ev || !('args' in ev)) { console.log('Poll not found'); return; }
   const args = ev.args as any;
@@ -49,7 +49,7 @@ async function main() {
 
   // Fetch signups
   const signUpFilter = maci.filters.SignUp();
-  const signUpEvents = await maci.queryFilter(signUpFilter, config.deployBlock);
+  const signUpEvents = await chunkedQueryFilter(maci, signUpFilter, config.deployBlock);
   console.log(`\n--- ${signUpEvents.length} SignUp events ---`);
   for (const se of signUpEvents) {
     if ('args' in se) {
@@ -61,7 +61,7 @@ async function main() {
 
   // Fetch messages
   const msgFilter = poll.filters.MessagePublished();
-  const msgEvents = await poll.queryFilter(msgFilter, config.deployBlock);
+  const msgEvents = await chunkedQueryFilter(poll, msgFilter, config.deployBlock);
   console.log(`\n--- ${msgEvents.length} MessagePublished events ---`);
 
   for (const me of msgEvents) {

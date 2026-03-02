@@ -8,6 +8,7 @@
 import { ethers } from 'ethers';
 import type { QuinaryMerkleTree } from '../trees/quinaryTree.js';
 import type { EncryptedMessage } from '../processing/processMessages.js';
+import { chunkedQueryFilter } from '../run.js';
 
 export interface ListenerConfig {
   provider: ethers.Provider;
@@ -68,7 +69,7 @@ export class EventListener {
   async fetchPastEvents(): Promise<void> {
     // Fetch past SignUp events
     const signUpFilter = this.maciContract.filters.SignUp();
-    const signUpEvents = await this.maciContract.queryFilter(signUpFilter);
+    const signUpEvents = await chunkedQueryFilter(this.maciContract, signUpFilter, 0);
 
     for (const event of signUpEvents) {
       if ('args' in event) {
@@ -80,7 +81,7 @@ export class EventListener {
 
     // Fetch past MessagePublished events
     const msgFilter = this.pollContract.filters.MessagePublished();
-    const msgEvents = await this.pollContract.queryFilter(msgFilter);
+    const msgEvents = await chunkedQueryFilter(this.pollContract, msgFilter, 0);
 
     for (const event of msgEvents) {
       if ('args' in event) {

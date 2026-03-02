@@ -31,6 +31,7 @@ import {
   loadConfig,
   initCrypto,
   processPoll,
+  chunkedQueryFilter,
   MACI_ABI,
   POLL_ABI,
   TALLY_ABI,
@@ -202,7 +203,7 @@ async function main() {
 
     // Fetch deploy events
     const deployFilter = maci.filters.DeployPoll();
-    const deployEvents = await retryRpc(() => maci.queryFilter(deployFilter, config.deployBlock));
+    const deployEvents = await retryRpc(() => chunkedQueryFilter(maci, deployFilter, config.deployBlock));
 
     for (const ev of deployEvents) {
       if ('args' in ev) {

@@ -172,6 +172,34 @@ export function loadConfig(): Config {
   };
 }
 
+// ─── Chunked Event Query (RPC block range limit workaround) ──────────
+
+const MAX_BLOCK_RANGE = 45_000; // stay under typical RPC 50k limit
+
+/**
+ * Query contract events in chunks to avoid RPC "exceed maximum block range" errors.
+ * Splits [fromBlock, toBlock] into MAX_BLOCK_RANGE-sized windows.
+ */
+export async function chunkedQueryFilter(
+  contract: ethers.Contract,
+  filter: ethers.ContractEventName,
+  fromBlock: number,
+  toBlock?: number,
+): Promise<(ethers.EventLog | ethers.Log)[]> {
+  const provider = contract.runner?.provider;
+  const latest = toBlock ?? (provider ? Number(await provider.getBlockNumber()) : fromBlock);
+  if (latest - fromBlock <= MAX_BLOCK_RANGE) {
+    return contract.queryFilter(filter, fromBlock, latest);
+  }
+  const results: (ethers.EventLog | ethers.Log)[] = [];
+  for (let start = fromBlock; start <= latest; start += MAX_BLOCK_RANGE + 1) {
+    const end = Math.min(start + MAX_BLOCK_RANGE, latest);
+    const chunk = await contract.queryFilter(filter, start, end);
+    results.push(...chunk);
+  }
+  return results;
+}
+
 // ─── ABIs (coordinator needs merge/process/tally functions) ───────────
 
 export const MACI_ABI = [
@@ -520,7 +548,7 @@ async function fetchEvents(
 ): Promise<{ stateLeaves: StateLeaf[]; messages: EncryptedMessage[] }> {
   // SignUp events (from deploy block to avoid RPC block range limit)
   const suFilter = maciContract.filters.SignUp();
-  const suEvents = await retryRpc(() => maciContract.queryFilter(suFilter, deployBlock));
+  const suEvents = await retryRpc(() => chunkedQueryFilter(maciContract, suFilter, deployBlock));
   const stateLeaves: StateLeaf[] = [];
   for (const ev of suEvents) {
     if (!('args' in ev)) continue;
@@ -536,7 +564,7 @@ async function fetchEvents(
   // MessagePublished events
   const pollContract = new ethers.Contract(pollAddr, POLL_ABI, provider);
   const msgFilter = pollContract.filters.MessagePublished();
-  const msgEvents = await retryRpc(() => pollContract.queryFilter(msgFilter, deployBlock));
+  const msgEvents = await retryRpc(() => chunkedQueryFilter(pollContract, msgFilter, deployBlock));
   const messages: EncryptedMessage[] = [];
   for (const ev of msgEvents) {
     if (!('args' in ev)) continue;
@@ -1491,7 +1519,7 @@ async function main() {
 
   // Fetch DeployPoll events once (cache)
   const deployFilter = maci.filters.DeployPoll();
-  let deployEvents = await retryRpc(() => maci.queryFilter(deployFilter, config.deployBlock));
+  let deployEvents = await retryRpc(() => chunkedQueryFilter(maci, deployFilter, config.deployBlock));
   let lastDeployFetch = Date.now();
 
   // Track processed polls to avoid re-processing
@@ -1508,7 +1536,7 @@ async function main() {
       } else {
         // Refresh deploy events periodically
         if (Date.now() - lastDeployFetch > 60_000) {
-          deployEvents = await retryRpc(() => maci.queryFilter(deployFilter, config.deployBlock));
+          deployEvents = await retryRpc(() => chunkedQueryFilter(maci, deployFilter, config.deployBlock));
           lastDeployFetch = Date.now();
         }
 
